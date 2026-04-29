@@ -18,6 +18,42 @@
 
 ## Records
 
+### DCN-CHG-20260429-36
+- **Date**: 2026-04-29
+- **Rationale**:
+  - dcNess plugin 의 첫 skill 도입. 사용자 진입점 = "버그 있다" 류 자연어 발화 → 분류 + 라우팅 추천.
+  - 사용자 결정 — heuristic only (haiku 안 켬). 이유:
+    1. **메인 단독 판단 vs catastrophic 훅 일관성** 트레이드오프 검토 결과 heuristic 유지가 안전 (메인이 prose 본문 본 의미 vs 훅 grep 결과 어긋날 위험)
+    2. **API 키 의존 회피** — dcNess 자체 도그푸딩 환경 (subscription only) 호환
+    3. **비용 0** — heuristic 은 Python regex (cycle 당 LLM 호출 0)
+    4. **dcNess 정신 정합** — heuristic 은 가벼운 enum 추출 (단어경계 매칭 1개), 형식 강제 사다리 아님
+  - AMBIGUOUS 처리 = cascade 패턴 — agent 재호출 (1회) → 사용자 위임. 메인 단독 판단으로 진행 시 다음 step 의 catastrophic 훅 grep 과 어긋날 risk 회피.
+- **Alternatives**:
+  1. *heuristic + haiku fallback 동시 켬* — robustness ↑, but API 키 의존 + dcNess 도그푸딩 호환성 ↓. 기각.
+  2. *heuristic + haiku 둘 다 폐기, 메인이 prose 본문 보고 직접 판단* — 메인 vs 훅 일관성 깨짐 risk. 기각.
+  3. *(채택)* **heuristic only + AMBIGUOUS cascade (재호출 → 사용자)** — 결정론 + plugin 환경 호환 + dcNess 정신 정합.
+- **Decision**:
+  - `commands/qa.md` 신규. CC 가 `commands/*.md` 자동 디스커버 (RWHarness 패턴 정합).
+  - **8 step protocol**:
+    - Step 0 — `begin-run qa` 로 run_id 발급
+    - Step 1 — `TaskCreate("qa: 이슈 분류")` (단일 task)
+    - Step 2 — 사용자 입력 명확화 (재현·범위·예상 동작 등 모호 시 역질문)
+    - Step 3 — `TaskUpdate(in_progress)` + `begin-step qa` + `Agent(qa, ...)`
+    - Step 4 — prose 임시 파일 저장 + `end-step qa --allowed-enums "..." --prose-file ...` → enum 또는 AMBIGUOUS
+    - Step 5 — AMBIGUOUS 시 cascade (5-1 재호출 / 5-2 사용자 위임)
+    - Step 6 — `TaskUpdate(completed)` + 분류 결과 보고 + 후속 skill 추천 (자동 진입 X)
+    - Step 7 — 종료 시 `end-run`
+  - **agents/qa.md 정합**: 5 결론 enum (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) 그대로 사용.
+  - **catastrophic 룰 무관**: qa agent 는 HARNESS_ONLY_AGENTS 미해당, §2.3 4룰 모두 비대상.
+  - **후속 skill 미구현 명시**: `/quick`, `/ux` 가 없으므로 분류 결과만 보여주고 자동 라우팅 X. 사용자 결정 받고 architect 직접 호출 또는 종료.
+- **Follow-Up**:
+  - **Task -37**: `/quick` skill (FUNCTIONAL_BUG / CLEANUP 분류 후 light path 자동 진입)
+  - **Task -38**: `/init-dcness` (enable / disable 헬퍼)
+  - **Task -39**: `/harness-monitor` `/harness-list` `/harness-kill` (디버깅/운영)
+  - **manual smoke**: 실 `claude` 세션에서 `/qa <bug 보고>` 발화 → SessionStart 훅 → run_dir + prose 종이 + end-run 검증
+  - **measurement**: `.metrics/heuristic-calls.jsonl` 누적 → AMBIGUOUS 빈도 측정. 30%+ 면 haiku fallback 검토.
+  - **회귀 위험**: skill prompt 가 helper CLI 시그니처에 묶임. `harness/session_state.py` 변경 시 skill prompt 도 동기화 필요. governance §2.6 의 doc-sync 가 자동 catch (commands/ 는 docs-only category, 매 변경 시 doc-sync 발화).
+
 ### DCN-CHG-20260429-35
 - **Date**: 2026-04-29
 - **Rationale**:
