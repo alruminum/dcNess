@@ -20,6 +20,21 @@
 
 ## Records
 
+### DCN-CHG-20260429-34
+- **Date**: 2026-04-29
+- **Change-Type**: harness, hooks, test, docs-only
+- **Files Changed**:
+  - `harness/hooks.py` (신규, ~280 LOC) — Claude Code 훅 핸들러 (SessionStart + PreToolUse Agent). 순수 Python.
+  - `hooks/session-start.sh` (신규) — bash 래퍼, python 핸들러 호출 + cc_pid 전달
+  - `hooks/catastrophic-gate.sh` (신규) — 동일 패턴
+  - `hooks/hooks.json` (신규) — plugin 활성 시 hook 자동 등록 (RWHarness 패턴 정합)
+  - `tests/test_hooks.py` (신규, 28 케이스) — handle_session_start (7) + HARNESS_ONLY_AGENTS (3) + §2.3.3 engineer (4) + §2.3.1 pr-reviewer (4) + §2.3.4 architect (5) + rid 폴백 (1) + silent allow (3) + (1)
+  - `PROGRESS.md`
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+- **Summary**: `docs/conveyor-design.md` v2 (`DCN-CHG-20260429-32`) §7/§8 의 훅 스크립트 + 핸들러 구현. SessionStart = stdin sid 추출 + by-pid 작성 + live.json 초기화. PreToolUse Agent = HARNESS_ONLY_AGENTS (engineer / validator-PLAN/CODE/BUGFIX_VALIDATION) + §2.3 4룰 (1/3/4) 검사. rid 결정 = by-pid-current-run 우선 + live.json active_runs 가장 최근 미완료 슬롯 폴백. 모든 비-catastrophic 실패는 silent (CC 동작 방해 X). 149/149 tests PASS (121 기존 + 28 신규).
+- **Document-Exception**: 없음 (harness/hooks 카테고리 deliverable = `tests/**` 동반 ✅)
+
 ### DCN-CHG-20260429-33
 - **Date**: 2026-04-29
 - **Change-Type**: harness, test, docs-only

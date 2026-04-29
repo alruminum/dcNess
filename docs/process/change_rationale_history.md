@@ -18,6 +18,50 @@
 
 ## Records
 
+### DCN-CHG-20260429-34
+- **Date**: 2026-04-29
+- **Rationale**:
+  - `docs/conveyor-design.md` v2 (DCN-CHG-20260429-32) §7/§8 의 훅 인프라 코드 구현. catastrophic 보호의 *물리 강제선* — 메인이 protocol 따르든 안 따르든 Agent 호출 시 자동 발화.
+  - 훅 스크립트는 bash 래퍼 + Python 핸들러 분리. 이유:
+    1. bash 가 PPID 캡처 + python 인자로 전달 — Python 의 `os.getppid()` 가 shell 인지 CC 인지 모호한 케이스 회피
+    2. 모든 로직은 Python (테스트 가능) — bash 는 1줄 wrapper
+    3. RWHarness 패턴 정합 (`hooks/hooks.json` 으로 plugin 활성 시 자동 등록)
+- **Alternatives**:
+  1. *Python 직접 invoke (bash wrapper 없이)* — `python3 -m harness.hooks ...` 로 hooks.json 박음. 단점: PPID 가 shell 인지 CC 인지 모호. 기각 (bash 래퍼가 PPID 명시 캡처).
+  2. *훅 안에 catastrophic 검사 직접 구현 (Python 모듈 없이)* — 테스트 어려움 + 코드 분산. 기각.
+  3. *Settings.json 의 hooks 직접 박기 (plugin 자동 등록 안 함)* — plugin 사용자가 수동 설정 필요. 기각.
+  4. *(채택)* **bash 래퍼 + Python 핸들러 + hooks.json plugin 자동 등록** (RWHarness 패턴).
+- **Decision**:
+  - **`harness/hooks.py` 모듈** (~280 LOC):
+    - `HARNESS_ONLY_AGENTS` 상수 — orchestration.md §7.1 정합
+    - `handle_session_start(stdin_data, cc_pid)` — sid 추출 + write_pid_session + update_live 초기화
+    - `handle_pretooluse_agent(stdin_data, cc_pid)` — HARNESS_ONLY_AGENTS + §2.3.1/3/4 검사
+    - `_resolve_rid(sid, cc_pid)` — by-pid-current-run 우선, live.json 가장 최근 미완료 슬롯 폴백
+    - 헬퍼 4개 (`_has_plan_ready`, `_has_engineer_write`, `_has_validator_pass`, `_has_plan_review_pass`, `_has_ux_flow_ready`)
+    - CLI `python3 -m harness.hooks {session-start, pretooluse-agent}`
+  - **bash 래퍼**:
+    - `hooks/session-start.sh` — `CC_PID=$PPID; python3 -m harness.hooks session-start --cc-pid $CC_PID; exit 0` (silent skip on error)
+    - `hooks/catastrophic-gate.sh` — `CC_PID=$PPID; python3 -m harness.hooks pretooluse-agent --cc-pid $CC_PID; exit $?` (block 시 exit 1)
+  - **`hooks/hooks.json`** — plugin 자동 등록:
+    - `SessionStart` → session-start.sh (timeout 5s)
+    - `PreToolUse` matcher=Agent → catastrophic-gate.sh (timeout 10s)
+  - **silent skip 정책**:
+    - 모든 비-catastrophic 실패 (sid 없음 / cc_pid 없음 / parse 실패 / OS 에러) → exit 0 + skip
+    - 진짜 위반만 exit 1 + stderr 메시지
+    - 이유: CC 동작 방해 안 함 + plugin 환경 차이 (jq 없음 등) 견딤
+  - **테스트**:
+    - 28 케이스. mock stdin payload + base_dir 격리.
+    - HARNESS_ONLY_AGENTS 차단 / 통과 매트릭스
+    - §2.3.1/3/4 4룰 모두 happy/blocked path
+    - rid 폴백 (by-pid 없을 때 live.json 미완료 슬롯 픽업)
+- **Follow-Up**:
+  - **e2e 테스트** — 실 plugin 환경에서 `claude` 띄워 hook 발화 검증 (수동, 별도 PR)
+  - **multi-session 한계 명시** — Phase 1 은 단일 working directory 단일 세션 가정. 멀티세션 도그푸딩은 plugin Phase follow-up.
+  - **PostToolUse(Agent) heartbeat 갱신 훅** (선택) — last_confirmed_at 자동화
+  - **skill prompt 템플릿 갱신** — `/quick`, `/product-plan` 등이 helper protocol (begin-run/begin-step/end-step) 박음
+  - **`signal_io.write_prose` atomic write 강화** — 현재 `os.replace` → `session_state.atomic_write`
+  - **plugin smoke test** — `.claude-plugin/plugin.json` 의 hooks 등록 자동화 검증
+
 ### DCN-CHG-20260429-33
 - **Date**: 2026-04-29
 - **Rationale**:

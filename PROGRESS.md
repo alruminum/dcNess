@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🚀 Conveyor 인프라 Step 3 — 훅 인프라** (`DCN-CHG-20260429-34`):
+  - `harness/hooks.py` (~280 LOC) — Python 훅 핸들러 (SessionStart + PreToolUse Agent)
+  - `hooks/session-start.sh` + `hooks/catastrophic-gate.sh` — bash 래퍼 (PPID 캡처 + python 호출)
+  - `hooks/hooks.json` — plugin 활성 시 자동 등록 (RWHarness 패턴 정합)
+  - HARNESS_ONLY_AGENTS (engineer / validator-PLAN/CODE/BUGFIX_VALIDATION) + §2.3 4룰 (1/3/4) 강제
+  - 신규 28 테스트 (전체 149/149 PASS).
 - **🚀 Conveyor 인프라 Step 2 — `session_state.py` 확장 (by-pid 레지스트리 + CLI)** (`DCN-CHG-20260429-33`):
   - by-pid 레지스트리 함수 8개 (`.by-pid/{cc_pid}` sid 매핑 + `.by-pid-current-run/{cc_pid}` rid 매핑) — 멀티세션 정합 핵심.
   - PPID chain walker (`os.getppid()` → bash → `ps` → CC main pid) — 환경변수 휘발성 우회.
