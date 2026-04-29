@@ -18,6 +18,32 @@
 
 ## Records
 
+### DCN-CHG-20260429-19
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Phase 2 iter 5 (FINAL) = ux-architect + product-planner 짝. PRD 단계의 시작점 (planner = PRD 생성, ux-architect = PRD → UX Flow Doc).
+  - 두 에이전트는 RWHarness 에서 가장 큰 docs (633 + 449 = 1082 줄) — 자기인식 경계 ("절대 출력 금지 패턴") + Outline-First + Diff-First + Anti-AI-Smell + 카테고리 클리셰 회피 + thinking 본문 드래프트 금지 등 *정책 밀도가 높음*. 변환 일관성 확보 위해 한 묶음.
+  - PR #18 머지로 designer + design-critic 통과 → 마지막 묶음. Phase 2 종결.
+- **Alternatives**:
+  1. *ux-architect + product-planner + 추가 정리 묶음* — Phase 2 자체 종결이 우선. 추가 정리는 별도 Task. 기각.
+  2. *ux + planner 분리 (각각 별도 PR)* — 1 PR 로 종결 시그널이 명확. 분리 시 Phase 2 종결 시점 모호. 기각.
+  3. *(채택)* **ux + planner 짝 묶음 + Phase 2 종결 표시**: 13 agent prose-only 완성 시그널.
+- **Decision**:
+  - 옵션 3. 2 docs 동시 + Phase 2 종결.
+  - **자기인식 경계 보존**: ux-architect / product-planner 의 "🔴 정체성" 섹션 + "절대 출력 금지 패턴" 보존 — agent 가 자기 정체 잃고 메인 Claude 로 행동하는 함정 방지. 작업 순서 영역 (proposal §2.5 대 원칙 적용 가능) — agent 호출 라이프사이클의 무결성.
+  - **thinking 본문 드래프트 금지**: 비용 폭증 방지 (16KB thinking + 20KB Write 본문 중복). 권고 + 측정 영역 (proposal §2.5 원칙 5).
+  - **Outline-First / Diff-First**: thinking 폭증 차단 + 유저 승인 게이트 — 작업 순서 정책. 보존.
+  - **Anti-AI-Smell + 카테고리 클리셰 회피**: agent 출력물 품질 가이드 — *권장* 영역. 형식 강제 X.
+  - **라이트/다크 두 모드 의무**: 디자인 가이드 작성 시 컬러 팔레트 양 모드 의무 작성. 산출물 품질 게이트.
+- **Follow-Up**:
+  - **Phase 2 종결 → Phase 3 후보**:
+    - 메타 LLM (haiku) interpreter Anthropic SDK 통합 (proposal Phase 1 acceptance 의 미완 항목 — 휴리스틱 → LLM swap)
+    - ambiguous prose 카탈로그 (`MissingSignal(ambiguous)` 누적)
+    - plugin 배포 dry-run (RWHarness 와 공존 시나리오 검증, proposal §12.3.2)
+    - 휴리스틱 interpreter hit rate 측정 (단어경계 매칭 vs ambiguous)
+  - **(별도 Task-ID)** Phase 2 종결 후 dcNess 메인 작업 모드의 *self-application* — 본 13 agent docs 가 dcNess 자체 거버넌스 작업 (qa / planner / architect / engineer 위임) 에 사용 가능한 상태인지 검증.
+  - **(측정)** Phase 2 5 iterations 누적 LOC / 복잡도 vs RWHarness 원본 비교. 순감소 추세 (proposal §2.5 원칙 1).
+
 ### DCN-CHG-20260429-18
 - **Date**: 2026-04-29
 - **Rationale**:

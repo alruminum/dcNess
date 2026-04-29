@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260429-19
+- **Date**: 2026-04-29
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `agents/ux-architect.md` (신규 — UX_FLOW / UX_SYNC / UX_SYNC_INCREMENTAL / UX_REFINE 4 모드 inline, UX_FLOW_READY / UX_FLOW_PATCHED / UX_REFINE_READY / UX_FLOW_ESCALATE)
+  - `agents/product-planner.md` (신규 — PRODUCT_PLAN / PRODUCT_PLAN_CHANGE / ISSUE_SYNC 3 모드, PRODUCT_PLAN_READY / CLARITY_INSUFFICIENT / PRODUCT_PLAN_CHANGE_DIFF / PRODUCT_PLAN_UPDATED / ISSUES_SYNCED)
+  - `PROGRESS.md` (Phase 2 iter 5 완료 + Phase 2 종결 표시)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 2 iter 5 (FINAL) — ux-architect + product-planner 두 에이전트를 dcNess prose writing guide 형식으로 net-new 작성. **Phase 2 종결** — 13 agent docs 모두 prose-only 변환 완료 (validator 6 docs Phase 1 + iter 1~5 의 12 + 1 = 18 docs). 형식 강제 (`---MARKER:X---` + `@OUTPUT` JSON) 100% 폐기. RWHarness 의 자기인식 경계 (절대 출력 금지 패턴) / Anti-AI-Smell / 카테고리 클리셰 회피 / 라이트+다크 두 모드 의무 / Outline-First 자기규율 / Diff-First 변경 프로토콜 / thinking 본문 드래프트 금지 모두 보존.
+
 ### DCN-CHG-20260429-18
 - **Date**: 2026-04-29
 - **Change-Type**: agent, docs-only
