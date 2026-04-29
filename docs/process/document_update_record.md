@@ -20,6 +20,23 @@
 
 ## Records
 
+### DCN-CHG-20260429-16
+- **Date**: 2026-04-29
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `agents/architect.md` (신규 — 마스터, 7 모드 인덱스, Outline-First 자기규율, TRD 현행화 룰, prose writing guide)
+  - `agents/architect/system-design.md` (신규 — SYSTEM_DESIGN_READY)
+  - `agents/architect/module-plan.md` (신규 — READY_FOR_IMPL, depth/design frontmatter, DB 영향도, 듀얼 모드 가드레일)
+  - `agents/architect/spec-gap.md` (신규 — SPEC_GAP_RESOLVED / PRODUCT_PLANNER_ESCALATION_NEEDED / TECH_CONSTRAINT_CONFLICT)
+  - `agents/architect/task-decompose.md` (신규 — READY_FOR_IMPL, Outline-First)
+  - `agents/architect/tech-epic.md` (신규 — SYSTEM_DESIGN_READY)
+  - `agents/architect/light-plan.md` (신규 — LIGHT_PLAN_READY)
+  - `agents/architect/docs-sync.md` (신규 — DOCS_SYNCED / SPEC_GAP_FOUND / TECH_CONSTRAINT_CONFLICT)
+  - `PROGRESS.md` (Phase 2 iter 2 완료 표시)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 2 iter 2 — RWHarness 의 architect 8 docs (마스터 + 7 모드) 를 dcNess prose writing guide 형식으로 net-new 작성. 모드별 결론 enum (SYSTEM_DESIGN_READY / READY_FOR_IMPL / SPEC_GAP_RESOLVED / LIGHT_PLAN_READY / DOCS_SYNCED 등) 을 마지막 단락 명시 패턴으로. Outline-First 자기규율 + Schema-First + TRD 현행화 + impl frontmatter (depth/design) + 듀얼 모드 가드레일 정책 보존. 형식 강제 (`---MARKER:X---` 텍스트 + `@OUTPUT` JSON) 폐기.
+
 ### DCN-CHG-20260429-15
 - **Date**: 2026-04-29
 - **Change-Type**: agent, docs-only
