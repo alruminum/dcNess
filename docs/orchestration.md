@@ -468,30 +468,29 @@ RWHarness 4 신호 OR 정합 (proposal §10 fork-and-refactor 정합):
 
 ---
 
-## 9. 코드 Driver — 결정 보류 (옵션 카탈로그)
+## 9. 코드 Driver — 메인-주도 컨베이어 + PreToolUse 훅 채택 (`DCN-CHG-20260429-29`)
 
-본 SSOT 의 §2~§7 을 *코드로 강제* 하는 driver 는 후속 Task 에서 결정. 현재 3 옵션:
+본 SSOT 의 §2~§7 을 *코드로 강제* 하는 driver 디자인은 **`docs/conveyor-design.md`** 를 SSOT 로 분리. 본 절은 결정 요약만 보존.
 
-### 옵션 (a) RWHarness `impl_loop.py` fork + parse_marker → interpret_signal 치환
+### 채택 모델 (요약)
 
-- **장점**: 검증된 시퀀스 driver, retry / Flag 폴리시 그대로 흡수 후 변환만.
-- **단점**: parse_marker → interpret_signal 호출 18 곳, generate_handoff 폐기 등 변환 표면적 큼. RWHarness 의 강결합 코드 (executor / providers / config) 함께 흡수 필요.
-- **scope**: dcNess proposal §5 Phase 2 의 원래 plan.
+> **메인 클로드 = 시퀀스 결정자. 컨베이어 (Python) = 멍청한 순회기. catastrophic backbone = PreToolUse 훅 강제.**
 
-### 옵션 (b) dcNess `harness/impl_driver.py` 신작
+- 메인 클로드가 `orchestration.md` §4 결정표 보고 `list[Step]` 짜서 컨베이어 호출.
+- 컨베이어는 시퀀스 순회 + Agent 호출 + `signal_io.interpret_signal` 로 enum 추출 + `Step.advance_when` 비교.
+- enum ∈ advance_when 이면 다음 step. 아니면 `ConveyorPause` 반환 (예외 아님) — 메인이 받아 자율 처리 (재계획 / 사용자 위임 / 종료).
+- §2.3 catastrophic 4룰 + §7.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` (PreToolUse Agent) 가 코드 hardcode 0 으로 강제.
+- 형식 강제 LLM 출력 (JSON 등) **사용 안 함** — proposal §2.5 (prose-only) 정합.
 
-- **장점**: 형식 강제 어휘 처음부터 0. signal_io / interpret_strategy 직접 사용. 단순.
-- **단점**: 시퀀스 분기 logic 처음부터 작성, 회귀 위험.
+### 폐기된 옵션 카탈로그 (참조)
 
-### 옵션 (c) Orchestration Agent + 동적 시퀀스 (사용자 제안 — DCN-CHG-20260429-25 회의록)
+본 결정 전 검토했던 3 옵션 — `docs/conveyor-design.md` §11.2 에서 폐기 사유 보존.
 
-- **발상**: driver 는 sequence list 만 받아 순회. 각 step 후 *Orchestration Agent* (메타 LLM) 가 직전 prose 보고 *남은 sequence 동적 갱신* (재정렬 / 추가 / 제거).
-- **장점**: 시퀀스 분기 logic 도 코드 hardcode 폐기 → proposal §2.5 원칙 1 (룰 순감소) 정합 강함. 새 시나리오 추가 시 코드 수정 0.
-- **단점**: 결정론 ↓ (같은 prose 다른 시퀀스 가능). orchestration agent 호출 비용 (cycle 당 N).
-- **safeguard**: §2.3 catastrophic 시퀀스 + §7 권한 매트릭스는 *코드 hook* 으로 강제 (orchestration agent 가 우회 시 즉시 거부).
-- **추천**: C + D 하이브리드 — 사용자가 initial sequence 명시 + agent 동적 갱신 + catastrophic backbone 코드 강제.
+- **옵션 (a)** RWHarness `impl_loop.py` fork + parse_marker → interpret_signal 치환: RWHarness 강결합 코드 흡수 부담 → 미채택.
+- **옵션 (b)** `harness/impl_driver.py` 신작 + 정적 dict 라우팅: 시퀀스 분기 룰 코드 hardcode → proposal §2.5 원칙 1 (룰 순감소) 약화 → 미채택.
+- **옵션 (c)** Orchestration Agent + 동적 시퀀스 (LLM JSON 결정자, `DCN-CHG-20260429-28` PR #28 구현): JSON 출력 강제 = prose-only 원칙 충돌 + 도그푸딩 결과 LLM JSON 형식 미준수 빈발 → **PR #28 close, 미채택**.
 
-채택 결정 = 별도 Task-ID. 본 SSOT 안엔 보류 안내만.
+채택 모델은 위 3 옵션 중 어느 것도 아님 — 메인 클로드 (사용자 세션 LLM) 자체가 결정자 역할을 흡수해 별도 결정 LLM 불요.
 
 ---
 

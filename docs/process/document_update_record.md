@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260429-29
+- **Date**: 2026-04-29
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/conveyor-design.md` (신규, ~12 절 ~500 줄) — plugin runtime 인프라 spec SSOT
+  - `docs/orchestration.md` §9 정정 — "결정 보류 옵션 카탈로그" → "메인-주도 컨베이어 + PreToolUse 훅 채택" 명시 + 폐기된 옵션 (a)/(b)/(c) 카탈로그 보존
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: PR #28 (`DCN-CHG-20260429-28` 옵션 c JSON 결정자 모델) close 후 새 spec 박음. **메인 클로드 = 시퀀스 결정자, 컨베이어 = 멍청한 순회기, catastrophic = PreToolUse 훅** 모델로 갈아엎음. proposal §2.5 (prose-only) 정합. 12 절 = 정체성·등장인물·흐름·데이터 모델·멀티세션·디렉토리·live.json (OMC active_runs + RWH `_meta` 차용)·훅 책임·catastrophic·atomic write·PM 옵션 (follow-up)·폐기 + 참조. 코드 변경 0 — 별도 Task 에서 실 구현 (impl_driver / session_state / 훅 신규).
+- **Document-Exception**: 없음 (docs-only 카테고리, deliverable 의무 N/A)
+
 ### DCN-CHG-20260429-27
 - **Date**: 2026-04-29
 - **Change-Type**: agent, docs-only
