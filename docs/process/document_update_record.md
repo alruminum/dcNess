@@ -62,6 +62,15 @@
   - `PROGRESS.md`
 - **Summary**: Phase 1 foundation — `harness/state_io.py` 신규(write/read/clear + R8 5 failure modes 단일 normalize) + 테스트 32 케이스 전부 PASS. `parse_marker` 사다리 폐기를 위한 첫 모듈.
 
+### DCN-CHG-20260429-05
+- **Date**: 2026-04-29
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/migration-decisions.md` (신규 — RWHarness 모듈 분류표)
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: `status-json-mutate-pattern.md` §11.2 framework 적용 — RWHarness 의 `harness/` / `hooks/` / `agents/` / `scripts/` / `orchestration/` / `.claude-plugin/` 모듈을 PRESERVE / DISCARD / REFACTOR 로 분류. dcNess 메인 작업 모드(§11.4) 정합으로 hook/impl_loop 류는 자연 폐기, agent docs 변환 + state_io.py 만 net-new.
+- **Document-Exception**: 본 변경은 분류 *결정 기록* 이라 추가 deliverable 부재. heavy 카테고리 미해당 — `docs-only` 단독.
+
 ### DCN-CHG-20260429-04
 - **Date**: 2026-04-29
 - **Change-Type**: agent, ci, docs-only
