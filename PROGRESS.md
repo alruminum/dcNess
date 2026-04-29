@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **💰 /efficiency skill — jha0313/skills_repo 흡수** (`DCN-CHG-20260430-08`):
+  - `harness/efficiency/` 패키지 (4 script fork from `improve-token-efficiency`) + `scripts/dcness-efficiency` wrapper + `commands/efficiency.md` skill prompt.
+  - dcness fix 2건: encode_repo_path 의 `.` → `-` (CC 실 인코딩 룰 정합), price_for prefix 매칭 (dated suffix / variant tag 흡수).
+  - 4 지표 점수화 (Cache utilization 40% + Output density 20% + Read redundancy 20% + Tool economy 20%) + Pareto + 6 절감 휴리스틱.
+  - 신규 10 테스트 (`test_efficiency.py`). 181/181 PASS.
+  - dcness skill 8 개: /init-dcness /qa /quick /product-plan /impl /impl-loop /smart-compact /efficiency.
 - **🔁 /impl + /impl-loop skill 신규** (`DCN-CHG-20260430-06`):
   - `/impl` — per-batch 정식 impl 루프 (architect MODULE_PLAN → test-engineer → engineer IMPL → validator CODE_VALIDATION → pr-reviewer + clean 자동 commit/PR + yolo + worktree).
   - `/impl-loop` — multi-batch sequential auto chain (각 batch 마다 /impl 호출 + clean 자동 진행 + caveat 멈춤).
