@@ -20,7 +20,18 @@
 
 ## Records
 
-### DCN-CHG-20260429-21
+### DCN-CHG-20260429-22
+- **Date**: 2026-04-29
+- **Change-Type**: harness, test, docs-only
+- **Files Changed**:
+  - `harness/llm_interpreter.py` (신규 — Anthropic haiku interpreter 팩토리, telemetry, prompt 구성, ambiguous fallback)
+  - `tests/test_llm_interpreter.py` (신규 — 16 케이스, mock client DI, telemetry on/off, signal_io 통합)
+  - `.gitignore` (`.metrics/` 추가 — telemetry 디렉토리)
+  - `PROGRESS.md` (Phase 3 iter 3 완료 표시)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 3 iter 3 — `harness/signal_io.py` 의 `interpret_signal(..., interpreter=)` swap point 에 주입할 Anthropic Claude haiku interpreter 구현. `make_haiku_interpreter(client=None, model='claude-haiku-4-5-20251001')` 팩토리. system prompt 가 allowed enum + UNKNOWN 출력 강제. 응답 파싱: 첫 단어 → 대문자 → allowed 매칭 안 되면 `MissingSignal('ambiguous')`. telemetry: 호출별 (model/allowed/parsed/input_tokens/output_tokens/cost_usd/elapsed_ms) `.metrics/meta-llm-calls.jsonl` append (proposal R8). `DCNESS_LLM_TELEMETRY=0` 으로 비활성. 비용 추정 모델 ~$0.0001/호출 (haiku 4.5 가격 기준). 16 테스트 PASS — 실 API 호출 0 (mock client DI 만).
+- **Document-Exception**: 없음 (harness 카테고리 deliverable = `tests/**` 동반 ✅)
 - **Date**: 2026-04-29
 - **Change-Type**: ci, agent, docs-only
 - **Files Changed**:
