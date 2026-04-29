@@ -52,6 +52,27 @@ RESOLVE_JSON=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness
 
 매핑 없으면 (`{"action": "unmapped"}`) yolo 도 사용자 위임 fallback (안전 default).
 
+## 가시성 룰 — 매 Agent 호출 후 메인 text echo (필수)
+
+CC 가 Agent / Bash 출력을 collapsed 표시 (ctrl+o expand 필요). 사용자가 매번 ctrl+o
+누르지 않아도 핵심 결과 보이도록, **매 begin-step → Agent → end-step 직후 메인이
+text reply 로 prose 핵심 echo** (DCN-CHG-30-11):
+
+```
+## <step 이름> 결과 — <enum>
+
+<prose 의 ## 결론 / ## Summary / ## 변경 요약 섹션의 본문 5~12줄 그대로 인용,
+markdown 정합 보존. 결론 헤더 부재 시 prose 첫 5~10줄 fallback>
+
+<선택: 1줄 다음 step 안내>
+```
+
+text reply 는 collapsed 안 됨 — 사용자 가시성 ↑. helper stderr 자동 요약 (DCN-CHG-30-2,
+30-11 cap 확장) 과 동시 — 두 channel 가시성 보장.
+
+verbose 회피: 매 step 5~12줄 cap. 그 이상은 사용자가 ctrl+o 또는 prose 종이
+(`.claude/harness-state/.sessions/{sid}/runs/{rid}/<agent>[-<MODE>].md`) 직접 read.
+
 ## 절차 (Task tool + helper protocol)
 
 ### Step 0a — worktree 격리 진입 (선택, keyword 트리거)

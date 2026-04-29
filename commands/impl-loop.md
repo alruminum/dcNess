@@ -24,6 +24,14 @@ description: impl batch list (architect TASK_DECOMPOSE 산출물) 를 순차 자
 
 각 batch 에 대해 `/impl` skill 의 시퀀스 (architect MODULE_PLAN → test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer) 실행. clean 시 자동 commit/PR + 다음 batch 진행. caveat (FAIL / AMBIGUOUS / MUST FIX) 시 멈춤 + 사용자 위임.
 
+## 가시성 룰 — 매 batch 의 inner /impl 진행 시 echo
+
+각 batch 의 inner /impl 은 자기 가시성 룰 적용 (5 step 별 5~12줄 echo). loop level 추가:
+- 매 batch 시작/종료 시 batch progress 1줄 echo (`[impl-loop] batch i/N — <status>`)
+- caveat 멈춤 시 *전체 진행 요약* echo (몇 batch 처리 / 남은 batch / 멈춤 사유)
+
+자세한 룰은 `commands/quick.md` "가시성 룰" 참조.
+
 ## 절차
 
 ### Step 0 — batch list 추출 + 사용자 확인

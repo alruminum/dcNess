@@ -46,6 +46,12 @@ yolo 시:
 
 catastrophic 룰 (PreToolUse 훅 §2.3) hard safety 보존.
 
+## 가시성 룰 — 매 Agent 호출 후 메인 text echo (필수)
+
+`commands/quick.md` 와 동일 — Agent 호출 후 메인이 text reply 로 prose 핵심 5~12줄
+echo (DCN-CHG-30-11). MODULE_PLAN / TESTS_WRITTEN / IMPL_DONE / CODE_VALIDATION /
+LGTM 5 step 모두 적용.
+
 ## 절차 (Task tool + helper protocol)
 
 ### Step 0a — worktree 격리 진입 (선택, keyword 트리거)

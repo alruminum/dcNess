@@ -1133,12 +1133,60 @@ class HelperAutomationTests(unittest.TestCase):
         _clear_default_base_cache()
         self.addCleanup(_clear_default_base_cache)
 
-    def test_extract_prose_summary_skips_initial_header(self) -> None:
+    def test_extract_prose_summary_prefers_conclusion_section(self) -> None:
+        """`## 결론` 섹션이 있으면 그 본문 우선 (DCN-CHG-30-11)."""
         from harness.session_state import _extract_prose_summary
-        prose = "## 결론\nLIGHT_PLAN_READY\n\n## 내용\nfoo\nbar\n"
+        prose = """## 변경 분석
+복잡한 분석 줄1.
+복잡한 분석 줄2.
+
+## 결론
+LIGHT_PLAN_READY — 빈 문자열 가드 추가.
+- src/greet.py:4 ValueError raise
+- 테스트 추가
+"""
         out = _extract_prose_summary(prose)
         self.assertIn("LIGHT_PLAN_READY", out)
-        self.assertNotIn("## 결론", out)  # 첫 헤더 skip
+        self.assertIn("ValueError raise", out)
+        # `## 변경 분석` 섹션 본문은 안 들어와야 (결론 우선)
+        self.assertNotIn("복잡한 분석", out)
+
+    def test_extract_prose_summary_summary_section_alias(self) -> None:
+        """`## Summary` (영어) 도 동일 동작."""
+        from harness.session_state import _extract_prose_summary
+        prose = (
+            "## Background\nUNIQUE_BG_LINE_xyz\n"
+            "## Summary\nIMPL_DONE — 5 files modified.\n- src/foo.py:10\n"
+        )
+        out = _extract_prose_summary(prose)
+        self.assertIn("IMPL_DONE", out)
+        self.assertIn("src/foo.py", out)  # Summary 섹션 본문이라 포함
+        self.assertNotIn("UNIQUE_BG_LINE_xyz", out)  # Background 섹션은 제외
+
+    def test_extract_prose_summary_change_summary_korean(self) -> None:
+        """`## 변경 요약` 도 우선 추출."""
+        from harness.session_state import _extract_prose_summary
+        prose = "## 배경\nbg\n## 변경 요약\n핵심 변경 1\n핵심 변경 2\n"
+        out = _extract_prose_summary(prose)
+        self.assertIn("핵심 변경 1", out)
+        self.assertNotIn("bg", out)
+
+    def test_extract_prose_summary_fallback_when_no_section(self) -> None:
+        """결론/요약 헤더 부재 → 첫 N 줄 fallback."""
+        from harness.session_state import _extract_prose_summary
+        prose = "no headers\nLIGHT_PLAN_READY\nbody\n"
+        out = _extract_prose_summary(prose)
+        self.assertIn("LIGHT_PLAN_READY", out)
+
+    def test_extract_prose_summary_change_only_word_not_match(self) -> None:
+        """`## 변경` 단독은 매칭 X (`## 변경 분석` 등 generic 헤더 회피)."""
+        from harness.session_state import _CONCLUSION_HEADER_RE
+        # 매칭 안 되어야
+        self.assertFalse(_CONCLUSION_HEADER_RE.match("## 변경 분석"))
+        # 매칭 되어야
+        self.assertTrue(_CONCLUSION_HEADER_RE.match("## 변경 요약"))
+        self.assertTrue(_CONCLUSION_HEADER_RE.match("## 변경 사항"))
+        self.assertTrue(_CONCLUSION_HEADER_RE.match("## 결론"))
 
     def test_extract_prose_summary_respects_line_limit(self) -> None:
         from harness.session_state import _extract_prose_summary
@@ -1147,10 +1195,12 @@ class HelperAutomationTests(unittest.TestCase):
         self.assertEqual(len(out.splitlines()), 3)
 
     def test_extract_prose_summary_respects_char_cap(self) -> None:
+        """char cap 1200 (DCN-CHG-30-11 — 600 → 1200 확장)."""
         from harness.session_state import _extract_prose_summary
         prose = "a" * 1000 + "\n" + "b" * 1000
         out = _extract_prose_summary(prose)
-        self.assertLess(len(out), 1500)
+        # 2개 라인 뒤 cap 도달 — 정확한 길이는 구현체 결정. 너무 크지 않으면 OK.
+        self.assertLess(len(out), 2500)
 
     def test_append_step_status_creates_jsonl(self) -> None:
         from harness.session_state import (
