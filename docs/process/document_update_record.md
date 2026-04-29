@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260429-36
+- **Date**: 2026-04-29
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `commands/qa.md` (신규) — `/qa` skill (버그/이슈 분류 + 라우팅 추천)
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+- **Summary**: dcNess plugin 의 첫 skill 신규. `/qa` = 사용자가 "버그 있다 / 이슈 / 이상해 / 오류" 등 발화 시 진입. dcNess 컨베이어 패턴 (Task tool + Agent + helper + 훅) 으로 동작. 절차: begin-run → TaskCreate → 명확화 (필요 시) → begin-step + Agent(qa) + end-step → AMBIGUOUS cascade (재호출 → 사용자 위임) → 결과 보고 + 후속 skill 추천 → end-run. heuristic only (haiku 미사용 — API 키 의존 회피, 비용 0). `/quick`, `/ux` 미구현이라 후속 자동 라우팅 X — 사용자 결정 받음. agents/qa.md 의 5 결론 enum (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) 정합. 코드 변경 0 (prompt-only).
+- **Document-Exception**: 없음 (docs-only 카테고리)
+
 ### DCN-CHG-20260429-35
 - **Date**: 2026-04-29
 - **Change-Type**: test, docs-only
