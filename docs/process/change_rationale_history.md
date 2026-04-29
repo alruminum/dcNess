@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260430-07
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 작업 누적 7 PR 후 skill 7개 보유. README 가 1~3 skill 시점 표현 (개별 항목 나열) 으로 stale. 사용자 / 외부 reader 의 skill discoverability ↓.
+- **Decision**:
+  - README 에 skill 표 1개 추가 (7개 entry + 역할 1줄). 공통 keyword (yolo / worktree) 도 별도 명시.
+  - 후속 항목 갱신: DESIGN_VALIDATION 완료 표시, /impl/impl-loop 완료 표시, /ux 만 후속으로 남김.
+- **Follow-Up**: 없음 (docs 정합성 갱신).
+
 ### DCN-CHG-20260430-06
 - **Date**: 2026-04-30
 - **Rationale**:
