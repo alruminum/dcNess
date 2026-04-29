@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260429-15
+- **Date**: 2026-04-29
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `agents/pr-reviewer.md` (신규 — prose writing guide, LGTM/CHANGES_REQUESTED enum)
+  - `agents/plan-reviewer.md` (신규 — 8 차원 PRD 심사, PLAN_REVIEW_PASS/CHANGES_REQUESTED)
+  - `agents/qa.md` (신규 — 이슈 분류, FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE)
+  - `agents/security-reviewer.md` (신규 — OWASP+WebView, SECURE/VULNERABILITIES_FOUND)
+  - `PROGRESS.md` (Phase 2 iter 1 완료 표시 + iter 2~5 picker 정의)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 2 iter 1 — RWHarness 의 4 read-only 에이전트 (pr-reviewer, plan-reviewer, qa, security-reviewer) 를 dcNess prose writing guide 형식으로 net-new 작성. validator.md 와 동일 패턴 (마지막 단락 enum + 자기완결 + preamble/agent-config 의존 제거). 본 4 agent 는 모두 read-only (Read/Glob/Grep) + qa 만 추적 ID 폴백용 Bash + GitHub MCP. RWHarness 형식강제 (텍스트 마커 + @OUTPUT JSON) 폐기.
+
 ### DCN-CHG-20260429-14
 - **Date**: 2026-04-29
 - **Change-Type**: agent, ci, docs-only
