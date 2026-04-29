@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260429-38
+- **Date**: 2026-04-29
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `commands/smart-compact.md` (신규) — `/smart-compact` skill (컨텍스트 압축 + resume prompt 생성)
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+- **Summary**: dcNess plugin 의 4번째 skill. CC 내장 `/compact` 와 차이 — 메인이 자체 LLM 으로 *세션 의도/결정/진행상태* 능동 추출 + 다음 세션용 single-message resume prompt 자동 생성 + clipboard 복사. 사용자가 컨텍스트 60%+ 도달 시 / "이어가기" 발화 시 / 자체 판단 시 사용. 추출 source = git log + document_update_record + change_rationale + PROGRESS + TaskList + transcript 의 미해결 의논. 코드 변경 0 (prompt-only).
+- **Document-Exception**: 없음 (docs-only)
+
 ### DCN-CHG-20260429-37
 - **Date**: 2026-04-29
 - **Change-Type**: docs-only
