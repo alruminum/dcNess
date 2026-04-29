@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260429-32
+- **Date**: 2026-04-29
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/conveyor-design.md` — 대폭 rewrite (Python `run_conveyor` 모델 → Task tool + Agent + helper + 훅 패턴). 멀티세션 by-pid 레지스트리 layout 추가.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: PR #29 의 v1 design (Python 컨베이어) 폐기 후 Task tool 패턴으로 대체. 폐기 이유 = subagent 호출이 Python 안에서 일어나면 PreToolUse 훅 미발화 + 사용자 가시성 0 + 메인 자율도 0. 새 모델 = 메인이 매 step Task lifecycle 운영하며 Agent 도구 직접 호출 → CC 가 자동으로 컨텍스트 격리 + 훅 발화. helper (`begin-run/begin-step/end-step/end-run`) 가 Bash 로 호출되며 by-pid 레지스트리 (`DCNESS_RUN_ID` env 폐기 — Bash subprocess 휘발성 회피) 로 멀티세션 정합. 코드 변경 0 — 후속 Task -33 (session_state.py 확장) / -34 (hooks 신규) 가 실 구현.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260429-30
 - **Date**: 2026-04-29
 - **Change-Type**: harness, test, docs-only
