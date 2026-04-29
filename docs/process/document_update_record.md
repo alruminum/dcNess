@@ -71,6 +71,15 @@
 - **Summary**: `status-json-mutate-pattern.md` §11.2 framework 적용 — RWHarness 의 `harness/` / `hooks/` / `agents/` / `scripts/` / `orchestration/` / `.claude-plugin/` 모듈을 PRESERVE / DISCARD / REFACTOR 로 분류. dcNess 메인 작업 모드(§11.4) 정합으로 hook/impl_loop 류는 자연 폐기, agent docs 변환 + state_io.py 만 net-new.
 - **Document-Exception**: 본 변경은 분류 *결정 기록* 이라 추가 deliverable 부재. heavy 카테고리 미해당 — `docs-only` 단독.
 
+### DCN-CHG-20260429-07
+- **Date**: 2026-04-29
+- **Change-Type**: test
+- **Files Changed**:
+  - `tests/test_validator_schemas.py` (신규 — 9 케이스)
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: validator agent docs 의 모든 ```json``` 예시 status JSON 이 `state_io.read_status` 와 round-trip 통과하는지 자동 검증. 마스터의 매트릭스 정합 + 폐기 컨벤션(`---MARKER:X---` 결정 원천) / preamble 자동 주입 의존 부재 검증 포함. 향후 docs 변경 시 schema 깨지면 즉시 fail.
+- **Document-Exception**: `test` 단독 카테고리 — heavy 미해당으로 rationale 면제. 본 변경은 DCN-CHG-20260429-06 의 *follow-up acceptance* 항목 직접 구현이라 rationale 동반은 잉여.
+
 ### DCN-CHG-20260429-06
 - **Date**: 2026-04-29
 - **Change-Type**: agent
