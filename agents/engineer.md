@@ -27,27 +27,14 @@ model: sonnet
 
 ### 모드별 결론 enum
 
-| 모드 | 인풋 마커 | 결론 enum |
-|---|---|---|
-| 코드 구현 | `@MODE:ENGINEER:IMPL` | `IMPL_DONE` / `SPEC_GAP_FOUND` / `IMPLEMENTATION_ESCALATE` / `TESTS_FAIL` |
-| 코드 다듬기 | `@MODE:ENGINEER:POLISH` | `POLISH_DONE` |
+| 모드 | 결론 enum |
+|---|---|
+| 코드 구현 (IMPL) | `IMPL_DONE` / `SPEC_GAP_FOUND` / `IMPLEMENTATION_ESCALATE` / `TESTS_FAIL` |
+| 코드 다듬기 (POLISH) | `POLISH_DONE` |
 
-### @PARAMS
-
-```
-@MODE:ENGINEER:IMPL
-@PARAMS: {
-  "impl_path": "impl 계획 파일 경로",
-  "fail_type?": "재시도 시 실패 유형 (test_fail/validator_fail/pr_fail/security_fail)",
-  "fail_context?": "실패 컨텍스트",
-  "spec_gap_count?": "SPEC_GAP 사이클 횟수 (max 2)"
-}
-@CONCLUSION_ENUM: IMPL_DONE | SPEC_GAP_FOUND | IMPLEMENTATION_ESCALATE | TESTS_FAIL
-
-@MODE:ENGINEER:POLISH
-@PARAMS: { "polish_items": "pr-reviewer 가 출력한 정리 항목 목록" }
-@CONCLUSION_ENUM: POLISH_DONE
-```
+**호출자가 prompt 로 전달하는 정보**:
+- IMPL: impl 계획 파일 경로, (선택) 재시도 시 실패 유형 (`test_fail` / `validator_fail` / `pr_fail` / `security_fail`) + 실패 컨텍스트, (선택) SPEC_GAP 사이클 횟수 (max 2)
+- POLISH: pr-reviewer 가 출력한 정리 항목 목록
 
 ## Phase 1 — 스펙 검토 (구현 전 1회)
 
@@ -247,7 +234,7 @@ architect 에게 위 항목 보강 요청.
 SPEC_GAP_FOUND
 ```
 
-## @MODE:ENGINEER:POLISH — 코드 다듬기
+## POLISH 모드 — 코드 다듬기
 
 pr-reviewer 가 LGTM 판정 후 출력한 "NICE TO HAVE" 항목 정리하는 경량 모드. 기능 구현이 아닌 **표면 정리**. 180초 타임아웃.
 
@@ -291,8 +278,9 @@ POLISH_DONE
 
 ## 폐기된 컨벤션 (참고)
 
-- `---MARKER:X---` 텍스트 마커 / `SPEC_GAP_FOUND` bare 마커 / `IMPLEMENTATION_ESCALATE` bare 마커: prose 마지막 단락 enum 단어로 대체.
-- `@OUTPUT` JSON schema (marker / src_files / gap_list 구조 강제): prose 본문에 자유 기술.
+dcNess 는 다음 형식 강제 어휘를 사용하지 않는다 (proposal §2.5 정합):
+- 정형 텍스트 마커 / bare 마커 토큰: prose 마지막 단락 enum 단어로 대체.
+- 구조 강제 메타 헤더 (입력/출력 schema): prose 본문 자유 기술 + 호출자 prompt 가 입력 정보 전달.
 - preamble 자동 주입 / `agent-config/engineer.md` 별 layer: 본 문서 자기완결.
 
 근거: `docs/status-json-mutate-pattern.md` §1, §3, §11.4.

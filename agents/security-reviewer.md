@@ -26,15 +26,9 @@ model: sonnet
 
 | 모드 | 결론 enum |
 |---|---|
-| 보안 취약점 감사 (`@MODE:SECURITY_REVIEWER:AUDIT`) | `SECURE` / `VULNERABILITIES_FOUND` |
+| 보안 취약점 감사 (AUDIT) | `SECURE` / `VULNERABILITIES_FOUND` |
 
-### @PARAMS
-
-```
-@MODE:SECURITY_REVIEWER:AUDIT
-@PARAMS: { "src_files": "감사 대상 소스 파일 경로 목록" }
-@CONCLUSION_ENUM: SECURE | VULNERABILITIES_FOUND
-```
+**호출자가 prompt 로 전달하는 정보**: 감사 대상 소스 파일 경로 목록.
 
 ### 권장 prose 골격
 
@@ -100,8 +94,9 @@ LOW 만 있으면 `SECURE` (리포트 포함).
 
 ## 폐기된 컨벤션 (참고)
 
-- `SECURE` / `VULNERABILITIES_FOUND` bare 마커: prose 마지막 단락 enum 단어로 대체.
-- `@OUTPUT` JSON schema: 형식 사다리 폐기.
+dcNess 는 다음 형식 강제 어휘를 사용하지 않는다 (proposal §2.5 정합):
+- bare 마커 토큰: prose 마지막 단락 enum 단어로 대체.
+- 구조 강제 메타 헤더 (입력/출력 schema): prose 본문 자유 기술 + 호출자 prompt 가 입력 정보 전달.
 - `preamble.md` 자동 주입 / `agent-config/security-reviewer.md` 별 layer: 본 문서 자기완결.
 
 근거: `docs/status-json-mutate-pattern.md` §1, §3, §11.4.

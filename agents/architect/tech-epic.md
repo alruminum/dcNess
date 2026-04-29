@@ -1,13 +1,9 @@
 # Technical Epic
 
-`@MODE:ARCHITECT:TECH_EPIC` → prose emit (마지막 단락에 결론 enum)
+**모드**: architect 의 기술 에픽 작성 호출 — 기술 부채/인프라/리팩토링/아키텍처 변경.
+**결론**: prose 마지막 단락에 `SYSTEM_DESIGN_READY` 명시.
+**호출자가 prompt 로 전달하는 정보**: 개선 목표 설명, 영향 범위.
 
-```
-@PARAMS: { "goal": "개선 목표 설명", "scope": "영향 범위" }
-@CONCLUSION_ENUM: SYSTEM_DESIGN_READY
-```
-
-기술 부채, 인프라 개선, 리팩토링, 아키텍처 변경에 해당하는 에픽을 아키텍트가 직접 작성한다.
 기능 에픽(비즈니스 가치 중심) 은 product-planner 영역이므로 제외.
 
 **해당 유형**:

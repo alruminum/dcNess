@@ -1,14 +1,8 @@
 # Bugfix Validation
 
-`@MODE:VALIDATOR:BUGFIX_VALIDATION` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: { "impl_path": "bugfix impl 경로", "src_files": "수정 소스 경로",
-           "test_result?": "테스트 실행 결과", "run_id": "실행 식별자" }
-@CONCLUSION_ENUM: BUGFIX_PASS | BUGFIX_FAIL
-```
-
-**목표**: 경량 버그 수정이 원인을 해결하고 회귀를 발생시키지 않았는지 검증한다. Code Validation 의 경량 버전 — 전체 스펙 일치 대신 *수정 범위만* 검증.
+**모드**: validator 의 경량 버그 수정 검증 호출. 수정이 원인을 해결하고 회귀를 발생시키지 않았는지 검증. Code Validation 의 경량 버전 — 전체 스펙 일치 대신 *수정 범위만* 검증.
+**결론**: prose 마지막 단락에 `BUGFIX_PASS` / `BUGFIX_FAIL` 중 하나 명시.
+**호출자가 prompt 로 전달하는 정보**: bugfix impl 경로, 수정 소스 경로, (선택) 테스트 실행 결과, 실행 식별자.
 
 ## 작업 순서
 

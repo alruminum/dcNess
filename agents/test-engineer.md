@@ -24,17 +24,11 @@ model: sonnet
 
 ### 결론 enum
 
-| 모드 | 인풋 마커 | 결론 enum |
-|---|---|---|
-| TDD 테스트 선작성 | `@MODE:TEST_ENGINEER:TDD` | `TESTS_WRITTEN` / `SPEC_GAP_FOUND` |
+| 모드 | 결론 enum |
+|---|---|
+| TDD 테스트 선작성 | `TESTS_WRITTEN` / `SPEC_GAP_FOUND` |
 
-### @PARAMS
-
-```
-@MODE:TEST_ENGINEER:TDD
-@PARAMS: { "impl_path": "impl 계획 파일 경로" }
-@CONCLUSION_ENUM: TESTS_WRITTEN | SPEC_GAP_FOUND
-```
+**호출자가 prompt 로 전달하는 정보**: impl 계획 파일 경로.
 
 ## Phase 1 — 테스트 계획 (impl 기반)
 
@@ -144,8 +138,9 @@ TESTS_WRITTEN
 
 ## 폐기된 컨벤션 (참고)
 
-- `TESTS_WRITTEN` / `SPEC_GAP_FOUND` bare 마커: prose 마지막 단락 enum 단어로 대체.
-- `@OUTPUT` JSON schema (marker / test_files 구조 강제): prose 본문 표로 자유 기술.
+dcNess 는 다음 형식 강제 어휘를 사용하지 않는다 (proposal §2.5 정합):
+- bare 마커 토큰: prose 마지막 단락 enum 단어로 대체.
+- 구조 강제 메타 헤더 (입력/출력 schema): prose 본문 표/리스트로 자유 기술 + 호출자 prompt 가 입력 정보 전달.
 - preamble 자동 주입 / `agent-config/test-engineer.md` 별 layer: 본 문서 자기완결.
 
 근거: `docs/status-json-mutate-pattern.md` §1, §3, §11.4.

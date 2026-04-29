@@ -1,13 +1,8 @@
 # SPEC_GAP
 
-`@MODE:ARCHITECT:SPEC_GAP` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: { "gap_list": "SPEC_GAP_FOUND 갭 목록", "impl_path": "...", "current_depth": "simple|std|deep" }
-@CONCLUSION_ENUM: SPEC_GAP_RESOLVED | PRODUCT_PLANNER_ESCALATION_NEEDED | TECH_CONSTRAINT_CONFLICT
-```
-
-engineer 로부터 SPEC_GAP_FOUND 피드백 받은 경우.
+**모드**: architect 의 SPEC_GAP 해결 호출 — engineer/test-engineer 가 SPEC_GAP_FOUND emit 후 진입.
+**결론**: prose 마지막 단락에 `SPEC_GAP_RESOLVED` / `PRODUCT_PLANNER_ESCALATION_NEEDED` / `TECH_CONSTRAINT_CONFLICT` 중 하나 명시.
+**호출자가 prompt 로 전달하는 정보**: SPEC_GAP_FOUND 갭 목록, 영향 받는 impl 경로, 현재 depth (`simple` / `std` / `deep`).
 
 ## 작업 순서
 

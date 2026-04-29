@@ -20,7 +20,20 @@
 
 ## Records
 
-### DCN-CHG-20260429-25
+### DCN-CHG-20260429-26
+- **Date**: 2026-04-29
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `agents/architect.md` + `agents/architect/{system-design,module-plan,spec-gap,task-decompose,tech-epic,light-plan,docs-sync}.md` (8 파일 — 헤더 메타 자연어화, `@MODE:` 표 접두사 제거, "폐기된 컨벤션" 원리 보존)
+  - `agents/validator.md` + `agents/validator/{plan,code,design,bugfix,ux}-validation.md` (6 파일 — 동일 변환)
+  - `agents/engineer.md`, `agents/test-engineer.md`, `agents/designer.md`, `agents/design-critic.md` (4 파일)
+  - `agents/security-reviewer.md`, `agents/pr-reviewer.md`, `agents/plan-reviewer.md`, `agents/qa.md` (4 파일)
+  - `agents/ux-architect.md`, `agents/product-planner.md` (2 파일 — "절대 출력 금지 패턴" 의 `@MODE:X:Y` 예시도 자연어 모드명으로 정리)
+  - `PROGRESS.md` (사후 보강 entry)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 외부 review 지적 반영 — "agent docs 안 `@MODE:X:Y` / `@PARAMS:` JSON 블록 / `@CONCLUSION_ENUM:` 라인 / `@OUTPUT JSON schema` 메모 = status JSON schema 의 약화 변형 = 형식 사다리 부활 흔적, proposal §2.5 원칙 3 위반". 24 파일 모두 sweep — 177 hit → 0. 헤더 메타 블록 (`@MODE:X:Y` + ` ```@PARAMS: { ... } @CONCLUSION_ENUM: A | B``` `) 자연어 3 라인 ("**모드** / **결론** / **호출자가 prompt 로 전달하는 정보**") 으로 변환. 표 안 `@MODE:` 접두사 제거 (모드명만 남김). 본문 안 `@PARAMS.issue` 같은 참조도 자연어 ("호출자가 prompt 로 전달한 이슈 본문") 변환. "폐기된 컨벤션" 본문은 *원리 보존* (마커/스키마 사용 금지 명시) + 형식 어휘 자체는 제거 — 의미만 박음.
+- **Document-Exception**: 없음 (agent + docs-only, deliverable 의무 N/A)
 - **Date**: 2026-04-29
 - **Change-Type**: agent, docs-only
 - **Files Changed**:

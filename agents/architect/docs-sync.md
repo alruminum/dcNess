@@ -1,13 +1,8 @@
 # Docs Sync
 
-`@MODE:ARCHITECT:DOCS_SYNC` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: { "impl_path": "이미 구현 완료된 impl", "docs_targets": ["docs/*.md ..."] }
-@CONCLUSION_ENUM: DOCS_SYNCED | SPEC_GAP_FOUND | TECH_CONSTRAINT_CONFLICT
-```
-
-**목표**: impl 구현 완료 후 참조 설계 문서(db-schema.md / sdk.md / architecture.md 등) 에 누락된 섹션을 **파생 서술** 로 추가한다. 새 설계 결정은 절대 하지 않는다.
+**모드**: architect 의 docs 동기화 호출 — impl 완료 후 참조 설계 문서에 파생 서술 추가. 새 설계 결정은 절대 하지 않는다.
+**결론**: prose 마지막 단락에 `DOCS_SYNCED` / `SPEC_GAP_FOUND` / `TECH_CONSTRAINT_CONFLICT` 중 하나 명시.
+**호출자가 prompt 로 전달하는 정보**: 이미 구현 완료된 impl 경로, 동기화 대상 docs 파일 목록.
 
 **사용처**: impl_loop 완료 후 문서 2~3 건 동기화가 남았을 때. 메인 Claude 가 Agent 도구로 직접 호출 가능 (harness 경유 불필요).
 

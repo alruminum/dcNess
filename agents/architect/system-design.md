@@ -1,13 +1,8 @@
 # System Design
 
-`@MODE:ARCHITECT:SYSTEM_DESIGN` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: { "plan_doc": "PRODUCT_PLAN_READY 문서 경로", "selected_option": "선택된 옵션", "ux_flow_doc?": "docs/ux-flow.md" }
-@CONCLUSION_ENUM: SYSTEM_DESIGN_READY
-```
-
-**목표**: 구현 시작 전 시스템 전체 구조를 확정한다.
+**모드**: architect 의 시스템 설계 호출. 구현 시작 전 시스템 전체 구조 확정.
+**결론**: prose 마지막 단락에 `SYSTEM_DESIGN_READY` 명시.
+**호출자가 prompt 로 전달하는 정보**: PRODUCT_PLAN_READY 문서 경로, 선택된 옵션, (선택) UX Flow Doc 경로.
 
 ## 작업 순서
 

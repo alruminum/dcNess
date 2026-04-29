@@ -1,13 +1,8 @@
 # Code Validation
 
-`@MODE:VALIDATOR:CODE_VALIDATION` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: { "impl_path": "impl 계획 경로", "src_files": "구현 파일 경로 목록", "run_id": "실행 식별자" }
-@CONCLUSION_ENUM: PASS | FAIL | SPEC_MISSING
-```
-
-**목표**: 구현 코드가 impl 계획과 일치하고 의존성 규칙을 지키며 시니어 관점 품질 기준을 충족하는지 검증한다.
+**모드**: validator 의 코드 검증 호출. 구현 코드가 impl 계획과 일치하고 의존성 규칙을 지키며 시니어 관점 품질 기준을 충족하는지 검증.
+**결론**: prose 마지막 단락에 `PASS` / `FAIL` / `SPEC_MISSING` 중 하나 명시.
+**호출자가 prompt 로 전달하는 정보**: impl 계획 파일 경로, 구현 파일 경로 목록, 실행 식별자.
 
 ## 작업 순서
 

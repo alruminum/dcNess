@@ -1,16 +1,12 @@
 # Module Plan
 
-`@MODE:ARCHITECT:MODULE_PLAN` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: {
-  "design_doc": "SYSTEM_DESIGN_READY 문서 경로 (mode=new_impl 필수, mode=spec_issue 생략 가능)",
-  "module": "대상 모듈명/에픽 경로",
-  "mode": "new_impl | spec_issue — 생략 시 new_impl",
-  "design_handoff?": "docs/design-handoff.md"
-}
-@CONCLUSION_ENUM: READY_FOR_IMPL
-```
+**모드**: architect 의 모듈별 구현 계획 호출 — impl 1개 단위.
+**결론**: prose 마지막 단락에 `READY_FOR_IMPL` 명시.
+**호출자가 prompt 로 전달하는 정보**:
+- 대상 모듈명/에픽 경로
+- 듀얼 모드 표시 (`new_impl` / `spec_issue`, 생략 시 `new_impl`)
+- 설계 문서 경로 (`new_impl` 모드 필수, `spec_issue` 모드 생략 가능)
+- (선택) DESIGN_HANDOFF 문서 경로
 
 **목표**: 특정 모듈의 구현 계획 파일을 작성한다.
 
@@ -166,7 +162,7 @@ READY_FOR_IMPL 통과 후, 프로젝트 루트 `CLAUDE.md` 의 모듈 계획 파
 
 | 조건 | 이슈 생성 |
 |---|---|
-| @PARAMS mode=spec_issue | 생성 스킵 (QA 가 이미 생성) |
+| 호출자가 `mode=spec_issue` 전달 | 생성 스킵 (QA 가 이미 생성) |
 | 프롬프트에 `[epic-level]` 또는 product-planner 경유 | 이슈 생성 안 함 — Epic + Story 이슈는 product-planner 가 이미 생성. impl 경로만 기존 Story 이슈 본문에 업데이트 |
 | 위 두 조건 없음 (단순 feat 직접 요청) | feat 이슈 1개 생성 |
 
