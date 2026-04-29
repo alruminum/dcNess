@@ -16,7 +16,7 @@ import { execSync } from 'node:child_process';
 // 분류 우선순위: 위에서 아래로. 한 파일이 여러 패턴에 매칭되면 *상위* 토큰 채택.
 const CATEGORY_RULES = [
   { token: 'spec',      patterns: [/^docs\/spec\//, /^docs\/proposals\//, /^prd\.md$/, /^trd\.md$/] },
-  { token: 'agent',     patterns: [/^agents\//, /^\.claude\/agent-config\//] },
+  { token: 'agent',     patterns: [/^agents\//, /^\.claude\/agent-config\//, /^CLAUDE\.md$/, /^AGENTS\.md$/] },
   { token: 'harness',   patterns: [/^harness\//, /^src\//] },
   { token: 'hooks',     patterns: [/^hooks\//, /^\.claude\/hooks\//] },
   { token: 'ci',        patterns: [/^\.github\/workflows\//, /^scripts\//] },
