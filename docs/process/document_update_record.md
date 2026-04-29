@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260429-18
+- **Date**: 2026-04-29
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `agents/designer.md` (신규 — 2×2 매트릭스 4 모드, DESIGN_READY_FOR_REVIEW / DESIGN_LOOP_ESCALATE, Phase 0~4 풀 라이프사이클)
+  - `agents/design-critic.md` (신규 — VARIANTS_APPROVED / VARIANTS_ALL_REJECTED / UX_REDESIGN_SHORTLIST, 4 기준 점수표)
+  - `PROGRESS.md` (Phase 2 iter 4 완료 표시)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 2 iter 4 — designer (2×2 매트릭스: SCREEN/COMPONENT × ONE_WAY/THREE_WAY = 4 모드 inline) + design-critic 두 에이전트를 dcNess prose writing guide 형식으로 net-new 작성. designer 는 Pencil MCP 다수 도구 보유 (write 포함). 형식 강제 (`---MARKER:X---` 텍스트 + `@OUTPUT` JSON) 폐기. View 전용 원칙 / 차별화 의무 / Phase 4 outline-first / DESIGN_HANDOFF 패키지 / 4 기준 점수표 / VARIANTS_ALL_REJECTED 3 라운드 escalate 정책 모두 보존. designer 는 4 모드를 별도 sub-doc 로 분리하지 않고 inline (RWHarness 원본 패턴 따름).
+
 ### DCN-CHG-20260429-17
 - **Date**: 2026-04-29
 - **Change-Type**: agent, docs-only

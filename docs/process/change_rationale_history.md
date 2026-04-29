@@ -18,6 +18,26 @@
 
 ## Records
 
+### DCN-CHG-20260429-18
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Phase 2 iter 4 = designer + design-critic 짝. designer 는 Pencil MCP 도구 다수 (batch_design, set_variables, replace_all_matching_properties 등 write-side) 보유 → variant 생성·HANDOFF 패키지 출력. design-critic 은 read-only (model: opus, 정량 평가).
+  - PROGRESS 의 picker 에 "designer + 4 mode sub-doc + design-critic" 으로 적었으나 RWHarness 원본 확인 결과 designer 는 4 모드를 inline 으로 가짐 (별도 디렉토리 X). architect 와 다른 패턴. 그대로 따름.
+- **Alternatives**:
+  1. *designer 4 모드를 sub-doc 로 분리* — RWHarness 패턴과 다름. 일관성 깨짐. 기각.
+  2. *designer 단독, design-critic 은 다음 iter* — design-critic 은 designer THREE_WAY 의 짝 호출 — 분리 시 라이프사이클 불완전. 기각.
+  3. *(채택)* **designer + design-critic 짝 묶음, designer 4 모드 inline**: 라이프사이클 완전 + RWHarness 원본 패턴 정합.
+- **Decision**:
+  - 옵션 3. 2 docs 동시 작성. inline 4 모드.
+  - **proposal §2.5 원칙 1 (룰 순감소)**: designer 의 Phase 4 outline 자기규율은 architect SYSTEM_DESIGN/TASK_DECOMPOSE 와 동일 — *thinking 폭증 방지* 의 작업 순서 강제 (대 원칙 적용 가능).
+  - **View 전용 원칙 보존**: model 레이어 변경 금지 (store/hooks/biz logic). 작업 영역 강제(접근 영역) — proposal §2.5 대 원칙 적용 가능. 권장이 아닌 catastrophic 시퀀스 보호.
+  - **차별화 의무 보존**: 4 축 중 2 축 이상. 색상만 다른 variant 는 1개 — 작업 결과물 품질 게이트지만 형식 강제 X (prose writing guide 의 *권장*).
+  - **금지/허용 목록 보존**: AI 클리셰, Generic 폰트, Tailwind 등 — *자율성* 영역이지만 dcNess 메인 작업 모드 환경 외부 정책. plugin 배포 시 사용자 프로젝트 정합.
+  - **design-critic model: opus**: 정량 평가의 정확성 위해 RWHarness 가 sonnet → opus 로 승격한 정책 보존.
+- **Follow-Up**:
+  - **(다음 iteration iter 5 — 마지막)**: ux-architect + product-planner. 두 에이전트는 PRD 단계의 시작점 (planner = PRD 생성, ux-architect = PRD → UX Flow Doc).
+  - **(별도 Task-ID)** designer/design-critic 의 prose hash 안정성 측정 — Pencil MCP 출력은 결정론 X (스크린샷 path 변동) 이라 prose 본문 hash 만으로 checkpoint 가능한지 검증.
+
 ### DCN-CHG-20260429-17
 - **Date**: 2026-04-29
 - **Rationale**:
