@@ -193,3 +193,19 @@
   - **(별도 Task — 위험 수용 시)** `claude plugin validate` 도입 검토 — 30일 데이터 + 결정 PR. 본 Task 가 *not yet* 결정.
   - **(별도 Task)** dcNess plugin 실 설치 dry-run — `claude plugin install /Users/dc.kim/project/dcNess/.claude-plugin` 후 hook/agent 매핑 정합 실측. proposal §12.3.2 검증.
   - **branch protection 권장**: `plugin-manifest / validate manifest` required 등록 (사용자 수동).
+
+### DCN-CHG-20260429-12
+- **Date**: 2026-04-29
+- **Rationale**:
+  - DCN-06 (validator agent docs 변환) + DCN-11 (README 보강) 으로 status JSON 패턴이 *내부 컨벤션* 으로 박혔음. 단 외부 에이전트(Codex 등) 가 본 저장소에 PR 작성 시 *기존 RWHarness 컨벤션* (`---MARKER:X---`, `MARKER_ALIASES` 변형) 으로 작성할 우려 — AGENTS.md 가 그 진입점인데 status JSON 패턴 언급 부재.
+  - proposal §2.5 원칙 1 (룰 순감소) 정합으로 *재기술 금지* 지키며, AGENTS.md 는 짧은 *지침 + SSOT 링크* 만 박는다.
+- **Alternatives**:
+  1. *AGENTS.md 변경 없음* — 외부 에이전트가 폐기된 컨벤션 사용 위험. 기각.
+  2. *AGENTS.md 에 schema 전체 박기* — `governance.md` SSOT 룰 위반(재기술). 기각.
+  3. *(채택)* **5줄 짜리 안내 + SSOT 링크**: 결과 파일 경로 / schema 필수 / Write 도구 / 폐기된 컨벤션 명시 / 자세한 건 `agents/validator.md` + `docs/status-json-mutate-pattern.md` 참조.
+- **Decision**:
+  - 옵션 3 채택. AGENTS.md 에 "Status JSON Mutate 패턴" 섹션 한 단락 + 참조 5 링크.
+  - **재기술 금지 정합**: 본 추가는 *어디 가서 보면 되는지* 만. 룰 자체는 SSOT(`agents/validator.md` + proposal) 가 정의.
+- **Follow-Up**:
+  - **(별도 Task)** Phase 2 다른 12 agent docs 변환 시 본 섹션의 "validator 등" 표현이 자연스럽게 일반화 (각 검증 에이전트마다 동일 패턴).
+  - **(측정)** 외부 에이전트가 본 저장소에 보낸 PR 의 status JSON 사용 빈도. 30일 후 운영 데이터로 본 안내가 효과적인지 평가.

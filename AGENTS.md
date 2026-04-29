@@ -47,8 +47,23 @@ Document-Exception-Task: DCN-CHG-YYYYMMDD-NN
 
 `document_update_record.md` 의 해당 Task 항목에도 사유 명시 필수.
 
+## Status JSON Mutate 패턴 (validator 등 검증 에이전트)
+
+본 저장소는 [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) 의 발상에 따라 검증 결과를 **자유 텍스트 마커가 아닌 status JSON 파일** 로 전달한다. 검증 에이전트(validator, plan-reviewer, pr-reviewer, security-reviewer 등) 호출 시:
+
+1. **결과 파일 경로**: `.claude/harness-state/<run_id>/<agent>-<MODE>.json` (`agents/<agent>.md` 의 `@OUTPUT_FILE` 참조)
+2. **schema 필수**: `status` 키 (mode-specific enum) + (FAIL 시) `fail_items[]`. 나머지 freeform.
+3. **Write 도구**: 마지막 액션으로 위 파일 작성. 미작성 시 호출 측은 워크플로우 즉시 종료.
+4. **폐기된 컨벤션**: `---MARKER:X---` 마지막 줄 정형 + `MARKER_ALIASES` 폴백 + `preamble.md` 자동 주입 의존 — 모두 사용 금지. 자유 텍스트(prose) 는 *진단/감사 용* 으로만 stdout 에 잔존.
+
+자세한 형식 + 모드별 enum: [`agents/validator.md`](agents/validator.md), [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) §3 / §4.7.
+
+orchestrator 측 read 는 [`harness/state_io.py`](harness/state_io.py) 의 `read_status` 사용 — 5 failure modes (`MissingStatus`) 단일 normalize.
+
 ## 참조
 
-- [`docs/process/governance.md`](docs/process/governance.md) — SSOT (모든 규칙)
+- [`docs/process/governance.md`](docs/process/governance.md) — SSOT (모든 거버넌스 규칙)
+- [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) — 결정론 메커니즘 SSOT
 - [`docs/process/document_impact_matrix.md`](docs/process/document_impact_matrix.md) — 변경 → 검토 문서 빠른 참조
 - [`PROGRESS.md`](PROGRESS.md) — 현재 상태 / TODO / Blockers
+- [`README.md`](README.md) — 프로젝트 개요 + Quick Start
