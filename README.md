@@ -127,8 +127,24 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 
 - 다른 agent docs prose-only 변환 — 13 docs 완료 (`DCN-CHG-20260429-19` Phase 2 종결)
 - Plugin 배포 dry-run — RWHarness 와 공존 검증 (proposal §12.3.2)
-- 후속 skill (`/impl`, `/impl-loop`, `/ux`) — `commands/` 카테고리 확장
-- DESIGN_VALIDATION step 추가 — `/product-plan` 시퀀스 검증 cycle (별도 Task)
+- DESIGN_VALIDATION step — `/product-plan` 시퀀스에 검증 cycle 추가 완료 (`DCN-CHG-20260430-05`)
+- 후속 skill `/ux` (designer + design-critic, Pencil MCP 의존) — `commands/` 카테고리 확장 후보
+
+## Skill 목록 (`commands/`, 7개)
+
+| 발화 | skill | 역할 |
+|---|---|---|
+| `/init-dcness` | dcness 활성화 게이트 — 현 cwd main repo 를 plugin-scoped whitelist 추가 |
+| `/qa` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
+| `/quick` | light path 자동화 (qa → architect LIGHT_PLAN → engineer → validator BUGFIX_VALIDATION → pr-reviewer + clean 자동 commit/PR) |
+| `/product-plan` | 새 기능 spec/design (product-planner → plan-reviewer → ux-architect → validator UX → architect SD → validator DESIGN_VALIDATION → architect TASK_DECOMPOSE) |
+| `/impl` | per-batch 정식 impl 루프 (architect MODULE_PLAN → test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer) |
+| `/impl-loop` | multi-batch sequential auto chain (각 batch 마다 /impl 호출 + clean 자동 진행) |
+| `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
+
+모든 skill 공통:
+- yolo keyword (`yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서`) 검출 시 CLARITY/AMBIGUOUS/ESCALATE 자동 폴백 (catastrophic 룰은 hard safety)
+- worktree keyword (`worktree` / `wt` / `격리` / `isolate`) 검출 시 EnterWorktree 격리
 
 ## 참조 문서
 

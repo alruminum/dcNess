@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260430-07
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `README.md` — skill 목록 표 (7개) 추가 + 후속 항목 정리.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: README skill discoverability 향상 — 7개 skill 표 추가 (init-dcness / qa / quick / product-plan / impl / impl-loop / smart-compact). 공통 keyword (yolo / worktree) 도 명시.
+- **Document-Exception**: 없음 (docs-only)
+
 ### DCN-CHG-20260430-06
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only
