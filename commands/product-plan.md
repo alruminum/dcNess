@@ -57,7 +57,7 @@ root 를 단일 source 로 보므로 SessionStart 훅 작성 by-pid / live.json 
 ### Step 0b — run 시작 + 사용자 확인
 
 ```bash
-RUN_ID=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-run product-plan)
+RUN_ID=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-run product-plan)
 echo "[product-plan] run started: $RUN_ID"
 ```
 
@@ -92,7 +92,7 @@ TaskUpdate("product-planner: PRD 작성", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step product-planner
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step product-planner
 ```
 
 ```
@@ -103,7 +103,7 @@ Agent(
 ```
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step product-planner \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step product-planner \
     --allowed-enums "PRODUCT_PLAN_READY,CLARITY_INSUFFICIENT,PRODUCT_PLAN_CHANGE_DIFF,PRODUCT_PLAN_UPDATED,ISSUES_SYNCED" \
     --prose-file /tmp/dcness-pp-pp.md)
 ```
@@ -128,7 +128,7 @@ TaskUpdate("plan-reviewer: PRD 심사", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step plan-reviewer
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step plan-reviewer
 ```
 
 ```
@@ -139,7 +139,7 @@ Agent(
 ```
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step plan-reviewer \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step plan-reviewer \
     --allowed-enums "PLAN_REVIEW_PASS,PLAN_REVIEW_CHANGES_REQUESTED" \
     --prose-file /tmp/dcness-pp-pr.md)
 ```
@@ -156,7 +156,7 @@ TaskUpdate("ux-architect: UX_FLOW", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step ux-architect UX_FLOW
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step ux-architect UX_FLOW
 ```
 
 ```
@@ -168,7 +168,7 @@ Agent(
 ```
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step ux-architect UX_FLOW \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step ux-architect UX_FLOW \
     --allowed-enums "UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE" \
     --prose-file /tmp/dcness-pp-ux.md)
 ```
@@ -186,7 +186,7 @@ TaskUpdate("validator: UX_VALIDATION", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step validator UX_VALIDATION
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step validator UX_VALIDATION
 ```
 
 ```
@@ -198,7 +198,7 @@ Agent(
 ```
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step validator UX_VALIDATION \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step validator UX_VALIDATION \
     --allowed-enums "PASS,FAIL" \
     --prose-file /tmp/dcness-pp-uxv.md)
 ```
@@ -215,7 +215,7 @@ TaskUpdate("architect: SYSTEM_DESIGN", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step architect SYSTEM_DESIGN
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step architect SYSTEM_DESIGN
 ```
 
 PreToolUse 훅 검사 (catastrophic-gate.sh):
@@ -230,7 +230,7 @@ Agent(
 ```
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step architect SYSTEM_DESIGN \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step architect SYSTEM_DESIGN \
     --allowed-enums "SYSTEM_DESIGN_READY" \
     --prose-file /tmp/dcness-pp-sd.md)
 ```
@@ -244,7 +244,7 @@ TaskUpdate("architect: TASK_DECOMPOSE", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step architect TASK_DECOMPOSE
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step architect TASK_DECOMPOSE
 ```
 
 PreToolUse 훅:
@@ -259,7 +259,7 @@ Agent(
 ```
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step architect TASK_DECOMPOSE \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step architect TASK_DECOMPOSE \
     --allowed-enums "READY_FOR_IMPL" \
     --prose-file /tmp/dcness-pp-td.md)
 ```
@@ -273,7 +273,7 @@ TaskUpdate("architect: TASK_DECOMPOSE", completed)
 ### Step 8 — run 종료 + 다음 단계 추천
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-run
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-run
 ```
 
 사용자에게:
