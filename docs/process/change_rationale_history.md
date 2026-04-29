@@ -18,6 +18,26 @@
 
 ## Records
 
+### DCN-CHG-20260429-15
+- **Date**: 2026-04-29
+- **Rationale**:
+  - proposal §5 Phase 2 acceptance: "33 @OUTPUT 정의 → 작성 지침 변경, agent-config/*.md → agents/*.md 통합". dcNess Phase 1 에서 validator 6 docs 는 변환 완료. 나머지 12 agent docs 변환이 Phase 2 의 핵심.
+  - 한 iteration 에 13 agent 전부 변환은 컨텍스트 압박 + 검토 부담. 5 iterations 분산 (proposal §11.4 안전망 "sub-phase 마다 smoke test" 정합).
+  - iter 1 우선순위 = read-only validator 류 4 개 (pr-reviewer, plan-reviewer, qa, security-reviewer): 모두 도구 단순(Read/Glob/Grep) + 출력 enum 단순 + 검증된 패턴(validator.md). 가장 위험 낮은 묶음.
+- **Alternatives**:
+  1. *13 agent 일괄 변환* — 컨텍스트 폭증, 일관성 흐트러질 위험. 기각.
+  2. *역할 카테고리별 (validator-류 / planning-류 / engineering-류 / design-류)* — 카테고리 경계 모호 (test-engineer 가 engineering 인지 validation 인지). 기각.
+  3. *(채택)* **5 iterations × 묶음**: iter 1 read-only 4, iter 2 architect 8, iter 3 engineer+test-engineer, iter 4 designer 5, iter 5 ux+product. 각 묶음 = squash merge 단위.
+- **Decision**:
+  - 옵션 3. iter 1 = pr-reviewer + plan-reviewer + qa + security-reviewer.
+  - **proposal §2.5 원칙 1 (룰 순감소) 정합**: RWHarness 원본의 `---MARKER:X---` 자기점검 섹션 + `@OUTPUT` JSON schema + preamble 자동주입 안내 + agent-config 별 layer 안내 모두 폐기. 각 docs 자기완결.
+  - **원칙 3 (자율성 최대화)**: prose 작성 골격은 *권장* 으로만. 형식 자유, enum 단어만 마지막 단락에 명시.
+  - **plan-reviewer 의 "검토 범위 경계" 섹션 보존**: scope drift 차단은 *접근 영역* 강제 (proposal §2.5 대원칙 적용 가능 영역). agent 의 도구 호출 지침은 정상 가이드.
+  - **qa 의 GitHub MCP / tracker CLI 폴백**: 외부 시스템 mutation 도구 보존 (Bash 추적 ID 발급 한정). 작업 순서 강제 영역 — proposal §2.5 대 원칙 적용 가능.
+- **Follow-Up**:
+  - **(다음 iteration)** iter 2: architect 8 docs (System Design / Module Plan / SPEC_GAP / Task Decompose / Technical Epic / Light Plan / Docs Sync). architect 는 mode sub-doc 패턴 (validator 와 동일).
+  - **(측정)** iter 1 후 4 docs 평균 LOC vs 원본 LOC 비교. 순감소 추세 모니터링 (proposal §2.5 원칙 1).
+
 ### DCN-CHG-20260429-14
 - **Date**: 2026-04-29
 - **Rationale**:

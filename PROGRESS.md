@@ -9,6 +9,12 @@
 - **모듈 분류 framework 적용**: `docs/migration-decisions.md` (`DCN-CHG-20260429-05`)
 - **CI 게이트 3종**: Document Sync (`-08`) / Python tests (`-09`) / Plugin manifest (`-10`)
 - **README + AGENTS 보강**: `-11`, `-12`
+- **🚀 Phase 2 iter 1 — 4 read-only agents prose-only** (`DCN-CHG-20260429-15`):
+  - `agents/pr-reviewer.md` (LGTM / CHANGES_REQUESTED) — validator 와 역할 분리, 스코프 매트릭스, 레거시 처리
+  - `agents/plan-reviewer.md` (PLAN_REVIEW_PASS / PLAN_REVIEW_CHANGES_REQUESTED) — 8 차원 (현실성·MVP·제약·UX·숨은가정·경쟁·BM·기술실현)
+  - `agents/qa.md` (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) — 역질문 루프, MCP+tracker CLI 폴백
+  - `agents/security-reviewer.md` (SECURE / VULNERABILITIES_FOUND) — OWASP Top 10 + WebView 특화
+  - 모두 prose writing guide 형식. `---MARKER:X---` 텍스트 마커 + `@OUTPUT_*` JSON schema + preamble 자동주입 / agent-config 별 layer 의존 모두 폐기.
 - **🧹 stale 참조 sweep** (`DCN-CHG-20260429-14`): CLAUDE.md test 명령어 + python-tests.yml 헤더 + marketplace.json description/tags + .gitignore 코멘트 + migration-decisions framework 표현을 prose-only 로 정정. history record 항목은 governance §2.4 스코핑 정합으로 미수정.
 - **🔄 Phase 1 재정렬 — Prose-Only Pattern** (`DCN-CHG-20260429-13`):
   - **proposal 갱신**: `docs/status-json-mutate-pattern.md` 가 *Prose-Only Pattern* 으로 정정. 형식 강제 자체가 사다리를 부른다는 자각 — JSON schema 도 형식 사다리의 한 형태. harness 강제 = 작업 순서 + 접근 영역만, 그 외는 agent 자율.
@@ -23,21 +29,18 @@
 ### Phase 1 — Foundation (prose-only) ✅
 모든 acceptance 항목 완료. dcNess 메인 작업 모드(`status-json-mutate-pattern.md` §11.4) 정합으로 RWHarness `harness/core.py` 의 parse_marker 호출지 / agent-boundary hook ALLOW_MATRIX / `_AGENT_DISALLOWED` 변경은 본 저장소엔 미도입 (plugin 배포 시점 사용자 프로젝트 가드용).
 
-### Phase 2 — 메타 LLM 통합 + 다른 12 agent docs (선택)
+### Phase 2 — 메타 LLM 통합 + 다른 12 agent docs (진행 중)
+
+**다음 iteration 시작점**: `git log --oneline` + 본 PROGRESS 의 진행도 확인 후 다음 묶음 picker.
+
 - [ ] Anthropic SDK 통합 — `interpret_signal` 의 메타 LLM interpreter 구현 (haiku, cycle 당 비용 측정 — proposal R8)
 - [ ] ambiguous prose 카탈로그 — `MissingSignal(ambiguous)` raise 시 `.metrics/ambiguous-prose.jsonl` 누적 (proposal R1 acceptance)
-- [ ] 다른 12 agent docs 를 prose writing guide 로 변환:
-  - [ ] `agents/architect.md` + 7 mode sub-doc (System Design / Module Plan / SPEC_GAP / Task Decompose / Technical Epic / Light Plan / Docs Sync)
-  - [ ] `agents/engineer.md`
-  - [ ] `agents/designer.md` + 4 mode sub-doc
-  - [ ] `agents/design-critic.md`
-  - [ ] `agents/qa.md`
-  - [ ] `agents/ux-architect.md`
-  - [ ] `agents/product-planner.md`
-  - [ ] `agents/plan-reviewer.md`
-  - [ ] `agents/pr-reviewer.md`
-  - [ ] `agents/security-reviewer.md`
-  - [ ] `agents/test-engineer.md`
+- [ ] 다른 agent docs 를 prose writing guide 로 변환:
+  - [x] **iter 1 완료** (DCN-CHG-20260429-15): `agents/pr-reviewer.md`, `agents/plan-reviewer.md`, `agents/qa.md`, `agents/security-reviewer.md`
+  - [ ] **iter 2**: `agents/architect.md` + 7 mode sub-doc (System Design / Module Plan / SPEC_GAP / Task Decompose / Technical Epic / Light Plan / Docs Sync)
+  - [ ] **iter 3**: `agents/engineer.md` + `agents/test-engineer.md`
+  - [ ] **iter 4**: `agents/designer.md` + 4 mode sub-doc + `agents/design-critic.md`
+  - [ ] **iter 5**: `agents/ux-architect.md` + `agents/product-planner.md`
 
 ### Phase 3 — Plugin 배포 dry-run (선택)
 - [ ] RWHarness 와 공존 시나리오 검증 (proposal §12.3.2)
