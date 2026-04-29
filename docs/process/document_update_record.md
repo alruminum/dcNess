@@ -71,6 +71,17 @@
 - **Summary**: `status-json-mutate-pattern.md` §11.2 framework 적용 — RWHarness 의 `harness/` / `hooks/` / `agents/` / `scripts/` / `orchestration/` / `.claude-plugin/` 모듈을 PRESERVE / DISCARD / REFACTOR 로 분류. dcNess 메인 작업 모드(§11.4) 정합으로 hook/impl_loop 류는 자연 폐기, agent docs 변환 + state_io.py 만 net-new.
 - **Document-Exception**: 본 변경은 분류 *결정 기록* 이라 추가 deliverable 부재. heavy 카테고리 미해당 — `docs-only` 단독.
 
+### DCN-CHG-20260429-10
+- **Date**: 2026-04-29
+- **Change-Type**: ci
+- **Files Changed**:
+  - `scripts/check_plugin_manifest.mjs` (신규 — manifest 무결성 validator)
+  - `.github/workflows/plugin-manifest.yml` (신규 — CI workflow)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Plugin manifest 무결성 검증 — `plugin.json` + `marketplace.json` 의 required 필드 + name regex + 두 파일 간 name 정합 검증. `claude plugin validate` (CLI 의존) 대신 Node-only minimum guard.
+
 ### DCN-CHG-20260429-09
 - **Date**: 2026-04-29
 - **Change-Type**: ci
