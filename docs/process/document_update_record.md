@@ -20,7 +20,17 @@
 
 ## Records
 
-### DCN-CHG-20260429-19
+### DCN-CHG-20260429-20
+- **Date**: 2026-04-29
+- **Change-Type**: ci
+- **Files Changed**:
+  - `scripts/check_task_id.mjs` (신규 — Task-ID 형식 검증 스크립트, 로컬/CI/PR-title 3 모드)
+  - `.github/workflows/task-id-validation.yml` (신규 — CI 게이트, base..head 범위 + PR title 동시 검사)
+  - `PROGRESS.md` (Phase 3 시작 + iter 1 완료 표시)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 3 iter 1 — Task-ID 형식 검증 게이트(`DCN-CHG-YYYYMMDD-NN`)를 GitHub Actions + 로컬 스크립트로 도입. proposal §5 Phase 3 의 "Task-ID 형식 검증 → workflow regex" 이행. 모든 비-머지 커밋의 메시지(subject+body) 가 정확히 1개 토큰 포함하는지 검사하고 PR title 도 추가 검증. 머지 커밋(2개+ parent)은 squash 합본 자동 메시지 케이스로 면제. 다중 Task-ID(governance §2.1 "단 하나" 위반) 도 차단. Document-Exception-Task 토큰도 동일 패턴이라 자연 인정.
+- **Document-Exception**: 없음 (ci 단일 카테고리, deliverable 동반 의무 없음)
 - **Date**: 2026-04-29
 - **Change-Type**: agent, docs-only
 - **Files Changed**:
