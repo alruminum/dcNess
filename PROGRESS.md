@@ -2,6 +2,13 @@
 
 ## 현재 상태
 
+- **🧪 Conveyor 인프라 Step 4 — multi-session e2e smoke** (`DCN-CHG-20260429-35`):
+  - `tests/test_multisession_smoke.py` 신규 (11 케이스):
+    - bash 훅 파이프라인 (4) — 실 subprocess 호출 + 부수효과 검증
+    - 멀티세션 격리 (3) — 두 cc_pid by-pid / live.json 격리 + 동시 Popen race 검증
+    - catastrophic 룰 e2e (4) — engineer/pr-reviewer/HARNESS_ONLY 차단 + 통과 매트릭스
+  - 신규 11 테스트 (전체 160/160 PASS).
+  - 한계: 실 Claude Code 환경의 PPID 신뢰성 / stdin payload 형식 = 별도 manual smoke follow-up.
 - **🚀 Conveyor 인프라 Step 3 — 훅 인프라** (`DCN-CHG-20260429-34`):
   - `harness/hooks.py` (~280 LOC) — Python 훅 핸들러 (SessionStart + PreToolUse Agent)
   - `hooks/session-start.sh` + `hooks/catastrophic-gate.sh` — bash 래퍼 (PPID 캡처 + python 호출)
