@@ -45,6 +45,7 @@
 | [`docs/process/change_rationale_history.md`](docs/process/change_rationale_history.md) | WHY 로그 (Task-ID 별 동기·대안·결정·후속) |
 | [`docs/process/document_impact_matrix.md`](docs/process/document_impact_matrix.md) | 변경 → 검토 문서 빠른 참조 |
 | [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | RWHarness fork-and-refactor proposal (정체성·Phase·원칙) |
+| [`docs/orchestration.md`](docs/orchestration.md) | 오케스트레이션 SSOT — 시퀀스 + 진입 경로 + 결정표 + retry + escalate + 핸드오프 매트릭스 (RWHarness §4.2/§4.3/§3 통합, 형식 어휘 dcNess 변환) |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태 / TODO / Blockers |
 | [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 |
 | [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) | PR 체크리스트 |
