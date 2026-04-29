@@ -49,6 +49,9 @@
 | [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 |
 | [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) | PR 체크리스트 |
 | [`scripts/check_document_sync.mjs`](scripts/check_document_sync.mjs) | Document Sync 게이트 구현 |
+| [`scripts/check_task_id.mjs`](scripts/check_task_id.mjs) | Task-ID 형식 검증 게이트 (governance §2.1) |
+| [`scripts/setup_branch_protection.mjs`](scripts/setup_branch_protection.mjs) | main 브랜치 보호 적용 스크립트 (governance §2.8) |
+| [`docs/process/branch-protection-setup.md`](docs/process/branch-protection-setup.md) | branch protection 적용/검증 가이드 |
 | [`scripts/hooks/pre-commit`](scripts/hooks/pre-commit) | git pre-commit hook |
 | [`scripts/hooks/cc-pre-commit.sh`](scripts/hooks/cc-pre-commit.sh) | Claude Code PreToolUse hook |
 

@@ -68,7 +68,7 @@
 > dcNess 는 commit-gate.py 미도입(migration-decisions §2.2 DISCARD)이라 *자연 외부화* — 신규 워크플로우만 추가.
 
 - [x] **iter 1 완료** (DCN-CHG-20260429-20): Task-ID 형식 검증 워크플로 + 스크립트 — `scripts/check_task_id.mjs` + `.github/workflows/task-id-validation.yml`. 모든 비-머지 커밋이 `DCN-CHG-YYYYMMDD-NN` 토큰 정확히 1개 포함하는지 PR/push 단위로 차단. PR title 도 동시 검증. 머지 커밋 면제(squash 합본). proposal §11 4-pillar #2 (CI 최후 차단) 정합.
-- [ ] iter 2 후보 — 브랜치 보호 룰 + LGTM 게이트 문서화 (proposal §5 Phase 3 "Gate 5 → branch protection required reviewers")
+- [x] **iter 2 완료** (DCN-CHG-20260429-21): branch protection 적용 스크립트 + 가이드 — `scripts/setup_branch_protection.mjs` (멱등 PUT, dry-run 지원) + `docs/process/branch-protection-setup.md` (자동/수동/검증) + `governance.md` §2.8 신설. proposal §5 Phase 3 "Gate 5 (LGTM flag) → branch protection required reviewers" 외부화. RWHarness `class Flag` LGTM in-process 메커니즘은 dcNess 자연 폐기 (migration-decisions §2.2 DISCARD), GitHub branch protection 이 동일 역할 외부 강제. 4 status check (`Document Sync gate` / `unittest discover` / `validate manifest` / `Task-ID format gate`) + 1 approving review + force-push/삭제 차단 + linear history.
 - [ ] iter 3 후보 — Anthropic SDK haiku interpreter 통합 (`interpret_signal(..., interpreter=anthropic_haiku_call)` swap point 채움)
 - [ ] iter 4 후보 — ambiguous prose 카탈로그 + 휴리스틱 hit rate 측정 스크립트
 - [ ] iter 5 후보 — Phase 3 종결 + plugin 배포 dry-run 가이드 정리

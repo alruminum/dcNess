@@ -18,6 +18,36 @@
 
 ## Records
 
+### DCN-CHG-20260429-21
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Phase 3 iter 1(Task-ID 검증) 직후 iter 2. proposal §5 Phase 3 의 4 항목 중 "Gate 5 (LGTM flag) → branch protection required reviewers" 이행.
+  - dcNess 는 RWHarness `class Flag` (in-process LGTM flag) 를 자연 폐기 (migration-decisions §2.2 — `class Flag` DISCARD). LGTM 의 의미적 강제 메커니즘이 *비어 있음* — PR 머지가 사실상 자유.
+  - 외부화 대안 = GitHub branch protection. RWHarness 이 자체적으로 못 한 GitHub 직접 강제를 dcNess 는 처음부터 채택 → proposal §11 4-pillar #2 정합 + RWHarness 부채 제거.
+  - 자동 적용 스크립트 vs UI 가이드 *둘 다* 도입 — admin 권한 의존성(스크립트 403 시 수동 fallback) + 미래 재적용/CI 추가 시 멱등 PUT 활용.
+- **Alternatives**:
+  1. *문서만 작성, 스크립트 X* — 운영자가 매번 UI 클릭. 멱등 검증 없음. CI 게이트 추가 시 누락 위험. 기각.
+  2. *스크립트만 작성, 문서 X* — admin 권한 부재 시 fallback 가이드 부재. 비-admin 컨트리뷰터가 응급 적용 못 함. 기각.
+  3. *(채택)* **스크립트 + 가이드 + governance §2.8 룰 정의 3종 동시**. 스크립트 = 자동, 가이드 = 수동/검증, §2.8 = 정의(SSOT).
+  4. *governance §2.8 추가 없이 스크립트만* — SSOT 누락. 신규 컨트리뷰터가 "왜 이 스크립트가 필요한지" 추적 불가. 기각.
+  5. *enforce_admins=true* — admin 도 강제. 운영자(자기) hot-fix 불가. 기각 (운영 유연성 우선).
+- **Decision**:
+  - 옵션 3. 3종 동시 + `enforce_admins=false`.
+  - **status check 이름 hardcoding**: 워크플로우 `jobs.<id>.name` 과 protection rule status check 이름은 *문자열 일치* 가 GitHub API 강제 — 둘 다 같은 SSOT(`setup_branch_protection.mjs:REQUIRED_CHECKS` + `governance.md` §2.8 표) 에서 관리. mismatch 시 영구 머지 블록.
+  - **dismiss_stale_reviews=true**: PR 에 새 commit push 시 기존 approval 자동 무효화 — proposal §2.5 원칙 4(흐름 강제 catastrophic 만) 정합. approve 후 임의 변경 후 머지하는 사고 차단 = catastrophic.
+  - **required_linear_history=true**: 본 저장소는 squash merge 전제 — merge commit 차단으로 history 단순화 (Task-ID anchor 검색 용이).
+  - **proposal §2.5 원칙 정합**:
+    - 원칙 1 (룰 순감소): RWHarness in-process LGTM flag 메커니즘 폐기 → 외부 강제로 *대체*. 신규 코드 LOC 추가는 ~80(스크립트) 이지만 RWHarness 폐기 부분(class Flag + flag_touch + flag_exists 등 70+ LOC) 절감.
+    - 원칙 2 (강제 vs 권고): catastrophic(LGTM 우회 머지 / force-push) 만 deny. 형식적 요건은 status check 통과로 자연 해결.
+    - 원칙 4 (흐름 강제 catastrophic 만): main push / 머지 시퀀스만 강제. PR 안 행동(commit message format 등) 은 별도 gate(task-id-validation) 가 카테고리별 처리.
+- **Follow-Up**:
+  - **(즉시)** 본 PR 머지 후 운영자(사용자) 가 `node scripts/setup_branch_protection.mjs` 실행 — admin 권한 필요. 본 Task 에선 *적용 안 함* (auto mode 의 "shared/production systems 변경 사용자 승인 필요" 정합).
+  - **(검증)** 적용 후 §4 회귀 시나리오 4 항목 dry-run.
+  - **iter 3**: Anthropic SDK haiku interpreter 통합 — `harness/signal_io.py` swap point 채움 (proposal §3 비용 측정 시작).
+  - **iter 4**: ambiguous prose 카탈로그 + 휴리스틱 hit rate 측정.
+  - **iter 5**: Phase 3 종결 + plugin dry-run 가이드.
+  - **(별도 Task)** 첫 게이트 추가 시 "branch up-to-date" 강제로 PR 머지 시 base sync 필요 → squash 시 Task-ID 보존 검증.
+
 ### DCN-CHG-20260429-20
 - **Date**: 2026-04-29
 - **Rationale**:
