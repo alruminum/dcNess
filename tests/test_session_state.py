@@ -1118,5 +1118,175 @@ class ProjectActivationTests(unittest.TestCase):
         self.assertEqual(_cli_is_active(SimpleNamespace()), 0)
 
 
+class HelperAutomationTests(unittest.TestCase):
+    """Option A foundation — end-step prose 요약 / finalize-run / auto-resolve.
+
+    DCN-CHG-20260430-XX. helper-side 자동화로 skill prompt 슬림화 + 사용자 가시성 ↑.
+    """
+
+    def setUp(self) -> None:
+        from harness.session_state import _clear_default_base_cache
+        self._orig_cwd = os.getcwd()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.addCleanup(lambda: os.chdir(self._orig_cwd))
+        _clear_default_base_cache()
+        self.addCleanup(_clear_default_base_cache)
+
+    def test_extract_prose_summary_skips_initial_header(self) -> None:
+        from harness.session_state import _extract_prose_summary
+        prose = "## 결론\nLIGHT_PLAN_READY\n\n## 내용\nfoo\nbar\n"
+        out = _extract_prose_summary(prose)
+        self.assertIn("LIGHT_PLAN_READY", out)
+        self.assertNotIn("## 결론", out)  # 첫 헤더 skip
+
+    def test_extract_prose_summary_respects_line_limit(self) -> None:
+        from harness.session_state import _extract_prose_summary
+        prose = "\n".join([f"line {i}" for i in range(20)])
+        out = _extract_prose_summary(prose, max_lines=3)
+        self.assertEqual(len(out.splitlines()), 3)
+
+    def test_extract_prose_summary_respects_char_cap(self) -> None:
+        from harness.session_state import _extract_prose_summary
+        prose = "a" * 1000 + "\n" + "b" * 1000
+        out = _extract_prose_summary(prose)
+        self.assertLess(len(out), 1500)
+
+    def test_append_step_status_creates_jsonl(self) -> None:
+        from harness.session_state import (
+            _append_step_status,
+            _read_steps_jsonl,
+            _steps_jsonl_path,
+            session_dir,
+            run_dir,
+            _clear_default_base_cache,
+        )
+        repo = Path(self._tmp.name) / "repo"
+        repo.mkdir()
+        # 가짜 git repo 흉내 — 비-git 폴백으로 동작
+        os.chdir(repo)
+        _clear_default_base_cache()
+
+        sid = "test-sid"
+        rid = "run-deadbeef"
+        run_dir(sid, rid, create=True)
+        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "qa prose body")
+        _append_step_status(
+            sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY",
+            "## 결론\nLIGHT_PLAN_READY\n## 변경\n무언가",
+        )
+        records = _read_steps_jsonl(sid, rid)
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0]["agent"], "qa")
+        self.assertEqual(records[0]["enum"], "FUNCTIONAL_BUG")
+        self.assertEqual(records[1]["mode"], "LIGHT_PLAN")
+        self.assertFalse(records[0]["must_fix"])
+
+    def test_append_step_status_detects_must_fix(self) -> None:
+        from harness.session_state import (
+            _append_step_status, _read_steps_jsonl, run_dir,
+            _clear_default_base_cache,
+        )
+        repo = Path(self._tmp.name) / "repo"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+        run_dir("sid", "run-aaaa1111", create=True)
+        _append_step_status(
+            "sid", "run-aaaa1111", "pr-reviewer", None, "CHANGES_REQUESTED",
+            "## 결론\nCHANGES_REQUESTED\n## MUST FIX\n- src/foo.py:10 race condition\n",
+        )
+        records = _read_steps_jsonl("sid", "run-aaaa1111")
+        self.assertTrue(records[0]["must_fix"])
+
+    def test_finalize_run_outputs_status_json(self) -> None:
+        from harness.session_state import (
+            _cli_finalize_run, _append_step_status,
+            run_dir, _clear_default_base_cache, write_pid_session,
+            write_pid_current_run, get_cc_pid_via_ppid_chain,
+        )
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+
+        repo = Path(self._tmp.name) / "repo"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+
+        # by-pid 인프라 흉내 — auto_detect 가 sid/rid 찾을 수 있도록
+        cc_pid = get_cc_pid_via_ppid_chain()
+        if cc_pid is None:
+            self.skipTest("cc_pid 추출 불가 — CI 환경 의존")
+        sid = "smoke-fin-sid"
+        rid = "run-finalize"
+        write_pid_session(cc_pid, sid)
+        run_dir(sid, rid, create=True)
+        write_pid_current_run(cc_pid, rid)
+
+        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok")
+        _append_step_status(
+            sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY", "ok"
+        )
+        _append_step_status(sid, rid, "engineer", "IMPL", "IMPL_DONE", "fix done")
+        _append_step_status(
+            sid, rid, "validator", "BUGFIX_VALIDATION", "PASS", "verified"
+        )
+        _append_step_status(sid, rid, "pr-reviewer", None, "LGTM", "looks good")
+
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_finalize_run(SimpleNamespace())
+        self.assertEqual(rc, 0)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload["run_id"], rid)
+        self.assertEqual(payload["session_id"], sid)
+        self.assertEqual(payload["step_count"], 5)
+        self.assertFalse(payload["has_ambiguous"])
+        self.assertFalse(payload["has_must_fix"])
+        self.assertEqual(len(payload["steps"]), 5)
+
+    def test_auto_resolve_ux_escalate(self) -> None:
+        from harness.session_state import _cli_auto_resolve
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_auto_resolve(
+                SimpleNamespace(agent_mode="ux-architect:UX_FLOW_ESCALATE")
+            )
+        self.assertEqual(rc, 0)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload["next_enum"], "UX_FLOW_PATCHED")
+        self.assertIn("hint", payload)
+
+    def test_auto_resolve_ambiguous_wildcard(self) -> None:
+        from harness.session_state import _cli_auto_resolve
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_auto_resolve(
+                SimpleNamespace(agent_mode="random-agent:AMBIGUOUS")
+            )
+        self.assertEqual(rc, 0)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload["action"], "user-delegate")
+
+    def test_auto_resolve_unmapped_returns_exit_1(self) -> None:
+        from harness.session_state import _cli_auto_resolve
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_auto_resolve(SimpleNamespace(agent_mode="unknown:MYSTERY"))
+        self.assertEqual(rc, 1)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload["action"], "unmapped")
+
+
 if __name__ == "__main__":
     unittest.main()

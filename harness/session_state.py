@@ -924,8 +924,39 @@ def _cli_begin_step(args: Any) -> int:
     return 0
 
 
+_SUMMARY_LINE_LIMIT = 8       # prose 요약에 사용할 최대 줄 수
+_SUMMARY_CHAR_LIMIT = 600     # 요약 총 길이 cap
+
+
+def _extract_prose_summary(prose: str, *, max_lines: int = _SUMMARY_LINE_LIMIT) -> str:
+    """prose 첫 의미 있는 N 줄 — markdown 헤더/빈 줄 skip + char cap.
+
+    의도: skill bash 에서 helper 호출 후 stderr 로 흘려 사용자 가시성 ↑. CC 가 stderr 를
+    Bash tool 출력 안에 보여줌 (collapsed 안 됨, ctrl+o 무관).
+    """
+    out_lines: list = []
+    total_chars = 0
+    for raw in prose.splitlines():
+        line = raw.rstrip()
+        stripped = line.lstrip()
+        if not stripped:
+            continue
+        # skip 가벼운 markdown 헤더 (## 결론 등) — 헤더만으론 정보 부족
+        if stripped.startswith("#") and len(stripped) < 40 and len(out_lines) == 0:
+            continue
+        out_lines.append(line)
+        total_chars += len(line) + 1
+        if len(out_lines) >= max_lines or total_chars >= _SUMMARY_CHAR_LIMIT:
+            break
+    return "\n".join(out_lines)
+
+
 def _cli_end_step(args: Any) -> int:
-    """sid+rid auto-detect → write_prose + interpret_with_fallback."""
+    """sid+rid auto-detect → write_prose + interpret_with_fallback.
+
+    부수 출력: stderr 로 `[agent:mode = ENUM]` 헤더 + prose 요약 ~5줄. 모든 skill 자동
+    수혜 — skill prompt 안에 별도 요약 instruction 박을 필요 0.
+    """
     # 지연 import — interpret_strategy 는 telemetry 등 무거움
     from harness.signal_io import write_prose
     from harness.interpret_strategy import interpret_with_fallback
@@ -952,14 +983,171 @@ def _cli_end_step(args: Any) -> int:
         print("[session_state] empty --allowed-enums", file=sys.stderr)
         return 1
 
+    agent_label = args.agent if not mode else f"{args.agent}:{mode}"
+
     try:
         enum = interpret_with_fallback(prose, allowed)
     except MissingSignal as e:
+        # AMBIGUOUS — stdout 으로 enum, stderr 로 detail + 요약 (사용자 가시)
         print("AMBIGUOUS", file=sys.stdout)
-        print(f"[session_state] interpret 실패: {e.detail[:200]}", file=sys.stderr)
+        print(f"[{agent_label} = AMBIGUOUS]", file=sys.stderr)
+        print(f"  interpret fail: {e.detail[:200]}", file=sys.stderr)
+        summary = _extract_prose_summary(prose)
+        if summary:
+            print(summary, file=sys.stderr)
         return 0  # ambiguous 자체는 정상 결과 — 메인이 이 신호 보고 pause 결정
 
+    # 정상 enum — stdout (skill 이 캡처) + stderr 요약 (사용자 가시)
     print(enum)
+    print(f"[{agent_label} = {enum}]", file=sys.stderr)
+    summary = _extract_prose_summary(prose)
+    if summary:
+        print(summary, file=sys.stderr)
+    # step status append — finalize-run / 회고용
+    _append_step_status(sid, rid, args.agent, mode, enum, prose)
+    return 0
+
+
+# ── step status log + finalize-run + auto-resolve ────────────────────
+
+
+_MUST_FIX_RE = re.compile(r"\bMUST[\s_-]?FIX\b", re.IGNORECASE)
+
+
+def _steps_jsonl_path(sid: str, rid: str, *, base_dir: Optional[Path] = None) -> Path:
+    return run_dir(sid, rid, base_dir=base_dir) / ".steps.jsonl"
+
+
+def _append_step_status(
+    sid: str,
+    rid: str,
+    agent: str,
+    mode: Optional[str],
+    enum: str,
+    prose: str,
+) -> None:
+    """end-step 호출마다 jsonl 에 한 줄 append. atomic 보장 X (append-only)."""
+    record = {
+        "ts": _now_iso(),
+        "agent": agent,
+        "mode": mode,
+        "enum": enum,
+        "prose_excerpt": _extract_prose_summary(prose, max_lines=4),
+        "must_fix": bool(_MUST_FIX_RE.search(prose)),
+    }
+    target = _steps_jsonl_path(sid, rid)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(record, ensure_ascii=False) + "\n"
+    with open(target, "a", encoding="utf-8") as f:
+        f.write(line)
+
+
+def _read_steps_jsonl(sid: str, rid: str) -> list:
+    """`.steps.jsonl` 전체 읽기. 파일 없으면 빈 리스트."""
+    target = _steps_jsonl_path(sid, rid)
+    if not target.exists():
+        return []
+    out = []
+    try:
+        for line in target.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                out.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    except OSError:
+        return []
+    return out
+
+
+def _cli_finalize_run(args: Any) -> int:
+    """현재 run 의 step status JSON 출력 (skill 이 clean 판정용으로 소비).
+
+    출력 (stdout, JSON 한 줄):
+        {
+          "run_id": "...",
+          "session_id": "...",
+          "steps": [{agent, mode, enum, must_fix, prose_excerpt}, ...],
+          "has_ambiguous": bool,
+          "has_must_fix": bool,
+          "step_count": N
+        }
+
+    skill 이 expected enum 매트릭스와 비교해 clean/caveat 결정.
+    """
+    sid = auto_detect_session_id()
+    rid = auto_detect_run_id()
+    if not sid or not rid:
+        print(json.dumps({"error": "sid/rid 미해결"}), file=sys.stderr)
+        return 1
+    steps = _read_steps_jsonl(sid, rid)
+    has_ambiguous = any(s.get("enum") == "AMBIGUOUS" for s in steps)
+    has_must_fix = any(s.get("must_fix") for s in steps)
+    payload = {
+        "run_id": rid,
+        "session_id": sid,
+        "steps": steps,
+        "has_ambiguous": has_ambiguous,
+        "has_must_fix": has_must_fix,
+        "step_count": len(steps),
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0
+
+
+# yolo 모드 폴백 매트릭스 — agent + ESCALATE/CLARITY 시 권장 행동
+_YOLO_FALLBACKS: Dict[str, Dict[str, str]] = {
+    "ux-architect:UX_FLOW_ESCALATE": {
+        "action": "re-invoke",
+        "hint": (
+            "NoUI 프로젝트 케이스 — minimal UX_FLOW_PATCHED prose 작성 (UI 없음 1줄 ack) "
+            "후 advance"
+        ),
+        "next_enum": "UX_FLOW_PATCHED",
+    },
+    "product-planner:CLARITY_INSUFFICIENT": {
+        "action": "re-invoke",
+        "hint": "agent 권고 그대로 채택 — 모든 항목 default 채택 + 재호출",
+        "next_enum": "PRODUCT_PLAN_READY",
+    },
+    "architect:SPEC_GAP_FOUND": {
+        "action": "escalate-or-architect-spec-gap",
+        "hint": "SPEC_GAP cycle 진입 (architect SPEC_GAP) 또는 사용자 위임",
+        "next_enum": "SPEC_GAP_RESOLVED",
+    },
+    "validator:FAIL": {
+        "action": "re-invoke-prev",
+        "hint": "직전 agent (engineer/ux-architect 등) 재호출 — 가장 보수적 1 cycle",
+        "next_enum": None,
+    },
+    "*:AMBIGUOUS": {
+        "action": "user-delegate",
+        "hint": "재호출 1회 시도. 그래도 모호 → 사용자 위임 (yolo 도 hard safety 보존)",
+        "next_enum": None,
+    },
+}
+
+
+def _cli_auto_resolve(args: Any) -> int:
+    """yolo 모드 — enum + agent[:mode] 받아 권장 액션 JSON 반환.
+
+    skill 이 yolo keyword 검출 시 호출. 권장 액션 = {action, hint, next_enum}.
+    매핑 없으면 `unmapped` 반환 — skill 이 사용자 위임 fallback.
+
+    catastrophic 룰 우회 X — yolo 는 skill-level 확인 prompt 자동화만.
+    """
+    key = args.agent_mode  # 예: "ux-architect:UX_FLOW_ESCALATE" 또는 "validator:FAIL"
+    fallback = _YOLO_FALLBACKS.get(key)
+    if fallback is None:
+        # AMBIGUOUS 통합 케이스 — 어떤 agent 든 동일 권장
+        if key.endswith(":AMBIGUOUS"):
+            fallback = _YOLO_FALLBACKS["*:AMBIGUOUS"]
+    if fallback is None:
+        print(json.dumps({"action": "unmapped", "key": key}, ensure_ascii=False))
+        return 1
+    print(json.dumps({"key": key, **fallback}, ensure_ascii=False))
     return 0
 
 
@@ -1046,6 +1234,22 @@ def _build_arg_parser() -> Any:
 
     p_st = sub.add_parser("status", help="whitelist + 현재 cwd 상태")
     p_st.set_defaults(func=_cli_status)
+
+    p_fr = sub.add_parser(
+        "finalize-run",
+        help="현재 run 의 step status JSON 출력 (clean 판정용)",
+    )
+    p_fr.set_defaults(func=_cli_finalize_run)
+
+    p_ar = sub.add_parser(
+        "auto-resolve",
+        help="yolo 모드 권장 액션 JSON 반환 (agent:mode_or_enum 매핑)",
+    )
+    p_ar.add_argument(
+        "agent_mode",
+        help='"ux-architect:UX_FLOW_ESCALATE", "validator:FAIL", "*:AMBIGUOUS" 등',
+    )
+    p_ar.set_defaults(func=_cli_auto_resolve)
 
     return parser
 
