@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260429-37
+- **Date**: 2026-04-29
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `commands/quick.md` (신규) — `/quick` skill (light path 자동화: qa → architect LIGHT_PLAN → engineer IMPL → validator BUGFIX_VALIDATION → pr-reviewer)
+  - `commands/product-plan.md` (신규) — `/product-plan` skill (새 기능 spec/design: product-planner → plan-reviewer → ux-architect → validator UX → architect SYSTEM_DESIGN → architect TASK_DECOMPOSE)
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+- **Summary**: dcNess plugin 의 2번째 + 3번째 skill 동시 신규. `/quick` = 작은 버그픽스 light path 자동 진행 (qa 분류가 FUNCTIONAL_BUG/CLEANUP 시), 5 task. `/product-plan` = 새 기능 spec/design 흐름 6 task (구현 진입은 별도). 둘 다 dcNess 컨베이어 패턴 (Task tool + helper + Agent + 훅) 정합. AMBIGUOUS cascade (`/qa` 와 동일 — 재호출 → 사용자 위임). 재진입 cycle 한도 (PLAN_REVIEW_CHANGES_REQUESTED / UX_VALIDATION FAIL = 각 2 cycle). catastrophic 룰 자동 정합 (§2.3.3 / §2.3.4 시퀀스가 자연 충족). 코드 변경 0 (prompt-only).
+- **Document-Exception**: 없음 (docs-only)
+
 ### DCN-CHG-20260429-36
 - **Date**: 2026-04-29
 - **Change-Type**: docs-only

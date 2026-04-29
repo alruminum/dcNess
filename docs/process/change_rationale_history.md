@@ -18,6 +18,41 @@
 
 ## Records
 
+### DCN-CHG-20260429-37
+- **Date**: 2026-04-29
+- **Rationale**:
+  - `/qa` (DCN-CHG-20260429-36) 다음으로 핵심 진입점 2개 추가:
+    - `/quick` = `/qa` 분류 결과가 FUNCTIONAL_BUG/CLEANUP 시 *자동 진행* — light path. 사용자가 일일이 다음 step 결정 안 해도 됨.
+    - `/product-plan` = 큰 기획 / 새 기능 / PRD 변경 진입점 — spec/design 단계까지 자동 진행, 구현은 별도.
+  - 둘 다 `/qa` skill 의 8-step protocol 패턴 확장. 시퀀스 길이만 다름 (qa 1 task / quick 5 task / product-plan 6 task).
+  - 재진입 cycle 한도 명시 — PRD 심사 / UX 검증 fail 시 무한 루프 방지.
+- **Alternatives**:
+  1. *quick + product-plan 분리 PR* — 작은 PR 단위 OK 하지만 둘 다 prompt-only + 동일 패턴이라 같이 묶는 게 review 효율 ↑. 기각.
+  2. *quick 안에 product-plan 자동 라우팅* — quick 이 분류 결과 SCOPE 가 크면 product-plan 호출. 복잡도 ↑. 기각 (사용자가 진입점 선택).
+  3. *product-plan 에 구현 자동 진입 (architect MODULE_PLAN 부터 impl 루프 N회)* — spec 단계 + 구현 단계 분리가 사용자 결정에 자연스러움. 자동 진입은 큰 작업 통제 어려움. 기각.
+  4. *(채택)* **`/quick` + `/product-plan` 동일 PR + 구현 자동 진입 X** — 사용자 결정 layer 보존.
+- **Decision**:
+  - **`/quick` 시퀀스** (orchestration.md §3.5 light path):
+    - qa (분류) → architect LIGHT_PLAN → engineer IMPL → validator BUGFIX_VALIDATION → pr-reviewer
+    - 5 task 자동 진행. depth=simple 고정. test-engineer 단계 생략.
+    - qa 분류 결과 FUNCTIONAL_BUG / CLEANUP 만 자동 진행. 그 외 (DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) → 종료 + 사용자 결정.
+  - **`/product-plan` 시퀀스** (orchestration.md §3.1):
+    - product-planner → plan-reviewer → ux-architect → validator UX_VALIDATION → architect SYSTEM_DESIGN → architect TASK_DECOMPOSE
+    - 6 task. spec 단계까지만. 구현 진입은 별도 (사용자 결정).
+    - PLAN_REVIEW_CHANGES_REQUESTED → product-planner 재진입 (2 cycle 한도)
+    - UX_VALIDATION FAIL → ux-architect 재진입 (2 cycle 한도)
+  - **공통 — AMBIGUOUS cascade**: `/qa` 정합. 재호출 (1회) → 사용자 위임.
+  - **공통 — catastrophic 자동 정합**: skill 시퀀스가 §2.3 4룰 충족하도록 짜여서 PreToolUse 훅이 자연 통과.
+    - `/quick` Step 3 (architect LIGHT_PLAN_READY) → Step 4 engineer (§2.3.3 충족)
+    - `/quick` Step 5 (validator BUGFIX_VALIDATION PASS) → Step 6 pr-reviewer (§2.3.1 충족)
+    - `/product-plan` Step 3 (plan-reviewer PASS) + Step 4-5 (ux-architect READY) → Step 6 architect SYSTEM_DESIGN (§2.3.4 충족)
+- **Follow-Up**:
+  - **Task -38**: `/init-dcness` skill (enable/disable 부트스트랩)
+  - **Task -39**: `/ux` skill (designer + design-critic THREE_WAY)
+  - **manual smoke**: 실 `claude` 에서 `/quick`, `/product-plan` 발화 → 전체 흐름 검증
+  - **architect TASK_DECOMPOSE 의 impl batch 자동 처리** — v2 follow-up
+  - **회귀 위험**: skill prompt 가 helper CLI 시그니처에 묶임. `harness/session_state.py` CLI 변경 시 3개 skill 모두 동기화 필요. governance §2.6 docs-only sync 가 catch.
+
 ### DCN-CHG-20260429-36
 - **Date**: 2026-04-29
 - **Rationale**:
