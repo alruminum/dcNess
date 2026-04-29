@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260430-09
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `README.md` — skill 표 7 → 8 (efficiency 추가). 행동형 / 읽기형 분류 명시.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: README skill 표 efficiency 추가 + 행동형 (yolo/worktree 적용) vs 읽기형 (read-only 분석) 분류 명시.
+- **Document-Exception**: 없음 (docs-only)
+
 ### DCN-CHG-20260430-08
 - **Date**: 2026-04-30
 - **Change-Type**: harness, spec, docs-only, test
