@@ -18,6 +18,55 @@
 
 ## Records
 
+### DCN-CHG-20260429-32
+- **Date**: 2026-04-29
+- **Rationale**:
+  - PR #29 (`docs/conveyor-design.md` 초안) 의 Python `run_conveyor` 모델이 실 구현 단계 (Task -31) 검토 중 본질적 결함 발견:
+    1. **Subagent 호출 격리 문제** — Python 안에서 Agent 호출 시 subprocess `claude --agent` 또는 SDK 직접 호출 필요. 메인 세션의 PreToolUse 훅 미발화 또는 다른 settings 적용. catastrophic 보호 깨짐.
+    2. **사용자 가시성 0** — Python batch 종료까지 진행 안 보임.
+    3. **메인 자율도 0** — 매 step 사이 메인 개입 불가.
+  - 대안 검토:
+    - α) 단일 라벨 결정 하이쿠 — 라벨 늘면 driver hardcode 부담
+    - β) 정적 dict 라우팅 (옵션 b 부활) — 분기 룰 코드 박힘 (§2.5 원칙 1 약화)
+    - 글로벌 ~/.claude 폴백 — 도그푸딩 가치 < 4-가드 복잡도
+    - 관문 하이쿠 별도 LLM — 해석 하이쿠 + advance_when 로 충분
+    - **Task tool + Agent + helper + 훅** ← 채택
+  - 추가 발견 — 멀티세션 정합:
+    - `.session-id` / `.current-run-id` 단일 pointer = 동시 두 세션 띄우면 덮어쓰기 충돌
+    - env `DCNESS_RUN_ID` 전파 = Bash subprocess 휘발성 (메인 다음 호출 시 사라짐)
+    - 해결 = sid 별 디렉토리 격리 + by-pid 레지스트리 (`{cc_pid}` → sid/rid 매핑)
+- **Alternatives**:
+  1. *PR #29 그대로 머지하고 v1 design 으로 구현* — PreToolUse 훅 우회, 멀티세션 충돌 등 본질적 결함 그대로. 기각.
+  2. *PR #29 force-push 갈아엎기* — 리뷰 어려움. 기각.
+  3. *(채택)* **별도 PR (DCN-CHG-20260429-32) 로 conveyor-design.md rewrite + governance retraction notice** — 머지 이력 보존 + 전환 사유 명시.
+- **Decision**:
+  - 옵션 3. 동일 파일 (`docs/conveyor-design.md`) 의 12 절 내용 대폭 갱신:
+    - §0.4 신규 — Task tool 패턴 채택 이유
+    - §1 등장인물 — Python 컨베이어 폐기, helper module + 훅 명시
+    - §2 흐름 — Task lifecycle mermaid (TaskCreate → Update → Agent → end-step → Update)
+    - §3 데이터 모델 — Step (참고용), helper 호출 인터페이스 (Bash subcommand)
+    - §4 멀티세션 — by-pid 레지스트리, env 폐기 사유, PID 재사용 보호
+    - §5 디렉토리 — `.by-pid/` `.by-pid-current-run/` 추가
+    - §6 live.json — 그대로 (이미 OMC active_runs 패턴)
+    - §7 훅 — SessionStart + PreToolUse Agent 명시
+    - §8 catastrophic — pseudo-bash 풀 코드 박음
+    - §11 폐기 — PR #28 + v1 (Python 컨베이어) + 토론 검토 옵션 모두 명시
+  - **멀티세션 정합 핵심**:
+    - 모든 자원 sid 별 격리 (`.sessions/{sid}/`)
+    - by-pid 레지스트리 (`.by-pid/{cc_pid}` → sid, `.by-pid-current-run/{cc_pid}` → rid)
+    - 훅은 stdin payload sid 사용, helper 는 PPID 로 by-pid lookup
+    - PID 재사용 보호 = TTL + (선택) 시작 timestamp hash
+  - **HARNESS_ONLY_AGENTS 강제 mechanism**:
+    - PreToolUse Agent 훅이 by-pid-current-run 검사
+    - 없으면 engineer / validator-PLAN/CODE/BUGFIX_VALIDATION 차단
+    - "메인이 컨베이어 protocol 안 따르고 Agent 직접 호출" 시나리오 자동 차단
+- **Follow-Up**:
+  - **Task -33**: `harness/session_state.py` 확장 — by-pid 함수 (`write_pid_session/read_session_by_pid/...`) + CLI argparse subcommand (`init-session/begin-run/end-run/begin-step/end-step`). 기존 49 테스트 + 추가 ~20.
+  - **Task -34**: `hooks/session-start.sh` + `hooks/catastrophic-gate.sh` 신규. `.claude/settings.json` 템플릿 갱신 (plugin 활성 시 hook 자동 등록 패턴). shell test 또는 python pytest 로 회귀.
+  - **Task 후속**: `signal_io.write_prose` 의 atomic write 강화 (현재 `os.replace` → `session_state.atomic_write`).
+  - **plugin Phase follow-up**: skill prompt 템플릿 갱신 (`/quick` 등이 helper protocol 박음), `agents/orchestrator.md` PM 도입 검토.
+  - **회귀 위험**: 본 spec 박힌 후 Task -33/-34 가 spec 어긋나면 재PR. PR review 시 conveyor-design.md 정합 확인 필수.
+
 ### DCN-CHG-20260429-30
 - **Date**: 2026-04-29
 - **Rationale**:
