@@ -60,9 +60,13 @@ node scripts/check_document_sync.mjs
 
 # git hook 설치 (clone 후 1회)
 cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+# 하네스 단위 테스트 실행
+python3 -m unittest discover -s tests -v
+python3 -m unittest tests.test_state_io -v   # 단일 모듈
 ```
 
-> 빌드 / 테스트 / 런타임 명령어는 코드 도입 시 본 섹션에 추가 (별도 Task-ID).
+> 빌드 / 런타임 명령어는 코드 도입 시 본 섹션에 추가 (별도 Task-ID).
 
 ## 5. 커밋 / PR 절차
 
