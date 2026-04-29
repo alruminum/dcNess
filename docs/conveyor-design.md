@@ -574,10 +574,106 @@ def atomic_write(target: Path, content: bytes, *, mode: int = 0o600) -> None:
 - `harness/signal_io.py` — interpret_signal 단일 호출
 - `harness/interpret_strategy.py` — heuristic-first + LLM-fallback
 - `harness/llm_interpreter.py` — Anthropic haiku interpreter
-- `harness/session_state.py` — sid/rid 관리, atomic write, live.json (`DCN-CHG-20260429-30` 머지)
+- `harness/session_state.py` — sid/rid 관리, atomic write, live.json (`DCN-CHG-20260429-30` 머지). `_default_base()` γ 설계 (`DCN-CHG-20260429-39`) — main repo state root 단일 source.
 - `agents/*.md` — 13 agent prose writing guide
 
-### 12.3 향후 작업 (별도 Task-ID)
+## 13. Worktree 격리 패턴 (옵션 C — keyword 트리거)
+
+> 멀티세션 기본값을 한 단계 더 — git worktree 로 src/ 차원 격리. v1 = 사용자 명시 트리거만.
+
+### 13.1 동기
+
+§4 의 by-pid 레지스트리 + `.sessions/{sid}/runs/{rid}/` 격리 = *상태/prose* 차원만 분리. src/
+파일 차원에선 여전히 main repo cwd 공유. 두 세션이 동시에 같은 파일 수정 → working tree 충돌.
+
+`EnterWorktree` 가 제공하는 git worktree 격리를 결합하면:
+- 각 worktree = 자기 branch + 독립 working tree
+- 동시 다중 `/quick` / `/product-plan` (백그라운드 작업 자연)
+- commit 격리 (A 의 staging 이 B 침범 0)
+- PR 흐름 자연 (worktree branch → PR → merge → ExitWorktree(remove))
+
+### 13.2 옵션 검토 + 채택
+
+| 옵션 | 동작 | 채택 |
+|---|---|---|
+| A. 매번 자동 | skill Step 0 무조건 EnterWorktree | ❌ EnterWorktree 룰 회색지대 |
+| B. 사용자 1회 확인 | "worktree 격리?" 묻기 | ❌ round-trip 1회 추가 |
+| **C. 명시 keyword** | "worktree" / "wt" / "격리" / "isolate" 발화 시만 | **✅ v1** |
+| D. 디폴트 + opt-out | 디폴트 진입, `--no-worktree` 시만 main | ❌ 단발 작업 90% 에 과한 격리 |
+
+C 채택 이유:
+1. 점진 도입 — v1 사용 데이터 측정 후 v2 디폴트 마이그레이션 가능
+2. EnterWorktree 룰 정합 — "explicit user instruction" 명시 충족
+3. 단발 작업 friction 0 — keyword 없으면 main repo cwd 그대로
+4. 누적/cleanup 룰 부담 ↓ — 사용자가 의도적으로 만든 worktree 만 존재
+
+D 폐기 4 이유:
+- 단발/단일 세션 (대다수) 에 과한 격리
+- cwd 변경 surprise — main repo 작업 → 갑자기 worktree
+- worktree 누적 → cleanup 자동 결정 룰 위험 (in-progress 유실)
+- 세션 종료 시 매번 keep/remove 모달 prompt
+
+### 13.3 sid 단일 source — `_default_base()` γ 설계
+
+worktree 진입 시 cwd = `.claude/worktrees/{name}/`. 이 cwd 의 `.claude/harness-state/` 는
+빈 디렉토리. SessionStart 훅이 main repo 에서 박은 by-pid / live.json 을 worktree 안 helper
+가 못 보면 catastrophic 미동작.
+
+해법: `harness/session_state.py` 의 `_default_base()` 가 `git rev-parse --git-common-dir` 로
+main repo `.git` 추출 → parent = main repo root → main repo `.claude/harness-state/` 가 단일
+source.
+
+```python
+def _resolve_state_root_for_cwd(cwd_str: str) -> Path:
+    # git rev-parse --git-common-dir
+    # 1. main repo cwd     → ".git" (상대) → cwd
+    # 2. worktree cwd      → "/abs/path/main/.git" (절대) → main repo
+    # 3. git 미사용/실패  → cwd 폴백 (legacy 동작)
+    ...
+```
+
+cwd 별 캐시 (`_DEFAULT_BASE_CACHE`) — subprocess 호출 1회/cwd.
+
+특성:
+- main repo 안 호출 → 동작 변화 0 (`.git` 상대경로 → cwd 그대로)
+- worktree 안 호출 → main repo `.claude/harness-state/` 가 base
+- git 미설치 / 리포 아닌 경로 → cwd 폴백 (기존 동작 보존, 도그푸딩 호환)
+
+테스트 (`tests.test_session_state.DefaultBaseWorktreeTests` 5개):
+- `test_resolves_to_main_repo_in_plain_repo` — 일반 repo
+- `test_resolves_to_main_repo_from_worktree` — worktree
+- `test_falls_back_to_cwd_outside_git` — 비-git
+- `test_cache_returns_same_path_for_same_cwd` — 캐시 멱등
+- `test_pid_session_consistent_main_and_worktree` — main 에서 write → worktree 에서 read
+
+### 13.4 skill protocol 정합
+
+`commands/quick.md` / `commands/product-plan.md` 에 Step 0a 추가:
+
+1. 사용자 발화 keyword 체크 (`worktree` / `wt` / `격리` / `isolate`)
+2. keyword 없음 → Step 0a skip → 기존 흐름 (main repo)
+3. keyword 있음 → `EnterWorktree(name="quick-{ts_short}")` → cwd 변경 → 사용자 알림 1줄
+
+종료 시 (Step 7 / 8) 사용자 결정:
+- `keep` — worktree 보존 (이어서 작업 또는 PR 대기)
+- `remove` — worktree + branch 삭제 (PR merged 후 정리, uncommitted 시 `discard_changes=true`)
+
+자동 결정 금지 — 사용자 in-progress 작업 유실 위험.
+
+### 13.5 EnterWorktree 룰 정합
+
+EnterWorktree 스펙: "explicit instruction (user 또는 CLAUDE.md/memory)". skill prompt 안의
+"사용자 발화 keyword 시만" 룰 = 사용자 explicit instruction 응답이라 정합. 자동 진입 (A/D 옵션) 은
+skill prompt 자체가 instruction 역할인지 회색지대 → C 만 안전.
+
+### 13.6 미해결 / 후속
+
+- **commands/qa.md 미적용** — qa 는 src/ 수정 안 함 → worktree 무관. skip.
+- **자동 cleanup 룰** — 24h 보관 후 ExitWorktree(remove) 자동 후보. v2 검토.
+- **PR merge 감지 자동화** — `gh pr merge` 후 ExitWorktree(remove) 자동. v2 검토.
+- **v2 마이그레이션** — 사용자 데이터 측정 후 D 디폴트 검토 (별도 Task).
+
+### 13.7 향후 작업 (별도 Task-ID, 옛 §12.3)
 
 - `harness/session_state.py` 확장 — by-pid 레지스트리 함수 + CLI subcommands (`init-session/begin-run/end-run/begin-step/end-step`)
 - `hooks/session-start.sh` 신규

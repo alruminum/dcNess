@@ -90,8 +90,60 @@ _PPID_LOOKUP_TIMEOUT_SEC = 2.0
 # ── 경로 유틸 ───────────────────────────────────────────────────────
 
 
+_DEFAULT_BASE_CACHE: Dict[str, Path] = {}
+
+
+def _resolve_state_root_for_cwd(cwd_str: str) -> Path:
+    """git rev-parse --git-common-dir 으로 main repo 의 state root 해석.
+
+    worktree 진입 (cwd = `.claude/worktrees/{name}/`) 후에도 `git rev-parse
+    --git-common-dir` 은 main repo `.git` 를 가리킨다 (git 표준). 그래서 main repo
+    의 `.claude/harness-state/` 가 단일 source 가 됨 → SessionStart 훅이 main
+    repo 에서 박은 by-pid / live.json 을 worktree 안 helper 도 그대로 본다.
+
+    git 미설치 / git 리포 아님 / subprocess 실패 → cwd 폴백 (legacy 동작).
+    cwd 별 캐시 (subprocess 반복 호출 회피).
+    """
+    if cwd_str in _DEFAULT_BASE_CACHE:
+        return _DEFAULT_BASE_CACHE[cwd_str]
+    cwd = Path(cwd_str)
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=cwd_str,
+            timeout=_PPID_LOOKUP_TIMEOUT_SEC,
+        )
+        common_str = result.stdout.strip()
+        if common_str:
+            common_path = Path(common_str)
+            if not common_path.is_absolute():
+                common_path = cwd / common_path
+            main_root = common_path.parent.resolve()
+            base = main_root / ".claude" / "harness-state"
+            _DEFAULT_BASE_CACHE[cwd_str] = base
+            return base
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+        OSError,
+    ):
+        pass
+    base = cwd / ".claude" / "harness-state"
+    _DEFAULT_BASE_CACHE[cwd_str] = base
+    return base
+
+
+def _clear_default_base_cache() -> None:
+    """테스트 보조 — _DEFAULT_BASE_CACHE 무력화."""
+    _DEFAULT_BASE_CACHE.clear()
+
+
 def _default_base() -> Path:
-    return Path.cwd() / ".claude" / "harness-state"
+    return _resolve_state_root_for_cwd(str(Path.cwd().resolve()))
 
 
 def _resolve_base(base_dir: Optional[Path]) -> Path:

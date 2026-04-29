@@ -20,6 +20,21 @@
 
 ## Records
 
+### DCN-CHG-20260429-39
+- **Date**: 2026-04-29
+- **Change-Type**: harness, spec, docs-only
+- **Files Changed**:
+  - `harness/session_state.py` — `_default_base()` γ 설계: `git rev-parse --git-common-dir` 으로 main repo `.claude/harness-state/` 를 단일 source 로 해석. cwd 별 캐시 (`_DEFAULT_BASE_CACHE`) + `_clear_default_base_cache()` 테스트 보조. 기존 cwd 폴백 보존 (비-git 환경).
+  - `tests/test_session_state.py` — `DefaultBaseWorktreeTests` 5 케이스 추가 (plain repo / worktree / 비-git / 캐시 멱등 / by-pid cross-cwd 일관성).
+  - `commands/quick.md` — Step 0a (worktree keyword 트리거) 추가, Step 0 → Step 0b 재명, Step 7 에 ExitWorktree 옵션.
+  - `commands/product-plan.md` — 동일 패턴 (Step 0a + Step 8 ExitWorktree 옵션).
+  - `docs/conveyor-design.md` — §13 Worktree 격리 패턴 신규 (옵션 검토 표 + γ 설계 + skill protocol 정합 + EnterWorktree 룰 정합 + 후속). §12.3 → §13.7 재번호.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Worktree 격리 옵션 C (keyword 트리거) 도입. `EnterWorktree` 호출 후 cwd 가 `.claude/worktrees/{name}/` 으로 변경돼도 helper 가 main repo `.claude/harness-state/` 를 단일 source 로 보도록 `_default_base()` 를 γ 설계 (git rev-parse --git-common-dir 기반) 로 변경. SessionStart 훅이 박은 by-pid / live.json 을 worktree 안 helper 가 그대로 사용 → catastrophic 정합 보존. `/quick` `/product-plan` skill 에 keyword 트리거 (Step 0a) + ExitWorktree 옵션 (종료 step) 추가. `/qa` 는 src/ 미수정이라 미적용.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260429-38
 - **Date**: 2026-04-29
 - **Change-Type**: docs-only
