@@ -100,6 +100,27 @@ Document-Exception-Task: DCN-CHG-YYYYMMDD-NN
 
 CI 레벨(`.github/workflows/document-sync.yml`)은 별도 Task-ID 로 추가.
 
+### 2.8 Branch Protection (LGTM 게이트 외부화)
+
+`main` 브랜치는 GitHub Repository Settings 의 branch protection 으로 다음을 강제한다 (proposal §5 Phase 3 — `Gate 5 (LGTM flag) → branch protection required reviewers`):
+
+| 항목 | 설정 |
+|---|---|
+| Required pull request reviews | `1` approving review (LGTM 게이트 외부화) |
+| Dismiss stale reviews | ✅ — 신규 commit push 시 기존 approval 자동 무효화 |
+| Required status checks | `Document Sync gate`, `unittest discover`, `validate manifest`, `Task-ID format gate` (4 게이트 모두 PASS) |
+| Strict (up-to-date) | ✅ — base 와 sync 안 된 PR 머지 차단 |
+| Required conversation resolution | ✅ |
+| Required linear history | ✅ — squash merge 전제 |
+| Allow force pushes | ❌ |
+| Allow deletions | ❌ |
+
+**적용**: [`branch-protection-setup.md`](branch-protection-setup.md) §1 자동 적용 (`scripts/setup_branch_protection.mjs`) 또는 §2 GitHub UI 수동.
+
+**근거**: dcNess 는 RWHarness 의 `class Flag` 기반 in-process LGTM flag 를 *자연 폐기* (migration-decisions §2.2 DISCARD). LGTM 의 의미적 강제는 GitHub branch protection 으로 *외부* 에서 동일 기능 제공 → proposal §11 4-pillar #2 (CI/CD 게이트) 정합.
+
+**CI 게이트 추가/제거 시**: `setup_branch_protection.mjs` 의 `REQUIRED_CHECKS` 와 본 §2.8 표 동시 갱신. 워크플로우 `jobs.<id>.name` 과 protection rule status check 이름이 *문자열 일치* 필수.
+
 ## 3. 참조 파일
 
 이하 파일들은 본 SSOT 의 *적용 도구* 다. 규칙 재기술 금지.
@@ -109,7 +130,10 @@ CI 레벨(`.github/workflows/document-sync.yml`)은 별도 Task-ID 로 추가.
 | `docs/process/document_update_record.md` | WHAT 로그(작업별 변경 파일·요약) |
 | `docs/process/change_rationale_history.md` | WHY 로그(작업별 동기·대안·결정·후속) |
 | `docs/process/document_impact_matrix.md` | 변경 → 검토 문서 매핑 빠른 참조표 |
+| `docs/process/branch-protection-setup.md` | §2.8 적용 가이드 (자동 + 수동 + 검증) |
 | `scripts/check_document_sync.mjs` | CI 게이트 구현 |
+| `scripts/check_task_id.mjs` | Task-ID 형식 검증 게이트 (§2.1 강제) |
+| `scripts/setup_branch_protection.mjs` | branch protection 적용 스크립트 (§2.8) |
 | `scripts/hooks/pre-commit` | git pre-commit hook |
 | `scripts/hooks/cc-pre-commit.sh` | Claude Code PreToolUse hook |
 | `.claude/settings.json` | Claude Code 설정(PreToolUse 등록) |

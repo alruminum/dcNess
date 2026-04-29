@@ -20,7 +20,19 @@
 
 ## Records
 
-### DCN-CHG-20260429-20
+### DCN-CHG-20260429-21
+- **Date**: 2026-04-29
+- **Change-Type**: ci, agent, docs-only
+- **Files Changed**:
+  - `scripts/setup_branch_protection.mjs` (신규 — branch protection 멱등 적용 스크립트, dry-run 지원)
+  - `docs/process/branch-protection-setup.md` (신규 — 자동/수동 적용 + 검증 + 회귀 시나리오 가이드)
+  - `docs/process/governance.md` (§2.8 신설 — branch protection 룰 정의 + §3 참조 표 갱신)
+  - `CLAUDE.md` (§3 docs map 에 신규 3 파일 추가)
+  - `PROGRESS.md` (Phase 3 iter 2 완료 표시)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 3 iter 2 — main 브랜치 보호 적용 스크립트 + 가이드 + governance §2.8 신설. proposal §5 Phase 3 "Gate 5 (LGTM flag) → branch protection required reviewers" 외부화. 4 status checks(`Document Sync gate`, `unittest discover`, `validate manifest`, `Task-ID format gate`) + 1 approving review + force-push/삭제 차단 + linear history. 스크립트는 admin 권한 필요(403 시 수동 가이드 fallback).
+- **Document-Exception**: 없음 (deliverable 동반 의무 ci/agent 카테고리 모두 N/A — agent 는 agents/ 변경 없음, 본 변경은 CLAUDE.md cross-link 만)
 - **Date**: 2026-04-29
 - **Change-Type**: ci
 - **Files Changed**:
