@@ -18,6 +18,32 @@
 
 ## Records
 
+### DCN-CHG-20260429-20
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Phase 2 종결(13 agent docs prose-only) 직후 Phase 3 진입. proposal §5 Phase 3 = "GitHub 외부화 + Sweep". RWHarness 의 commit-gate Gate 1/4/5 → GitHub Actions.
+  - dcNess 는 commit-gate.py 자체를 도입하지 않음 (migration-decisions §2.2 DISCARD) → 자연 외부화 상태. Gate 4(doc-sync) 는 이미 `.github/workflows/document-sync.yml` 로 외부화 완료 (`DCN-CHG-20260429-08`).
+  - 남은 즉시 가능 항목 = **Task-ID 형식 검증**. governance §2.1 의 `DCN-CHG-YYYYMMDD-NN` 룰은 PR template + AGENTS.md 에 *문서화* 만 돼 있고 *기계적 강제* 가 없었다. PR #1~#19 19개 모두 수동 준수했지만, 외부 에이전트(Codex 등) 또는 미래 자동 PR 시 누락 위험.
+  - 분류 우선순위: Task-ID 누락은 다른 모든 거버넌스 룰(record/rationale/PROGRESS 동반)의 *anchor* — 누락 시 두 로그가 묶일 anchor 자체가 없음. 따라서 Phase 3 first-class 항목.
+- **Alternatives**:
+  1. *PR template 강조 + 수동 검증* — 현재 상태. 외부 에이전트/자동 PR 누락 위험. 기각.
+  2. *commit-msg git hook 으로 로컬 차단* — 로컬 우회(`--no-verify`) 가능. proposal §11 4-pillar #2 정합 안 함. CI 게이트가 본질. 단 *추가* 옵션으로 도입 가능 — 본 Task 에선 CI 만 도입, 로컬 hook 은 후속.
+  3. *(채택)* **CI 워크플로우 + 로컬 스크립트 듀얼 모드**. 로컬은 수동 호출(`node scripts/check_task_id.mjs`), CI 는 PR/push 자동. PR title 검증도 부가.
+  4. *PR template-only 검증* — title 만 검사. body 안 Task-ID 누락 가능. commit 별 검사가 정확. 기각.
+- **Decision**:
+  - 옵션 3. CI(필수) + 로컬 스크립트(선택). PR title 추가 검증.
+  - **머지 커밋 면제**: 2개+ parent 커밋은 squash merge 합본 등 자동 생성 메시지 케이스. 이미 squash 된 commit subject 안에 Task-ID 가 있으므로 머지 합본 검사 면제는 안전.
+  - **다중 Task-ID 차단**: governance §2.1 "단 하나의 Task-ID" 명문 — `unique.length > 1` 도 FAIL. PR 한번에 두 Task 를 합치는 패턴 차단.
+  - **Document-Exception-Task 자연 인정**: 같은 정규식이라 별도 처리 불필요.
+  - **proposal §2.5 원칙 정합**: (원칙 1) 기존 룰(governance §2.1) 강제 *정밀화* — 신규 룰 추가 X. (원칙 2) catastrophic 차단(Task-ID 0 = anchor 부재 = governance 시스템 무효화). 강제(deny) 정당화.
+- **Follow-Up**:
+  - **iter 2 (Phase 3)**: 브랜치 보호 룰 + LGTM 게이트 — `gh api` CLI 또는 README 운영 가이드 추가 (proposal §5 Phase 3 "Gate 5 → branch protection required reviewers").
+  - **iter 3**: Anthropic SDK haiku interpreter 통합 — `harness/signal_io.py` 의 `interpret_signal(..., interpreter=)` swap point 채움. proposal §3 비용 측정 ($0.001/cycle).
+  - **iter 4**: ambiguous prose 카탈로그 + 휴리스틱 hit rate 측정 (proposal R1 / R8).
+  - **iter 5**: Phase 3 종결 + plugin 배포 dry-run 가이드 정리.
+  - **(별도 Task)** 로컬 git commit-msg hook (`scripts/hooks/commit-msg`) 추가 가능 — opt-in. 사용자가 `.git/hooks/commit-msg` 설치하면 push 전 차단.
+  - **(측정)** 본 게이트 도입 후 1주 내 false-positive 빈도 측정. 0 이면 안정. > 0 이면 정규식 정정.
+
 ### DCN-CHG-20260429-19
 - **Date**: 2026-04-29
 - **Rationale**:

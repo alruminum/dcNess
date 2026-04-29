@@ -62,10 +62,20 @@
   - [x] **iter 4 완료** (DCN-CHG-20260429-18): `agents/designer.md` (4 모드 inline) + `agents/design-critic.md`
   - [x] **iter 5 완료** (DCN-CHG-20260429-19): `agents/ux-architect.md` + `agents/product-planner.md` — Phase 2 13 agents 종결 🎉
 
-### Phase 3 — Plugin 배포 dry-run (선택)
+### Phase 3 — GitHub 외부화 + Sweep (진행 중)
+
+> proposal §5 Phase 3 정합 — RWHarness `commit-gate.py` Gate 1/4/5 → GitHub Actions 외부화.
+> dcNess 는 commit-gate.py 미도입(migration-decisions §2.2 DISCARD)이라 *자연 외부화* — 신규 워크플로우만 추가.
+
+- [x] **iter 1 완료** (DCN-CHG-20260429-20): Task-ID 형식 검증 워크플로 + 스크립트 — `scripts/check_task_id.mjs` + `.github/workflows/task-id-validation.yml`. 모든 비-머지 커밋이 `DCN-CHG-YYYYMMDD-NN` 토큰 정확히 1개 포함하는지 PR/push 단위로 차단. PR title 도 동시 검증. 머지 커밋 면제(squash 합본). proposal §11 4-pillar #2 (CI 최후 차단) 정합.
+- [ ] iter 2 후보 — 브랜치 보호 룰 + LGTM 게이트 문서화 (proposal §5 Phase 3 "Gate 5 → branch protection required reviewers")
+- [ ] iter 3 후보 — Anthropic SDK haiku interpreter 통합 (`interpret_signal(..., interpreter=anthropic_haiku_call)` swap point 채움)
+- [ ] iter 4 후보 — ambiguous prose 카탈로그 + 휴리스틱 hit rate 측정 스크립트
+- [ ] iter 5 후보 — Phase 3 종결 + plugin 배포 dry-run 가이드 정리
+
+### Phase 3 (확장) — Plugin 배포 dry-run (선택)
 - [ ] RWHarness 와 공존 시나리오 검증 (proposal §12.3.2)
 - [ ] 1 프로젝트 1 cycle 도그푸딩
-- [ ] 휴리스틱 interpreter hit rate 측정 (단어경계 매칭 vs ambiguous 빈도)
 
 ### 인프라 / CI 보강
 - [ ] branch protection 룰 추가 (사용자 수동, GitHub Settings)
