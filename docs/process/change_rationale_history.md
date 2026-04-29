@@ -94,3 +94,28 @@
   - **(다음 Task-ID)** `agents/validator*.md` 복사 + `@OUTPUT_FILE/SCHEMA/RULE` 변환. plugin manifest 의 hook/agent 매핑 추가.
   - **(별도 Task)** `claude plugin validate .claude-plugin/` 자동 실행 CI workflow — plugin manifest 형식 검증.
   - **측정**: plugin 설치/제거 1회 dry-run 후 RWHarness 와 충돌 0 검증 (proposal §12.3.2). 단 plugin 매니저 실측은 후속 — 현 Task 는 manifest 정의 단독.
+
+### DCN-CHG-20260429-06
+- **Date**: 2026-04-29
+- **Rationale**:
+  - `status-json-mutate-pattern.md` Phase 1 acceptance 의 핵심 항목: "agent/validator*.md 의 @OUTPUT_FILE / @OUTPUT_SCHEMA / @OUTPUT_RULE 형식 변환". 단 1번 모듈(state_io.py) 만 있어선 *agent 가 status JSON 을 어떤 schema 로 박을지* 명세 없음 — agent docs 형식 정의가 다음 단계.
+  - RWHarness 의 `agents/validator*.md` 6개(마스터 + 5 모드)는 `---MARKER:X---` 텍스트 컨벤션 + `preamble.md` 자동 주입 + `agent-config/validator.md` 별 layer 의존 — proposal §2.5 원칙 1(룰 순감소) 위반 누적 구조.
+  - 변환 *대상*: validator 단일 agent (Phase 1 sub 1.1 mechanism). 다른 12 agent 는 Phase 2.
+- **Alternatives**:
+  1. *RWHarness 파일 그대로 복사 + 마지막 줄만 status JSON 으로 교체* — preamble/agent-config 의존 잔존. 다음 변환 부담 누적. 기각.
+  2. *마스터 1개만 변환하고 sub-doc 5개는 후속 Task* — 마스터의 @OUTPUT_FILE/SCHEMA 가 sub-doc 의 schema 와 정합 필요. 분리 시 일관성 위험. 기각.
+  3. *(채택)* **마스터 + 5 sub-doc 동시 변환, preamble/agent-config 의존 제거**: validator agent 단위가 *원자 단위* — 마스터의 @OUTPUT 매트릭스 + sub-doc 의 모드별 schema 가 한 번에 정합. RWHarness 의 체크리스트 내용은 보존(검증 가치는 그대로), 출력 부분만 status JSON Write 로 교체.
+- **Decision**:
+  - 옵션 3 채택. 6개 파일 신규.
+  - **schema 설계**: `status` (mode-specific enum) + `fail_items` (FAIL 시 필수) + `next_actions` (handoff, optional) + `non_obvious_patterns` (자율 영역, optional) + 모드별 추가 필드(spec_missing / save_path / metrics).
+  - **proposal §2.5 원칙 3 (자율성 최대화) 정합**: required 키는 `status` + (FAIL 시) `fail_items` 만. 나머지 freeform — agent 가 자유롭게 채우거나 비우기 가능.
+  - **mode-specific status enum**: `state_io.read_status` 의 `allowed_status` 매개변수와 정합. caller 측이 enum 강제. 기존 `MARKER_ALIASES` (PLAN_LGTM / OK / APPROVE 변형 흡수) 폴백은 *agent docs 가 정확한 enum 만 emit 강제* 로 대체.
+  - **`tools` 변경**: `Read, Glob, Grep` → `Read, Glob, Grep, Write`. status JSON Write 만 허용 — 다른 path Write 는 향후 hook (agent-boundary ALLOW_MATRIX) 에서 차단 (proposal §4.2 R1 layer 2). 본 Task 에선 *agent docs 형식만* 정의, hook 강제는 후속.
+  - **preamble.md 의존 제거**: 공통 규칙 (읽기 전용 / Bash 금지 / 단일 책임 / 증거 기반 / 추측 금지) 을 본 마스터 문서 안에 직접 박음. proposal §5 Phase 1.3 (점진 공개) 정합.
+  - **agent-config 의존 제거**: 프로젝트별 컨텍스트는 호출 측 prompt 가 명시. 별 layer 폐기 (proposal §11.4 — agent-config DISCARD).
+- **Follow-Up**:
+  - **(다음 Task-ID)** `tests/test_validator_schemas.py` — 5 모드의 status JSON 예시가 `state_io.read_status(allowed_status={...})` 와 round-trip 통과하는지 검증. agent docs 의 schema 정합성 자동 검증.
+  - **(별도 Task)** Phase 2 — 다른 12 agent docs (architect 7 모드, engineer, designer 4 모드, design-critic, qa, ux-architect, product-planner, plan-reviewer, pr-reviewer, security-reviewer, test-engineer) 변환. 본 Task 의 형식이 template.
+  - **(별도 Task)** plugin 배포 시 hook 도입 — agent-boundary ALLOW_MATRIX 에 validator status path regex 추가. 현재 dcNess 자체엔 hook 미도입 (proposal §11.4).
+  - **측정**: validator 호출 시 alias hit (옛 LGTM/OK/APPROVE) 0건. 실제 호출 데이터 누적 (`.claude/harness-state/.metrics/`) 후 측정.
+- **Document-Exception**: agent 카테고리(heavy)지만 코드/CI 변경 없음 → PROGRESS 미해당. 거버넌스 §2.6 룰상 PROGRESS 는 harness/hooks/ci 만 강제이므로 본 변경엔 미적용. 단 후속 갱신 시 본 Task ID 도 명시.

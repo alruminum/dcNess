@@ -71,6 +71,20 @@
 - **Summary**: `status-json-mutate-pattern.md` §11.2 framework 적용 — RWHarness 의 `harness/` / `hooks/` / `agents/` / `scripts/` / `orchestration/` / `.claude-plugin/` 모듈을 PRESERVE / DISCARD / REFACTOR 로 분류. dcNess 메인 작업 모드(§11.4) 정합으로 hook/impl_loop 류는 자연 폐기, agent docs 변환 + state_io.py 만 net-new.
 - **Document-Exception**: 본 변경은 분류 *결정 기록* 이라 추가 deliverable 부재. heavy 카테고리 미해당 — `docs-only` 단독.
 
+### DCN-CHG-20260429-06
+- **Date**: 2026-04-29
+- **Change-Type**: agent
+- **Files Changed**:
+  - `agents/validator.md` (신규 — 마스터 + 5 모드 인덱스)
+  - `agents/validator/plan-validation.md` (신규)
+  - `agents/validator/code-validation.md` (신규)
+  - `agents/validator/design-validation.md` (신규)
+  - `agents/validator/bugfix-validation.md` (신규)
+  - `agents/validator/ux-validation.md` (신규)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: validator agent docs 6개 신규 — RWHarness 의 `agents/validator*.md` 를 status JSON Write 형식으로 변환. `@OUTPUT_FILE` / `@OUTPUT_SCHEMA` / `@OUTPUT_RULE` 컨벤션 채택. `---MARKER:X---` 텍스트 컨벤션 + preamble.md 자동 주입 의존 + agent-config 별 layer 모두 폐기.
+
 ### DCN-CHG-20260429-04
 - **Date**: 2026-04-29
 - **Change-Type**: agent, ci, docs-only
