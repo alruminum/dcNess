@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260430-10
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/process/manual-smoke-guide.md` (신규) — plugin 재설치 절차 + 8 skill 별 발화 prompt + 기대 동작 + 검증 체크리스트 + 트러블슈팅 + 보고 양식.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 manual smoke 효율 ↑ 위해 가이드 문서. 8 skill (init-dcness / qa / quick / quick worktree / quick yolo / product-plan / impl / impl-loop / smart-compact / efficiency) 별 발화 prompt + 기대 동작 + 검증 포인트. dcTest 가 smoke target. plugin 재설치 절차 + 트러블슈팅 + 보고 양식 표준화. 코드 변경 0.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-09
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only
