@@ -18,6 +18,40 @@
 
 ## Records
 
+### DCN-CHG-20260429-22
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Phase 3 iter 3. `harness/signal_io.py` (DCN-CHG-20260429-13) 의 `interpret_signal(..., interpreter=)` 는 휴리스틱 fallback 만 가능했음. 프로덕션 swap 함수가 부재 → proposal §3 의 "메타 LLM (haiku) 1 호출" 메커니즘이 비어있는 상태.
+  - migration-decisions §3 의 "메타 LLM (haiku) interpreter 통합" TODO 와 PROGRESS.md Phase 2 미완 항목 정합. Phase 3 의 외부화 + sweep 의 일환.
+  - 휴리스틱이 ambiguous (단어경계 0 hit / 다중 hit) 일 때만 LLM 호출 = 비용 minimization (proposal §3 cycle 당 $0.001 미만 목표).
+- **Alternatives**:
+  1. *signal_io.py 안에 직접 SDK import* — anthropic 패키지 미설치 환경 (CI / 외부 컨트리뷰터) 에서 import error. 분리 모듈 + 지연 import 가 안전.
+  2. *별도 모듈 + 즉시 import* — anthropic 미설치 시 모듈 import 자체 실패. 지연 import (factory 안에서 import) 가 적절.
+  3. *(채택)* **별도 `harness/llm_interpreter.py` + factory 안 지연 import + DI client**. 테스트는 mock client 주입으로 실 API 호출 0.
+  4. *prompt caching 도입* — system prompt ~50 토큰. haiku 의 cache minimum (~1024 토큰) 미달. 매 호출 prose 다름 → cache hit 0. 손익 negative. 기각 (claude-api skill 의 trigger 정합 검토했지만 본 use case 엔 N/A).
+  5. *다중 retry / exponential backoff* — proposal §3 / R1 의 "ambiguous → 사용자 prompt" fallback. 본 Task 에선 기본 단일 호출 + ambiguous propagate 만 구현. 재시도 정책은 호출 측 결정.
+- **Decision**:
+  - 옵션 3. 분리 모듈 + factory + DI + ambiguous fallback.
+  - **모델**: `claude-haiku-4-5-20251001` (시스템 cutoff 정합, 가장 저렴 + classifier 용도 충분).
+  - **prompt 설계**:
+    - system: allowed enum + "한 단어, 대문자, UNKNOWN if 모호" 룰. 50~100 토큰.
+    - user: prose 마지막 4000 chars (~1000 tokens, proposal R2 정합).
+    - max_tokens=10 (한 단어 충분).
+  - **응답 파싱**: 첫 단어 → uppercase → 구두점 strip → allowed 매칭. 매칭 실패 = `MissingSignal('ambiguous')`. raw response 200 chars 까지 telemetry 기록 (디버깅용).
+  - **Telemetry SSOT**: `.metrics/meta-llm-calls.jsonl` (proposal R8 정합). 항목: ts/model/allowed/raw_response[:200]/parsed/input_tokens/output_tokens/cost_usd/elapsed_ms.
+  - **비용 모델**: haiku 4.5 input $1/1M, output $5/1M. 평균 호출 = 80 in + 5 out ≈ $0.000105. cycle 당 65 호출 = ~$0.007 (proposal §3 의 $0.065 추정보다 9× 저렴 — haiku 가격 인하 반영).
+  - **proposal §2.5 원칙 정합**:
+    - 원칙 1 (룰 순감소): 신규 LOC ~180 (interpreter + tests). signal_io 의 swap point 활용 — 추가 함수형 강제 0.
+    - 원칙 2 (강제 vs 권고): LLM 응답 형식은 prompt *권고* (system 안에 ALL CAPS 단일 단어 출력 룰). 형식 강제 X — 모호 시 ambiguous propagate.
+    - 원칙 3 (agent 자율성): agent prose emit 형식은 그대로 자유. interpreter 가 결론을 추출.
+- **Follow-Up**:
+  - **(검증)** ANTHROPIC_API_KEY 환경에서 실 호출 1회 — 본 Task 에선 미실시 (auto mode + secrets 정책). 운영자 수동.
+  - **iter 4 (Phase 3)**: ambiguous prose 카탈로그 + 휴리스틱 hit rate 측정 — telemetry JSONL 분석 스크립트.
+  - **iter 5 (Phase 3)**: Phase 3 종결 + plugin 배포 dry-run 가이드.
+  - **(별도 Task)** ambiguous 누적 패턴 발견 시 agent prose writing guide 정정 (proposal R1 카탈로그 → 작성 가이드 강화 사이클).
+  - **(별도 Task)** prompt caching 재검토 — agent prose 가 표준화돼 system prompt 가 ≥1024 토큰 되면 도입 가능.
+  - **(별도 Task)** 비용 폭증 시 retry/backoff/cache 정책 — 주간 cost 리포트 첫 1주 데이터 후 결정.
+
 ### DCN-CHG-20260429-21
 - **Date**: 2026-04-29
 - **Rationale**:
