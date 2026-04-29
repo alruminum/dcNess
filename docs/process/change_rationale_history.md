@@ -18,6 +18,25 @@
 
 ## Records
 
+### DCN-CHG-20260429-42
+- **Date**: 2026-04-29
+- **Rationale**:
+  - DCN-CHG-41 의 wrapper invocation 패턴 `${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper` 가 사용자 manual smoke 에서 ENOENT.
+  - 원인 1: CC slash command bash 환경엔 `CLAUDE_PLUGIN_ROOT` 미설정 → fallback 발동.
+  - 원인 2: local marketplace add 시나리오 (`claude plugin marketplace add /path/to/dcNess`) 에선 `~/.claude/plugins/marketplaces/dcness` 디렉토리 미생성 — 이 경로는 GitHub source 마켓플레이스 clone 위치라 local source 엔 미적용.
+  - 실제 install 위치 = `~/.claude/plugins/cache/{plugin}/{plugin}/{version}/` (versioned, CC 표준).
+- **Alternatives**:
+  1. *fallback 을 cache 의 specific 버전 path 로 hardcode* (`cache/dcness/dcness/0.1.0-alpha`). 버전 업그레이드마다 깨짐. 기각.
+  2. *wrapper 자체를 user PATH 에 install* (symlink to `~/.local/bin/`). install step 추가 + PATH 의존. 기각.
+  3. **(채택) fallback 을 cache glob 으로** — `$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)`. CLAUDE_PLUGIN_ROOT set 됐으면 그대로 / 미설정이면 glob 으로 versioned dir 자동 픽 / 다중 버전 시 첫 결과 (alphabetical first — 일반적으로 lowest version, 단일 버전 환경에선 무관).
+- **Decision**:
+  - 옵션 3. 4 skill 일괄 변경.
+  - **부수 발견 — uninstall 시 whitelist 소실**: `claude plugin uninstall` 이 `~/.claude/plugins/data/dcness-dcness/` 를 정리 → whitelist 소실. 매 재설치마다 `/init-dcness` 재실행 필요. init-dcness 문서에 경고 명시.
+  - **per-project 마커 미채택 (재확인)**: DCN-CHG-40 의 plugin-scoped 결정 유지. 재설치 빈도 ↓ + plugin 제거 시 자동 cleanup 가치 ↑ 트레이드오프 정합.
+- **Follow-Up**:
+  - **(별도 Task — v2)** plugin postinstall hook 으로 whitelist 보존 (Backup → Restore) 가능성 검토.
+  - **(측정)** Manual smoke 재실행 — wrapper fallback 경로 정상 동작 + /init-dcness 후 SessionStart 훅 발화 + /qa 첫 helper 호출 성공.
+
 ### DCN-CHG-20260429-41
 - **Date**: 2026-04-29
 - **Rationale**:

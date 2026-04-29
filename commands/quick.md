@@ -58,7 +58,7 @@ main repo 에서 박은 by-pid / live.json 을 worktree 안 helper 도 그대로
 ### Step 0b — run 시작 + 사용자 확인
 
 ```bash
-RUN_ID=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-run quick)
+RUN_ID=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-run quick)
 echo "[quick] run started: $RUN_ID"
 ```
 
@@ -93,7 +93,7 @@ TaskUpdate("qa: 이슈 분류", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step qa
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step qa
 ```
 
 ```
@@ -109,7 +109,7 @@ cat > /tmp/dcness-quick-qa.md << 'PROSE_EOF'
 <agent prose>
 PROSE_EOF
 
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step qa \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step qa \
     --allowed-enums "FUNCTIONAL_BUG,CLEANUP,DESIGN_ISSUE,KNOWN_ISSUE,SCOPE_ESCALATE" \
     --prose-file /tmp/dcness-quick-qa.md)
 ```
@@ -133,7 +133,7 @@ TaskUpdate("architect: LIGHT_PLAN", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step architect LIGHT_PLAN
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step architect LIGHT_PLAN
 ```
 
 ```
@@ -145,7 +145,7 @@ Agent(
 ```
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step architect LIGHT_PLAN \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step architect LIGHT_PLAN \
     --allowed-enums "LIGHT_PLAN_READY,SPEC_GAP_FOUND,TECH_CONSTRAINT_CONFLICT" \
     --prose-file /tmp/dcness-quick-light-plan.md)
 ```
@@ -166,7 +166,7 @@ TaskUpdate("engineer: IMPL (simple)", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step engineer IMPL
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step engineer IMPL
 ```
 
 PreToolUse 훅 검사 (catastrophic-gate.sh):
@@ -183,7 +183,7 @@ Agent(
 engineer 가 src/ 수정. PreToolUse Write 훅 (있다면) 이 ALLOW path 검증.
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step engineer IMPL \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step engineer IMPL \
     --allowed-enums "IMPL_DONE,SPEC_GAP_FOUND,TESTS_FAIL,IMPLEMENTATION_ESCALATE" \
     --prose-file /tmp/dcness-quick-impl.md)
 ```
@@ -201,7 +201,7 @@ TaskUpdate("validator: BUGFIX_VALIDATION", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step validator BUGFIX_VALIDATION
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step validator BUGFIX_VALIDATION
 ```
 
 ```
@@ -213,7 +213,7 @@ Agent(
 ```
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step validator BUGFIX_VALIDATION \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step validator BUGFIX_VALIDATION \
     --allowed-enums "PASS,FAIL" \
     --prose-file /tmp/dcness-quick-bugfix.md)
 ```
@@ -227,7 +227,7 @@ TaskUpdate("pr-reviewer: 검토", in_progress)
 ```
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step pr-reviewer
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step pr-reviewer
 ```
 
 PreToolUse 훅 검사:
@@ -241,7 +241,7 @@ Agent(
 ```
 
 ```bash
-ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step pr-reviewer \
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step pr-reviewer \
     --allowed-enums "LGTM,CHANGES_REQUESTED" \
     --prose-file /tmp/dcness-quick-pr.md)
 ```
@@ -255,7 +255,7 @@ TaskUpdate("pr-reviewer: 검토", completed)
 ### Step 7 — run 종료 + commit/PR 안내
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-run
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-run
 ```
 
 사용자에게:

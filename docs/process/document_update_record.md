@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260429-42
+- **Date**: 2026-04-29
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `commands/qa.md` / `commands/quick.md` / `commands/product-plan.md` / `commands/init-dcness.md` — wrapper fallback path 변경 (`marketplaces/dcness` → cache glob `cache/dcness/dcness/*`).
+  - `commands/init-dcness.md` — "재설치 시 재실행 필수" 경고 섹션 추가.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Manual smoke 발견 — DCN-CHG-41 의 wrapper fallback path (`marketplaces/dcness`) 가 local marketplace add 시나리오에서 미존재. CLAUDE_PLUGIN_ROOT 가 slash command bash 에 미설정이라 fallback 발동 → 잘못된 경로 → ENOENT. cache glob (`~/.claude/plugins/cache/dcness/dcness/*`) 로 변경 — versioned 디렉토리 자동 픽 + local/GitHub 양쪽 install 시나리오 정합. plugin uninstall 시 data/ 디렉토리 정리되어 whitelist 소실되는 동작도 init-dcness 문서에 명시.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260429-41
 - **Date**: 2026-04-29
 - **Change-Type**: harness, docs-only
