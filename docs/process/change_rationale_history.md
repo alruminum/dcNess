@@ -18,6 +18,27 @@
 
 ## Records
 
+### DCN-CHG-20260429-16
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Phase 2 iter 2 = architect 8 docs 변환 (마스터 + 7 sub-doc). RWHarness 의 architect 는 가장 큰 mode set (7 modes: SYSTEM_DESIGN, MODULE_PLAN, SPEC_GAP, TASK_DECOMPOSE, TECH_EPIC, LIGHT_PLAN, DOCS_SYNC) 이라 한 묶음으로 처리하는 게 일관성 측면 효율적.
+  - architect 는 *Write* 도구 보유 + GitHub MCP / Pencil MCP 도구 → tools 라인 보존이 중요. RWHarness 원본의 도구 목록 그대로 복사.
+  - 자기규율 (Outline-First) / Schema-First / NFR / impl frontmatter (depth, design) / TRD 현행화 / 듀얼 모드 가드레일 등 *정책* 부분은 모두 보존. 형식 강제(`---MARKER:X---` 텍스트 + `@OUTPUT` JSON schema) 만 폐기.
+- **Alternatives**:
+  1. *마스터만 작성하고 7 sub-doc 은 다음 iteration* — sub-doc 없이 마스터의 모드 인덱스만 있으면 incomplete. 기각.
+  2. *7 sub-doc 을 단일 architect.md 에 통합* — 670 LOC 단일 파일은 가독성 저하 + 모드별 독립 변경 어려움. RWHarness 의 분리 패턴 정합성 깨짐. 기각.
+  3. *(채택)* **마스터 + 7 sub-doc 일괄 작성**: RWHarness 디렉토리 구조 유지. 모드별 독립 evolutionary path 보존.
+- **Decision**:
+  - 옵션 3. 8 파일 동시 작성 + 한 commit + 한 PR.
+  - **proposal §2.5 원칙 1 (룰 순감소) 정합**: RWHarness 원본의 마커 자기점검 섹션 ("🔴 출력 마커 절대 규칙" 등) + `@OUTPUT` JSON schema + preamble 자동주입 안내 + agent-config 별 layer 안내 모두 폐기. 각 docs 자기완결.
+  - **원칙 3 (자율성 최대화)**: prose 결론 예시는 *권장* 으로만. 형식 자유, 마지막 단락 enum 단어만 명시 가이드.
+  - **Outline-First 자기규율 보존**: 본문 생성량 큰 모드(SYSTEM_DESIGN / TASK_DECOMPOSE) 에서 thinking 폭증 방지. agent 자율성 영역(=*어떻게* 출력) 이지만 **구조 강제** 는 작업 순서 영역 (proposal §2.5 대 원칙). 권장.
+  - **TRD 현행화 매핑 + impl frontmatter 정책 보존**: agent 자율 형식이 아니라 *프로젝트 정합성* 정책. proposal §2.5 적용 가능 영역 — 작업 순서.
+  - **듀얼 모드 가드레일**: 디자인 시안 도착 후 컴포넌트 갈아엎기 0 정책. impl 의 `## 의존성` / `## 수용 기준` 추가 룰 보존.
+- **Follow-Up**:
+  - **(다음 iteration iter 3)**: engineer + test-engineer (구현·테스트 짝). engineer 는 src/ Write 권한 + agent-boundary ALLOW 매트릭스 영역. test-engineer 는 TDD attempt 0 전용.
+  - **(별도 Task-ID)** 각 mode 의 prose 산출물 hash 안정성 측정 (proposal R7) — checkpoint 도입 시.
+
 ### DCN-CHG-20260429-15
 - **Date**: 2026-04-29
 - **Rationale**:

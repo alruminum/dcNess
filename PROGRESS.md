@@ -9,6 +9,16 @@
 - **모듈 분류 framework 적용**: `docs/migration-decisions.md` (`DCN-CHG-20260429-05`)
 - **CI 게이트 3종**: Document Sync (`-08`) / Python tests (`-09`) / Plugin manifest (`-10`)
 - **README + AGENTS 보강**: `-11`, `-12`
+- **🚀 Phase 2 iter 2 — architect 8 docs prose-only** (`DCN-CHG-20260429-16`):
+  - `agents/architect.md` (마스터, 7 모드 인덱스 + Outline-First 자기규율 + TRD 현행화 룰)
+  - `agents/architect/system-design.md` (SYSTEM_DESIGN_READY)
+  - `agents/architect/module-plan.md` (READY_FOR_IMPL — depth/design frontmatter, DB 영향도 분석, 듀얼 모드 가드레일)
+  - `agents/architect/spec-gap.md` (SPEC_GAP_RESOLVED / PRODUCT_PLANNER_ESCALATION_NEEDED / TECH_CONSTRAINT_CONFLICT)
+  - `agents/architect/task-decompose.md` (READY_FOR_IMPL — Outline-First, 듀얼 모드 가드레일)
+  - `agents/architect/tech-epic.md` (SYSTEM_DESIGN_READY)
+  - `agents/architect/light-plan.md` (LIGHT_PLAN_READY — bugfix / DESIGN_HANDOFF / REVIEW_FIX / DOCS_UPDATE)
+  - `agents/architect/docs-sync.md` (DOCS_SYNCED / SPEC_GAP_FOUND / TECH_CONSTRAINT_CONFLICT)
+  - 모두 prose writing guide. `---MARKER:X---` 텍스트 마커 + `@OUTPUT` JSON schema + preamble / agent-config 별 layer 의존 폐기.
 - **🚀 Phase 2 iter 1 — 4 read-only agents prose-only** (`DCN-CHG-20260429-15`):
   - `agents/pr-reviewer.md` (LGTM / CHANGES_REQUESTED) — validator 와 역할 분리, 스코프 매트릭스, 레거시 처리
   - `agents/plan-reviewer.md` (PLAN_REVIEW_PASS / PLAN_REVIEW_CHANGES_REQUESTED) — 8 차원 (현실성·MVP·제약·UX·숨은가정·경쟁·BM·기술실현)
@@ -37,7 +47,7 @@
 - [ ] ambiguous prose 카탈로그 — `MissingSignal(ambiguous)` raise 시 `.metrics/ambiguous-prose.jsonl` 누적 (proposal R1 acceptance)
 - [ ] 다른 agent docs 를 prose writing guide 로 변환:
   - [x] **iter 1 완료** (DCN-CHG-20260429-15): `agents/pr-reviewer.md`, `agents/plan-reviewer.md`, `agents/qa.md`, `agents/security-reviewer.md`
-  - [ ] **iter 2**: `agents/architect.md` + 7 mode sub-doc (System Design / Module Plan / SPEC_GAP / Task Decompose / Technical Epic / Light Plan / Docs Sync)
+  - [x] **iter 2 완료** (DCN-CHG-20260429-16): `agents/architect.md` + 7 mode sub-doc
   - [ ] **iter 3**: `agents/engineer.md` + `agents/test-engineer.md`
   - [ ] **iter 4**: `agents/designer.md` + 4 mode sub-doc + `agents/design-critic.md`
   - [ ] **iter 5**: `agents/ux-architect.md` + `agents/product-planner.md`
