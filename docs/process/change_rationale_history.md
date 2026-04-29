@@ -71,3 +71,26 @@
   - **(다음 Task-ID)** RWHarness `hooks/agent-boundary.py` 복사 + validator ALLOW_MATRIX 에 status path regex 추가, `_AGENT_DISALLOWED["validator"]` 에서 Write 제거.
   - **(다음 Task-ID)** `docs/migration-decisions.md` — proposal §11.2 framework (catastrophic-prevention / 자연 폐기 / 단순화) 모듈 분류표.
   - **측정 항목**: 5 failure modes 모두 `MissingStatus` 단일 catch 보장 (다른 exception 누수 0). 테스트로 명문화 — `TestMissingStatusContract`. 실제 운영 시 다른 exception 누수 발견되면 회귀 PR.
+
+### DCN-CHG-20260429-04
+- **Date**: 2026-04-29
+- **Rationale**:
+  - dcNess 의 정체성: `status-json-mutate-pattern.md` §11.1 — "RWHarness 코어 보존 + 본 proposal 정합 최소 레이어" + §12 — "신규 plugin 1차 완성 후 RWHarness 대체 테스트". 즉 dcNess 는 **Claude Code plugin** 으로 배포돼 RWHarness 와 공존 가능해야 한다.
+  - `.claude-plugin/plugin.json` + `marketplace.json` 부재 시: plugin 매니저(`claude plugin install`) 가 dcNess 를 인식 못 함 → 도그푸딩 / 단계적 전환 / 롤백 시나리오(§12.3.2 ~ §12.3.5) 진입 불가.
+  - 부수 문제: 본 manifest 변경이 governance §2.2 의 어떤 카테고리에도 매칭 안 됨 → record/rationale 동반 없이 통과되는 구멍. plugin 메타는 정책급 (잘못 배포 시 사용자 환경 파괴 catastrophic) → heavy 카테고리 매칭 강제 필요.
+- **Alternatives**:
+  1. *plugin manifest 만 추가, 게이트 룰 변경 없음* — 정책 변경에 record/rationale 동반 강제가 안 됨. CHG-02 와 동일 함정. 기각.
+  2. *`hooks` 카테고리에 추가* — plugin manifest 는 hook 정의가 아니라 plugin 정체성. 의미 mismatch. 기각.
+  3. *`ci` 카테고리에 추가* — build/deploy 메타로 보면 후보. 단 plugin manifest = "패키지 정체성 + agent/hook/skill 묶음" 로 정책 성격 강함. 기각.
+  4. *(채택)* **`agent` 카테고리에 `^\.claude-plugin/` 추가** — agent prompt / 정책 / plugin 메타가 모두 정책급 정합. CLAUDE.md / AGENTS.md / agents/ 와 같은 line-up. heavy 카테고리(rationale 동반 강제) 자동 적용.
+- **Decision**:
+  - 옵션 4 채택. `governance.md` §2.2 agent 패턴 + `check_document_sync.mjs` CATEGORY_RULES 동시 갱신 (코드 = 명세 구현, CHG-02 룰 정합).
+  - plugin 이름 = `dcness`, 마켓플레이스 이름 = `dcness` (소문자 통일). proposal §11.1 후보(`lightharness`, `microharness`, `rwh-lite`, `harness-v2`) 대신 저장소 이름 그대로 채택 — 사용자 결정 + 저장소-plugin 1:1 매핑 명시성.
+  - **RWHarness 와 공존 가능 설계**: plugin 이름이 `realworld-harness` 와 다름 → `claude plugin install` 시 충돌 0. proposal §12.3.2 의 "공존 가능 검증" 시나리오 실현 가능.
+  - **버전**: `0.1.0-alpha` — RWHarness 와 동일 alpha 대역. 첫 plugin 도입.
+  - **hook/agent prefix**: 본 Task 에선 미정. 후속 Task (RWHarness `hooks/` / `agents/` 복사 시) 에서 `dcness-` prefix 또는 별도 디렉토리 결정. 현재는 manifest 만.
+- **Follow-Up**:
+  - **(다음 Task-ID)** `docs/migration-decisions.md` — proposal §11.2 framework 적용 (RWHarness 모듈 분류). plugin layout 결정 (hook/agent 어디 위치할지) 동시 박기.
+  - **(다음 Task-ID)** `agents/validator*.md` 복사 + `@OUTPUT_FILE/SCHEMA/RULE` 변환. plugin manifest 의 hook/agent 매핑 추가.
+  - **(별도 Task)** `claude plugin validate .claude-plugin/` 자동 실행 CI workflow — plugin manifest 형식 검증.
+  - **측정**: plugin 설치/제거 1회 dry-run 후 RWHarness 와 충돌 0 검증 (proposal §12.3.2). 단 plugin 매니저 실측은 후속 — 현 Task 는 manifest 정의 단독.
