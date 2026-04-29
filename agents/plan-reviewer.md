@@ -83,15 +83,9 @@ model: sonnet
 
 | 모드 | 결론 enum |
 |---|---|
-| 기획 판단 리뷰 (`@MODE:REVIEWER:PLAN_REVIEW`) | `PLAN_REVIEW_PASS` / `PLAN_REVIEW_CHANGES_REQUESTED` |
+| 기획 판단 리뷰 (PLAN_REVIEW) | `PLAN_REVIEW_PASS` / `PLAN_REVIEW_CHANGES_REQUESTED` |
 
-### @PARAMS
-
-```
-@MODE:REVIEWER:PLAN_REVIEW
-@PARAMS: { "prd_path": "prd.md 경로", "issue?": "GitHub 이슈 번호" }
-@CONCLUSION_ENUM: PLAN_REVIEW_PASS | PLAN_REVIEW_CHANGES_REQUESTED
-```
+**호출자가 prompt 로 전달하는 정보**: PRD 경로 (`prd.md`), (선택) GitHub 이슈 번호.
 
 > 본 에이전트는 ux-architect 호출 **전** 실행. `docs/ux-flow.md` 상세 와이어프레임은 *아직 존재 안 함*. UX 저니(차원 4)는 PRD "화면 인벤토리 + 대략적 플로우" 섹션만 고수준 판정.
 
@@ -217,8 +211,9 @@ PLAN_REVIEW_PASS
 
 ## 폐기된 컨벤션 (참고)
 
-- `---MARKER:PLAN_REVIEW_PASS---` 텍스트 마커: prose 마지막 enum 단어로 대체.
-- `@OUTPUT` JSON schema: 형식 사다리 폐기.
+dcNess 는 다음 형식 강제 어휘를 사용하지 않는다 (proposal §2.5 정합):
+- 정형 텍스트 마커 토큰: prose 마지막 enum 단어로 대체.
+- 구조 강제 메타 헤더 (입력/출력 schema): prose 본문 자유 기술 + 호출자 prompt 가 입력 정보 전달.
 - `preamble.md` 자동 주입 / `agent-config/plan-reviewer.md` 별 layer: 본 문서 자기완결.
 
 근거: `docs/status-json-mutate-pattern.md` §1, §3, §11.4.

@@ -1,13 +1,8 @@
 # Design Validation
 
-`@MODE:VALIDATOR:DESIGN_VALIDATION` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: { "design_doc": "SYSTEM_DESIGN_READY 문서 경로", "run_id": "실행 식별자" }
-@CONCLUSION_ENUM: DESIGN_REVIEW_PASS | DESIGN_REVIEW_FAIL | DESIGN_REVIEW_ESCALATE
-```
-
-**목표**: architect 가 작성한 시스템 설계가 실제로 구현 가능하고 빈틈 없는지 엔지니어 관점에서 검증한다.
+**모드**: validator 의 시스템 설계 검증 호출. architect 가 작성한 시스템 설계가 실제로 구현 가능하고 빈틈 없는지 엔지니어 관점에서 검증.
+**결론**: prose 마지막 단락에 `DESIGN_REVIEW_PASS` / `DESIGN_REVIEW_FAIL` / `DESIGN_REVIEW_ESCALATE` 중 하나 명시.
+**호출자가 prompt 로 전달하는 정보**: SYSTEM_DESIGN_READY 문서 경로, 실행 식별자.
 
 ## 작업 순서
 

@@ -24,28 +24,16 @@ model: opus
 
 ### 모드별 결론 enum
 
-| 모드 | 인풋 마커 | 결론 enum |
-|---|---|---|
-| THREE_WAY 심사 | `@MODE:CRITIC:REVIEW` | `VARIANTS_APPROVED` / `VARIANTS_ALL_REJECTED` |
-| UX 5→3 선별 | `@MODE:CRITIC:UX_SHORTLIST` | `UX_REDESIGN_SHORTLIST` |
+| 모드 | 결론 enum |
+|---|---|
+| THREE_WAY 심사 (REVIEW) | `VARIANTS_APPROVED` / `VARIANTS_ALL_REJECTED` |
+| UX 5→3 선별 (UX_SHORTLIST) | `UX_REDESIGN_SHORTLIST` |
 
 > ONE_WAY 모드(1 variant) 에서는 design-critic 호출 X — 유저가 Pencil 앱에서 직접 확인.
 
-### @PARAMS
-
-```
-@MODE:CRITIC:REVIEW
-@PARAMS: {
-  "variants": "Pencil 스크린샷 경로 목록 또는 variant 메타데이터",
-  "animation_spec?": "각 variant 의 애니메이션 스펙",
-  "ui_spec?": "docs/ui-spec.md 경로"
-}
-@CONCLUSION_ENUM: VARIANTS_APPROVED | VARIANTS_ALL_REJECTED
-
-@MODE:CRITIC:UX_SHORTLIST
-@PARAMS: { "variants": "5개 ASCII 와이어프레임 경로/목록" }
-@CONCLUSION_ENUM: UX_REDESIGN_SHORTLIST
-```
+**호출자가 prompt 로 전달하는 정보**:
+- REVIEW: Pencil 스크린샷 경로 목록 또는 variant 메타데이터, (선택) 각 variant 의 애니메이션 스펙, (선택) `docs/ui-spec.md` 경로
+- UX_SHORTLIST: 5개 ASCII 와이어프레임 경로/목록
 
 모드 미지정 시 REVIEW.
 
@@ -199,8 +187,9 @@ VARIANTS_APPROVED
 
 ## 폐기된 컨벤션 (참고)
 
-- `---MARKER:VARIANTS_APPROVED---` 텍스트 마커 / `VARIANTS_APPROVED` bare 마커: prose 마지막 단락 enum 단어로 대체.
-- `@OUTPUT` JSON schema (marker / passed_variants / feedback 구조 강제): prose 본문 표/리스트로 자유 기술.
+dcNess 는 다음 형식 강제 어휘를 사용하지 않는다 (proposal §2.5 정합):
+- 정형 텍스트 마커 / bare 마커 토큰: prose 마지막 단락 enum 단어로 대체.
+- 구조 강제 메타 헤더 (입력/출력 schema): prose 본문 표/리스트로 자유 기술 + 호출자 prompt 가 입력 정보 전달.
 - preamble 자동 주입 / `agent-config/design-critic.md` 별 layer: 본 문서 자기완결.
 
 근거: `docs/status-json-mutate-pattern.md` §1, §3, §11.4.

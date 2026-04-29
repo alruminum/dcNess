@@ -1,13 +1,8 @@
 # UX Validation
 
-`@MODE:VALIDATOR:UX_VALIDATION` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: { "ux_flow_doc": "docs/ux-flow.md 경로", "prd_path": "prd.md 경로", "run_id": "실행 식별자" }
-@CONCLUSION_ENUM: UX_REVIEW_PASS | UX_REVIEW_FAIL | UX_REVIEW_ESCALATE
-```
-
-**목표**: ux-architect 가 생성한 UX Flow Doc 이 PRD 요구사항을 충족하는지 검증한다.
+**모드**: validator 의 UX Flow 검증 호출. ux-architect 가 생성한 UX Flow Doc 이 PRD 요구사항을 충족하는지 검증.
+**결론**: prose 마지막 단락에 `UX_REVIEW_PASS` / `UX_REVIEW_FAIL` / `UX_REVIEW_ESCALATE` 중 하나 명시.
+**호출자가 prompt 로 전달하는 정보**: UX Flow Doc 경로 (`docs/ux-flow.md`), PRD 경로 (`prd.md`), 실행 식별자.
 
 ## 작업 순서
 

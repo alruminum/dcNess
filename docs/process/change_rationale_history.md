@@ -18,6 +18,39 @@
 
 ## Records
 
+### DCN-CHG-20260429-26
+- **Date**: 2026-04-29
+- **Rationale**:
+  - 외부 review 지적 — "`agents/validator/code-validation.md` 등의 헤더에 `@MODE:VALIDATOR:CODE_VALIDATION → prose emit` + 코드 블록 안 `@PARAMS: { ... }` + `@CONCLUSION_ENUM: PASS | FAIL | SPEC_MISSING` 가 박혀 있음. 이건 우리가 폐기한 status JSON schema 의 약화 변형. 한 번 형식이 doc 안에 박히면 → 'agent 가 @PARAMS 빠뜨림' → '강제 룰 추가' → MARKER_ALIASES 사다리 재현. caller prompt 가 동적 주입할 메타 정보면 OK 지만, agent doc 자체에 박힌 건 형식 강제 — proposal §2.5 원칙 3 위반."
+  - 자체 점검 — 24 파일 모두 영향 (177 hit). Phase 2 iter 1~5 동안 RWHarness 원본 패턴 (`@MODE:X:Y` 헤더) 을 *그대로* 옮긴 게 원인. dcNess 변환 의도 (prose-only) 와 잔재 어휘가 모순.
+  - 시점 — Phase 3 (signal_io / interpret_strategy / orchestration.md) 모두 완료 후. agents/* 만 형식 사다리 잔재. 지금 정리 안 하면 plugin 배포 시 사용자 프로젝트로 *형식 강제 어휘* 가 그대로 전파.
+- **Alternatives**:
+  1. *접두사 `@` 만 제거 (예: `MODE:X:Y` 로 바꾸기)* — 시각적 형식 강제 신호는 유지. 본질 동일 (agent doc 안 형식 강제). 기각.
+  2. *코드 블록 안 메타만 남기고 표는 유지* — 표 안 `@MODE:` 접두사 = 형식 신호. 부분 정리는 사다리 재현 risk. 기각.
+  3. *(채택)* **24 파일 일괄 sweep — 헤더 메타 블록 자연어화 + 표 접두사 제거 + 본문 참조 자연어 변환**. 한 PR 로 전체 처리.
+  4. *agents/* 분할 (sub-agent 별 PR)* — 5~10 PR. review 부담 ↓ but 일관성 보장 어려움 + dangling 참조 위험. 기각.
+- **Decision**:
+  - 옵션 3. 단일 PR 24 파일 일괄.
+  - **변환 패턴 정착** (validator/code-validation.md 가 reference):
+    - Before: `\`@MODE:X:Y\` → prose emit (마지막 단락에 결론 enum)` + `\`\`\` @PARAMS: { ... } @CONCLUSION_ENUM: A | B \`\`\``
+    - After: 자연어 3 라인 — `**모드**: 설명. **결론**: prose 마지막 단락에 \`A\` / \`B\` 중 하나 명시. **호출자가 prompt 로 전달하는 정보**: 인자 목록.`
+  - **표 안 `@MODE:` 접두사 제거** — `| @MODE:ARCHITECT:SYSTEM_DESIGN | ... |` → `| System Design | ... |`. 모드명만 남김.
+  - **본문 참조 자연어** — `@PARAMS.issue 에서 추출` → `호출자가 prompt 로 전달한 이슈 본문에서 추출`. ux-architect / product-planner 의 "절대 출력 금지 패턴" 안 `@MODE:X:Y` 예시도 자연어 모드명으로.
+  - **"폐기된 컨벤션 (참고)" 본문은 *원리 보존*** — 마커/스키마 *사용 금지* 명시는 보존. 단 형식 어휘 (예: `---MARKER:LGTM---`, `@OUTPUT JSON schema`) 자체는 *원리* 로만 표현 ("정형 텍스트 마커 토큰", "구조 강제 메타 헤더"). 신규 컨트리뷰터가 어휘를 *되살리지 않도록* 근거만 남김.
+  - **proposal §2.5 원칙 정합 명시** — 모든 "폐기된 컨벤션" 섹션 앞에 "dcNess 는 다음 형식 강제 어휘를 사용하지 않는다 (proposal §2.5 정합)" 한 줄 추가.
+  - **proposal §2.5 원칙 정합**:
+    - 원칙 1 (룰 순감소): 형식 강제 어휘 폐기 → 룰 부채 감소.
+    - 원칙 2 (강제 vs 권고): 본 sweep 자체가 원칙 2 정합 — agent 안 형식 강제(deny risk) → 자연어 권고/안내(warn).
+    - 원칙 3 (agent 자율성): 가장 강한 정합 — 본 sweep 의 핵심 의도. agent prose 자유 emit + 형식 0.
+    - 원칙 4 (catastrophic 시퀀스 보존): 본 sweep 은 시퀀스 변경 없음. agents/*.md 만 변환.
+    - 원칙 5 (30일 측정 후 강제): 본 sweep 은 *기존 잔재 정정*. 신규 강제 0.
+  - **review 의 stale 부분 정정**: review 가 "메타 LLM 미통합" 이라고 지적했으나 사실은 통합됨 (`harness/llm_interpreter.py` `-22`, `interpret_strategy.py` `-23`, `analyze_metrics.mjs` `-23` 모두 머지). orchestrator (impl_driver) 부재는 정확 (옵션 a/b/c 결정 보류 상태, `docs/orchestration.md` §9). 본 Task 의 scope 외.
+- **Follow-Up**:
+  - **(별도 Task `-27`)** 300+ 라인 파일 분리 — `ux-architect.md` (550) / `product-planner.md` (418) / `designer.md` (407). 출력 예시 등을 sub-doc 으로 분리 (architect 패턴 정합).
+  - **(별도 Task)** 코드 driver (옵션 a/b/c) 채택 결정 + 구현. orchestration.md §9 의 옵션 (c) Orchestration Agent 가 가장 dcNess 정신 정합.
+  - **(별도 Task)** RWHarness 와의 drift 모니터링 — RWHarness 가 agent docs 패턴 변경 시 dcNess sweep 반복 위험. 본 sweep 의 변환 패턴을 cherry-pick 가이드에 박아야.
+  - **(검증)** plugin-dryrun-guide §5 smoke test 시 agent prose emit 이 자연어 변환 후에도 정상 동작하는지 확인.
+
 ### DCN-CHG-20260429-25
 - **Date**: 2026-04-29
 - **Rationale**:

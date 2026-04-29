@@ -1,13 +1,8 @@
 # Plan Validation
 
-`@MODE:VALIDATOR:PLAN_VALIDATION` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: { "impl_path": "impl 계획 파일 경로", "run_id": "실행 식별자" }
-@CONCLUSION_ENUM: PLAN_VALIDATION_PASS | PLAN_VALIDATION_FAIL | PLAN_VALIDATION_ESCALATE
-```
-
-**목표**: architect 가 작성한 impl 계획 파일이 구현에 착수하기에 충분한지 검증한다. 구현 루프 진입 전 공통 게이트.
+**모드**: validator 의 계획 검증 호출. architect 가 작성한 impl 계획 파일이 구현에 착수하기에 충분한지 검증. 구현 루프 진입 전 공통 게이트.
+**결론**: prose 마지막 단락에 `PLAN_VALIDATION_PASS` / `PLAN_VALIDATION_FAIL` / `PLAN_VALIDATION_ESCALATE` 중 하나 명시.
+**호출자가 prompt 로 전달하는 정보**: impl 계획 파일 경로, 실행 식별자.
 
 ## 작업 순서
 

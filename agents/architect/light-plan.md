@@ -1,18 +1,8 @@
 # Light Plan
 
-`@MODE:ARCHITECT:LIGHT_PLAN` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: {
-  "suspected_files": "관련 파일 경로 (grep 결과 또는 DESIGN_HANDOFF 대상)",
-  "issue_summary": "GitHub 이슈 제목+본문",
-  "labels": "GitHub 이슈 라벨 목록",
-  "issue": "GitHub 이슈 번호"
-}
-@CONCLUSION_ENUM: LIGHT_PLAN_READY
-```
-
-**목표**: 아키텍처 변경 없이 국소적 코드 수정만 필요한 작업의 구현 계획을 작성한다. Module Plan 의 경량 버전 — 전체 설계 검토 없이 변경 범위만 특정.
+**모드**: architect 의 경량 계획 호출 — 아키텍처 변경 없는 국소적 수정. Module Plan 의 경량 버전.
+**결론**: prose 마지막 단락에 `LIGHT_PLAN_READY` 명시.
+**호출자가 prompt 로 전달하는 정보**: 관련 파일 경로 (grep 결과 또는 DESIGN_HANDOFF 대상), GitHub 이슈 제목+본문, 라벨 목록, 이슈 번호.
 
 ## 적용 범위
 

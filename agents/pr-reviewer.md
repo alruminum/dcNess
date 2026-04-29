@@ -29,15 +29,9 @@ model: sonnet
 
 | 모드 | 결론 enum |
 |---|---|
-| 코드 품질 리뷰 (`@MODE:PR_REVIEWER:REVIEW`) | `LGTM` / `CHANGES_REQUESTED` |
+| 코드 품질 리뷰 (REVIEW) | `LGTM` / `CHANGES_REQUESTED` |
 
-### @PARAMS
-
-```
-@MODE:PR_REVIEWER:REVIEW
-@PARAMS: { "impl_path": "impl 계획 경로", "src_files": "구현 파일 경로 목록" }
-@CONCLUSION_ENUM: LGTM | CHANGES_REQUESTED
-```
+**호출자가 prompt 로 전달하는 정보**: impl 계획 경로, 구현 파일 경로 목록.
 
 ### 권장 prose 골격
 
@@ -185,8 +179,9 @@ LGTM
 
 ## 폐기된 컨벤션 (참고)
 
-- `---MARKER:LGTM---` / `---MARKER:CHANGES_REQUESTED---` 텍스트 마커: prose 마지막 enum 단어로 대체.
-- `@OUTPUT` JSON schema (이전 dcNess `state_io` 패턴): schema 강제도 형식 사다리.
+dcNess 는 다음 형식 강제 어휘를 사용하지 않는다 (proposal §2.5 정합):
+- 정형 텍스트 마커 토큰: prose 마지막 enum 단어로 대체.
+- 구조 강제 메타 헤더 (입력/출력 schema, 이전 dcNess `state_io` 패턴 포함): 형식 강제도 사다리. prose 본문 자유 기술.
 - `preamble.md` 자동 주입 / `agent-config/pr-reviewer.md` 별 layer: 본 문서 자기완결.
 
 근거: `docs/status-json-mutate-pattern.md` §1, §3, §11.4.

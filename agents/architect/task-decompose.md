@@ -1,13 +1,8 @@
 # Task Decompose
 
-`@MODE:ARCHITECT:TASK_DECOMPOSE` → prose emit (마지막 단락에 결론 enum)
-
-```
-@PARAMS: { "stories_doc": "Epic stories.md 경로", "design_doc": "설계 문서 경로" }
-@CONCLUSION_ENUM: READY_FOR_IMPL
-```
-
-메인 Claude 또는 product-planner 완료 후 호출.
+**모드**: architect 의 epic stories → 기술 구현 단위 분해 호출. product-planner 완료 후 호출.
+**결론**: 각 분해된 impl 파일 작성 후 prose 마지막 단락에 `READY_FOR_IMPL` 명시 (×N batch 가능).
+**호출자가 prompt 로 전달하는 정보**: Epic stories.md 경로, 설계 문서 경로.
 
 **목표**: product-planner 가 스토리까지 작성한 epic 파일을 받아, 각 스토리를 기술 구현 단위로 분해하고 impl 파일을 작성한다.
 

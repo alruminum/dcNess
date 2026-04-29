@@ -28,38 +28,17 @@ model: sonnet
 
 ### 모드별 결론 enum (2×2 매트릭스)
 
-| 인풋 마커 | 대상 유형 | 시안 수 | 크리틱 | 결론 enum |
+| 모드 | 대상 유형 | 시안 수 | 크리틱 | 결론 enum |
 |---|---|---|---|---|
-| `@MODE:DESIGNER:SCREEN_ONE_WAY` | 전체 화면 | 1개 | 없음 — 유저 직접 확인 | `DESIGN_READY_FOR_REVIEW` / `DESIGN_LOOP_ESCALATE` |
-| `@MODE:DESIGNER:SCREEN_THREE_WAY` | 전체 화면 | 3개 | design-critic 경유 | 동일 |
-| `@MODE:DESIGNER:COMPONENT_ONE_WAY` | 개별 컴포넌트 | 1개 | 없음 — 유저 직접 확인 | 동일 |
-| `@MODE:DESIGNER:COMPONENT_THREE_WAY` | 개별 컴포넌트 | 3개 | design-critic 경유 | 동일 |
+| `SCREEN_ONE_WAY` | 전체 화면 | 1개 | 없음 — 유저 직접 확인 | `DESIGN_READY_FOR_REVIEW` / `DESIGN_LOOP_ESCALATE` |
+| `SCREEN_THREE_WAY` | 전체 화면 | 3개 | design-critic 경유 | 동일 |
+| `COMPONENT_ONE_WAY` | 개별 컴포넌트 | 1개 | 없음 — 유저 직접 확인 | 동일 |
+| `COMPONENT_THREE_WAY` | 개별 컴포넌트 | 3개 | design-critic 경유 | 동일 |
 
-### @PARAMS
-
-```
-@MODE:DESIGNER:SCREEN_ONE_WAY
-@PARAMS: {
-  "target": "대상 화면명",
-  "ux_goal": "UX 목표/문제점",
-  "ui_spec?": "docs/ui-spec.md",
-  "skip_issue_creation?": "true 시 Phase 0-0 스킵 (설계 루프 경유 시)",
-  "save_handoff_to?": "DESIGN_HANDOFF 저장 경로 (설계 루프 경유 시 docs/design-handoff.md)"
-}
-@CONCLUSION_ENUM: DESIGN_READY_FOR_REVIEW | DESIGN_LOOP_ESCALATE
-
-@MODE:DESIGNER:SCREEN_THREE_WAY
-@PARAMS: { "target": "...", "ux_goal": "...", "ui_spec?": "..." }
-@CONCLUSION_ENUM: DESIGN_READY_FOR_REVIEW | DESIGN_LOOP_ESCALATE
-
-@MODE:DESIGNER:COMPONENT_ONE_WAY
-@PARAMS: { "target": "대상 컴포넌트명", "ux_goal": "...", "parent_screen?": "...", "ui_spec?": "..." }
-@CONCLUSION_ENUM: DESIGN_READY_FOR_REVIEW | DESIGN_LOOP_ESCALATE
-
-@MODE:DESIGNER:COMPONENT_THREE_WAY
-@PARAMS: { "target": "...", "ux_goal": "...", "parent_screen?": "...", "ui_spec?": "..." }
-@CONCLUSION_ENUM: DESIGN_READY_FOR_REVIEW | DESIGN_LOOP_ESCALATE
-```
+**호출자가 prompt 로 전달하는 정보**:
+- 공통: 대상 화면/컴포넌트명, UX 목표/문제점, (선택) `ui_spec` 경로
+- COMPONENT 모드: (선택) 부모 화면명
+- SCREEN_ONE_WAY: (선택) `skip_issue_creation` 플래그 (true 시 Phase 0-0 스킵, 설계 루프 경유 시), (선택) `save_handoff_to` 경로 (설계 루프 경유 시 `docs/design-handoff.md`)
 
 모드 미지정 시 `SCREEN_ONE_WAY` 로 실행.
 
@@ -301,7 +280,7 @@ DESIGN_READY_FOR_REVIEW
 ### (선택) 스케치 단계 — 5→3 선별
 
 - Pencil 에 5개 레이아웃 스케치 (`sketch-1` ~ `sketch-5`)
-- design-critic `@MODE:CRITIC:UX_SHORTLIST` 로 5→3 선별
+- design-critic 의 UX_SHORTLIST 모드로 5→3 선별
 - 선별된 3개를 `variant-A/B/C` 로 명명 → Phase 1 진행
 
 스케치 생략 시 Phase 1 에서 바로 3 variant 생성.
@@ -400,8 +379,9 @@ design-critic VARIANTS_ALL_REJECTED 판정 시:
 
 ## 폐기된 컨벤션 (참고)
 
-- `---MARKER:DESIGN_READY_FOR_REVIEW---` 텍스트 마커: prose 마지막 단락 enum 단어로 대체.
-- `@OUTPUT` JSON schema (marker / pencil_frames / screenshots 구조 강제): prose 본문에 자유 기술.
+dcNess 는 다음 형식 강제 어휘를 사용하지 않는다 (proposal §2.5 정합):
+- 정형 텍스트 마커 토큰: prose 마지막 단락 enum 단어로 대체.
+- 구조 강제 메타 헤더 (입력/출력 schema): prose 본문 자유 기술 + 호출자 prompt 가 입력 정보 전달.
 - preamble 자동 주입 / `agent-config/designer.md` 별 layer: 본 문서 자기완결.
 
 근거: `docs/status-json-mutate-pattern.md` §1, §3, §11.4.
