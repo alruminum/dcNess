@@ -18,6 +18,40 @@
 
 ## Records
 
+### DCN-CHG-20260429-23
+- **Date**: 2026-04-29
+- **Rationale**:
+  - iter 3 의 haiku interpreter 는 *모든* 호출을 LLM 으로 보냄 (호출자가 직접 주입 시). proposal §3 의 의도 = "휴리스틱이 ambiguous 일 때만 LLM" — iter 3 은 swap point 만, 합성 정책 부재.
+  - 운영 안전성 = 휴리스틱 hit 비율 측정 + ambiguous 패턴 카탈로그. proposal R1 / R8 acceptance 의 *측정 인프라* 가 비어있음.
+  - PR #22 머지 후 시점, signal_io / llm_interpreter 가 둘 다 안정 → 합성 모듈 + 분석기 추가가 자연스러운 다음 단계.
+- **Alternatives**:
+  1. *interpret_signal 자체 수정* — heuristic-first + LLM-fallback 을 inline. 기존 함수 시그니처 변경 → 회귀 위험 + signal_io 책임 분리(파일 I/O + 결론 추출 + 합성 정책) 위반. 기각.
+  2. *signal_io 안에 새 함수만 추가* — 책임 혼재. interpret_signal vs interpret_with_fallback 두 함수 같은 모듈 → 호출자 혼동. 기각.
+  3. *(채택)* **별도 `harness/interpret_strategy.py`** + signal_io 미수정 + interpret_with_fallback 단일 export. 책임 깔끔.
+  4. *분석 스크립트만, 합성은 호출자 책임* — 매 호출자가 try/except heuristic + LLM 작성 → 중복. 기각.
+- **Decision**:
+  - 옵션 3. 신규 모듈 + 합성 함수 + 분석기 + 7 테스트.
+  - **outcome 5종**:
+    - `heuristic_hit` — 휴리스틱 단어경계 단일 매칭 (LLM 미호출, 비용 0)
+    - `llm_fallback_hit` — heuristic ambiguous → LLM 호출 → 결론
+    - `llm_fallback_unknown` — LLM 도 UNKNOWN/allowed 외 (proposal R1 카탈로그 핵심)
+    - `heuristic_ambiguous_no_fallback` — LLM 미주입 + heuristic ambiguous (개발/테스트 모드)
+    - `heuristic_not_found` / `heuristic_empty` — prose 자체 부재 (LLM fallback 무의미)
+  - **Python 3 except as 변수 unbind 처리**: `heuristic_exc` 를 외부 변수 (`heuristic_detail`/`saved_exc`) 로 보존. PEP 3134 정합 (except 블록 종료 시 변수 명시 unbind 로 GC 사이클 회피).
+  - **defensive ValueError on LLM contract 위반**: llm_interpreter 가 allowed 외 값 반환 시 즉시 ValueError (silent corruption 차단).
+  - **분석기 fitness 자동 판정**: proposal §5 Phase 4 의 두 목표 (cycle 당 메타 LLM < $0.10, ambiguous < 5건/cycle) 를 PASS/WATCH 출력 — 운영자가 매 cycle 후 수동 실행.
+  - **proposal §2.5 원칙 정합**:
+    - 원칙 1 (룰 순감소): 신규 LOC ~120 (strategy + tests + analyzer). signal_io / llm_interpreter 변경 0.
+    - 원칙 2 (강제 vs 권고): outcome telemetry 는 *측정* 만. fitness 판정도 PASS/WATCH (deny X).
+    - 원칙 3 (agent 자율성): agent 측은 변경 0. 합성은 harness 측 책임.
+    - 원칙 5 (30일 측정 후 hook): 본 합성 + analyzer = 30일 데이터 누적 인프라. 향후 (1) ambiguous 빈도 ↑ 시 agent writing guide 정정 (2) 비용 ↑ 시 retry/cache 정책 정당화.
+  - **테스트 cwd `.metrics/` 오염 fix**: `make_haiku_interpreter` 의 telemetry_dir 누락 3 케이스 (`ApiFailureTests`, `ValidationTests`, `PromptConstructionTests`) → setUp/tearDown 추가. 향후 회귀 방지.
+- **Follow-Up**:
+  - **iter 5 (Phase 3 종결)**: Phase 3 종결 + plugin 배포 dry-run 가이드 정리.
+  - **(별도 Task)** 휴리스틱 hit rate 90%+ 가 1 cycle 데이터로 확인되면 dcNess 의 self-application (메인 작업 모드) 에 interpret_with_fallback 채택.
+  - **(별도 Task)** ambiguous 누적 시 패턴 분석 → agent writing guide 정정 (proposal R1 사이클).
+  - **(검증)** ANTHROPIC_API_KEY 보유 운영자가 1 cycle 실 호출 후 analyzer 실행 → fitness 판정.
+
 ### DCN-CHG-20260429-22
 - **Date**: 2026-04-29
 - **Rationale**:

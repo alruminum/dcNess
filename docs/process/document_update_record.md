@@ -20,7 +20,19 @@
 
 ## Records
 
-### DCN-CHG-20260429-22
+### DCN-CHG-20260429-23
+- **Date**: 2026-04-29
+- **Change-Type**: harness, ci, test, docs-only
+- **Files Changed**:
+  - `harness/interpret_strategy.py` (신규 — heuristic-first + LLM-fallback 합성, outcome 5종 telemetry)
+  - `tests/test_interpret_strategy.py` (신규 — 7 케이스, mock LLM, telemetry on/off)
+  - `tests/test_llm_interpreter.py` (수정 — telemetry_dir 누락 3 케이스 fix, cwd `.metrics/` 오염 회피)
+  - `scripts/analyze_metrics.mjs` (신규 — heuristic + LLM JSONL 집계 리포트, JSON/사람 포맷)
+  - `PROGRESS.md` (Phase 3 iter 4 완료 표시)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 3 iter 4 — proposal R1 (ambiguous 카탈로그) + R8 (cycle 비용 측정) + §5 Phase 4 fitness 인프라. `interpret_with_fallback(prose, allowed, llm_interpreter=, telemetry_dir=)` 가 휴리스틱 → LLM fallback 을 합성하면서 매 호출 outcome (heuristic_hit / llm_fallback_hit / llm_fallback_unknown / heuristic_ambiguous_no_fallback / heuristic_not_found 등) 을 `.metrics/heuristic-calls.jsonl` 에 append. `analyze_metrics.mjs` 가 두 JSONL 통합 분석 (outcome 분포 / 비용 / 모델별 / allowed enum 별 / 최근 ambiguous 5개 / Phase 4 fitness 목표 PASS/WATCH 판정). 52/52 PASS, 회귀 0.
+- **Document-Exception**: 없음 (harness 카테고리 deliverable = `tests/**` 동반 ✅)
 - **Date**: 2026-04-29
 - **Change-Type**: harness, test, docs-only
 - **Files Changed**:
