@@ -146,3 +146,25 @@
     - 본 CI 가 차단한 위반 카탈로그 → governance §2.6 룰 정정 input
     - false positive 발생 시 게이트 룰 완화 / Document-Exception 사용 빈도
   - **branch protection 권장 (사용자 수동)**: GitHub Settings → Branches → main → "Require status checks to pass" → `document-sync` 추가. 본 PR 머지 후 사용자 액션. 본 Task 에선 워크플로우 자체만.
+
+### DCN-CHG-20260429-09
+- **Date**: 2026-04-29
+- **Rationale**:
+  - 현재 41 단위 테스트 (`tests/test_state_io.py` 32 + `tests/test_validator_schemas.py` 9) 가 로컬 실행만 가능 — PR 에서 회귀가 들어와도 CI 가 자동 실행 안 함.
+  - **schema round-trip 회귀 위험**: `agents/validator/*.md` 의 status enum / required 필드가 변경되면 `state_io.read_status` 와 어긋날 수 있는데, 본 docs 변경 PR 에서 *테스트 자동 실행* 안 되면 머지 후 발견.
+  - proposal §11.4 안전망: "매 sub-phase squash merge 후 smoke test 강제" — 본 워크플로우가 그 *자동화 버전*.
+  - DCN-CHG-20260429-08 (document-sync workflow) 와 보완 관계: 그쪽은 *거버넌스 구조*, 본 Task 는 *코드/스키마 정합* 강제.
+- **Alternatives**:
+  1. *전 PR 에 unittest 무조건 실행* — docs-only PR 도 발동 → 불필요 CI 시간 + 큐 점유. 기각.
+  2. *local pre-push hook 만 추가* — `--no-verify` 우회 가능. CHG-08 와 동일 함정. 기각.
+  3. *(채택)* **paths 필터 + GitHub Actions** — `harness/` / `tests/` / `agents/` / 본 workflow 자체 변경 시만 발동. docs-only PR 면제. CI 우회 차단.
+- **Decision**:
+  - 옵션 3 채택. trigger paths 필터 명시.
+  - **Python 3.11**: `unittest`, `pathlib`, `tempfile` 등 표준 라이브러리만 사용 — 의존성 install 단계 없음. 런타임 ~5초 예상.
+  - **dev dependency 부재**: 현재 외부 패키지 미사용 (json/re/time/os/pathlib 모두 표준). `requirements.txt` 미도입. 도입 시점에 본 workflow 도 갱신.
+  - **agents/ 도 trigger paths**: validator agent docs 변경 시 schema round-trip 테스트가 자동 실행 → docs 변경의 *acceptance 검증* 자동.
+  - **permissions: contents: read** 단독: 테스트는 코드 *읽고 실행* 만 — 쓰기·외부 호출 없음.
+- **Follow-Up**:
+  - **(별도 Task)** `.github/workflows/plugin-validate.yml` — `claude plugin validate` 자동.
+  - **(별도 Task)** branch protection 룰에 `python-tests / unittest discover` required 등록 (사용자 수동).
+  - **측정**: 본 workflow 가 차단한 회귀 카탈로그 → 30일 후 운영 데이터로 false positive / 평균 실행 시간 / 회귀 발견율 분석.

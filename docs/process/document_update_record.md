@@ -71,6 +71,16 @@
 - **Summary**: `status-json-mutate-pattern.md` §11.2 framework 적용 — RWHarness 의 `harness/` / `hooks/` / `agents/` / `scripts/` / `orchestration/` / `.claude-plugin/` 모듈을 PRESERVE / DISCARD / REFACTOR 로 분류. dcNess 메인 작업 모드(§11.4) 정합으로 hook/impl_loop 류는 자연 폐기, agent docs 변환 + state_io.py 만 net-new.
 - **Document-Exception**: 본 변경은 분류 *결정 기록* 이라 추가 deliverable 부재. heavy 카테고리 미해당 — `docs-only` 단독.
 
+### DCN-CHG-20260429-09
+- **Date**: 2026-04-29
+- **Change-Type**: ci
+- **Files Changed**:
+  - `.github/workflows/python-tests.yml` (신규)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Python unittest 자동 회귀 차단 — `tests/test_state_io.py` (32) + `tests/test_validator_schemas.py` (9) 자동 실행. paths 필터로 `harness/` / `tests/` / `agents/` 변경 시만 발동(docs-only PR 면제).
+
 ### DCN-CHG-20260429-08
 - **Date**: 2026-04-29
 - **Change-Type**: ci

@@ -20,6 +20,9 @@
   - 자동 검증: docs 변경 시 schema 깨지면 fail
 - **CI 게이트 추가**: `.github/workflows/document-sync.yml` (`DCN-CHG-20260429-08`)
   - PR + push to main 시 base..head diff 검사 → local hook 우회 차단
+- **Python 테스트 CI**: `.github/workflows/python-tests.yml` (`DCN-CHG-20260429-09`)
+  - paths 필터(`harness/` / `tests/` / `agents/`) 로 docs-only PR 면제
+  - state_io 32 케이스 + validator schemas 9 케이스 자동 회귀 차단
 
 ## TODO
 ### Phase 1 — validator 단위 완성 ✅
