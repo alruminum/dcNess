@@ -18,6 +18,26 @@
 
 ## Records
 
+### DCN-CHG-20260429-38
+- **Date**: 2026-04-29
+- **Rationale**:
+  - 사용자 직접 요청 — 현재 세션 컨텍스트 60%+ 도달 → 다음 세션 이어가기용 smart-compact 필요.
+  - CC 내장 `/compact` 는 *기계적 요약* — 의도/결정/진행상태 추출 안 함. 사용자가 다음 세션에서 어떤 단계인지 즉시 못 잡음.
+  - smart-compact = 메인이 자체 LLM 으로 *능동 추출* (rationale + decision + open question 위주) + resume prompt 자동 생성 + clipboard.
+- **Decision**:
+  - skill prompt 5 step:
+    1. 추출 (git + governance docs + PROGRESS + TaskList + transcript 미해결 의논)
+    2. 단일-메시지 prompt 작성 (정해진 템플릿)
+    3. clipboard 복사 (pbcopy / xclip / clip)
+    4. transcript 출력 (사용자 직접 복사 가능)
+    5. 파일 백업 (`.claude/resume-prompts/{ts}.md`) — clipboard 깨짐 대비
+  - 추출 우선순위:
+    - **포함**: 미해결 결정 + 핵심 reasoning + uncommitted state + 다음 step 후보
+    - **제외**: 도구 호출 결과 raw / 폐기된 검토안 (rationale 박힘) / 자체 reasoning 중간 단계
+- **Follow-Up**:
+  - 사용자가 본 skill 직접 실행 (다음 세션 시작 시 효과 측정)
+  - 추출 quality 측정 — 다음 세션이 resume prompt 만으로 매끄럽게 이어지는지 회고
+
 ### DCN-CHG-20260429-37
 - **Date**: 2026-04-29
 - **Rationale**:
