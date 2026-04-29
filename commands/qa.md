@@ -26,7 +26,7 @@ description: 버그/이슈를 자연어로 받아 qa 에이전트로 분류하�
 ### Step 0 — run 시작
 
 ```bash
-RUN_ID=$(python3 -m harness.session_state begin-run qa)
+RUN_ID=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-run qa)
 echo "[qa] run started: $RUN_ID"
 ```
 
@@ -62,7 +62,7 @@ TaskUpdate("qa: 이슈 분류", in_progress)
 ```
 
 ```bash
-python3 -m harness.session_state begin-step qa
+"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" begin-step qa
 ```
 
 `Agent` 도구 호출:
@@ -86,7 +86,7 @@ cat > /tmp/dcness-qa-prose.md << 'PROSE_EOF'
 PROSE_EOF
 
 # end-step
-ENUM=$(python3 -m harness.session_state end-step qa \
+ENUM=$("${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-step qa \
     --allowed-enums "FUNCTIONAL_BUG,CLEANUP,DESIGN_ISSUE,KNOWN_ISSUE,SCOPE_ESCALATE" \
     --prose-file /tmp/dcness-qa-prose.md)
 echo "[qa] classification: $ENUM"
@@ -160,10 +160,10 @@ prose 종이: .claude/harness-state/.sessions/{sid}/runs/{rid}/qa.md
 
 사용자 응답에 따라:
 - 후속 진행 → run 유지 (다음 step 시작 — 다른 skill 진입)
-- 종료 → `python3 -m harness.session_state end-run`
+- 종료 → `"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-run`
 
 ```bash
-python3 -m harness.session_state end-run
+"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" end-run
 ```
 
 `end-run` 내부:

@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260429-41
+- **Date**: 2026-04-29
+- **Change-Type**: harness, docs-only
+- **Files Changed**:
+  - `scripts/dcness-helper` (신규, 실행권한 0755) — PYTHONPATH 자동 설정 wrapper. 자기 위치 (`BASH_SOURCE`) 로부터 plugin root 추출 → `python3 -m harness.session_state` 실행. CLAUDE_PLUGIN_ROOT 의존 0.
+  - `commands/qa.md` / `commands/quick.md` / `commands/product-plan.md` / `commands/init-dcness.md` — 모든 helper 호출을 `python3 -m harness.session_state X` → `"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" X` 로 일괄 변경 (RWH 패턴 정합).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Manual smoke 발견 — skill bash 환경에서 PYTHONPATH 미설정으로 `python3 -m harness.session_state ...` 호출이 ModuleNotFoundError. wrapper script (`scripts/dcness-helper`) 도입 — script 자기위치 기반 PYTHONPATH 자동 설정 + `exec python3 -m harness.session_state "$@"`. 4 skill 의 helper 호출 일괄 wrapper 경유로 변경.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260429-40
 - **Date**: 2026-04-29
 - **Change-Type**: harness, hooks, spec, docs-only

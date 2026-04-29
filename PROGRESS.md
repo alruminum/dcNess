@@ -2,6 +2,10 @@
 
 ## 현재 상태
 
+- **🔧 Skill bash PYTHONPATH wrapper** (`DCN-CHG-20260429-41`):
+  - `scripts/dcness-helper` 신규 — BASH_SOURCE 기반 자기위치 추출 → PYTHONPATH 자동 설정. CLAUDE_PLUGIN_ROOT 의존 0.
+  - 4 skill (`qa` / `quick` / `product-plan` / `init-dcness`) 의 helper 호출 일괄 wrapper 경유로 변경.
+  - Manual smoke (`/qa`) 첫 helper 호출 ModuleNotFoundError 해결.
 - **🚪 Plugin 활성화 게이트 + cross-project PYTHONPATH** (`DCN-CHG-20260429-40`):
   - `harness/session_state.py` — `is_project_active` / `enable_project` / `disable_project` + 4 CLI subcommand. plugin-scoped whitelist (`~/.claude/plugins/data/dcness-dcness/projects.json`) — CC `data/` 컨벤션 정합 + 글로벌 `~/.claude/` 오염 0.
   - hook 양쪽 (`hooks/session-start.sh` `hooks/catastrophic-gate.sh`) — PYTHONPATH=$CLAUDE_PLUGIN_ROOT prepend + `is-active` 게이트 (inactive 프로젝트 즉시 exit 0). hook 자체는 모든 프로젝트에서 호출되지만 dcness 미활성 프로젝트는 import 비용도 0.

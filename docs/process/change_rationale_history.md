@@ -18,6 +18,23 @@
 
 ## Records
 
+### DCN-CHG-20260429-41
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Manual smoke (`/qa src/greet.py 빈 문자열 처리 이상`) 도중 사용자 첫 helper 호출 (`begin-run qa`) 에서 ModuleNotFoundError 발견. 원인 = skill bash 환경에 PYTHONPATH 미설정. dcNess plugin install 위치 (`~/.claude/plugins/marketplaces/dcness/`) 가 PYTHONPATH 에 없으니 `python3 -m harness.session_state` 가 `harness` 패키지 못 찾음.
+  - DCN-CHG-40 에서 hook 스크립트는 `${CLAUDE_PLUGIN_ROOT}` 를 PYTHONPATH 에 prepend 하도록 수정했지만, slash command bash 환경엔 같은 처리가 빠짐. hook 과 skill 은 별개 진입점이라 양쪽 모두 PYTHONPATH 손봐야.
+- **Alternatives**:
+  1. *모든 helper 호출에 `PYTHONPATH=...` 인라인 prefix* (verbose, 매번 반복). 기각.
+  2. *`harness/` 를 user site-packages 에 install* (`pip install -e`). plugin 설치 외 추가 setup step + 다른 dcness 인스턴스와 충돌. 기각.
+  3. **(채택) wrapper script** (`scripts/dcness-helper`). RWH 패턴 정합 (`scripts/setup-rwh.sh` 등). script 가 자기 위치 (`BASH_SOURCE`) 로부터 plugin root 추출 → PYTHONPATH 자동 설정 후 `exec python3 -m harness.session_state "$@"`. CLAUDE_PLUGIN_ROOT 의존 0 (set 안 돼도 동작).
+- **Decision**:
+  - 옵션 3. wrapper script + 4 skill 의 helper 호출 일괄 변경.
+  - skill 호출 형식: `"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" <subcommand>` (RWH 패턴 정합 — CLAUDE_PLUGIN_ROOT 폴백 path 명시).
+  - wrapper 자체는 BASH_SOURCE 기반 자기위치 추출 → CLAUDE_PLUGIN_ROOT 가 set 됐든 안 됐든 동일 동작 (방어 코드).
+- **Follow-Up**:
+  - **(별도 Task)** `scripts/dcness-helper` 만의 단위 테스트 — wrapper bash 동작 검증.
+  - **(측정)** Manual smoke 재실행 — `/qa` 첫 helper 호출 성공 + run state 정상 생성 확인.
+
 ### DCN-CHG-20260429-40
 - **Date**: 2026-04-29
 - **Rationale**:
