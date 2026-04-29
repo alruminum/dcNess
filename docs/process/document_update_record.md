@@ -71,6 +71,14 @@
 - **Summary**: `status-json-mutate-pattern.md` §11.2 framework 적용 — RWHarness 의 `harness/` / `hooks/` / `agents/` / `scripts/` / `orchestration/` / `.claude-plugin/` 모듈을 PRESERVE / DISCARD / REFACTOR 로 분류. dcNess 메인 작업 모드(§11.4) 정합으로 hook/impl_loop 류는 자연 폐기, agent docs 변환 + state_io.py 만 net-new.
 - **Document-Exception**: 본 변경은 분류 *결정 기록* 이라 추가 deliverable 부재. heavy 카테고리 미해당 — `docs-only` 단독.
 
+### DCN-CHG-20260429-11
+- **Date**: 2026-04-29
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `README.md` (대폭 보강 — 정체성·차이점·Phase 1 현황·Quick Start·코드 예·거버넌스·후속)
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: README.md 보강 — Phase 1 완료 외부 공개. RWHarness vs dcNess 차이 표 + 1차 구현 컴포넌트 매핑 + Quick Start (의존성 / 셋업 / 검증 / 코드 사용 예) + 거버넌스 / 다음 단계 / 참조 문서 지도.
+
 ### DCN-CHG-20260429-10
 - **Date**: 2026-04-29
 - **Change-Type**: ci
