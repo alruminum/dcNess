@@ -119,3 +119,30 @@
   - **(별도 Task)** plugin 배포 시 hook 도입 — agent-boundary ALLOW_MATRIX 에 validator status path regex 추가. 현재 dcNess 자체엔 hook 미도입 (proposal §11.4).
   - **측정**: validator 호출 시 alias hit (옛 LGTM/OK/APPROVE) 0건. 실제 호출 데이터 누적 (`.claude/harness-state/.metrics/`) 후 측정.
 - **Document-Exception**: agent 카테고리(heavy)지만 코드/CI 변경 없음 → PROGRESS 미해당. 거버넌스 §2.6 룰상 PROGRESS 는 harness/hooks/ci 만 강제이므로 본 변경엔 미적용. 단 후속 갱신 시 본 Task ID 도 명시.
+
+### DCN-CHG-20260429-08
+- **Date**: 2026-04-29
+- **Rationale**:
+  - 거버넌스 부트스트랩(`DCN-CHG-20260429-01`) 시 명시한 follow-up: "GitHub Actions workflow (`.github/workflows/document-sync.yml`) 추가는 별도 Task-ID". 본 Task 가 그 항목.
+  - **Local 우회 가능성**: 현재 3중 강제(git pre-commit + Claude Code PreToolUse + AGENTS.md) 는 `git commit --no-verify` 또는 hook 미설치(`cp scripts/hooks/pre-commit .git/hooks/pre-commit` 미실행) 시 우회 가능. 사용자 실수 또는 외부 에이전트가 `--no-verify` 추가하면 거버넌스 자체가 무력.
+  - **proposal §2.5 원칙 2 (강제 vs 권고 분리)** 정합: Document Sync 게이트는 *catastrophic* 가 아닌 *측정 가능 신호* — 단 거버넌스 시스템 자체의 무결성을 위해 *최후 차단* 만 강제.
+  - **proposal R9 (GitHub 외부화 trade-off)** 인지: PR 후 CI 실패 = 분 단위 피드백 지연. 단 *local hook 이 정상 작동 시* 90%+ catch → CI 는 잔여 10% 만 차단.
+- **Alternatives**:
+  1. *현 상태 유지 (3중 local 강제만)* — `--no-verify` 우회 가능. 외부 에이전트(Codex 등) 로컬 hook 미설치 시 무방비. 기각.
+  2. *모든 변경에 PR 리뷰어 수동 검사 강제* — 인적 오류, CHG-01 에서 이미 기각.
+  3. *(채택)* **CI workflow 추가** — base..head diff 검사. local 통과한 PR 도 CI 가 재검 → 우회 차단.
+- **Decision**:
+  - 옵션 3 채택. `.github/workflows/document-sync.yml` 신규.
+  - **trigger**: `pull_request` (base 검증) + `push: branches: [main]` (직접 push 또는 squash merge 후 main 재검).
+  - **base..head diff**: PR 의 경우 `pull_request.base.sha` ↔ `pull_request.head.sha`. push to main 의 경우 `event.before` ↔ `sha`. 첫 push 등 base 부재 시 *비대상* 처리(no-op) — false fail 방지.
+  - **fetch-depth: 0**: shallow clone 으론 base..head diff 불가. 본 게이트는 history 전체 필요.
+  - **Node 20**: `scripts/check_document_sync.mjs` 의 ESM import 동작 검증된 메이저 버전.
+  - **permissions: contents: read, pull-requests: read**: 최소 권한. 게이트는 *읽기만*, 차단은 exit code 로 표현.
+  - **로컬 게이트와의 인터페이스 (R9 완화)**: 본 CI 는 *최후 차단* 이지 *유일 차단* 아님. local 게이트가 90% catch, CI 가 10% catch 이상적. 사용자 git pre-commit hook 정상 설치 가이드 (`CLAUDE.md` §4) 보존.
+- **Follow-Up**:
+  - **(별도 Task)** `.github/workflows/plugin-validate.yml` — `claude plugin validate .claude-plugin/` 자동 실행. plugin manifest 형식 회귀 차단.
+  - **(별도 Task)** `.github/workflows/python-tests.yml` — `python3 -m unittest discover -s tests` 자동 실행. agent docs schema round-trip 회귀 차단.
+  - **측정 (proposal §2.5 원칙 5 — 30일 데이터 후 결정)**:
+    - 본 CI 가 차단한 위반 카탈로그 → governance §2.6 룰 정정 input
+    - false positive 발생 시 게이트 룰 완화 / Document-Exception 사용 빈도
+  - **branch protection 권장 (사용자 수동)**: GitHub Settings → Branches → main → "Require status checks to pass" → `document-sync` 추가. 본 PR 머지 후 사용자 액션. 본 Task 에선 워크플로우 자체만.

@@ -71,6 +71,16 @@
 - **Summary**: `status-json-mutate-pattern.md` §11.2 framework 적용 — RWHarness 의 `harness/` / `hooks/` / `agents/` / `scripts/` / `orchestration/` / `.claude-plugin/` 모듈을 PRESERVE / DISCARD / REFACTOR 로 분류. dcNess 메인 작업 모드(§11.4) 정합으로 hook/impl_loop 류는 자연 폐기, agent docs 변환 + state_io.py 만 net-new.
 - **Document-Exception**: 본 변경은 분류 *결정 기록* 이라 추가 deliverable 부재. heavy 카테고리 미해당 — `docs-only` 단독.
 
+### DCN-CHG-20260429-08
+- **Date**: 2026-04-29
+- **Change-Type**: ci
+- **Files Changed**:
+  - `.github/workflows/document-sync.yml` (신규 — Document Sync 게이트 CI workflow)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Document Sync 게이트 CI level 추가 — PR 단위로 base..head diff 를 검사. 로컬 게이트(git pre-commit + Claude Code PreToolUse) 가 우회된 경우(`--no-verify` 등) CI 가 *최후 차단*. proposal 4-pillar #2 (CI 게이트) 정합.
+
 ### DCN-CHG-20260429-07
 - **Date**: 2026-04-29
 - **Change-Type**: test
