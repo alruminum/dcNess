@@ -2,6 +2,13 @@
 
 ## 현재 상태
 
+- **🚀 Orchestration Agent + 동적 시퀀스 driver** (`DCN-CHG-20260429-28`):
+  - `harness/orchestration_agent.py` — `Step` dataclass, `parse_sequence_json`, `decide_next_sequence` (haiku 호출). 분기 룰 코드 hardcode 0 — 결정표(orchestration.md §4) LLM 위임.
+  - `harness/impl_driver.py` — `run_impl_loop` 메인 진입점. catastrophic backbone(§2.3 4 항목) + retry 한도(§5) 만 코드 hook 강제. nested 결정 분기 0.
+  - `tests/test_orchestration_agent.py` (27 케이스) + `tests/test_impl_driver.py` (24 케이스) — happy / SPEC_GAP detour / catastrophic 위반 / retry 한도 / agent emit escalate / max_steps overrun 회귀 커버.
+  - 총 테스트 103/103 PASS (기존 52 + 신규 51).
+  - **proposal §2.5 정합**: 원칙 1 (룰 순감소) — 분기 룰 LLM 위임으로 코드 0; 원칙 4 (흐름 강제는 catastrophic 만) — §2.3 4 항목만 hardcode.
+  - orchestration.md §9 옵션 (c) 채택 명시.
 - 거버넌스 시스템 부트스트랩 완료 (`DCN-CHG-20260429-01`, PR #1 머지)
 - 프로젝트 루트 `CLAUDE.md` + 루트 정책 파일 게이트 분류 추가 (`DCN-CHG-20260429-02`)
 - **Plugin 배포 인프라**: `.claude-plugin/{plugin,marketplace}.json` (`DCN-CHG-20260429-04`)

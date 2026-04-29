@@ -468,9 +468,15 @@ RWHarness 4 신호 OR 정합 (proposal §10 fork-and-refactor 정합):
 
 ---
 
-## 9. 코드 Driver — 결정 보류 (옵션 카탈로그)
+## 9. 코드 Driver — 옵션 (c) 채택 (DCN-CHG-20260429-28)
 
-본 SSOT 의 §2~§7 을 *코드로 강제* 하는 driver 는 후속 Task 에서 결정. 현재 3 옵션:
+본 SSOT 의 §2~§7 을 *코드로 강제* 하는 driver. **옵션 (c) Orchestration Agent + 동적 시퀀스** 채택 (DCN-CHG-20260429-28). 구현 모듈:
+
+- `harness/orchestration_agent.py` — `Step` 모델 / `parse_sequence_json` / `decide_next_sequence` (haiku 호출). 분기 룰 hardcode 0 — 결정표(§4) LLM 위임.
+- `harness/impl_driver.py` — `run_impl_loop` 진입점. catastrophic backbone(§2.3) + retry 한도(§5) 만 코드 hook. agent 호출은 `agent_invoker` callable 주입(테스트는 mock, 프로덕션은 메인 Claude / subprocess).
+- 테스트: `tests/test_orchestration_agent.py` (27) + `tests/test_impl_driver.py` (24) = 51 케이스, 전체 103/103 PASS.
+
+미채택 옵션 보존 (a/b) — 후속 reverse 시 참조.
 
 ### 옵션 (a) RWHarness `impl_loop.py` fork + parse_marker → interpret_signal 치환
 

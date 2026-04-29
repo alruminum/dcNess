@@ -18,6 +18,36 @@
 
 ## Records
 
+### DCN-CHG-20260429-28
+- **Date**: 2026-04-29
+- **Rationale**:
+  - `docs/orchestration.md` §9 — 코드 driver 옵션 (a)/(b)/(c) 카탈로그만 있고 채택 결정 보류 상태였음. 사용자 명시 결정: "옵션 c 로 갈꺼야 테스트 필수로 꼼꼼하게".
+  - 옵션 (c) 의 핵심 가치 = proposal §2.5 원칙 1 (룰 순감소) 정합 강함. 시퀀스 분기 logic 자체를 LLM 위임 → driver 코드의 conditional 0. 새 시나리오 추가 시 코드 수정 0, 결정표(orchestration.md §4) prose 만 갱신.
+  - 잠재 risk = 결정론 ↓ (같은 prose 다른 시퀀스 가능). safeguard = §2.3 catastrophic 백본 + §7 권한 매트릭스를 코드 hook 으로 강제 (LLM 우회 시 즉시 거부).
+- **Alternatives**:
+  1. *옵션 (a) RWHarness `impl_loop.py` fork + parse_marker → interpret_signal 치환* — 검증된 시퀀스 driver 흡수 후 변환만. 단점: parse_marker 호출 18 곳, generate_handoff 폐기, RWHarness executor/providers/config 강결합 함께 흡수 필요. dcNess 어휘 어긋남. 기각.
+  2. *옵션 (b) dcNess `impl_driver.py` 신작 (RWHarness 없이)* — 형식 강제 어휘 처음부터 0. 단점: 시퀀스 분기 logic 코드에 hardcode 잔존 → proposal §2.5 원칙 1 (룰 순감소) 정합 약함. 새 시나리오마다 if/elif 추가 부담. 기각.
+  3. *(채택) 옵션 (c) Orchestration Agent + 동적 시퀀스* — driver 는 sequence list 만 받아 순회, 각 step 후 메타 LLM 이 prose + 결정표 보고 sequence 동적 갱신. 분기 룰 코드 0, catastrophic backbone 만 코드 hook. proposal §2.5 원칙 1 + 4 정합 가장 강함. 채택.
+- **Decision**:
+  - 옵션 (c) 채택. 모듈 분리 = orchestration_agent (LLM 결정) + impl_driver (catastrophic + retry + 호출). 두 파일 모두 ~250-330 LOC, 단일 책임 명확.
+  - **Step 모델 강제**: agent ∈ ALLOWED_AGENTS (orchestration.md §4 13 agent), mode = UPPERCASE_SNAKE 또는 None, allowed_enums = non-empty UPPERCASE_SNAKE 튜플. 형식 위반 시 즉시 ValueError → orchestration LLM 의 raw 응답이 schema 어긋날 때 driver 가 catch.
+  - **Catastrophic backbone hook**: orchestration.md §2.3 4 항목 중 driver 영역 3 항목 코드 강제. Rule 2 (LGTM → merge) 는 외부 game (gh squash merge) 이라 driver 미적용.
+    - Rule 1: pr-reviewer schedule 시 — 가장 최근 engineer (IMPL_DONE/POLISH_DONE) 후 validator (CODE_VALIDATION/BUGFIX_VALIDATION) PASS 필수
+    - Rule 3: engineer non-POLISH schedule 시 — validator PLAN_VALIDATION PASS 또는 architect LIGHT_PLAN_READY 필수
+    - Rule 4: architect SYSTEM_DESIGN/TASK_DECOMPOSE schedule 시 — 가장 최근 product-planner PRODUCT_PLAN_READY/UPDATED 후 plan-reviewer PASS + ux-architect READY 필수
+  - **Retry 한도 hook** (orchestration.md §5):
+    - engineer IMPL × 3 → IMPLEMENTATION_ESCALATE
+    - architect SPEC_GAP × 2 → IMPLEMENTATION_ESCALATE
+    - engineer POLISH × 2 → IMPLEMENTATION_ESCALATE
+    - history 카운트 기반 (LLM 이 schedule 했더라도 limit 도달 시 driver 가 거부)
+  - **Telemetry**: `.metrics/orchestration-calls.jsonl` 추가 (interpret_strategy 패턴 정합). DCNESS_LLM_TELEMETRY=0 환경변수로 비활성.
+  - **테스트 51 케이스**: 27 (orchestration_agent) + 24 (impl_driver). Step validation / parse_sequence_json fence 처리 / mock client decide / catastrophic 4 분기 / retry 한도 / SPEC_GAP detour / interpret 실패 / max_steps overrun 회귀 커버. 전체 103/103 PASS.
+- **Follow-Up**:
+  - **production 와이어링** = `agent_invoker` 를 메인 Claude `Agent` tool 호출 (subprocess `claude --agent <name>`) 로 wrapping 하는 launcher 모듈. 본 Task 외 별도 Task-ID.
+  - **catastrophic Rule 2 (LGTM → merge)** = git squash merge 와 결합한 external safeguard 필요. branch protection 으로 부분 보장 (governance §2.8) 되어 있으나 driver 단계 hook 추가 검토.
+  - **30일 측정 (proposal §2.5 원칙 5)**: orchestration-calls.jsonl 누적 → orchestrator 가 catastrophic 위반을 얼마나 자주 시도하는지 (= prompt 부정확성) / heuristic vs LLM fallback 비율 / 시퀀스 평균 길이 측정. 수치 기반 결정표 갱신.
+  - **회귀 위험**: orchestration_agent 의 raw LLM 응답이 schema 위반 (한국어 추가 텍스트, JSON 아닌 응답 등) 시 MissingSignal('ambiguous') 로 정규화. driver 는 그 예외를 catch 안 함 → user-facing escalate. retry 메커니즘 부재. 수동 사용자 개입 필요. 차후 retry hook 검토.
+
 ### DCN-CHG-20260429-27
 - **Date**: 2026-04-29
 - **Rationale**:

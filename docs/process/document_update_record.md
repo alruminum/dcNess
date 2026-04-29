@@ -20,6 +20,21 @@
 
 ## Records
 
+### DCN-CHG-20260429-28
+- **Date**: 2026-04-29
+- **Change-Type**: harness, test, docs-only
+- **Files Changed**:
+  - `harness/orchestration_agent.py` (신규, ~280 LOC) — `Step` 모델 / `parse_sequence_json` / `decide_next_sequence` haiku 호출
+  - `harness/impl_driver.py` (신규, ~330 LOC) — `run_impl_loop` 메인 진입점 + `check_catastrophic` + `check_retry_limit` + `default_impl_sequence` + `.attempts.json` 영속화
+  - `tests/test_orchestration_agent.py` (신규, 27 케이스) — Step validation / parse_sequence_json / decide_next_sequence (mock client) / telemetry
+  - `tests/test_impl_driver.py` (신규, 24 케이스) — happy 시퀀스 / 4 catastrophic 분기 / retry 한도 / SPEC_GAP detour / interpret 실패 / max_steps overrun
+  - `docs/orchestration.md` §9 — 옵션 (c) 채택 명시 (RWHarness fork 옵션 a, dcNess 신작 옵션 b 미채택)
+  - `PROGRESS.md` — Phase 4 entry 추가
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: `docs/orchestration.md` §9 옵션 (c) 채택 — Orchestration Agent + 동적 시퀀스 driver 신작. driver 자체는 분기 룰 hardcode 0 (결정표 LLM 위임), catastrophic backbone(§2.3 4 항목) + retry 한도(§5) 만 코드 hook 으로 강제. proposal §2.5 원칙 1 (룰 순감소) + 원칙 4 (흐름 강제는 catastrophic 만) 정합. 51 신규 테스트 추가, 전체 103/103 PASS.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260429-27
 - **Date**: 2026-04-29
 - **Change-Type**: agent, docs-only
