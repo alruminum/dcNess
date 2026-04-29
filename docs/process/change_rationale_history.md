@@ -18,6 +18,35 @@
 
 ## Records
 
+### DCN-CHG-20260430-03
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 2026-04-30 RWH 에이전트가 dcness 의 git log (3일 / 82 commit) 분석 + 진단 제출. 핵심 4 메시지:
+    1. dcness 의 prose-only 가 사다리 #1 (alias) 정조준 끊음 = 확정.
+    2. 사다리 #2 (state hole) 와 #3 (sweep) 는 dcness 가 *분기 자체 폐기* 로 회피 (해결 아님).
+    3. DCN-CHG-41/42 가 사다리 시그널 (PYTHONPATH wrapper → cache glob fallback patch).
+    4. RWH 가 더 이상 진화 못 하는 임계 / [200.1] 도달 단정.
+  - dcness 응답 검토 — 4개 정확 / 1개 over-claim / 1개 부분 정정 결과:
+    - 수용: prose-only 의 정조준 평가, 사다리 #2 회피 = 운영적 절제, DCN-41/42 시그널, RWH = baseline 카탈로그.
+    - 반박: "[200.1] / 더 이상 진화 못 함" 단정 = inverse fallacy. commit 빈도 → 가치 곡선 추론은 outside view 부재 (양쪽 동일).
+    - 부분 정정: DCN-41/42 vs RWH alias 사다리 layer 구분 — 형식 같지만 #2.5 (외부 환경) 신규 분류로 분리. 사다리 #2 (내부 state hole) 는 dcness 안 아직 시작 안 함.
+  - RWH 에이전트가 정정 두 건 (inverse fallacy 철회 + layer 혼동 정정 → #2.5 분류 수용) 응답.
+  - 외부 진단을 dcness governance 안 영구 자리로 흡수해야 — 분석이 외부 코멘트로 흐르지 않고 self-discipline 문서로 작동.
+- **Alternatives**:
+  1. *RWH 진단 무시* (dcness 가 우월 가정). over-claim. 기각.
+  2. *dcness 코드 안에 자동 사다리 차단 메커니즘* — 어떤 분기를 자동 차단할지 spec 부재 + 자동 차단이 새 사다리. 기각.
+  3. **(채택) governance 문서에 진단 흡수 + self-check 회로** — 신규 분기 PR self-check (`branch-surface-tracking.md`) + 사다리 카탈로그 sticky 명시 (`migration-decisions.md` §7). 자동 차단 X, 자가 점검 ⚪. 사람의 판단 (사용자 / 메인 Claude) 이 신호 보고 결정.
+- **Decision**:
+  - 옵션 3. 두 문서 신규/보강 docs-only PR.
+  - **사다리 #2.5 (외부 환경) 신규 분류** — RWH 진단 layer 혼동 정정 결과. 사다리 #2 와 #2.5 layer 차이 (내부 코드 vs 외부 시스템 인터페이스) 박음. 양쪽 회피 전략 다름.
+  - **임계 수치 (30일/3 warning, 30일/5 critical)** — RWH 데이터 1-time snapshot 기반 추정. 30 회 dcness 자가 데이터 후 보정 (별도 Task).
+  - **layer 회색지대 보수적**: 사다리 #2 vs #2.5 모호 시 #2 분류 (더 엄격).
+  - **inverse fallacy 양쪽 동일**: "RWH 임계 도달 / dcness 사다리 자유" 둘 다 단정 못 함. 측정 데이터 누적이 1차.
+- **Follow-Up**:
+  - **(별도 Task — 측정)** branch-surface-tracking.md 의 임계 수치 30일 누적 데이터 수집 후 보정.
+  - **(별도 Task — 측정)** 매 `harness` / `hooks` / `spec` PR 의 self-check 첨부 강제 — 현재는 권장 (governance §2.6 카테고리 PR 한정). 30일 후 강제 vs 권장 결정.
+  - **(별도 Task — 가능성)** dcness 가 critical 임계 도달 시 자동 alert 메커니즘 (`scripts/check_branch_surface.mjs` 같은 형식). 단 자동 차단 X — 사람 판단 우선.
+
 ### DCN-CHG-20260430-02
 - **Date**: 2026-04-30
 - **Rationale**:

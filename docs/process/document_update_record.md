@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260430-03
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/process/branch-surface-tracking.md` (신규) — 사다리 분류 (#1 형식 / #2 state hole / #2.5 외부 환경) + 신규 분기 추가 PR self-check + 임계 신호 (warning/critical) + dcness 한계 명시.
+  - `docs/migration-decisions.md` — §7 RWH 사다리 카탈로그 + dcness 한계 + sticky 룰 + inverse fallacy 회피 추가.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 2026-04-30 RWH 에이전트 진단 (3일/82커밋 git log 분석) 의 정확한 부분 4건 + 정정 부분 2건 (inverse fallacy 철회 + layer 혼동 정정 → 사다리 #2.5 신규 분류) governance 영구 자리에 흡수. RWH 의 외부 시각이 dcness self-discipline 문서로 변환. branch-surface-tracking.md = 매 PR self-check 회로, migration-decisions.md §7 = 사다리 카탈로그 + dcness 한계 sticky 명시. 코드 변경 0.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-02
 - **Date**: 2026-04-30
 - **Change-Type**: harness, spec, docs-only, test
