@@ -18,6 +18,33 @@
 
 ## Records
 
+### DCN-CHG-20260430-02
+- **Date**: 2026-04-30
+- **Rationale**:
+  - Manual smoke 종합 피드백 (3가지) 동반 처리:
+    1. "중간 출력 가시성" — CC 가 Bash/Agent 출력 collapsed 표시. step 간 무엇이 일어나는지 기본으로 안 보임.
+    2. "별일 없으면 자동 commit/PR" — clean run 에 매번 사용자 컨펌 round-trip 비싸다.
+    3. "yolo / autopilot 모드" — CLARITY_INSUFFICIENT / *_ESCALATE / AMBIGUOUS 시 사용자 답 대기로 자주 멈춤.
+  - 동시에 사용자 지적: "skill 마다 같은 boilerplate 박으면 중복 ↑". helper-side 로 해결해야.
+- **Alternatives**:
+  1. *각 skill prompt 안 메인이 요약 print + 분기 처리* — 중복 폭증. 기각.
+  2. *full prose dump (cat)* — transcript 폭발. 기각.
+  3. **(채택) helper-side automation** — `dcness-helper end-step` 자동 stderr 요약 + `finalize-run` JSON 집계 + `auto-resolve` yolo 폴백. skill prompt 손 안 대고 모든 skill 자동 수혜.
+- **Decision**:
+  - 옵션 3. helper 3개 변경 (`_cli_end_step` stderr 출력 추가, `_cli_finalize_run` 신규, `_cli_auto_resolve` 신규) + skill 2개 (quick/product-plan) yolo + Step 7 분기.
+  - **`.steps.jsonl` append-only 로그** — end-step 마다 한 줄 append. finalize-run 이 read + JSON 집계. atomic write 불필요 (append-only).
+  - **MUST_FIX detection** — 정규식 (`\bMUST[\s_-]?FIX\b` /i) 검사 → boolean 저장.
+  - **clean 자동 commit guard**: `.env` / `secrets.*` / `credentials.*` 있거나 10+ unstaged 또는 submodule 변경 시 7b fallback.
+  - **worktree squash 흡수 검사**: ExitWorktree(remove) 전 `git diff main..worktree-branch -- :^.claude` 빈 줄이면 변경 흡수 확인 → discard_changes=true 자동.
+  - **yolo 매핑 매트릭스**: `_YOLO_FALLBACKS` dict — `ux-architect:UX_FLOW_ESCALATE`, `product-planner:CLARITY_INSUFFICIENT`, `architect:SPEC_GAP_FOUND`, `validator:FAIL`, `*:AMBIGUOUS`. 매핑 없으면 user-delegate (안전 default).
+  - **catastrophic 보존**: PreToolUse 훅 §2.3 4룰 = hard safety. yolo 무관 통과 못 하면 차단.
+- **Follow-Up**:
+  - **(별도 Task — PR2)** orchestration §3.1 + §2.3.4 에 validator DESIGN_VALIDATION 추가 + /product-plan 6.5 step + hooks.py 검사.
+  - **(별도 Task — PR2)** `/impl` skill — per-batch 정식 impl 루프 (architect MODULE_PLAN → test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer).
+  - **(별도 Task — PR2)** `/impl-loop` skill — sequential /impl chain.
+  - **(별도 Task)** /qa / /init-dcness 도 finalize-run 패턴 적용 검토.
+  - **(측정)** 다음 manual smoke 에서 clean run 자동 진행율 + yolo 사용 빈도. 30 회 데이터 후 default 동작 재검토.
+
 ### DCN-CHG-20260429-42
 - **Date**: 2026-04-29
 - **Rationale**:

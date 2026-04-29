@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260430-02
+- **Date**: 2026-04-30
+- **Change-Type**: harness, spec, docs-only, test
+- **Files Changed**:
+  - `harness/session_state.py` — `_extract_prose_summary` / `_append_step_status` / `_read_steps_jsonl` / `_cli_finalize_run` / `_cli_auto_resolve` 함수 + 2 CLI subcommand (`finalize-run`, `auto-resolve`). end-step 가 prose 요약 stderr 자동 출력 (CC collapsed 회피, 모든 skill 자동 수혜). `.steps.jsonl` append-only 로그 추가.
+  - `commands/quick.md` — yolo 모드 keyword 트리거 + Step 7 분기 (7a clean 자동 commit/PR + 7b caveat 확인). worktree exit 시 squash 흡수 검사 자동.
+  - `commands/product-plan.md` — yolo 모드 keyword + auto-resolve 호출 가이드.
+  - `tests/test_session_state.py` — `HelperAutomationTests` 9 케이스 추가.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Option A foundation. helper-side automation 도입으로 skill prompt 슬림화. (1) end-step 가 prose 요약 stderr 자동 출력 → 모든 skill 가시성 동시 향상 (CC collapsed 회피, ctrl+o 무관). (2) finalize-run subcommand → run 의 step status JSON 집계 (clean 판정용). (3) auto-resolve subcommand → yolo 모드 폴백 매트릭스 (UX_FLOW_ESCALATE → UX_FLOW_PATCHED 등). (4) /quick Step 7 = clean 자동 commit/PR + worktree squash 흡수 자동 처리, caveat 만 사용자 확인. (5) yolo keyword (yolo/auto/끝까지/막힘없이) 검출 시 CLARITY/AMBIGUOUS/ESCALATE 자동 폴백. catastrophic 룰 (PreToolUse 훅) 그대로 hard safety.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260429-42
 - **Date**: 2026-04-29
 - **Change-Type**: docs-only

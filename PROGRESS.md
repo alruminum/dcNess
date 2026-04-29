@@ -2,6 +2,14 @@
 
 ## 현재 상태
 
+- **🤖 Helper-side automation foundation** (`DCN-CHG-20260430-02`):
+  - `dcness-helper end-step` 이 enum 추출 후 prose 첫 5~8줄 stderr 자동 출력 — CC collapsed 회피, 모든 skill 가시성 자동 ↑.
+  - `dcness-helper finalize-run` 신규 — `.steps.jsonl` append-only 로그 집계 → JSON status (has_ambiguous / has_must_fix / step enum 매트릭스). skill 이 clean 판정용으로 소비.
+  - `dcness-helper auto-resolve` 신규 — yolo 모드 폴백 매트릭스. UX_FLOW_ESCALATE → UX_FLOW_PATCHED 등 권장 액션 JSON.
+  - `/quick` Step 7 = 7a clean 자동 commit/PR (graceful degrade) + 7b caveat 확인. worktree squash 흡수 자동 검사 (`git diff main..wt-branch -- :^.claude` 빈 줄이면 discard_changes=true).
+  - yolo keyword (yolo / auto / 끝까지 / 막힘 없이 / 다 알아서) — `/quick` `/product-plan` 둘 다 적용. catastrophic 훅 (§2.3) 은 hard safety 보존.
+  - 신규 9 테스트 (`HelperAutomationTests`). 184/184 PASS.
+  - PR2 후속: validator DESIGN_VALIDATION 추가 + `/impl` `/impl-loop` skill.
 - **🔧 Skill bash PYTHONPATH wrapper** (`DCN-CHG-20260429-41`):
   - `scripts/dcness-helper` 신규 — BASH_SOURCE 기반 자기위치 추출 → PYTHONPATH 자동 설정. CLAUDE_PLUGIN_ROOT 의존 0.
   - 4 skill (`qa` / `quick` / `product-plan` / `init-dcness`) 의 helper 호출 일괄 wrapper 경유로 변경.
