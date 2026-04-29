@@ -139,7 +139,7 @@ dcNess 는 RWHarness 와 다른 *모드* 다. 분류 전 다음 전제 박는다
 | `.github/workflows/document-sync.yml` (CI 게이트) | **DONE** | `DCN-CHG-20260429-08` |
 | `.github/workflows/python-tests.yml` | **DONE** | `DCN-CHG-20260429-09` |
 | `.github/workflows/plugin-manifest.yml` | **DONE** | `DCN-CHG-20260429-10` |
-| 메타 LLM (haiku) interpreter 통합 | **TODO** | Phase 2 — `interpret_signal(..., interpreter=anthropic_haiku_call)` |
+| 메타 LLM (haiku) interpreter 통합 | **DISCARDED** | `DCN-CHG-20260430-04` — heuristic-only 정착, LLM fallback 폐기 (도그푸딩 호환 + Anthropic 의존 0 + 메인 Claude 자체 LLM 이라 별도 judge 불필요). `harness/llm_interpreter.py` 삭제. |
 
 ---
 
@@ -147,10 +147,9 @@ dcNess 는 RWHarness 와 다른 *모드* 다. 분류 전 다음 전제 박는다
 
 다음 항목은 *후속 Task* 에서 결정:
 
-- **dcNess 가 메인 Claude 의 `Task` 도구로 agent 호출 시 prose 강제 여부** — 현 모드(메인 직접 작업) 에선 의무 아님. plugin 배포 후 사용자 프로젝트에서 메타 LLM interpreter 가 동작.
+- **dcNess 가 메인 Claude 의 `Task` 도구로 agent 호출 시 prose 강제 여부** — 현 모드(메인 직접 작업) 에선 의무 아님. plugin 배포 후엔 heuristic-only 로 결론 enum 추출 + 메인 Claude 가 ambiguous 시 cascade.
 - **`harness/core.py` 의 `RunLogger` / `kill_check` 도입 여부** — 도그푸딩 측정 또는 무한루프 차단 필요 시 cherry-pick.
 - **`harness/helpers.py` 의 utility 함수 cherry-pick** — 사용 시점에 필요한 함수만 가져옴.
-- **메타 LLM interpreter 의 cache 전략** — 같은 prose 결과 caching 으로 비용 절감 가능 (proposal R8). 운영 데이터 누적 후 결정.
 
 ---
 

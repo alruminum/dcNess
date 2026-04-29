@@ -14,9 +14,11 @@ node_modules/
 # Claude Code 로컬 세션 (commit 금지)
 .claude/ralph-loop.local.md
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/resume-prompts/
 
 # 하네스 런타임 상태 (agent prose 파일 등)
 .claude/harness-state/
 
-# 메타 LLM (haiku) 호출 telemetry — 주간 비용 리포트 입력
+# heuristic enum 추출 telemetry (DCN-CHG-20260430-04 정착 — heuristic-only)
 .metrics/

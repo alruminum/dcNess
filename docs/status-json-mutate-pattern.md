@@ -1,9 +1,22 @@
-# Prose-Only Pattern — 형식 강제 폐기 + 메타 LLM 해석
+# Prose-Only Pattern — 형식 강제 폐기 + heuristic enum 추출
 
-> **Status**: PROPOSAL_DRAFT (brainstorm)
+> **Status**: PROPOSAL_DRAFT (brainstorm) → **HEURISTIC-ONLY 정착** (DCN-CHG-20260430-04)
 > **Origin**: 2026-04-29 jha0313/harness_framework 비교 + W0 PoC + 형식 강제 함정 자각
-> **적용**: 신규 프로젝트 (lightharness 등) 에서 메인 Claude 직접 작업. RWHarness 자체엔 적용 안 함. §11 참조.
+> **적용**: 신규 프로젝트 (dcNess 등) 에서 메인 Claude 직접 작업. RWHarness 자체엔 적용 안 함. §11 참조.
 > **이전 이름**: status-json-mutate-pattern. 신규 진단 (status JSON 도 형식 강제의 한 형태) 후 *prose-only* 로 정정.
+
+> ### ✅ 2026-04-30 정착 결정 — heuristic-only
+>
+> 본 proposal 의 *원래 비전* 은 "메타 LLM (haiku) 해석" 이었으나, dcNess 도그푸딩 결과 **메타 LLM 호출도 폐기** (DCN-CHG-20260430-04). 이유:
+>
+> 1. **API 키 의존 회피** — dcNess 자체가 plugin 으로 사용자 환경 도그푸딩. ANTHROPIC_API_KEY 강제 의존 = 진입 장벽.
+> 2. **메인 Claude = LLM** — 이미 메인이 LLM 이라 별도 judge 호출 = 2-LLM 패턴. 비용 + latency + 또 다른 사다리 (LLM 결과 검증) 진입 위험.
+> 3. **트렌드 위치** — RWH (regex parser, [2024]) → 본 proposal 원안 (메타 LLM, [2025]) → **heuristic-only + 메인 cascade ([2025+])** → structured tool output ([2026 미래]). 한 정거장 더 가벼운 위치.
+> 4. **휴리스틱 충분성 측정** — agent prose 가 prose 마지막 영역에 enum 단어 명시하면 단어경계 매칭이 정확. 30일 도그푸딩 데이터에서 heuristic_hit ≥ 80% 확인 시 정당.
+>
+> **현재 인프라** = `harness/interpret_strategy.py` (heuristic-only) + `harness/signal_io.interpret_signal` (휴리스틱 default + DI swap option). `harness/llm_interpreter.py` 폐기 (삭제). 메인 Claude 가 `MissingSignal` (ambiguous propagate) 받으면 cascade (재호출 / 사용자 위임 / yolo auto-resolve) 결정.
+>
+> 본 §의 "메타 LLM" / "haiku" 표현은 *원안 (historical)* — 실 동작은 heuristic-only. 미래 schema 강제 도입 시 본 결정 재검토.
 
 ---
 
@@ -281,7 +294,7 @@ harness 가 prose 의 *의미* 를 LLM 으로 해석.
 - [x] **dcNess 한정 추가 acceptance**:
   - [x] Task-ID 형식 검증 게이트 (`DCN-CHG-20260429-20`)
   - [x] LGTM 게이트 외부화 = branch protection required reviewers (`-21`)
-  - [x] 메타 LLM (haiku) interpreter 통합 = `harness/llm_interpreter.py` (`-22`)
+  - [x] 메타 LLM (haiku) interpreter 통합 = `harness/llm_interpreter.py` (`-22`) → **DISCARDED** (`DCN-CHG-20260430-04` heuristic-only 정착)
   - [x] heuristic-first + LLM-fallback 합성 + telemetry 분석기 (`-23`)
   - [x] plugin 배포 dry-run 가이드 = `docs/process/plugin-dryrun-guide.md` (`-24`)
 

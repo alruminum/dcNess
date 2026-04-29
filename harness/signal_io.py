@@ -22,8 +22,9 @@
 interpret_signal 의 swap point:
     기본 휴리스틱은 prose 의 마지막 500 토큰 영역에서 allowed enum 을
     case-insensitive 하게 scan. exact 1개 hit = 결론. 0개/2개+ = ambiguous.
-    프로덕션 환경에선 `interpreter=` 인자로 Anthropic SDK haiku 호출 주입.
-    proposal §3 비용: cycle 당 +$0.001 미만.
+
+    `interpreter=` 인자는 DI swap option 으로 보존 (테스트용). 프로덕션 dcness 는
+    heuristic-only — `interpret_with_fallback` 가 ambiguous propagate (DCN-CHG-20260430-04).
 """
 from __future__ import annotations
 
@@ -226,7 +227,8 @@ def read_prose(
 def _heuristic_interpret(prose: str, allowed: list[str]) -> str:
     """Default interpreter — prose 마지막 영역에서 allowed enum 1개 매칭.
 
-    프로덕션은 `interpret_signal(..., interpreter=anthropic_haiku_call)` 로 swap.
+    프로덕션 dcness 는 본 휴리스틱만 사용 (heuristic-only, DCN-CHG-20260430-04).
+    `interpreter=` 인자는 테스트용 DI swap.
     """
     tail = prose[-_TAIL_SCAN_CHARS:]
     hits: list[tuple[int, str]] = []
@@ -269,7 +271,7 @@ def interpret_signal(
         prose: agent 가 emit 한 자유 텍스트.
         allowed: 허용 enum 리스트 (예: ["PASS", "FAIL", "SPEC_MISSING"]).
         interpreter: (prose, allowed_list) -> str. None 이면 휴리스틱.
-                     프로덕션은 Anthropic haiku 호출 함수 주입.
+                     프로덕션은 None 사용 (heuristic-only). 테스트용 DI swap.
 
     Returns:
         allowed 안의 단일 enum.

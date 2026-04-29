@@ -18,6 +18,28 @@
 
 ## Records
 
+### DCN-CHG-20260430-04
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 2026-04-30 RWH 에이전트의 트렌드 분석 (DCN-CHG-20260430-03 동반 토론) 에서 사실 오류 발견 — "DC 의 signal_io.interpret_signal = agent prose → haiku" 단정. 검증 결과: dcness 의 실 호출 경로는 `interpret_with_fallback(prose, allowed)` 에서 `llm_interpreter=None` 디폴트라 LLM 호출 0 (heuristic-only). `harness/llm_interpreter.py` 는 dead code (테스트만 import).
+  - 사실 오류는 `harness/llm_interpreter.py` 파일 존재 + signal_io docstring "프로덕션 = haiku 주입" 표현이 미래 reader 에 같은 오해 유발. 이미 RWH 에이전트가 같은 오해.
+  - dcness 가 사실은 RWH 가 본 [2025 메타 LLM] 단계가 아닌 [2025+ heuristic-only + 메인 cascade] 위치 — 한 발 더 가벼움. 단 codebase 가 그 정착을 명시 못 함.
+  - 또 사용자 명시 권한 — "필요없는거 지우고 남은거 해줘" — dead code 제거 mandate.
+- **Alternatives**:
+  1. *llm_interpreter.py 보존 (future-proof)* — dead code 유지. CLAUDE.md 룰 위반 ("don't add features for hypothetical future requirements"). proposal §2.5 원칙 1 (룰 순감소) 위반. 기각.
+  2. *deprecate 만 + 코드 보존* — dead path 그대로, docstring deprecation. 같은 오해 재발 위험. 기각.
+  3. **(채택) 완전 폐기** — `llm_interpreter.py` + `test_llm_interpreter.py` 삭제. `interpret_with_fallback` 의 `llm_interpreter=` 인자 제거. docstring 정정. 미래 reintroduce 시 git history 에서 복원 가능.
+- **Decision**:
+  - 옵션 3. dead code 완전 삭제.
+  - **함수명 `interpret_with_fallback` 보존** — 외부 호출자 (`harness/session_state.py` `_cli_end_step`) 변경 비용 ↓. docstring 에 "함수명에 _with_fallback 잔존, 실제론 heuristic-only" 명시.
+  - **proposal §0 정착 박스** — `docs/status-json-mutate-pattern.md` 의 *원안 (메타 LLM 비전)* 은 historical 가치로 보존, 단 §0 박스에 정착 결정 + 4 이유 + 트렌드 위치 명시. 미래 reader 가 같은 오해 회피.
+  - **trend 위치 재정의**: RWH ([2024] regex parser) → 본 proposal 원안 ([2025] 메타 LLM judge) → **dcness 정착 ([2025+] heuristic-only + 메인 cascade)** → structured tool output ([2026] 미래). 한 정거장 더 가벼움 = RWH 에이전트가 본 그래프상 dcness 의 실제 위치.
+  - **DI swap option 보존** — `interpret_signal(..., interpreter=)` 의 `interpreter` 인자는 보존 (테스트용). 단 docstring 명시 "프로덕션 미사용".
+- **Follow-Up**:
+  - **(별도 Task — 측정)** 30일 도그푸딩 후 휴리스틱 hit rate 측정. 80%+ = 정당. 그 미만 = agent prose writing guide 정정 (LLM fallback 재도입 X — agent 가 enum 명시하도록 가이드).
+  - **(별도 Task — 6개월)** Anthropic structured tool output 안정화 + Opus 5 출시 시점 재검토. 그때 schema 강제로 갈아탈 가치 있는지 평가. 단 본 결정 (heuristic-only) 은 그 시점까지 유효.
+  - **(별도 Task — 미래 reintroduce 시)** git history 에서 `llm_interpreter.py` 복원 가능. 단 도입 동기 = 휴리스틱 fail rate 30%+ 측정 데이터 + 정량 비교.
+
 ### DCN-CHG-20260430-03
 - **Date**: 2026-04-30
 - **Rationale**:

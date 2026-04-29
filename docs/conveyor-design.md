@@ -573,7 +573,6 @@ def atomic_write(target: Path, content: bytes, *, mode: int = 0o600) -> None:
 - [`process/branch-protection-setup.md`](process/branch-protection-setup.md) — §2.3.2 외부화
 - `harness/signal_io.py` — interpret_signal 단일 호출
 - `harness/interpret_strategy.py` — heuristic-first + LLM-fallback
-- `harness/llm_interpreter.py` — Anthropic haiku interpreter
 - `harness/session_state.py` — sid/rid 관리, atomic write, live.json (`DCN-CHG-20260429-30` 머지). `_default_base()` γ 설계 (`DCN-CHG-20260429-39`) — main repo state root 단일 source.
 - `agents/*.md` — 13 agent prose writing guide
 
