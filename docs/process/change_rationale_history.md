@@ -18,6 +18,43 @@
 
 ## Records
 
+### DCN-CHG-20260429-27
+- **Date**: 2026-04-29
+- **Rationale**:
+  - 사용자 요청 — "에이전트들 싹 다 점검 좀 하자. 너무 길고 복잡하고 제약 많아. 우리 프로젝트 성격에 맞춰서 자율성을 늘리고 판단 기준을 스스로 할 수 있도록."
+  - 진단: 24 파일 4350 줄. 6 가지 과잉 강제 패턴 — (1) 자기인식 강박 ("🔴 정체성" + "절대 출력 금지 패턴" 16~20 줄, RWHarness 위임 사고 방지 정합이지만 dcNess 메인 직접 작업 모드엔 과잉) (2) 거대 메타 룰 (Anti-AI-Smell 100+ 줄, 일부 권고를 강제로 박음) (3) Phase/Step 단계 강박 (Step 1~7 자율 판단 여지 0) (4) 산출물 마크다운 템플릿 박힘 (와이어프레임 ASCII / 표 / Doc 섹션 형식 강제) (5) 결론 enum 예시 반복 (모드마다 4~5 회) (6) 다중 체크리스트.
+  - 모두 proposal §2.5 원칙 1 (룰 순감소) + 원칙 2 (강제 vs 권고) + 원칙 3 (agent 자율성) 위반.
+  - 형식 어휘 sweep (`-26`) 직후. 형식 강제는 폐기됐으나 *내용 강제* (제약 다발) 가 잔존 — 본 Task 가 그 잔존 정리.
+- **Alternatives**:
+  1. *부분 정리 (가장 긴 3 파일만)* — 일관성 깨짐. 다른 21 파일이 여전히 비대칭. 기각.
+  2. *agent 별 분리 PR (13 PR)* — review 부담 ↓ but 일관성 보장 어려움 + 변환 패턴 표류. 기각.
+  3. *(채택)* **단일 PR 24 파일 일괄 변환 + 6 원칙 변환 가이드 정착**. 전체 일관성 + 한 PR review.
+  4. *Anti-AI-Smell 별도 docs/ 분리* — 새 파일 생성 부담 + cross-link 깨짐 risk. 가치 있지만 압축으로 충분. 기각.
+- **Decision**:
+  - 옵션 3. 6 변환 원칙 (A~F) 정합 일괄 변환. 사용자 자율 판단 위임 부분 (Anti-AI-Smell 처리, 페르소나 보존, 옵션) 은 보수적 자율 판단 — Anti-AI-Smell 1 단락 압축, 페르소나 1~2 줄 압축, 옵션 1 단일 PR.
+  - **6 변환 원칙**:
+    - **(A) frontmatter = 자기인식**: "🔴 정체성" 강박 + "절대 출력 금지 패턴" list 폐기 → frontmatter `name`/`description` + 1 줄 메타 ("> 본 문서는 X 에이전트의 시스템 프롬프트. 호출자가 지정한 모드 즉시 수행 + prose 마지막 단락에 결론 enum 명시 후 종료."). RWHarness 위임 사고 방지 정합은 dcNess 메인 직접 작업 모드엔 과잉.
+    - **(B) 원칙 1 줄 + 자율 판단 1 줄**: 다중 체크리스트 → "X 원칙. 위반 발견 시 prose 본문에 명시 후 escalate."
+    - **(C) Phase/Step 단계 강박 → 1 단락 권고**: "수행 흐름 (자율 조정 가능)" 단락 1 개로 압축.
+    - **(D) 산출물 형식 자율**: "산출물 정보 의무 (형식 자유)" 명시. 마크다운 템플릿 박힘 폐기.
+    - **(E) 결론 enum 예시 1 회**: 헤더 자연어 3 라인 (sweep `-26`) 으로 충분. 모드마다 예시 반복 폐기.
+    - **(F) catastrophic 분리**: "절대 금지" 다중 → "권한 경계 (catastrophic)" 1~2 항목 + 권고는 prose.
+  - **자기인식 강박 폐기 정당화**: dcNess 정체성 = 메인 Claude 직접 작업 모드 (CLAUDE.md §0). RWHarness 의 "위임 사고 방지" 가 부재. plugin 배포 후 사용자 프로젝트에서도 frontmatter `description` 만으로 자기인식 충분 — Claude SDK 의 agent 호출 시 description 이 시스템 프롬프트 컨텍스트로 들어감.
+  - **Anti-AI-Smell 1 단락 압축 정당화**: 가치는 보존 (디자인 가이드 작성 시 자기 점검 권고). 단 "5 가지 중 3 개 만족 시 자동 reject" 같은 hard rule 은 *권고* 영역 — proposal §2.5 원칙 2 (catastrophic 만 강제) 정합. 별도 docs/ 분리는 cross-link 부담 + 새 파일 = 룰 부채 → 기각.
+  - **폐기된 컨벤션 섹션 제거**: 24 파일 모두 끝에 박혀 있던 "폐기된 컨벤션" 섹션 제거. 의미는 `docs/orchestration.md` §0.1 (RWHarness vs dcNess 차이 표) + `docs/status-json-mutate-pattern.md` §1·§3·§11.4 가 SSOT — 24 파일 반복 불필요.
+  - **Cross-link 통일**: 모든 파일 끝에 `## 참조` 섹션 — `docs/orchestration.md` (시퀀스/핸드오프/권한) + `docs/status-json-mutate-pattern.md` (prose-only 발상). 신규 컨트리뷰터 navigation.
+  - **proposal §2.5 원칙 정합**:
+    - 원칙 1 (룰 순감소): 4350 → 1683 줄 (61% 감소). 신규 룰 0.
+    - 원칙 2 (강제 vs 권고): catastrophic 분리 (각 파일 "권한 경계 (catastrophic)" 1~2 항목 명시). 그 외 다중 체크리스트는 권고/prose.
+    - 원칙 3 (agent 자율성): "수행 흐름 (자율 조정 가능)" 명문. 산출물 "정보 의무 (형식 자유)". 단계 강박 X.
+    - 원칙 4 (catastrophic 시퀀스 보존): src/ 외 mutation 차단·write 경로 제한 등 catastrophic 은 보존.
+    - 원칙 5 (30일 측정 후 강제): 기존 룰 정리만, 신규 강제 0.
+- **Follow-Up**:
+  - **(검증)** plugin 배포 dry-run 시 압축 후 agent 가 실제 호출 흐름에서 정상 동작 확인 (자기인식 frontmatter 만으로 충분한지). 부족 시 1 줄 메타 보강.
+  - **(별도 Task)** 옵션 (a)/(b)/(c) 코드 driver 채택 결정 + 구현 (orchestration.md §9). 본 압축 후 agents/* 가 driver 의 입력으로 더 깔끔.
+  - **(별도 Task)** Anti-AI-Smell 운영 데이터 누적 (designer / ux-architect 산출물의 클리셰 빈도) → 패턴 발견 시 권고 강화 또는 별도 docs 추출.
+  - **(측정)** 본 압축 전후 agent 호출 비용·완료 시간 비교 (token 효율 분석 스킬). agent prompt 60% 감소 → 호출당 입력 토큰 감소 예상.
+
 ### DCN-CHG-20260429-26
 - **Date**: 2026-04-29
 - **Rationale**:

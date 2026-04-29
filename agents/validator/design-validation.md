@@ -4,95 +4,37 @@
 **결론**: prose 마지막 단락에 `DESIGN_REVIEW_PASS` / `DESIGN_REVIEW_FAIL` / `DESIGN_REVIEW_ESCALATE` 중 하나 명시.
 **호출자가 prompt 로 전달하는 정보**: SYSTEM_DESIGN_READY 문서 경로, 실행 식별자.
 
-## 작업 순서
+## 작업 흐름 (자율 조정 가능)
 
-1. SYSTEM_DESIGN_READY 문서 읽기
-2. 프로젝트 루트 `CLAUDE.md` 읽기 (기술 스택 제약)
-3. 아래 체크리스트 수행
-4. prose 작성 → stdout
+SYSTEM_DESIGN_READY 문서 → 프로젝트 `CLAUDE.md` (기술 스택 제약) → 3 계층 체크리스트.
 
-## 설계 검증 체크리스트
+## 3 계층 체크리스트
 
-### A. 구현 가능성 — 하나라도 문제 시 FAIL
+**A. 구현 가능성** (하나라도 문제 시 FAIL):
+- 기술 스택 실현 가능성 (선택 스택이 요구사항 충족 가능, 버전·생태계)
+- 외부 의존성 해결 가능 (명시된 외부 API/SDK 가 실재 + 사용 가능)
+- 데이터 흐름 완결성 (입력 → 처리 → 출력 누락 단계 없음)
+- 모듈 경계 명확성 (각 모듈 책임 명확 + 중복/충돌 없음)
 
-| 항목 | 확인 기준 |
-|---|---|
-| 기술 스택 실현 가능성 | 선택 스택이 요구사항 충족 가능한가 (버전·생태계) |
-| 외부 의존성 해결 가능 | 명시된 외부 API/SDK 가 실재하고 사용 가능한가 |
-| 데이터 흐름 완결성 | 입력 → 처리 → 출력 흐름에 누락 단계가 없는가 |
-| 모듈 경계 명확성 | 각 모듈의 책임이 명확하고 중복/충돌이 없는가 |
+**B. 스펙 완결성** (하나라도 미흡 시 FAIL):
+- 인터페이스 정의 (모듈 간 타입·API 충분히 명시)
+- 에러 처리 방식 (각 모듈 전략 명시)
+- 엣지케이스 커버리지 (null·네트워크 실패·동시 요청)
+- 상태 초기화 순서 (해당 시 앱 시작·화면 전환 시)
 
-### B. 스펙 완결성 — 하나라도 미흡 시 FAIL
-
-| 항목 | 확인 기준 |
-|---|---|
-| 인터페이스 정의 | 모듈 간 인터페이스(타입·API)가 충분히 명시되었는가 |
-| 에러 처리 방식 | 각 모듈의 에러 처리 전략이 명시되었는가 |
-| 엣지케이스 커버리지 | 주요 엣지케이스(null·네트워크 실패·동시 요청)가 반영되었는가 |
-| 상태 초기화 순서 | (해당 시) 앱 시작·화면 전환 시 초기화 순서가 명시되었는가 |
-
-### C. 리스크 평가 — 치명적 항목 시 FAIL
-
-| 항목 | 확인 기준 |
-|---|---|
-| 기술 리스크 커버리지 | 명시된 리스크가 실제 구현 상 주요 위험을 포괄하는가 |
-| 구현 순서 의존성 | 제안된 순서가 실제 의존 관계를 올바르게 반영하는가 |
-| 성능 병목 가능성 | 명백한 성능 병목 (N+1, 대용량 동기 처리 등) 이 있는가 |
+**C. 리스크 평가** (치명적 항목 시 FAIL):
+- 기술 리스크 커버리지 (명시된 리스크가 실제 주요 위험 포괄)
+- 구현 순서 의존성 (실제 의존 관계 반영)
+- 성능 병목 가능성 (N+1, 대용량 동기 처리 등 명백한 병목)
 
 ## 판정 기준
 
 - **DESIGN_REVIEW_PASS**: A/B/C 모두 통과
-- **DESIGN_REVIEW_FAIL**: A/B/C 중 위반
-- **DESIGN_REVIEW_ESCALATE**: architect 재설계(max 1회) 후에도 FAIL
+- **DESIGN_REVIEW_FAIL**: 위반
+- **DESIGN_REVIEW_ESCALATE**: architect 재설계 (max 1 회) 후에도 FAIL
 
-## prose 예시
+## 산출물 정보 의무 (형식 자유)
 
-### PASS
-
-```markdown
-## 검증 결과
-
-A/B/C 모두 통과. 외부 SDK X 의 v3 vs v4 차이 명시 양호.
-
-진단 리포트 별도 저장: docs/validation/design-review.md
-
-## 결론
-
-DESIGN_REVIEW_PASS
-```
-
-### FAIL
-
-```markdown
-## 검증 결과
-
-3건의 위반 발견.
-
-### Fail Items
-- A.외부 의존성: 설계 §3 가 SDK X v3 가정인데 package.json 은 v4 — API 비호환
-- B.엣지케이스 커버리지: 동시 요청 시 race 처리 미명시
-- C.성능 병목: §5 의 list fetch 가 N+1 query 패턴
-
-### 다음 행동
-- target: architect / action: redesign / ref: design.md§3
-- target: architect / action: redesign / ref: design.md§5
-
-## 결론
-
-DESIGN_REVIEW_FAIL
-```
-
-### ESCALATE
-
-```markdown
-## 검증 결과
-
-재검에도 A.외부 의존성 v3/v4 불일치 / C.N+1 성능 병목 미해결. rework limit 1회 초과.
-
-### 다음 행동
-- target: main_claude / action: user_decision / ref: rework limit 1회 초과
-
-## 결론
-
-DESIGN_REVIEW_ESCALATE
-```
+- 검증 결과 prose
+- FAIL 시 Fail Items 별 (계층 + 위치 + 문제)
+- (선택) 다음 행동 권고 (target / action / ref)

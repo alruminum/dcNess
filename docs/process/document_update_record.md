@@ -20,7 +20,20 @@
 
 ## Records
 
-### DCN-CHG-20260429-26
+### DCN-CHG-20260429-27
+- **Date**: 2026-04-29
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `agents/architect.md` + `agents/architect/{system-design,module-plan,spec-gap,task-decompose,tech-epic,light-plan,docs-sync}.md` (8)
+  - `agents/validator.md` + `agents/validator/{plan,code,design,bugfix,ux}-validation.md` (6)
+  - `agents/{engineer,test-engineer,designer,design-critic}.md` (4)
+  - `agents/{security-reviewer,pr-reviewer,plan-reviewer,qa}.md` (4)
+  - `agents/{ux-architect,product-planner}.md` (2)
+  - `PROGRESS.md` (사후 보강 entry)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 요청 — agents/*.md 너무 길고 복잡하고 제약 많음 → dcNess 정신 (자율성 + 자율 판단) 정합 일괄 정리. **4350 → 1683 줄 (61% 감소)**, 모든 파일 ≤ 150 줄. 변환 6 원칙: (A) "🔴 정체성" 강박 섹션 + "절대 출력 금지 패턴" → frontmatter `name`/`description` 1 줄 메타로 대체 (B) 원칙 다중 → 1 줄 + 자율 판단 (C) Phase 1~7 강박 → "수행 흐름 (자율 조정 가능)" 1 단락 (D) 마크다운 템플릿 박힘 → "정보 의무 (형식 자유)" (E) 결론 enum 예시 반복 → 헤더 1 회 (F) "절대 금지" 다중 → catastrophic 1~2 + 권고 prose. 페르소나 1~2 줄, Anti-AI-Smell 1 단락 압축. "폐기된 컨벤션" 섹션 24 파일 모두 제거 (orchestration.md / status-doc 참조로 대체) + 모든 파일 끝에 cross-link 1 단락 추가. 코드 변경 0, 테스트 회귀 0 (52/52 PASS 유지).
+- **Document-Exception**: 없음 (agent + docs-only 카테고리, deliverable 의무 N/A)
 - **Date**: 2026-04-29
 - **Change-Type**: agent, docs-only
 - **Files Changed**:
