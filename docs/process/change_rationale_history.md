@@ -18,6 +18,12 @@
 
 ## Records
 
+### DCN-CHG-20260430-09
+- **Date**: 2026-04-30
+- **Rationale**: README skill 표가 7개 시점 stale. /efficiency 흡수로 8개. 또 yolo/worktree keyword 가 행동형 skill 만 적용되는데 README 가 "모든 skill 공통" 으로 표기 → 읽기형 (`/qa` `/smart-compact` `/efficiency`) 에서 혼동 가능.
+- **Decision**: 표 1 row 추가 + 행동형/읽기형 분류 명시. docs-only.
+- **Follow-Up**: 없음 (정합성 갱신).
+
 ### DCN-CHG-20260430-08
 - **Date**: 2026-04-30
 - **Rationale**:
