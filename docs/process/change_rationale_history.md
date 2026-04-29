@@ -18,6 +18,33 @@
 
 ## Records
 
+### DCN-CHG-20260430-08
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 요청 — `https://github.com/jha0313/skills_repo` 검토 + 흡수 가치 평가.
+  - 3 skills 평가:
+    1. `improve-token-efficiency` ⭐⭐⭐ — proposal §5 Phase 4 fitness (도그푸딩 비용 측정) 와 자연 정합. dcness 의 `.metrics/heuristic-calls.jsonl` (heuristic enum 추출 telemetry) 와 별개로 *CC 세션 단위 비용 분석* 보강. 가치 ↑.
+    2. `ai-readiness-cartography` ⭐⭐ — governance 자가 점검 도구. 단 score.py 룰이 dcness 자체 룰 (branch-surface-tracking / Document Sync) 과 일부 중첩 + dcness 정체성 (RWHarness fork) 과 layer 다름. 외부 plugin 추천이 적합.
+    3. `presentation_slides` ⭐ — YouTube 발표용 HTML. dcness 무관.
+  - `improve-token-efficiency` 1개만 흡수. as-is fork + dcness 패턴 wrapper.
+- **Alternatives**:
+  1. *모두 무시* — 기존 dcness 8 skill 로 충분. 단 비용 측정은 proposal §5 핵심 fitness 항목, 누락이 흠. 기각.
+  2. *전체 3 skill 흡수* — presentation_slides 가 정체성 무관, ai-readiness 도 정합 검토 비용 ↑. 기각.
+  3. **(채택) 1개 (improve-token-efficiency) 만 흡수**. 4 script as-is fork (검증된 stdlib only) + dcness 패턴 (wrapper script + skill prompt + helper 진입 옵션). 출처 attribution 명시.
+- **Decision**:
+  - 옵션 3.
+  - **as-is fork (rewrite X)**: 4 script (analyze_sessions / build_dashboard / detect_patterns / build_patterns_dashboard) 그대로 `harness/efficiency/` 패키지에 복사. 출처 = `harness/efficiency/__init__.py` docstring + `commands/efficiency.md` 첫 줄 명시.
+  - **dcness fix 2건**:
+    1. `encode_repo_path` 의 `.` → `-` 추가 — CC 실 인코딩 룰 (예: `/Users/dc.kim/project/dcNess` → `-Users-dc-kim-project-dcNess`) 정합. 원본은 `/` 만 변환 → 사용자 `dc.kim` 같은 dotted username 환경에서 `[error] sessions dir not found` 발생. 사용자 환경 검증으로 발견.
+    2. `price_for` prefix 매칭 — `claude-haiku-4-5-20251001` (dated suffix), `claude-opus-4-7[1m]` (variant tag) 같은 신모델 ID 자동 흡수. 원본은 exact 매칭 후 Opus default fallback → haiku 사용량이 Opus 가격으로 과추정.
+  - **read-only 분석 도구라 catastrophic 룰 비대상**: agent 호출 X, prose 종이 X, PreToolUse 훅 §2.3 검사 비대상. helper protocol (begin-run / end-run) 은 *선택* (.steps.jsonl 추적 원할 때).
+  - **wrapper subcommand 5개**: analyze / dashboard / patterns / patterns-dashboard / full. `full` = analyze → dashboard chain 편의.
+- **Follow-Up**:
+  - **(별도 Task — 측정)** 30일 dcness 도그푸딩 후 `/efficiency` 자가 사용 빈도. 최소 5회/주 사용 안 되면 skill prompt description 정정.
+  - **(별도 Task — 가격 갱신)** Anthropic 신모델 출시 시 `PRICING` dict 한 줄 추가.
+  - **(별도 Task — 후속 흡수 검토)** 30일 후 `ai-readiness-cartography` 재평가 — dcness governance 와 정합 가능한지 정량 검토.
+  - **(별도 Task — upstream 기여)** dcness fix 2건 (encode_repo_path + price_for) 을 jha0313 upstream 에 PR 제안 (선택).
+
 ### DCN-CHG-20260430-07
 - **Date**: 2026-04-30
 - **Rationale**:

@@ -20,6 +20,24 @@
 
 ## Records
 
+### DCN-CHG-20260430-08
+- **Date**: 2026-04-30
+- **Change-Type**: harness, spec, docs-only, test
+- **Files Changed**:
+  - `harness/efficiency/__init__.py` (신규) — 패키지 docstring + attribution.
+  - `harness/efficiency/analyze_sessions.py` (신규, fork) — CC 세션 JSONL 파싱 + 4 지표 점수화. dcness fix: encode_repo_path 가 `/` + `.` 둘 다 → `-` 변환 (CC 실 인코딩 룰 정합), price_for prefix 매칭 (dated suffix `claude-haiku-4-5-20251001` / variant tag `[1m]` 흡수).
+  - `harness/efficiency/build_dashboard.py` (신규, fork) — Chart.js 단일 HTML 대시보드.
+  - `harness/efficiency/detect_patterns.py` (신규, fork) — 토큰 thrash 패턴 탐지.
+  - `harness/efficiency/build_patterns_dashboard.py` (신규, fork) — 패턴 HTML.
+  - `scripts/dcness-efficiency` (신규, 0755) — wrapper (analyze / dashboard / patterns / patterns-dashboard / full subcommand).
+  - `commands/efficiency.md` (신규) — `/efficiency` skill prompt (출처 attribution + dcness 패턴 정합 + 4 지표 rubric + 6 절감 휴리스틱).
+  - `tests/test_efficiency.py` (신규, 10 케이스) — encode_repo_path / price_for prefix 매칭 / wrapper smoke / fixture session 통합.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: `jha0313/skills_repo` 의 `improve-token-efficiency` skill 흡수. Claude Code 세션 JSONL 토큰/캐시/비용 분석 + HTML 대시보드. dcness fix 2건 (CC 인코딩 룰 정합, prefix 매칭). dcness skill 8 개 됨. read-only 분석 도구라 catastrophic 룰 비대상. 181/181 PASS.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-07
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only
