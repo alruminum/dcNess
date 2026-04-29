@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260429-30
+- **Date**: 2026-04-29
+- **Change-Type**: harness, test, docs-only
+- **Files Changed**:
+  - `harness/session_state.py` (신규, ~370 LOC) — OMC+RWH 차용 세션/run 격리 API
+  - `tests/test_session_state.py` (신규, 49 케이스) — session_id / pointer / atomic write / live.json envelope / active_runs / cleanup
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: `docs/conveyor-design.md` §4/§6/§9 spec 의 첫 코드 구현. session_id resolution 2-tier (env > project pointer, 글로벌 폴백 제외) + regex 검증 (OMC) + run_id `run-{token_hex(4)}` + atomic write (O_EXCL+fsync+rename+dir fsync, 0o600 RWH 패턴) + live.json with `_meta` envelope (RWH 자기참조 sessionId 검증) + active_runs map (OMC SkillActiveStateV2 차용, soft tombstone, heartbeat) + cleanup_stale_runs (24h TTL). 101/101 tests PASS (52 기존 + 49 신규). 회귀 0.
+- **Document-Exception**: 없음 (harness 카테고리 deliverable = `tests/**` 동반 ✅)
+
 ### DCN-CHG-20260429-29
 - **Date**: 2026-04-29
 - **Change-Type**: docs-only

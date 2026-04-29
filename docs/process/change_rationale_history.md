@@ -18,6 +18,32 @@
 
 ## Records
 
+### DCN-CHG-20260429-30
+- **Date**: 2026-04-29
+- **Rationale**:
+  - `docs/conveyor-design.md` (DCN-CHG-20260429-29 PR #29 머지) spec 의 첫 코드 구현 단계. 컨베이어 / 훅 / impl_driver 모두 본 모듈의 session_id / run_id / live.json API 에 의존 → **인프라 우선 박음**.
+  - 멀티세션 기본 가정 (사용자가 동시 다중 세션 띄움) → 격리 메커니즘 필수. OMC `SkillActiveStateV2` (active_runs map 다중 슬롯 + soft tombstone + heartbeat) + RWH `_meta` envelope (자기참조 sessionId 검증) + 3-tier resolution (env > pointer, 글로벌 폴백 제외) 차용.
+  - atomic write 는 `signal_io.write_prose` 의 단순 `os.replace` 대비 강화 — POSIX O_EXCL+fsync+rename+dir fsync 4 단계로 race 0 + 디스크 fault tolerance + 0o600 권한 (다중 사용자 머신 보호).
+- **Alternatives**:
+  1. *RWH 단일 active_state + 자기참조* — 동시 다중 run 미지원. 한 세션에 백그라운드 ralph + foreground quick 띄우는 시나리오 막힘. 기각.
+  2. *OMC active_skills map 만 + RWH 차용 0* — `_meta` envelope + atomic write 누락 → leftover 방어 약화. 기각.
+  3. *글로벌 ~/.claude pointer 폴백 도입 (RWH issue #19)* — dcNess 자체 도그푸딩 시 SessionStart 훅 미적용 환경 대응. 4-가드 복잡도 vs 도그푸딩 가치 trade-off 검토 후 미채택. dcNess 자체 SessionStart 훅 작성으로 우회 가능. 기각.
+  4. *(채택)* **OMC active_runs + RWH `_meta` envelope + atomic write + 2-tier resolution (글로벌 폴백 제외)**. conveyor-design.md §6 차용 표 정합.
+- **Decision**:
+  - 모듈 export 14 함수 + 4 상수.
+  - **session_id**: OMC regex `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$`, OMC 3 변형 stdin (sessionId/session_id/sessionid), 2-tier resolution (env > pointer).
+  - **run_id**: `run-{token_hex(4)}` 8 hex chars 정형 (RUN_ID_RE 검증). 16M 조합 → sid 안 충돌 사실상 0. 1000회 충돌 테스트 PASS.
+  - **atomic_write**: O_EXCL (충돌 시 raise) + tmp 파일명 `{name}.tmp.{pid}.{uuid8}` (race-safe) + fsync + rename + dir fsync. 0o600 기본. 일부 파일시스템 (tmpfs) 의 dir fsync 미지원은 silent ignore.
+  - **live.json envelope**: `_meta.sessionId/writtenAt/version` + top-level `session_id` 자기참조. read 시 sessionId 불일치면 leftover 로 거부 (빈 dict). update 시 `_meta` 항상 갱신 (옛 envelope 신뢰 0).
+  - **active_runs slot 필드**: run_id, entry_point, started_at, last_confirmed_at, completed_at, run_dir, current_step, issue_num.
+  - **cleanup**: completed+24h 또는 heartbeat dead+24h 슬롯 삭제. ttl_sec 인자로 조정 가능.
+- **Follow-Up**:
+  - **Task -31**: `harness/orchestration_agent.py` 폐기 + `harness/impl_driver.py` 새로 작성 (~50 줄). 본 모듈의 start_run / update_current_step / complete_run 사용.
+  - **Task -32**: `hooks/session-start.sh` (stdin → sid 추출 → write_session_pointer + update_live 초기화) 신규. 본 모듈 함수 호출.
+  - **Task -33**: `hooks/catastrophic-gate.sh` PreToolUse Agent 훅 신규. current_session_id + run_dir 으로 prose 종이 검사.
+  - **Task -34** (선택): `signal_io.write_prose` 의 atomic write 를 본 모듈의 atomic_write 로 교체.
+  - **회귀 위험**: 본 API 가 후속 모듈/훅의 인터페이스 spec 이 됨. signature 변경 시 cascade 영향 — major version 변경 또는 backward-compat alias 필수.
+
 ### DCN-CHG-20260429-29
 - **Date**: 2026-04-29
 - **Rationale**:
