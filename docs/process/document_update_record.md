@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260430-06
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `commands/impl.md` (신규) — `/impl` skill (per-batch 정식 impl 루프 — architect MODULE_PLAN → test-engineer → engineer IMPL → validator CODE_VALIDATION → pr-reviewer + clean 자동 commit/PR + yolo + worktree).
+  - `commands/impl-loop.md` (신규) — `/impl-loop` skill (multi-batch sequential auto chain — 각 batch 마다 /impl 호출 + clean 자동 진행 + caveat 시 멈춤).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: dcNess plugin 의 6+7 번째 skill. /quick 과 /product-plan 사이 갭 (정식 impl 루프 호출 진입점) 메움. /impl = per-batch (5 단계 task), /impl-loop = multi-batch wrapper (각 batch 의 /impl 자동 chain + clean 시 자동 진행). 사용자 manual smoke 발견 — /product-plan TASK_DECOMPOSE 산출 batch N 개를 메인이 즉흥 처리 (sub-task 등록 누락) 한 거 정정. 코드 변경 0 (prompt-only).
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-05
 - **Date**: 2026-04-30
 - **Change-Type**: spec, harness, hooks, docs-only, test

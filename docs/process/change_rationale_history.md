@@ -18,6 +18,30 @@
 
 ## Records
 
+### DCN-CHG-20260430-06
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 manual smoke (/product-plan v0.2 → "하나씩 순차로 구현해") 도중 발견 — /product-plan 종료 시 architect TASK_DECOMPOSE 산출 = 5 impl batch list. 그러나 후속 정식 impl 루프 (orchestration §2.1) 호출 진입점 부재 → 메인이 즉흥 처리. 외부 task 5 개만 등록 (batch 별), 각 batch 안 5 sub-task (plan/test/impl/validate/review) 누락 → 진행 가시성 ↓.
+  - 사용자 지적: "근데 이게 맞냐 impl마다 단계를 task로 잡아야지". 정확.
+  - 갭 = orchestration §3.1 의 "→ 구현 루프 §2.1 (별도)" 가 *concrete entry skill* 부재.
+- **Alternatives**:
+  1. */product-plan 자체에 impl 루프 chain 박기* — /product-plan 의 spec/design 책임이 폭증. 단발 impl batch 만 처리하고 싶을 때 과한 작업. 기각.
+  2. */quick 으로 batch 처리* — /quick 은 light path (test-engineer 생략, BUGFIX_VALIDATION 사용). batch 처리엔 부족 (test 없음 + 회귀 위험). 기각.
+  3. **(채택) 신규 skill 2 개**: /impl (per-batch 정식 루프) + /impl-loop (multi-batch wrapper). /impl 은 orchestration §2.1 그대로 5 단계. /impl-loop 은 batch list 받아 각 batch 마다 /impl chain + clean 자동 진행.
+- **Decision**:
+  - 옵션 3. 두 skill 신규.
+  - **/impl 시퀀스** = orchestration §2.1 정합. PreToolUse 훅 §2.3.1 / §2.3.3 자연 정합.
+  - **5 sub-task per batch** — 각 batch 안 architect MODULE_PLAN / test-engineer / engineer / validator / pr-reviewer 가 task list 로 보임. 사용자 지적 정합.
+  - **clean 자동 commit/PR**: /quick Step 7a 패턴 정합 — finalize-run JSON 집계 + clean 판정 + graceful degrade.
+  - **yolo 모드**: /quick / /product-plan 동일 keyword + auto-resolve 매핑.
+  - **/impl-loop wrapper**: 각 batch 마다 /impl 의 inner run 별도 (begin-run impl-batch-N). outer run 은 batch list 진행 메타만 추적.
+  - **caveat 멈춤**: clean 아니면 멈춤 + 사용자 위임. yolo 도 has_must_fix true 시 멈춤 (hard safety).
+- **Follow-Up**:
+  - **(별도 Task)** /impl-loop 의 multi-batch resume — caveat 멈춤 후 재실행 시 처음부터 다시 도는 거 정정 (이미 commit 된 batch skip).
+  - **(별도 Task)** batch 간 의존성 처리 (병렬 가능 / 직렬 강제 자동 판단). 현재 v1 = 무조건 직렬.
+  - **(별도 Task)** /product-plan 종료 시 "/impl-loop 진입" 옵션 자동 제안 (현재는 사용자 명시 발화 필요).
+  - **(측정)** /impl-loop 의 N batch 자동 진행률 + 멈춤 횟수. 30 회 후 yolo 매트릭스 보강.
+
 ### DCN-CHG-20260430-05
 - **Date**: 2026-04-30
 - **Rationale**:

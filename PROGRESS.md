@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+- **🔁 /impl + /impl-loop skill 신규** (`DCN-CHG-20260430-06`):
+  - `/impl` — per-batch 정식 impl 루프 (architect MODULE_PLAN → test-engineer → engineer IMPL → validator CODE_VALIDATION → pr-reviewer + clean 자동 commit/PR + yolo + worktree).
+  - `/impl-loop` — multi-batch sequential auto chain (각 batch 마다 /impl 호출 + clean 자동 진행 + caveat 멈춤).
+  - /product-plan TASK_DECOMPOSE 산출 batch list 의 후속 진입점. 5 sub-task per batch 가시화 — 사용자 manual smoke 지적 정합.
+  - dcNess plugin skill 7개 됨: /qa /quick /product-plan /smart-compact /init-dcness /impl /impl-loop.
 - **🔍 DESIGN_VALIDATION step 추가** (`DCN-CHG-20260430-05`):
   - orchestration §3.1 mermaid + §2.3.5 catastrophic 룰 + §4.9 결정표 갱신.
   - /product-plan Step 6.5 신규 (validator DESIGN_VALIDATION) + cycle 한도 2.
