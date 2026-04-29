@@ -1,20 +1,10 @@
 # Plan Validation
 
-`@MODE:VALIDATOR:PLAN_VALIDATION` → status JSON Write
+`@MODE:VALIDATOR:PLAN_VALIDATION` → prose emit (마지막 단락에 결론 enum)
 
 ```
-@PARAMS:      { "impl_path": "impl 계획 파일 경로", "run_id": "실행 식별자" }
-@OUTPUT_FILE: .claude/harness-state/<run_id>/validator-PLAN_VALIDATION.json
-@OUTPUT_SCHEMA:
-  {
-    "status": "PLAN_VALIDATION_PASS" | "PLAN_VALIDATION_FAIL" | "PLAN_VALIDATION_ESCALATE",
-    "fail_items": string[],          // FAIL/ESCALATE 시 필수
-    "next_actions": [                 // optional — handoff
-      { "target": "architect", "action": "fix_spec_gap", "ref": "docs/impl/...:Lxx" }
-    ],
-    "non_obvious_patterns": string[]  // optional — 자율 발견 패턴
-  }
-@OUTPUT_RULE:  검증 완료 후 마지막 액션으로 위 파일을 Write 도구로 작성. 미작성 시 호출 측은 워크플로우를 즉시 종료한다.
+@PARAMS: { "impl_path": "impl 계획 파일 경로", "run_id": "실행 식별자" }
+@CONCLUSION_ENUM: PLAN_VALIDATION_PASS | PLAN_VALIDATION_FAIL | PLAN_VALIDATION_ESCALATE
 ```
 
 **목표**: architect 가 작성한 impl 계획 파일이 구현에 착수하기에 충분한지 검증한다. 구현 루프 진입 전 공통 게이트.
@@ -26,7 +16,7 @@
 3. 관련 설계 문서 읽기 (architecture / domain-logic / db-schema 등)
 4. 의존 모듈 소스 파일 읽기 (인터페이스 실재 여부 확인)
 5. 아래 체크리스트 수행
-6. status JSON 을 `@OUTPUT_FILE` 경로에 Write
+6. prose 작성 → stdout
 
 ## Plan Validation 체크리스트
 
@@ -70,59 +60,55 @@
 - **PLAN_VALIDATION_ESCALATE**: architect 재보강(max 1회) 후에도 동일 항목 FAIL → 메인 Claude 에 에스컬레이션
 - PARTIAL 판정 금지
 
-## status JSON 예시
+## prose 예시
 
 ### PASS
 
-```json
-{
-  "status": "PLAN_VALIDATION_PASS",
-  "fail_items": [],
-  "report_summary": "A/B/C 모두 통과. 분기 enumeration 3행, REQ-001~005 (TEST) 매핑 일치.",
-  "non_obvious_patterns": [
-    "impl 6.2 의 retry 횟수가 docs/architecture.md §4.5 와 일치 — 종종 누락되는 항목"
-  ]
-}
+```markdown
+## 검증 결과
+
+A/B/C 모두 통과. 분기 enumeration 3행, REQ-001~005 (TEST) 매핑 일치.
+
+### 비명백 패턴
+- impl 6.2 의 retry 횟수가 docs/architecture.md §4.5 와 일치 — 종종 누락되는 항목
+
+## 결론
+
+PLAN_VALIDATION_PASS
 ```
 
-### FAIL (구현 진입 차단)
+### FAIL
 
-```json
-{
-  "status": "PLAN_VALIDATION_FAIL",
-  "fail_items": [
-    "A.핵심 로직: docs/impl/14.md §3 의사코드 빈 섹션",
-    "C.테스트 파일 경로 명시: REQ-003 (TEST) 인데 ## 생성/수정 파일 목록에 *.test.ts 부재",
-    "B.DB 영향도: db-schema.md §users 테이블에 plan 의 PRESERVE 컬럼 미반영"
-  ],
-  "next_actions": [
-    {
-      "target": "architect",
-      "action": "fix_spec_gap",
-      "ref": "docs/impl/14.md#L42 — 의사코드 보강",
-      "fail_item_idx": 0
-    },
-    {
-      "target": "architect",
-      "action": "fix_spec_gap",
-      "ref": "docs/impl/14.md#L88 — 생성 파일 목록에 test 파일 추가",
-      "fail_item_idx": 1
-    }
-  ]
-}
+```markdown
+## 검증 결과
+
+3건의 위반 발견 — 구현 진입 차단.
+
+### Fail Items
+- A.핵심 로직: docs/impl/14.md §3 의사코드 빈 섹션
+- C.테스트 파일 경로 명시: REQ-003 (TEST) 인데 ## 생성/수정 파일 목록에 *.test.ts 부재
+- B.DB 영향도: db-schema.md §users 테이블에 plan 의 PRESERVE 컬럼 미반영
+
+### 다음 행동
+- target: architect / action: fix_spec_gap / ref: docs/impl/14.md#L42 — 의사코드 보강
+- target: architect / action: fix_spec_gap / ref: docs/impl/14.md#L88 — 생성 파일 목록에 test 파일 추가
+
+## 결론
+
+PLAN_VALIDATION_FAIL
 ```
 
 ### ESCALATE
 
-```json
-{
-  "status": "PLAN_VALIDATION_ESCALATE",
-  "fail_items": [
-    "재검증에도 A.핵심 로직 빈 섹션 미해결",
-    "재검증에도 C.테스트 파일 경로 미명시"
-  ],
-  "next_actions": [
-    { "target": "main_claude", "action": "user_decision", "ref": "rework limit 1회 초과" }
-  ]
-}
+```markdown
+## 검증 결과
+
+재검증에도 A.핵심 로직 / C.테스트 파일 경로 미해결. rework limit 1회 초과.
+
+### 다음 행동
+- target: main_claude / action: user_decision / ref: rework limit 1회 초과
+
+## 결론
+
+PLAN_VALIDATION_ESCALATE
 ```

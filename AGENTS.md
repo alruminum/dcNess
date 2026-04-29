@@ -47,18 +47,22 @@ Document-Exception-Task: DCN-CHG-YYYYMMDD-NN
 
 `document_update_record.md` 의 해당 Task 항목에도 사유 명시 필수.
 
-## Status JSON Mutate 패턴 (validator 등 검증 에이전트)
+## Prose-Only 패턴 (validator 등 검증 에이전트)
 
-본 저장소는 [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) 의 발상에 따라 검증 결과를 **자유 텍스트 마커가 아닌 status JSON 파일** 로 전달한다. 검증 에이전트(validator, plan-reviewer, pr-reviewer, security-reviewer 등) 호출 시:
+본 저장소는 [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) (Prose-Only Pattern) 의 발상에 따라 검증 결과를 **자유 prose** 로 emit 한다. 검증 에이전트(validator, plan-reviewer, pr-reviewer, security-reviewer 등) 호출 시:
 
-1. **결과 파일 경로**: `.claude/harness-state/<run_id>/<agent>-<MODE>.json` (`agents/<agent>.md` 의 `@OUTPUT_FILE` 참조)
-2. **schema 필수**: `status` 키 (mode-specific enum) + (FAIL 시) `fail_items[]`. 나머지 freeform.
-3. **Write 도구**: 마지막 액션으로 위 파일 작성. 미작성 시 호출 측은 워크플로우 즉시 종료.
-4. **폐기된 컨벤션**: `---MARKER:X---` 마지막 줄 정형 + `MARKER_ALIASES` 폴백 + `preamble.md` 자동 주입 의존 — 모두 사용 금지. 자유 텍스트(prose) 는 *진단/감사 용* 으로만 stdout 에 잔존.
+1. **stdout 으로 prose**: 형식 자유 (markdown / 평문 / 표). harness 가 prose 파일로 저장(`.claude/harness-state/<run_id>/<agent>[-<MODE>].md`).
+2. **결론 enum**: prose 의 *마지막 단락* 에 mode-specific enum 단어 1개 명시 (예: `PASS` / `FAIL` / `SPEC_MISSING`). 모호한 표현 금지.
+3. **이유 필수**: 결론 근거 = 파일 path + 라인 번호 + 구체적 사실. 추측 금지.
+4. **폐기된 컨벤션**:
+   - `---MARKER:X---` 마지막 줄 정형 + `MARKER_ALIASES` 폴백 (사다리 자체 폐기)
+   - status JSON `@OUTPUT_FILE` / `@OUTPUT_SCHEMA` / `@OUTPUT_RULE` (이전 dcNess 패턴 — JSON 형식도 형식 강제)
+   - `preamble.md` 자동 주입 / agent-config 별 layer (자기완결 docs)
+   - 모두 사용 금지.
 
-자세한 형식 + 모드별 enum: [`agents/validator.md`](agents/validator.md), [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) §3 / §4.7.
+자세한 형식 + 모드별 enum: [`agents/validator.md`](agents/validator.md), [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) §3 / §4.
 
-orchestrator 측 read 는 [`harness/state_io.py`](harness/state_io.py) 의 `read_status` 사용 — 5 failure modes (`MissingStatus`) 단일 normalize.
+orchestrator 측 해석은 [`harness/signal_io.py`](harness/signal_io.py) 의 `interpret_signal(prose, allowed)` 사용 — `MissingSignal` 단일 normalize (not_found / empty / ambiguous). 메타 LLM 통합은 `interpreter=` 인자로 swap.
 
 ## 참조
 

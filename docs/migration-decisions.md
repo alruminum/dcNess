@@ -39,13 +39,13 @@ dcNess 는 RWHarness 와 다른 *모드* 다. 분류 전 다음 전제 박는다
 
 | 모듈 | 결정 | 사유 |
 |---|---|---|
-| `core.py:551-680` `MARKER_ALIASES` + `parse_marker` + `diagnose_marker_miss` | **DISCARD** | 발상 변경으로 자연 폐기. `state_io.read_status` 가 대체. proposal §3 |
-| `core.py:2040-2200` `generate_handoff` + `write_handoff` | **DISCARD** | handoff prose → status JSON `next_actions[]`. proposal §4.4 |
-| `core.py:175-210` `class Flag` (enum) | **REFACTOR (Phase 3.2)** | Phase 1~2 보존 후 `workflow-state.json` 합본. proposal §4.5 옵션 B |
+| `core.py:551-680` `MARKER_ALIASES` + `parse_marker` + `diagnose_marker_miss` | **DISCARD** | 발상 변경으로 자연 폐기. `signal_io.interpret_signal` 이 대체. proposal §3 |
+| `core.py:2040-2200` `generate_handoff` + `write_handoff` | **DISCARD** | prose 자체가 handoff. 별도 형식 없음. proposal §4.3 / §3 (Handoff) |
+| `core.py:175-210` `class Flag` (enum) | **DISCARD** | 형식 강제의 한 형태 (boolean flag). proposal §1·§4.4 — recovery state 는 별도 카운터 (`.attempts.json`) 로 분리 |
 | `core.py:1024-1043` `_AGENT_DISALLOWED` 매트릭스 | **DISCARD (dcNess 한정)** | `agent_call` subprocess 의 일부. dcNess 메인 직접 작업 모드엔 의미 없음 |
 | `core.py` `agent_call` subprocess (claude CLI 격리) | **DISCARD (dcNess 한정)** | 메인 직접 작업 모드라 subagent 호출은 메인 Claude 의 `Agent` 도구 또는 `Task` 도구가 담당. RWHarness 의 별도 subprocess 격리는 ceremony |
 | `core.py` `RunLogger` (JSONL 이벤트 로그) | **PRESERVE (검토)** | 도그푸딩 측정에 유용. dcNess 가 도그푸딩 환경 도입 시 같은 형식 채택. 단 Phase 1 진입 전엔 *보류* (불필요한 LOC) |
-| `core.py` `StateDir` (path 추상) | **PARTIAL** | path 추상은 `state_io.py` 에 이미 흡수. RWHarness `StateDir` 자체는 폐기, 신규 `state_io.state_path` 가 대체 |
+| `core.py` `StateDir` (path 추상) | **PARTIAL** | path 추상은 `signal_io.py` 에 이미 흡수. RWHarness `StateDir` 자체는 폐기, 신규 `signal_io.signal_path` 가 대체 |
 | `core.py` `kill_check` / `HARNESS_KILL` | **PRESERVE (검토)** | 무한 루프 차단 catastrophic-prevention. 단 dcNess 가 subprocess 루프 안 돌리면 의미 없음. 후속 Task 검토 |
 | `executor.py` (agent subprocess executor) | **DISCARD (dcNess 한정)** | `agent_call` 폐기와 동반 |
 | `path_resolver.py` (claude CLI 경로 결정) | **DISCARD (dcNess 한정)** | 메인 작업 모드엔 메인 Claude 가 자기 CLI 안에서 동작 → 외부 CLI path 결정 불필요 |
@@ -78,8 +78,8 @@ dcNess 는 RWHarness 와 다른 *모드* 다. 분류 전 다음 전제 박는다
 
 | 모듈 | 결정 | 사유 |
 |---|---|---|
-| `validator.md` + `validator/*.md` (5 모드) | **REFACTOR (Phase 1)** | `@OUTPUT_FILE` / `@OUTPUT_SCHEMA` / `@OUTPUT_RULE` 형식 변환. `non_obvious_patterns` optional 필드 추가 (proposal §5 Phase 1) |
-| `architect.md` + `architect/*.md` (7 모드) | **REFACTOR (Phase 2)** | 동일 형식 변환 |
+| `validator.md` + `validator/*.md` (5 모드) | **REFACTOR (Phase 1) ✅** | `DCN-CHG-20260429-13` — prose writing guide 형식. 결론 + 이유만 가이드, 형식 강제 0 (proposal §3) |
+| `architect.md` + `architect/*.md` (7 모드) | **REFACTOR (Phase 2)** | 동일 prose writing guide 적용 |
 | `engineer.md` | **REFACTOR (Phase 2)** | 동일 |
 | `designer.md` + `designer/*.md` (4 모드) | **REFACTOR (Phase 2)** | 동일 |
 | `design-critic.md` | **REFACTOR (Phase 2)** | 동일 |
@@ -130,11 +130,16 @@ dcNess 는 RWHarness 와 다른 *모드* 다. 분류 전 다음 전제 박는다
 
 | 모듈 | 상태 | 위치 |
 |---|---|---|
-| `harness/state_io.py` (R8 normalize 포함) | **DONE** | `DCN-CHG-20260429-03`, PR #3 머지 |
-| `tests/test_state_io.py` (32 케이스) | **DONE** | 위 동일 |
-| `agents/*.md` 의 `@OUTPUT_FILE` / `@OUTPUT_SCHEMA` / `@OUTPUT_RULE` 형식 | **TODO** | 후속 Task |
-| `.github/workflows/document-sync.yml` (CI 게이트) | **TODO** | 후속 Task |
-| `.github/workflows/plugin-validate.yml` | **TODO** | 후속 Task |
+| `harness/state_io.py` (status JSON schema) | **DISCARDED** | `DCN-CHG-20260429-03` 도입 → `DCN-CHG-20260429-13` 폐기 (proposal 갱신: 형식 강제 = 사다리) |
+| `tests/test_state_io.py` (32 케이스) | **DISCARDED** | 위 동일 |
+| `tests/test_validator_schemas.py` (9 round-trip) | **DISCARDED** | 위 동일 |
+| `harness/signal_io.py` (prose I/O + interpret_signal + DI swap) | **DONE** | `DCN-CHG-20260429-13` |
+| `tests/test_signal_io.py` (29 케이스) | **DONE** | 위 동일 |
+| `agents/validator*.md` prose writing guide | **DONE** | 위 동일 |
+| `.github/workflows/document-sync.yml` (CI 게이트) | **DONE** | `DCN-CHG-20260429-08` |
+| `.github/workflows/python-tests.yml` | **DONE** | `DCN-CHG-20260429-09` |
+| `.github/workflows/plugin-manifest.yml` | **DONE** | `DCN-CHG-20260429-10` |
+| 메타 LLM (haiku) interpreter 통합 | **TODO** | Phase 2 — `interpret_signal(..., interpreter=anthropic_haiku_call)` |
 
 ---
 
@@ -142,10 +147,10 @@ dcNess 는 RWHarness 와 다른 *모드* 다. 분류 전 다음 전제 박는다
 
 다음 항목은 *후속 Task* 에서 결정:
 
-- **dcNess 가 메인 Claude 의 `Task` 도구로 agent 호출 시 status JSON mutate 형식 강제 여부** — 현 모드(메인 직접 작업) 에선 의무 아님. plugin 배포 후 사용자 프로젝트에서만 강제.
+- **dcNess 가 메인 Claude 의 `Task` 도구로 agent 호출 시 prose 강제 여부** — 현 모드(메인 직접 작업) 에선 의무 아님. plugin 배포 후 사용자 프로젝트에서 메타 LLM interpreter 가 동작.
 - **`harness/core.py` 의 `RunLogger` / `kill_check` 도입 여부** — 도그푸딩 측정 또는 무한루프 차단 필요 시 cherry-pick.
 - **`harness/helpers.py` 의 utility 함수 cherry-pick** — 사용 시점에 필요한 함수만 가져옴.
-- **`MARKER_ALIASES` 폴백 layer 의 dcNess 도입 여부** — 사용자 프로젝트 plugin 배포 시 LLM 변형 흡수 가교가 필요할 수 있음. 단 proposal §2.5 원칙 1 (룰 순감소) 정합으로 *기본 미도입*. 측정 데이터 기반 결정.
+- **메타 LLM interpreter 의 cache 전략** — 같은 prose 결과 caching 으로 비용 절감 가능 (proposal R8). 운영 데이터 누적 후 결정.
 
 ---
 

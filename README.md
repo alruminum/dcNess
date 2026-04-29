@@ -1,35 +1,35 @@
 # dcNess
 
-> **Status**: `0.1.0-alpha` — Phase 1 (validator 단위) 완료
+> **Status**: `0.1.0-alpha` — Phase 1 (validator 단위, prose-only) 완료
 > **Origin**: [`alruminum/realworld-harness`](https://github.com/alruminum/realworld-harness) fork-and-refactor
-> **Spec**: [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md)
+> **Spec**: [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) (Prose-Only Pattern)
 
-Lightweight harness — **status JSON mutate 결정론** + **4 기둥 정합** + **함정 회피 5원칙** 기반의 RWHarness 후속.
+Lightweight harness — **prose + 메타 LLM 해석** 결정론 + **함정 회피 5원칙** 기반의 RWHarness 후속.
 
 ## 무엇이 다른가
 
 | 항목 | RWHarness | dcNess |
 |---|---|---|
-| 결정론 메커니즘 | `parse_marker` regex + `MARKER_ALIASES` 사다리 (~180 LOC) | `state_io.read_status` (~290 LOC) — agent 가 외부 status JSON 을 *mutate*, harness 는 그 파일만 *read* |
+| 결정론 메커니즘 | `parse_marker` regex + `MARKER_ALIASES` 사다리 (~180 LOC) | `signal_io.interpret_signal` — agent prose 자유 emit, 메타 LLM(또는 휴리스틱)으로 결론 enum 추출 |
+| 형식 강제 | `---MARKER:X---` + alias 변형 12개 | **0** — 형식 / flag / schema 모두 agent 자율. harness 강제 = 작업 순서 + 접근 영역만 |
 | 컨텍스트 layer | 5 layer (CLAUDE.md + agents + agent-config + preamble + sub-doc) | 2 layer (CLAUDE.md + agents) — preamble / agent-config 자동 주입 폐기 |
 | 게이트 | hook 7+ (agent-boundary / commit-gate / etc.) | 거버넌스 + 3 CI workflow (Document Sync + Python tests + Plugin manifest) |
 | LOC 목표 | 5000 | 2500 ~ 3000 |
 
 핵심 발상 (proposal §2):
 
-> "agent 의 자유 텍스트를 신뢰하지 않는다.
->  agent 에게 외부 상태 파일 mutate 책임 부여.
->  orchestrator 는 그 파일만 read."
+> "agent 는 prose 자유롭게 emit.
+>  harness 는 prose 의 *의미* 를 메타 LLM 으로 해석.
+>  형식 강제 0, flag 0, schema 0."
 
 ## 1차 구현 (Phase 1) 현황
 
-✅ **완료** — validator 단일 agent 단위로 status-JSON-mutate 패턴 검증.
+✅ **완료** — validator 단일 agent 단위로 prose-only 패턴 검증.
 
 | 컴포넌트 | 위치 | 상태 |
 |---|---|---|
-| Status I/O 모듈 | [`harness/state_io.py`](harness/state_io.py) | 32 단위 테스트 통과 (R8 5 failure modes 단일 normalize) |
-| Validator agent docs | [`agents/validator.md`](agents/validator.md) + [`agents/validator/*.md`](agents/validator) (5 모드) | `@OUTPUT_FILE` / `@OUTPUT_SCHEMA` / `@OUTPUT_RULE` 형식 |
-| Schema round-trip 검증 | [`tests/test_validator_schemas.py`](tests/test_validator_schemas.py) | 9 단위 테스트 통과 |
+| Signal I/O 모듈 | [`harness/signal_io.py`](harness/signal_io.py) | 29 단위 테스트 통과 (round-trip / path 화이트리스트 / 휴리스틱 / DI swap) |
+| Validator agent docs | [`agents/validator.md`](agents/validator.md) + [`agents/validator/*.md`](agents/validator) (5 모드) | prose writing guide (결론 + 이유) |
 | Plugin manifest | [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) + [marketplace.json](.claude-plugin/marketplace.json) | RWHarness 와 공존 가능 (`name=dcness`) |
 | Governance | [`docs/process/governance.md`](docs/process/governance.md) | Document Sync 게이트 SSOT |
 | CI workflows | [`.github/workflows/`](.github/workflows) | 3 종 (document-sync / python-tests / plugin-manifest) |
@@ -42,7 +42,7 @@ Lightweight harness — **status JSON mutate 결정론** + **4 기둥 정합** +
 
 - Python 3.11+ (테스트 실행)
 - Node.js 20+ (governance 게이트)
-- 외부 패키지 0 (표준 라이브러리만)
+- 외부 패키지 0 (표준 라이브러리만 — 메타 LLM 통합 시점에 `anthropic` 추가 예정)
 
 ### 셋업
 
@@ -58,7 +58,7 @@ chmod +x .git/hooks/pre-commit
 ### 검증
 
 ```sh
-# 단위 테스트 (state_io + validator schemas)
+# 단위 테스트 (signal_io)
 python3 -m unittest discover -s tests -v
 
 # Document Sync 게이트 (수동 실행 — commit 시 자동 호출)
@@ -68,38 +68,49 @@ node scripts/check_document_sync.mjs
 node scripts/check_plugin_manifest.mjs
 ```
 
-### 코드 사용 예 (`state_io`)
+### 코드 사용 예 (`signal_io`)
 
 ```python
-from harness.state_io import write_status, read_status, MissingStatus
-
-# Agent 측 — status JSON Write
-write_status(
-    "validator", "run_001",
-    {
-        "status": "PLAN_VALIDATION_PASS",
-        "fail_items": [],
-        "non_obvious_patterns": ["impl 6.2 의 retry 횟수 명세 일치"],
-    },
-    mode="PLAN_VALIDATION",
+from harness.signal_io import (
+    MissingSignal,
+    interpret_signal,
+    read_prose,
+    write_prose,
 )
 
-# Orchestrator 측 — 결정론 read
+# Agent 측 (또는 harness 가 stdout 캡처 후) — prose 저장
+write_prose(
+    "validator", "run_001",
+    """## 검증 결과
+
+A 스펙 일치 / B 의존성 모두 통과. C 경고 1건 (FAIL 아님).
+
+## 결론
+
+PASS
+""",
+    mode="CODE_VALIDATION",
+)
+
+# Orchestrator 측 — prose 읽고 결론 enum 1개 추출
 try:
-    result = read_status(
-        "validator", "run_001",
-        mode="PLAN_VALIDATION",
-        allowed_status={"PLAN_VALIDATION_PASS", "PLAN_VALIDATION_FAIL"},
-    )
-    if result["status"] == "PLAN_VALIDATION_PASS":
-        # 다음 단계 진입
-        ...
-except MissingStatus as e:
-    # 5 failure modes 단일 catch — e.reason 으로 retry 정책 분기
-    if e.reason in ("empty", "race"):
-        ...  # 100ms 후 1회 재read
+    prose = read_prose("validator", "run_001", mode="CODE_VALIDATION")
+    conclusion = interpret_signal(prose, ["PASS", "FAIL", "SPEC_MISSING"])
+    if conclusion == "PASS":
+        ...  # 다음 단계 진입
+except MissingSignal as e:
+    # 3 reasons (not_found / empty / ambiguous) 단일 catch
+    if e.reason == "ambiguous":
+        ...  # writing guide 정정 input — .metrics/ambiguous-prose.jsonl 누적
     else:
-        ...  # 즉시 fail (not_found / malformed_json / schema_violation)
+        ...  # 즉시 fail (not_found / empty)
+
+# 프로덕션 — 메타 LLM(haiku) interpreter 주입
+def haiku_interpreter(prose: str, allowed: list[str]) -> str:
+    # Anthropic SDK 호출 (Phase 2 도입)
+    ...
+
+conclusion = interpret_signal(prose, ["PASS", "FAIL"], interpreter=haiku_interpreter)
 ```
 
 ## 거버넌스 (필수)
@@ -116,15 +127,15 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 
 [`PROGRESS.md`](PROGRESS.md) §TODO 참조. 핵심 후보:
 
-- 다른 12 agent docs 변환 (architect / engineer / designer / ...)
-- branch protection 룰 추가 (사용자 수동, GitHub Settings)
-- 실 plugin 설치 dry-run — RWHarness 와 공존 검증 (proposal §12.3.2)
+- 메타 LLM (haiku) interpreter 통합 — Anthropic SDK 호출
+- 다른 12 agent docs prose-only 변환 (architect / engineer / designer / ...)
+- Plugin 배포 dry-run — RWHarness 와 공존 검증 (proposal §12.3.2)
 
 ## 참조 문서
 
 | 문서 | 역할 |
 |---|---|
-| [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | proposal — Goal / Mechanism / Phase / Risks / Plugin 전환 절차 |
+| [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | proposal — Prose-Only Pattern (Goal / Mechanism / Phase / Risks / Plugin 전환 절차) |
 | [`docs/migration-decisions.md`](docs/migration-decisions.md) | RWHarness 모듈 PRESERVE / DISCARD / REFACTOR 분류 |
 | [`docs/process/governance.md`](docs/process/governance.md) | Document Sync SSOT |
 | [`docs/process/document_update_record.md`](docs/process/document_update_record.md) | WHAT 로그 (Task-ID 별 변경 파일) |
