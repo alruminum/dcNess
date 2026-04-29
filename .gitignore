@@ -1,5 +1,19 @@
+# macOS
 .DS_Store
-node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
 *.log
+
+# Node
+node_modules/
+
+# Claude Code 로컬 세션 (commit 금지)
+.claude/ralph-loop.local.md
 .claude/settings.local.json
+
+# 하네스 런타임 상태 (status JSON 등 — agent 가 mutate)
 .claude/harness-state/

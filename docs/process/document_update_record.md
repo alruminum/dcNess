@@ -49,3 +49,15 @@
   - `docs/process/change_rationale_history.md`
   - `PROGRESS.md`
 - **Summary**: 프로젝트 루트 CLAUDE.md 신규 + 게이트 룰에 루트 정책 파일(`CLAUDE.md` / `AGENTS.md`) `agent` 카테고리 분류 추가.
+
+### DCN-CHG-20260429-03
+- **Date**: 2026-04-29
+- **Change-Type**: harness, test, agent, docs-only
+- **Files Changed**:
+  - `harness/state_io.py` (신규 — Phase 1 핵심 모듈)
+  - `tests/test_state_io.py` (신규 — 32 케이스, 5 failure modes 검증)
+  - `CLAUDE.md` (§4 개발 명령어에 테스트 실행 명령 추가)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Phase 1 foundation — `harness/state_io.py` 신규(write/read/clear + R8 5 failure modes 단일 normalize) + 테스트 32 케이스 전부 PASS. `parse_marker` 사다리 폐기를 위한 첫 모듈.
