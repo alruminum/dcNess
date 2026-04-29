@@ -18,6 +18,42 @@
 
 ## Records
 
+### DCN-CHG-20260429-24
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Phase 3 iter 1~4 (Task-ID 검증 / branch protection / haiku interpreter / heuristic-fallback + analyzer) 누적 후 *종결 시그널* 필요. proposal §6 acceptance 항목별 PASS 매핑 안 하면 Phase 4 진입 정합 모호.
+  - proposal §12 (plugin 배포 절차) 는 SSOT 안 *intent* 만 제시 — 실 운영 단계 절차 (manifest 검증 명령어, smoke test python 코드, fitness 측정 명령) 는 문서화 안 됨. 운영자 (사용자) 가 매번 proposal 안 read + 자기 추정으로 명령어 작성 → 부담.
+  - PROGRESS.md 의 "Phase 3 (확장) — Plugin 배포 dry-run (선택)" TODO 항목이 *별도 섹션* 으로 분리돼 있어 Phase 3 본 항목과 관계 모호. iter 5 가 둘 통합.
+- **Alternatives**:
+  1. *PROGRESS.md 만 갱신* — proposal SSOT acceptance 표시 누락 → 향후 검색 시 Phase 3 PASS 여부 추적 어려움. 기각.
+  2. *plugin-dryrun-guide 만 작성, status-doc 미수정* — Phase 3 종결 시그널 부재. Phase 4 진입 정합성 모호. 기각.
+  3. *(채택)* **plugin-dryrun-guide + status-doc §6 acceptance 표시 + PROGRESS 매핑 표 + Phase 4 TODO 진입** 4종 동시 — Phase 3 닫기 + Phase 4 시작 준비를 한 PR 에서.
+  4. *Phase 4 까지 한 PR 에 묶기* — Phase 4 는 *측정* 작업이라 dry-run 가이드 절차 실행 후 데이터 누적 필요. 분리.
+- **Decision**:
+  - 옵션 3. 4종 동시 + Phase 4 TODO 만 박고 측정 작업은 별도 Task.
+  - **plugin-dryrun-guide 의 11 섹션 구조**: 사전검증 → manifest → marketplace → 충돌회피 → smoke test (실 LLM 1 호출) → 1 cycle 도그푸딩 → 완전 제거 → 즉시 롤백 → acceptance → 본 가이드 관계 → Phase 4 후속. 운영자가 *순서대로* 따라가면 dry-run 완료.
+  - **status-doc §6 의 acceptance 표시 정책**:
+    - "자연 만족" — RWHarness 와 다른 정체성으로 처음부터 미도입 → ✅ 가짜 표시 X, *기록*. (commit-gate.py / ENV gate)
+    - "신규 워크플로" — 실제로 한 일. (`-08`/`-09`/`-10`/`-20`/`-21`)
+    - "비대상" — RWHarness 영역으로 dcNess 적용 외 (CHG-14.1 폐기 정정).
+    - "dcNess 한정 추가" — proposal 에 명시 안 됐지만 본 fork 가 추가한 가치 (Task-ID 검증 / interpreter / analyzer / 가이드).
+  - **PROGRESS 매핑 표 신설**: proposal §6 항목 ↔ dcNess Task-ID 매핑 1:1. Phase 3 검색 시 단일 표로 추적.
+  - **proposal §2.5 원칙 정합**:
+    - 원칙 1 (룰 순감소): 신규 LOC 0 (코드). 신규 docs ~250 줄. 룰 자체는 추가/삭제 0.
+    - 원칙 2 (강제 vs 권고): plugin-dryrun-guide 는 *권장 절차*. 강제 hook 0.
+    - 원칙 3 (agent 자율성): agent prompts 변경 0.
+    - 원칙 4 (catastrophic 시퀀스): plugin uninstall 단계 (§7) 에 "🔴 destructive" 명시 + 사용자 동의 강제.
+  - **Document-Exception 없음**: status-doc 갱신은 spec 의도지만 docs/ 직속이라 docs-only 분류. 게이트 비요구이므로 자연 통과. 분류 매트릭스 제약 자체는 별도 Task 검토 가능.
+- **Follow-Up**:
+  - **Phase 4 진입** (별도 Task-ID 시리즈):
+    - 컨텍스트 layer 측정 (CLAUDE.md + agents/*.md + AGENTS.md + ...)
+    - LOC 순감소 측정 (RWHarness baseline 비교)
+    - poor_cache_util 비용 측정 (improve-token-efficiency 스킬 실행)
+    - plugin 배포 dry-run 실행 (운영자, 본 가이드 §1~§9)
+    - cache hit rate 측정 (R5 control)
+  - **(검증)** plugin-dryrun-guide §5 의 smoke test 를 운영자가 1회 실행 → 실 ANTHROPIC_API_KEY 환경에서 휴리스틱 hit + LLM fallback 양 케이스 확인.
+  - **(별도 Task)** PROGRESS 매핑 표 패턴을 향후 Phase 4 종결 시에도 동일하게 사용.
+
 ### DCN-CHG-20260429-23
 - **Date**: 2026-04-29
 - **Rationale**:

@@ -62,20 +62,44 @@
   - [x] **iter 4 완료** (DCN-CHG-20260429-18): `agents/designer.md` (4 모드 inline) + `agents/design-critic.md`
   - [x] **iter 5 완료** (DCN-CHG-20260429-19): `agents/ux-architect.md` + `agents/product-planner.md` — Phase 2 13 agents 종결 🎉
 
-### Phase 3 — GitHub 외부화 + Sweep (진행 중)
+### Phase 3 — GitHub 외부화 + Sweep ✅ (종결, 5/5 iter)
 
 > proposal §5 Phase 3 정합 — RWHarness `commit-gate.py` Gate 1/4/5 → GitHub Actions 외부화.
 > dcNess 는 commit-gate.py 미도입(migration-decisions §2.2 DISCARD)이라 *자연 외부화* — 신규 워크플로우만 추가.
+> proposal §6 의 4 acceptance 모두 PASS (자연 만족 2 + 신규 1 + 비대상 1) + dcNess 한정 추가 5 항목 모두 PASS.
 
 - [x] **iter 1 완료** (DCN-CHG-20260429-20): Task-ID 형식 검증 워크플로 + 스크립트 — `scripts/check_task_id.mjs` + `.github/workflows/task-id-validation.yml`. 모든 비-머지 커밋이 `DCN-CHG-YYYYMMDD-NN` 토큰 정확히 1개 포함하는지 PR/push 단위로 차단. PR title 도 동시 검증. 머지 커밋 면제(squash 합본). proposal §11 4-pillar #2 (CI 최후 차단) 정합.
 - [x] **iter 2 완료** (DCN-CHG-20260429-21): branch protection 적용 스크립트 + 가이드 — `scripts/setup_branch_protection.mjs` (멱등 PUT, dry-run 지원) + `docs/process/branch-protection-setup.md` (자동/수동/검증) + `governance.md` §2.8 신설. proposal §5 Phase 3 "Gate 5 (LGTM flag) → branch protection required reviewers" 외부화. RWHarness `class Flag` LGTM in-process 메커니즘은 dcNess 자연 폐기 (migration-decisions §2.2 DISCARD), GitHub branch protection 이 동일 역할 외부 강제. 4 status check (`Document Sync gate` / `unittest discover` / `validate manifest` / `Task-ID format gate`) + 1 approving review + force-push/삭제 차단 + linear history.
 - [x] **iter 3 완료** (DCN-CHG-20260429-22): Anthropic SDK haiku interpreter 통합 — `harness/llm_interpreter.py` (신규, `make_haiku_interpreter()` 팩토리, mock client DI 지원, telemetry `.metrics/meta-llm-calls.jsonl`, ambiguous fallback) + `tests/test_llm_interpreter.py` (16 케이스, 실 SDK 호출 0). `harness/signal_io.py` 의 `interpret_signal(..., interpreter=)` swap point 가 프로덕션 가능 상태. proposal §3 비용 (~$0.0001/호출) + R8 telemetry 누적.
 - [x] **iter 4 완료** (DCN-CHG-20260429-23): heuristic-first + LLM-fallback 합성 전략 + telemetry 분석기 — `harness/interpret_strategy.py` (신규, `interpret_with_fallback()` 합성, outcome 5종 telemetry) + `tests/test_interpret_strategy.py` (7 케이스) + `scripts/analyze_metrics.mjs` (heuristic + LLM JSONL 집계, outcome 분포 / 비용 / 모델별 / allowed enum 별 / 최근 ambiguous 샘플 5개 / Phase 4 fitness 목표 자동 판정). `tests/test_llm_interpreter.py` 의 telemetry_dir 누락 3 케이스 fix (cwd `.metrics/` 오염 회피). 52/52 PASS. proposal R1 (ambiguous 카탈로그) + R8 (cycle 당 비용 측정) + §5 Phase 4 fitness 측정 인프라 완성.
-- [ ] iter 5 후보 — Phase 3 종결 + plugin 배포 dry-run 가이드 정리
+- [x] **iter 5 완료** (DCN-CHG-20260429-24): Phase 3 종결 + `docs/process/plugin-dryrun-guide.md` (신규 — proposal §12 절차 풀어쓴 운영 가이드, 11 섹션: 사전검증 → manifest → marketplace → 충돌회피 → smoke test → 1 cycle 도그푸딩 → 완전 제거/롤백 → acceptance → Phase 4 후속). `docs/status-json-mutate-pattern.md` §6 Phase 3 acceptance 4 항목 모두 PASS 표시 (자연 만족 2 + 신규 워크플로 1 + RWHarness 외 1) + dcNess 한정 5 항목 추가 PASS.
 
-### Phase 3 (확장) — Plugin 배포 dry-run (선택)
-- [ ] RWHarness 와 공존 시나리오 검증 (proposal §12.3.2)
-- [ ] 1 프로젝트 1 cycle 도그푸딩
+### Phase 3 acceptance 매핑 표
+
+| proposal §6 Phase 3 항목 | dcNess 결과 | 근거 |
+|---|---|---|
+| commit-gate.py Gate 1/4/5 코드 0 | ✅ 자연 만족 | migration-decisions §2.2 — commit-gate.py DISCARD |
+| `.github/workflows/*` 3+ 신설 | ✅ **4 워크플로** | document-sync(`-08`) + python-tests(`-09`) + plugin-manifest(`-10`) + task-id-validation(`-20`) + branch protection 룰(`-21`) |
+| ENV 게이트 (`HARNESS_PROSE_*`) 모두 제거 | ✅ 자연 만족 | dcNess 도입 0 |
+| CHG-14.1 폐기 정정 | ✅ 비대상 | RWHarness 영역 |
+| (dcNess 추가) Task-ID 형식 검증 | ✅ | `DCN-CHG-20260429-20` |
+| (dcNess 추가) LGTM 외부화 | ✅ | `-21` (branch protection) |
+| (dcNess 추가) haiku interpreter | ✅ | `-22` |
+| (dcNess 추가) heuristic-fallback + analyzer | ✅ | `-23` |
+| (dcNess 추가) plugin dry-run 가이드 | ✅ | `-24` |
+
+### Phase 4 — 4 기둥 fitness 측정 (다음)
+
+> proposal §5 Phase 4 진입 전제: Phase 1~3 모두 PASS (✅ 본 PR 머지 후 충족).
+
+- [ ] 컨텍스트 layer 5 → 2 측정 (CLAUDE.md + agents/*.md + AGENTS.md + ...)
+- [ ] hook 갯수 7 → 3 (catastrophic 만) — dcNess 자연 만족 (hooks/ 디렉토리 0)
+- [ ] LOC 순감소 5000 → 2500~3000 (RWHarness baseline 비교)
+- [ ] 형식 강제 호출지 0 (parse_marker / flag_touch / write_handoff) — dcNess 자연 만족
+- [ ] poor_cache_util 비용 $507 → $200 미만 (improve-token-efficiency 측정)
+- [ ] 메타 LLM cycle 당 < $0.10 (analyzer fitness PASS — 본 Phase 3 인프라 완성)
+- [ ] catastrophic 가드 무손실 (의도적 src/ 외 수정 → 차단 검증)
+- [ ] **plugin 배포 dry-run** (`docs/process/plugin-dryrun-guide.md` §1~§9 절차 실행)
 
 ### 인프라 / CI 보강
 - [ ] branch protection 룰 추가 (사용자 수동, GitHub Settings)

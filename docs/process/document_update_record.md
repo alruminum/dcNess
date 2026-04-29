@@ -20,7 +20,18 @@
 
 ## Records
 
-### DCN-CHG-20260429-23
+### DCN-CHG-20260429-24
+- **Date**: 2026-04-29
+- **Change-Type**: spec, agent, docs-only
+- **Files Changed**:
+  - `docs/process/plugin-dryrun-guide.md` (신규 — proposal §12 풀어쓴 11 섹션 운영 가이드)
+  - `docs/status-json-mutate-pattern.md` (§6 Phase 3 acceptance 4 항목 모두 PASS 표시 + dcNess 한정 5 항목 추가)
+  - `CLAUDE.md` (§3 docs map 에 plugin-dryrun-guide.md 추가)
+  - `PROGRESS.md` (Phase 3 종결 표시 + acceptance 매핑 표 + Phase 4 진입 TODO)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 3 iter 5 (FINAL) — Phase 3 종결 시그널 + plugin 배포 dry-run 가이드. proposal §6 의 Phase 3 acceptance 4 항목 정합 (자연 만족 2 + 신규 워크플로 1 + 비대상 1) + dcNess 한정 추가 5 항목 (Task-ID 검증 / branch protection / haiku interpreter / heuristic-fallback + analyzer / 본 가이드) 모두 PASS 표시. plugin-dryrun-guide 는 사전검증 → manifest → marketplace → 충돌회피 → smoke test → 1 cycle 도그푸딩 → 완전 제거/롤백 → acceptance → Phase 4 후속 11 섹션. Phase 4 (4 기둥 fitness) TODO 진입.
+- **Document-Exception**: 없음 (spec 카테고리 deliverable = `docs/proposals/**` 또는 `docs/spec/**` 가 의무이지만 status-json-mutate-pattern.md 가 docs/ 직속이라 docs-only 분류 — 게이트 비요구. proposal SSOT 자체 갱신은 spec 의도지만 분류 매트릭스 제약으로 docs-only 처리됨)
 - **Date**: 2026-04-29
 - **Change-Type**: harness, ci, test, docs-only
 - **Files Changed**:
