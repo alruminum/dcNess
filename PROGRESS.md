@@ -9,6 +9,9 @@
 - **모듈 분류 framework 적용**: `docs/migration-decisions.md` (`DCN-CHG-20260429-05`)
 - **CI 게이트 3종**: Document Sync (`-08`) / Python tests (`-09`) / Plugin manifest (`-10`)
 - **README + AGENTS 보강**: `-11`, `-12`
+- **🚀 Phase 2 iter 3 — engineer + test-engineer prose-only** (`DCN-CHG-20260429-17`):
+  - `agents/engineer.md` (IMPL_DONE / SPEC_GAP_FOUND / IMPLEMENTATION_ESCALATE / TESTS_FAIL / POLISH_DONE) — Phase 1 스펙 검토 + Phase 2 구현 + 듀얼 모드 + DESIGN_HANDOFF + 재시도 한도 + 커밋 단위 룰
+  - `agents/test-engineer.md` (TESTS_WRITTEN / SPEC_GAP_FOUND) — TDD attempt 0 전용, src/ 읽기 금지 (catastrophic-prevention), impl `## 생성/수정 파일` 경로만 사용
 - **🚀 Phase 2 iter 2 — architect 8 docs prose-only** (`DCN-CHG-20260429-16`):
   - `agents/architect.md` (마스터, 7 모드 인덱스 + Outline-First 자기규율 + TRD 현행화 룰)
   - `agents/architect/system-design.md` (SYSTEM_DESIGN_READY)
@@ -48,7 +51,7 @@
 - [ ] 다른 agent docs 를 prose writing guide 로 변환:
   - [x] **iter 1 완료** (DCN-CHG-20260429-15): `agents/pr-reviewer.md`, `agents/plan-reviewer.md`, `agents/qa.md`, `agents/security-reviewer.md`
   - [x] **iter 2 완료** (DCN-CHG-20260429-16): `agents/architect.md` + 7 mode sub-doc
-  - [ ] **iter 3**: `agents/engineer.md` + `agents/test-engineer.md`
+  - [x] **iter 3 완료** (DCN-CHG-20260429-17): `agents/engineer.md` + `agents/test-engineer.md`
   - [ ] **iter 4**: `agents/designer.md` + 4 mode sub-doc + `agents/design-critic.md`
   - [ ] **iter 5**: `agents/ux-architect.md` + `agents/product-planner.md`
 

@@ -18,6 +18,26 @@
 
 ## Records
 
+### DCN-CHG-20260429-17
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Phase 2 iter 3 = engineer + test-engineer (구현/테스트 짝). engineer 는 *Write 권한 보유* + agent-boundary ALLOW 영역(src/**) 강제 대상. test-engineer 는 *src/ 읽기 금지* (TDD 의 핵심) — 두 에이전트는 catastrophic-prevention 정책상 동시 검토.
+  - PR #16 머지로 architect 8 docs 통과 → 다음은 engineer-side. proposal §11.4 정합으로 dcNess 메인 작업 모드는 위임 사이클 강제 없음, 단 plugin 배포 시점에 사용자 프로젝트에서 agent-boundary 가드 하 동작.
+- **Alternatives**:
+  1. *engineer + test-engineer + designer 3 묶음* — designer 는 4 mode sub-doc 보유 → 컨텍스트 폭증. 기각.
+  2. *engineer 만 단독* — test-engineer 는 engineer 의 짝(TDD attempt 0) 이라 분리 시 일관성 흐림. 기각.
+  3. *(채택)* **engineer + test-engineer 짝 묶음**: 둘이 같은 attempt 0 라이프사이클 공유 → 일관 변환.
+- **Decision**:
+  - 옵션 3. 2 docs 동시 작성. 한 commit 한 PR.
+  - **catastrophic-prevention 보존**: test-engineer 의 "src/ 읽기 금지" + "impl 경로 외 추측 금지" + "RevivalButton.test.tsx 사고 박제" 보존. proposal §2.5 원칙 4 (catastrophic 시퀀스 보존) 정합 — 작업 순서·접근 영역 강제는 catastrophic 만.
+  - **재시도 한도 정책 (attempt 3 + spec_gap 2 = 5회)** 보존: 작업 순서 영역 (proposal §2.5 대 원칙 적용 가능). 무한 루프 차단.
+  - **attempt 1+ 토큰 최소화 룰**: 비용 폭증 패턴(out_tok 20K~37K 폭주가 ESCALATE 비용 80%) 보존. 권고 + 경고 영역 (proposal 원칙 2 정합).
+  - **듀얼 모드 가드레일**: architect iter 2 와 동일 정책 — `src/theme/` 강제. 일관.
+  - **engineer.md `tools` 라인**: RWHarness 원본 그대로 (Read, Write, Edit, Bash, Glob, Grep, Pencil MCP 5개). dcNess plugin 배포 시 같은 권한 매트릭스.
+- **Follow-Up**:
+  - **(다음 iteration iter 4)**: designer 마스터 + 4 mode sub-doc + design-critic. designer 는 Pencil MCP write 도구 다수 보유.
+  - **(별도 Task-ID)** validator 의 code-validation 모드와 engineer 의 IMPL_DONE 사이 핸드오프 prose 디렉토리 path 가이드 — proposal §3 (Handoff) 정합으로 별도 형식 없이 prose 디렉토리만 명시.
+
 ### DCN-CHG-20260429-16
 - **Date**: 2026-04-29
 - **Rationale**:

@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260429-17
+- **Date**: 2026-04-29
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `agents/engineer.md` (신규 — IMPL_DONE / SPEC_GAP_FOUND / IMPLEMENTATION_ESCALATE / TESTS_FAIL / POLISH_DONE, Phase 1 스펙 검토 + Phase 2 구현 + 듀얼 모드 + 재시도 한도 + 커밋 룰)
+  - `agents/test-engineer.md` (신규 — TESTS_WRITTEN / SPEC_GAP_FOUND, TDD attempt 0 전용)
+  - `PROGRESS.md` (Phase 2 iter 3 완료 표시)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 2 iter 3 — engineer + test-engineer 두 에이전트를 dcNess prose writing guide 형식으로 net-new 작성. engineer 는 src/** Write 도구 보유 + Pencil MCP. test-engineer 는 src/ 읽기 금지(catastrophic-prevention) + impl 경로만 사용. 형식 강제 (`---MARKER:X---` 텍스트 + `@OUTPUT` JSON) 폐기. 듀얼 모드 가드레일 / DESIGN_HANDOFF 수신 / 재시도 한도(attempt 3 + spec_gap 2) / attempt 1+ 토큰 최소화 / 커밋 단위 1논리적변경 정책 모두 보존.
+
 ### DCN-CHG-20260429-16
 - **Date**: 2026-04-29
 - **Change-Type**: agent, docs-only
