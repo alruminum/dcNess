@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260430-11
+- **Date**: 2026-04-30
+- **Change-Type**: harness, spec, docs-only, test
+- **Files Changed**:
+  - `harness/session_state.py` — `_extract_prose_summary` 개선: `## 결론` / `## Summary` / `## 변경 요약` 섹션 우선 추출 + cap 확장 (8줄/600char → 12줄/1200char). `_CONCLUSION_HEADER_RE` regex 추가 (한국어 + 영어 + `\b` 회피 + generic `## 변경` 단독 매칭 차단).
+  - `commands/qa.md` / `commands/quick.md` / `commands/product-plan.md` / `commands/impl.md` / `commands/impl-loop.md` — "가시성 룰" 절 신규: 매 Agent 호출 후 메인이 *text reply* 로 prose 핵심 5~12줄 echo 의무화 (CC collapsed 회피).
+  - `tests/test_session_state.py` — `_extract_prose_summary` 5 신규 케이스 (결론 섹션 우선 / Summary alias / 변경 요약 / fallback / generic 단어 차단).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 manual smoke 피드백 — CC 의 Agent / Bash 출력이 collapsed 표시라 매번 ctrl+o 눌러야 prose 핵심 보임. 두 채널 동시 보강: (1) helper stderr 자동 요약을 `## 결론` / `## Summary` 섹션 우선 추출 + cap 1200char 로 확장 (정보 밀도 ↑). (2) skill prompt 5개에 매 Agent 후 메인 text reply 로 5~12줄 echo 의무화 (text 는 collapsed X — 자동 가시). 두 채널 동시 = 사용자 ctrl+o 의존 0. 185/185 PASS.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-10
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only

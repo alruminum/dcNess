@@ -6,6 +6,7 @@
   - `_extract_prose_summary` 가 `## 결론` / `## Summary` / `## 변경 요약` 섹션 우선 추출. cap 12줄/1200char.
   - 5 skill (qa / quick / product-plan / impl / impl-loop) 에 "가시성 룰" 신규 — 매 Agent 후 메인 text reply 로 prose 핵심 5~12줄 echo (CC collapsed 회피).
   - 사용자 manual smoke 피드백 (ctrl+o 의존) 에 두 채널 동시 보강. 신규 5 테스트. 185/185 PASS.
+  - PR split (#51 PROGRESS fragment + #52 본체) — commit 분할 사고. 두 PR 합쳐 -11 완성.
 - **💰 /efficiency skill — jha0313/skills_repo 흡수** (`DCN-CHG-20260430-08`):
   - `harness/efficiency/` 패키지 (4 script fork from `improve-token-efficiency`) + `scripts/dcness-efficiency` wrapper + `commands/efficiency.md` skill prompt.
   - dcness fix 2건: encode_repo_path 의 `.` → `-` (CC 실 인코딩 룰 정합), price_for prefix 매칭 (dated suffix / variant tag 흡수).

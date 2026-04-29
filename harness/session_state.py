@@ -924,16 +924,71 @@ def _cli_begin_step(args: Any) -> int:
     return 0
 
 
-_SUMMARY_LINE_LIMIT = 8       # prose 요약에 사용할 최대 줄 수
-_SUMMARY_CHAR_LIMIT = 600     # 요약 총 길이 cap
+_SUMMARY_LINE_LIMIT = 12      # prose 요약 최대 줄 수 (DCN-CHG-30-11: 8 → 12)
+_SUMMARY_CHAR_LIMIT = 1200    # 요약 총 길이 cap (DCN-CHG-30-11: 600 → 1200)
+
+# 결론/요약 섹션 헤더 후보 — case-insensitive 매칭 (한국어 + 영어 혼용).
+# `\b` 는 한국어에 잘못 동작 (word boundary 가 ASCII 만) — 사용 X. 대신 끝에
+# 공백/끝 또는 한국어 조사 후속 허용 패턴.
+_CONCLUSION_HEADER_RE = re.compile(
+    r"^\s{0,3}#{1,6}\s*"
+    r"(결론|결과|요약|변경\s*요약|변경\s*사항|변경\s*내용|"
+    r"conclusion|summary|result|key\s*changes?|outcome|verdict)"
+    r"(\s|$|:|—|-)",
+    re.IGNORECASE,
+)
+
+
+def _extract_section_after_header(prose: str, max_lines: int, char_cap: int) -> str:
+    """결론/요약 섹션 헤더를 찾아 그 다음 본문 추출.
+
+    헤더 부재 시 빈 문자열 반환 (caller 가 fallback 사용).
+    """
+    lines = prose.splitlines()
+    start = -1
+    for i, line in enumerate(lines):
+        if _CONCLUSION_HEADER_RE.match(line):
+            start = i + 1
+            break
+    if start < 0:
+        return ""
+    out: list = []
+    total = 0
+    for line in lines[start:]:
+        rstripped = line.rstrip()
+        stripped = rstripped.lstrip()
+        # 다음 동급 이상 헤더 만나면 종료
+        if stripped.startswith("#"):
+            if out:  # 본문이 시작된 후 만나는 다음 헤더 = 섹션 종료
+                break
+            continue
+        if not stripped and not out:
+            continue  # 헤더 직후 빈 줄 skip
+        out.append(rstripped)
+        total += len(rstripped) + 1
+        if len(out) >= max_lines or total >= char_cap:
+            break
+    # 끝 trailing 빈 줄 제거
+    while out and not out[-1].strip():
+        out.pop()
+    return "\n".join(out)
 
 
 def _extract_prose_summary(prose: str, *, max_lines: int = _SUMMARY_LINE_LIMIT) -> str:
-    """prose 첫 의미 있는 N 줄 — markdown 헤더/빈 줄 skip + char cap.
+    """prose 의 결론/요약 섹션 우선 추출, 없으면 첫 의미 있는 N 줄 fallback.
 
-    의도: skill bash 에서 helper 호출 후 stderr 로 흘려 사용자 가시성 ↑. CC 가 stderr 를
-    Bash tool 출력 안에 보여줌 (collapsed 안 됨, ctrl+o 무관).
+    의도: skill bash 에서 helper 호출 후 stderr 로 흘려 사용자 가시성 ↑. agent prose 가
+    대개 마지막에 `## 결론` / `## Summary` / `## 변경 요약` 섹션 박음 — 그 섹션이 가장
+    정보 밀도 높음. 첫 N 줄 무차별 추출보다 효과적.
+
+    DCN-CHG-30-11 (이전 8 줄 / 600 char → 12 줄 / 1200 char) — 사용자 가시성 ↑ 위해 cap 확장.
     """
+    char_cap = _SUMMARY_CHAR_LIMIT if max_lines == _SUMMARY_LINE_LIMIT else max_lines * 100
+    # 1단계: 결론/요약 섹션 우선
+    section = _extract_section_after_header(prose, max_lines, char_cap)
+    if section:
+        return section
+    # 2단계: fallback — 첫 의미 있는 줄
     out_lines: list = []
     total_chars = 0
     for raw in prose.splitlines():
@@ -941,12 +996,12 @@ def _extract_prose_summary(prose: str, *, max_lines: int = _SUMMARY_LINE_LIMIT) 
         stripped = line.lstrip()
         if not stripped:
             continue
-        # skip 가벼운 markdown 헤더 (## 결론 등) — 헤더만으론 정보 부족
+        # skip 첫 markdown 헤더만 (정보 부족)
         if stripped.startswith("#") and len(stripped) < 40 and len(out_lines) == 0:
             continue
         out_lines.append(line)
         total_chars += len(line) + 1
-        if len(out_lines) >= max_lines or total_chars >= _SUMMARY_CHAR_LIMIT:
+        if len(out_lines) >= max_lines or total_chars >= char_cap:
             break
     return "\n".join(out_lines)
 

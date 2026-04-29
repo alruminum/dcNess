@@ -18,6 +18,28 @@
 
 ## Records
 
+### DCN-CHG-20260430-11
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 manual smoke (`/product-plan v0.3`) 도중 — DCN-CHG-30-2 의 "stderr 자동 prose 요약" 이 helper 단에선 적용됐지만 사용자가 본 transcript 의 핵심 정보 (Agent 의 prose response — v0.2→v0.3 diff 12 항목) 는 여전히 `(ctrl+o to expand)` collapsed.
+  - 원인 = CC 의 Task tool / Bash tool 출력이 표준 collapsed 동작. helper stderr 요약은 Bash output 안에 들어가서 같이 collapsed. 사용자가 ctrl+o 안 누르면 메인이 받은 prose 본문 안 보임.
+  - **두 채널 동시 보강 필요**:
+    1. helper stderr 의 추출 정밀도 ↑ (결론 섹션 우선) + cap 확장
+    2. skill prompt 단에서 메인 *text reply* (Bash X) 로 echo 의무 — text 는 collapsed 안 됨.
+- **Alternatives**:
+  1. *현 stderr 요약만 유지* — 사용자 ctrl+o 의존 ↑. smoke 피드백 정합 X. 기각.
+  2. *full prose 자동 cat (Bash output)* — transcript 폭발 + 여전히 collapsed. 기각.
+  3. **(채택) 두 채널 동시** — helper extractor 개선 (결론 섹션 우선 + cap 확장) + skill prompt 단 메인 text echo (5~12줄). text reply 는 CC 가 collapsed 안 함 — 자동 가시.
+- **Decision**:
+  - 옵션 3.
+  - **`_CONCLUSION_HEADER_RE` 정규식**: `결론` / `결과` / `요약` / `변경 요약` / `변경 사항` / `변경 내용` / `Conclusion` / `Summary` / `Result` / `Key Changes?` / `Outcome` / `Verdict` 매칭. `\b` 미사용 (한국어 word boundary 무효). generic `변경` 단독 매칭은 차단 (`## 변경 분석` 같은 헤더 회피).
+  - **cap 확장**: 8줄 / 600char → 12줄 / 1200char. 결론 섹션이 보통 5~10줄이라 12줄 cap 으로 흡수 가능. 단 char cap 1200 으로 hard limit.
+  - **skill prompt 가시성 룰 절 신규**: 매 Agent 호출 후 메인이 *text reply* (markdown 정합 보존) 로 prose 의 결론/요약 섹션 본문 echo. helper stderr 요약과 동시 = 사용자 가시성 최대. verbose 회피 위해 5~12줄 cap.
+  - **5 skill 일괄 적용**: qa / quick / product-plan / impl / impl-loop. /smart-compact / /init-dcness / /efficiency 는 read-only 라 비대상.
+- **Follow-Up**:
+  - **(별도 Task — 측정)** smoke 후 사용자 ctrl+o 누름 빈도 정성 측정. 본 변경 후 0~1 회/skill run 이면 정합. 그 이상이면 cap 추가 확장 또는 다른 채널 검토.
+  - **(별도 Task — 후속)** "## 결론" 섹션 위치가 prose 마지막에 안 박힌 케이스 — agent prose writing guide 정정 (각 agent.md 의 system prompt 에서 "결론은 prose 마지막에 명시" 강조).
+
 ### DCN-CHG-20260430-10
 - **Date**: 2026-04-30
 - **Rationale**: 8 skill 흡수 + 5 PR 누적 후 사용자 요청 — "재인스톨 가이드 + 스킬별 도그푸딩 재료 + 발화 prompt". 매 smoke 마다 사용자가 발화 만들고 기대 동작 추론하는 비용 ↑. 가이드 1 문서로 표준화 가치.
