@@ -93,7 +93,7 @@ echo "[product-plan] run started: $RUN_ID"
 
 확인 못 받으면 대기.
 
-### Step 1 — 6 task 생성
+### Step 1 — 7 task 생성
 
 ```
 TaskCreate("product-planner: PRD 작성")
@@ -101,6 +101,7 @@ TaskCreate("plan-reviewer: PRD 심사")
 TaskCreate("ux-architect: UX_FLOW")
 TaskCreate("validator: UX_VALIDATION")
 TaskCreate("architect: SYSTEM_DESIGN")
+TaskCreate("validator: DESIGN_VALIDATION")
 TaskCreate("architect: TASK_DECOMPOSE")
 ```
 
@@ -256,6 +257,43 @@ ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/
 
 advance: `SYSTEM_DESIGN_READY`.
 
+### Step 6.5 — validator DESIGN_VALIDATION (DCN-CHG-20260430-05)
+
+설계 루프의 검증 단계 — TASK_DECOMPOSE 진입 전 시스템 설계 구현 가능성 + 스펙 완결성 + 리스크 검증.
+
+```
+TaskUpdate("validator: DESIGN_VALIDATION", in_progress)
+```
+
+```bash
+"$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" begin-step validator DESIGN_VALIDATION
+```
+
+```
+Agent(
+  subagent_type="validator",
+  mode="DESIGN_VALIDATION",
+  description="architect SYSTEM_DESIGN 완료. 시스템 설계 검증해줘. 3 계층 체크리스트 (구현 가능성·스펙 완결성·리스크). 결론 enum: DESIGN_REVIEW_PASS / DESIGN_REVIEW_FAIL / DESIGN_REVIEW_ESCALATE."
+)
+```
+
+```bash
+ENUM=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper" end-step validator DESIGN_VALIDATION \
+    --allowed-enums "DESIGN_REVIEW_PASS,DESIGN_REVIEW_FAIL,DESIGN_REVIEW_ESCALATE" \
+    --prose-file /tmp/dcness-pp-dv.md)
+```
+
+분기:
+- `DESIGN_REVIEW_PASS` → 다음 step (architect TASK_DECOMPOSE)
+- `DESIGN_REVIEW_FAIL` → architect SYSTEM_DESIGN 재진입 (Step 6) — **cycle 한도 2**, 초과 시 사용자 위임
+- `DESIGN_REVIEW_ESCALATE` → 사용자 위임 (escalate)
+- `AMBIGUOUS` → cascade
+
+advance:
+```
+TaskUpdate("validator: DESIGN_VALIDATION", completed)
+```
+
 ### Step 7 — architect TASK_DECOMPOSE
 
 ```
@@ -267,7 +305,8 @@ TaskUpdate("architect: TASK_DECOMPOSE", in_progress)
 ```
 
 PreToolUse 훅:
-- §2.3.4 — Step 6 와 동일 검사. SYSTEM_DESIGN 통과 후라 자연 정합.
+- §2.3.4 — Step 6 와 동일 검사 (PRD + UX 검토 정합).
+- §2.3.5 (DCN-CHG-20260430-05) — `validator-DESIGN_VALIDATION.md` 안 `DESIGN_REVIEW_PASS` 확인 → 통과 (Step 6.5 에서 박힘).
 
 ```
 Agent(
@@ -333,6 +372,7 @@ ExitWorktree(action="<keep|remove>")
 
 - `PLAN_REVIEW_CHANGES_REQUESTED` → product-planner 재진입 — **2 cycle 한도**. 초과 시 사용자 위임.
 - validator UX_VALIDATION FAIL → ux-architect 재진입 — **2 cycle 한도**.
+- validator DESIGN_VALIDATION DESIGN_REVIEW_FAIL → architect SYSTEM_DESIGN 재진입 — **2 cycle 한도** (DCN-CHG-20260430-05).
 - 한도 초과 = 사용자 결정 필요 (escalate).
 
 ## Catastrophic 룰 — 자동 정합

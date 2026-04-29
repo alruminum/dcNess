@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260430-05
+- **Date**: 2026-04-30
+- **Change-Type**: spec, harness, hooks, docs-only, test
+- **Files Changed**:
+  - `docs/orchestration.md` — §3.1 mermaid 에 validator DESIGN_VALIDATION 노드 + FAIL 루프 추가. §2.3 catastrophic 룰 §2.3.5 신규 (TD 직전 DESIGN_REVIEW_PASS 필수). §4.9 결정표에 DESIGN_VALIDATION 3 enum 추가.
+  - `commands/product-plan.md` — Step 6.5 (validator DESIGN_VALIDATION) 신규. Step 1 의 task 등록 6 → 7. cycle 한도 (DESIGN_REVIEW_FAIL → SD 재진입 2 cycle) 명시. Step 7 의 PreToolUse 훅 §2.3.5 인용.
+  - `harness/hooks.py` — `_has_design_review_pass()` 함수 + `handle_pretooluse_agent` 에 §2.3.5 검사 (architect TASK_DECOMPOSE + SYSTEM_DESIGN.md 존재 시 DESIGN_VALIDATION PASS grep).
+  - `tests/test_hooks.py` — `CatastrophicDesignValidationTests` 5 케이스 추가.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: orchestration §3.1 에 validator DESIGN_VALIDATION step 추가 — 사용자 manual smoke 도중 발견한 갭 (validator/design-validation.md agent 존재하지만 spec/skill 시퀀스에 빠져있음). architect SYSTEM_DESIGN 후 TASK_DECOMPOSE 직전 검증 cycle 추가, FAIL 시 SD 재진입 (cycle 한도 2). catastrophic §2.3.5 = TD 직전 DESIGN_REVIEW_PASS 필수 — 시스템 설계 검증 안 한 채 impl batch 분해 = 무의미. /product-plan skill Step 6.5 + hooks.py 검사 로직 + 5 테스트.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-04
 - **Date**: 2026-04-30
 - **Change-Type**: harness, spec, docs-only, test
