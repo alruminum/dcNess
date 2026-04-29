@@ -2,6 +2,15 @@
 
 ## 현재 상태
 
+- **🚀 Conveyor 인프라 Step 2 — `session_state.py` 확장 (by-pid 레지스트리 + CLI)** (`DCN-CHG-20260429-33`):
+  - by-pid 레지스트리 함수 8개 (`.by-pid/{cc_pid}` sid 매핑 + `.by-pid-current-run/{cc_pid}` rid 매핑) — 멀티세션 정합 핵심.
+  - PPID chain walker (`os.getppid()` → bash → `ps` → CC main pid) — 환경변수 휘발성 우회.
+  - CLI subcommand 5개 (`init-session/begin-run/end-run/begin-step/end-step`) — argparse 진입점.
+  - 신규 20 테스트 (전체 121/121 PASS).
+- **📐 Conveyor 디자인 v2 — `docs/conveyor-design.md` rewrite** (`DCN-CHG-20260429-32`, PR #31 머지):
+  - PR #29 v1 (Python `run_conveyor`) 폐기 후 Task tool + Agent + helper + 훅 패턴 채택.
+  - 12 절 모두 갱신. 멀티세션 by-pid 레지스트리 layout 명시.
+  - 폐기 사유 = subagent 호출이 Python 안에서 일어나면 PreToolUse 훅 미발화 + 사용자 가시성 0 + 메인 자율도 0.
 - **🚀 Conveyor 인프라 Step 1 — `harness/session_state.py` 신규** (`DCN-CHG-20260429-30`):
   - OMC `SkillActiveStateV2` (active_runs map, soft tombstone, heartbeat) + RWH `_meta` envelope + 3-tier resolution (글로벌 폴백 제외) + atomic write (O_EXCL+fsync+rename+dir fsync, 0o600) 차용.
   - 14 함수 export — session_id 검증/추출/resolution, session pointer R/W, run_id 생성, atomic_write, session_dir/run_dir/live_path, read_live/update_live, start_run/update_current_step/complete_run, cleanup_stale_runs.

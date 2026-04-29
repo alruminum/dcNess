@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260429-33
+- **Date**: 2026-04-29
+- **Change-Type**: harness, test, docs-only
+- **Files Changed**:
+  - `harness/session_state.py` — by-pid 레지스트리 함수 8개 + PPID chain walker + auto-detect 함수 2개 + CLI argparse subcommands 5개 (init-session/begin-run/end-run/begin-step/end-step) 추가. 약 +280 LOC.
+  - `tests/test_session_state.py` — by-pid 레지스트리 테스트 12 + cleanup 1 + CLI 테스트 7 = 신규 20 케이스. 49 → 69 케이스.
+  - `PROGRESS.md`
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+- **Summary**: `docs/conveyor-design.md` v2 (`DCN-CHG-20260429-32`) 의 §4/§5 multi-session 인프라 코드화. by-pid 레지스트리 = `.by-pid/{cc_pid}` (sid 매핑) + `.by-pid-current-run/{cc_pid}` (rid 매핑) — 멀티세션 정합 핵심. CLI subcommands = SessionStart 훅 (`init-session`) + helper protocol (`begin-run`/`end-run`/`begin-step`/`end-step`) 진입점. PPID chain walker = python helper 가 grandparent CC main pid 추출 (`os.getppid()` = bash → `ps -o ppid=` = CC main). auto_detect_session_id / auto_detect_run_id = by-pid 우선 + env/pointer 폴백. 121/121 tests PASS (101 기존 + 20 신규).
+- **Document-Exception**: 없음 (harness 카테고리 deliverable = `tests/**` 동반 ✅)
+
 ### DCN-CHG-20260429-32
 - **Date**: 2026-04-29
 - **Change-Type**: docs-only

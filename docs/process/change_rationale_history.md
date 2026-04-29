@@ -18,6 +18,45 @@
 
 ## Records
 
+### DCN-CHG-20260429-33
+- **Date**: 2026-04-29
+- **Rationale**:
+  - `docs/conveyor-design.md` v2 (DCN-CHG-20260429-32) 의 §4/§5 멀티세션 인프라 코드 구현. helper protocol 의 진입점 (`begin-run/begin-step/end-step/end-run`) 도 동시 도입.
+  - 멀티세션 정합 = 환경변수 `DCNESS_RUN_ID` 전파가 Bash subprocess 휘발성으로 작동 안 함을 발견. 대체 = **PID-keyed 레지스트리** (RWH issue #19 패턴 부분 차용 + 글로벌 폴백 제외).
+  - PPID chain walker — python helper 가 자기 grandparent (CC main) PID 추출. `os.getppid()` 는 bash pid (직접 부모), `ps -o ppid=` 명령으로 한 단계 더 위 = CC main pid 획득. macOS / Linux 모두 동작.
+- **Alternatives**:
+  1. *환경변수 `DCNESS_RUN_ID` 메인이 export* — Bash subprocess 가 메인 process env 변경 못 함. 동작 안 함. 기각.
+  2. *메인이 helper 호출 시 sid/rid 직접 인자로 전달* — 사용자가 매번 `--sid abc --rid run-xxx` 박아야 → skill prompt 복잡 + 실수 위험. 기각.
+  3. *Skill prompt template 안에서 ps 로 CC pid 추출 후 인자로 전달* — 가능하나 매 helper 호출마다 boilerplate. 기각.
+  4. *(채택)* **CLI 안에서 PPID chain walker 가 자동 추출** + auto_detect_session_id / auto_detect_run_id helper. 메인이 인자 안 박아도 됨.
+- **Decision**:
+  - **by-pid 레지스트리 함수 8개**:
+    - `pid_session_path` / `pid_run_path` — 경로 helper
+    - `write_pid_session` / `read_pid_session` — sid 매핑
+    - `write_pid_current_run` / `read_pid_current_run` / `clear_pid_current_run` — rid 매핑
+    - `cleanup_stale_pid_files` — TTL (24h) 기반 정리 (PID 재사용 보호)
+  - **PPID chain walker** — `get_cc_pid_via_ppid_chain()`:
+    - `os.getppid()` = bash pid
+    - `subprocess.run(["ps", "-o", "ppid=", "-p", str(bash_pid)])` = CC main pid
+    - 실패 시 None 반환 (fallback to env/pointer in auto_detect)
+  - **auto-detect 함수**:
+    - `auto_detect_session_id` — by-pid 우선, current_session_id() 폴백
+    - `auto_detect_run_id` — by-pid-current-run lookup
+  - **CLI subcommand 5개**:
+    - `init-session <sid> <cc_pid>` — SessionStart 훅 보조 (write_pid_session + update_live 초기화)
+    - `begin-run <entry_point>` — sid auto-detect → generate rid → start_run + write_pid_current_run → stdout: rid
+    - `end-run` — sid+rid auto-detect → complete_run + clear_pid_current_run
+    - `begin-step <agent> [<mode>]` — sid+rid auto-detect → update_current_step
+    - `end-step <agent> [<mode>] --allowed-enums <csv> --prose-file <path>` — sid+rid auto-detect → write_prose + interpret_with_fallback → stdout: enum 1단어 (또는 "AMBIGUOUS")
+  - **end-step 의 ambiguous 처리** — interpret_with_fallback 실패 시 stdout="AMBIGUOUS" + stderr 에 detail. exit 0 (정상 결과 — 메인이 이 신호 보고 자율 처리).
+  - **PID 재사용 보호** — `cleanup_stale_pid_files(ttl_sec=24h)` 가 mtime 기준 stale by-pid 파일 정리. (start_ts hash 박는 옵션은 보류 — 24h TTL 충분).
+- **Follow-Up**:
+  - **Task -34**: `hooks/session-start.sh` (CLI 의 init-session 호출) + `hooks/catastrophic-gate.sh` (PreToolUse Agent 검사) 신규.
+  - **Task 후속**: `signal_io.write_prose` 의 `os.replace` → `session_state.atomic_write` 로 강화.
+  - **plugin Phase**: skill prompt 템플릿 (`/quick`, `/product-plan` 등) 가 helper protocol 박음.
+  - **회귀 위험**: PPID chain walker 가 macOS / Linux 동작 가정. Windows 미지원. tmux/screen 같은 환경에서 ppid 가 비표준일 수 있음 — auto_detect 가 폴백 (current_session_id) 으로 우회.
+  - **측정 (proposal §2.5 원칙 5)**: end-step 의 stdout 이 "AMBIGUOUS" 빈도 telemetry 누적 → agent prose writing guide 정확도 측정 데이터.
+
 ### DCN-CHG-20260429-32
 - **Date**: 2026-04-29
 - **Rationale**:
