@@ -2,6 +2,14 @@
 
 ## 현재 상태
 
+- **🧹 heuristic-only 정착 + dead code 제거** (`DCN-CHG-20260430-04`):
+  - `harness/llm_interpreter.py` + `tests/test_llm_interpreter.py` 삭제 (dead code, 호출 경로 0).
+  - `interpret_with_fallback` 의 `llm_interpreter=` 인자 제거 — heuristic-only.
+  - `signal_io.py` docstring 정정 ("프로덕션 = haiku" → "프로덕션 = heuristic-only").
+  - `docs/status-json-mutate-pattern.md` §0 정착 박스 추가 (heuristic-only 4 이유 + 트렌드 위치).
+  - 트렌드 위치 재정의: RWH [2024 regex] → proposal 원안 [2025 메타 LLM] → **dcness 정착 [2025+ heuristic-only + 메인 cascade]** → [2026 structured output].
+  - anthropic SDK 의존 0, 도그푸딩 API_KEY 불필요.
+  - 166/166 PASS (이전 184 - 18 = LLM 관련 테스트 삭제).
 - **🤖 Helper-side automation foundation** (`DCN-CHG-20260430-02`):
   - `dcness-helper end-step` 이 enum 추출 후 prose 첫 5~8줄 stderr 자동 출력 — CC collapsed 회피, 모든 skill 가시성 자동 ↑.
   - `dcness-helper finalize-run` 신규 — `.steps.jsonl` append-only 로그 집계 → JSON status (has_ambiguous / has_must_fix / step enum 매트릭스). skill 이 clean 판정용으로 소비.

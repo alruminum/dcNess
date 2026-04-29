@@ -182,7 +182,7 @@ prose 종이: .claude/harness-state/.sessions/{sid}/runs/{rid}/qa.md
 
 - **`/quick`, `/ux` 미구현** — 본 skill 은 분류만 하고 다음 skill 자동 진입 안 함. 별도 Task 에서 후속 skill 추가 시 자동 라우팅 활성.
 - **재현 검증 안 함** — qa agent 가 분류 + 추적 ID 발급. 실제 재현은 다음 단계 (engineer/designer) 책임.
-- **휴리스틱 fail rate 측정** — `.metrics/heuristic-calls.jsonl` 누적. fail rate 30%+ 면 haiku fallback 검토 (별도 Task).
+- **휴리스틱 fail rate 측정** — `.metrics/heuristic-calls.jsonl` 누적. fail rate 30%+ 면 agent prose writing guide 정정 (haiku fallback 폐기 — DCN-CHG-20260430-04 heuristic-only 정착).
 
 ## 참조
 

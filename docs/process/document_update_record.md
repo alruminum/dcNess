@@ -20,6 +20,27 @@
 
 ## Records
 
+### DCN-CHG-20260430-04
+- **Date**: 2026-04-30
+- **Change-Type**: harness, spec, docs-only, test
+- **Files Changed**:
+  - `harness/llm_interpreter.py` (삭제) — Anthropic haiku interpreter dead code 제거.
+  - `tests/test_llm_interpreter.py` (삭제) — 위 동반.
+  - `harness/interpret_strategy.py` — `llm_interpreter` 인자 제거 + `_record` outcome 단순화 (`heuristic_hit` / `heuristic_ambiguous` / `heuristic_not_found` / `heuristic_empty`). LLM fallback 폐기.
+  - `harness/signal_io.py` — docstring 정정 ("프로덕션 = haiku 주입" → "프로덕션 = heuristic-only, DI swap 은 테스트용").
+  - `tests/test_interpret_strategy.py` — `LlmFallbackTests` 클래스 폐기, `HeuristicAmbiguousTests` 신규.
+  - `docs/orchestration.md` / `docs/conveyor-design.md` — `llm_interpreter.py` 참조 제거 + heuristic-only 표현 갱신.
+  - `docs/migration-decisions.md` — 메타 LLM 통합 TODO → DISCARDED 정정 + 보류 항목 정리.
+  - `docs/status-json-mutate-pattern.md` — §0 정착 박스 추가 (heuristic-only 결정 + 4 이유 + 트렌드 위치). §Phase 3 acceptance 항목 정정.
+  - `README.md` — heuristic-only 정착 명시 + Phase 2 후속 항목 갱신.
+  - `commands/qa.md` — fail rate 측정 후 후속 표현 정정.
+  - `docs/process/plugin-dryrun-guide.md` — §5 smoke test 코드 heuristic-only 로 재작성.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: dcness 의 enum 추출 메커니즘 정착 — heuristic-only. proposal §0 의 "메타 LLM 해석" 비전을 한 발 더 가벼운 [2025+ heuristic-only + 메인 Claude cascade] 위치로 정정. `harness/llm_interpreter.py` 폐기 (삭제 — dead code, 호출 경로 0), `interpret_with_fallback` 의 `llm_interpreter=` 인자 제거. RWH 에이전트 진단의 사실 오류 (haiku 사용 단정) 정정 + 트렌드 분석 흡수. anthropic SDK 의존 0 + 도그푸딩 ANTHROPIC_API_KEY 불필요. 166/166 PASS.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-03
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only

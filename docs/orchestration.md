@@ -32,7 +32,7 @@
 | 핸드오프 페이로드 (`_handoffs/{from}_to_{to}_{ts}.md`) | 강제 형식 | → **`.claude/harness-state/<run_id>/<agent>[-<MODE>].md` prose 디렉토리, 별도 형식 0** |
 | Flag 시스템 (boolean 파일) | 강제 | → **`.attempts.json` 단순 카운터** (recovery state 만, 결정론 영역) |
 | status JSON schema | (RWHarness 미도입) | (dcNess 도 폐기 — DCN-CHG-20260429-13) |
-| 메타 LLM 해석 | 없음 | **`harness/llm_interpreter.py` haiku interpreter + `harness/interpret_strategy.py` heuristic-fallback** |
+| enum 해석 | 없음 | **`harness/interpret_strategy.py` heuristic-only** (DCN-CHG-20260430-04 정착, LLM fallback 폐기 — 메인 Claude 가 ambiguous 시 cascade) |
 
 ---
 
@@ -413,7 +413,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 DCNESS_INFRA_PATTERNS = [
     r'[./]claude/',
     r'hooks/',
-    r'harness/(signal_io|interpret_strategy|llm_interpreter)\.py',
+    r'harness/(signal_io|interpret_strategy)\.py',
     r'docs/orchestration\.md',
     r'docs/process/governance\.md',
     r'scripts/(check_document_sync|check_task_id|setup_branch_protection|analyze_metrics)\.mjs',
@@ -525,8 +525,7 @@ RWHarness 4 신호 OR 정합 (proposal §10 fork-and-refactor 정합):
 - [`process/plugin-dryrun-guide.md`](process/plugin-dryrun-guide.md) — plugin 배포 dry-run 절차
 - `agents/*.md` 13 docs — 각 agent 의 prose writing guide + 결론 enum 출처
 - `harness/signal_io.py` — interpret_signal 단일 호출 인프라
-- `harness/interpret_strategy.py` — heuristic-first + LLM-fallback 합성
-- `harness/llm_interpreter.py` — Anthropic haiku interpreter
+- `harness/interpret_strategy.py` — heuristic-only enum 추출 + telemetry (DCN-CHG-20260430-04)
 - `scripts/analyze_metrics.mjs` — fitness 측정
 - RWHarness `docs/harness-spec.md` §4.2 / §4.3 — 시퀀스 출처
 - RWHarness `docs/harness-architecture.md` §3 — 핸드오프 매트릭스 출처

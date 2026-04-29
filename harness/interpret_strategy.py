@@ -1,29 +1,27 @@
-"""interpret_strategy.py — heuristic-first + LLM-fallback 합성 전략 + telemetry.
+"""interpret_strategy.py — heuristic-only enum 추출 + telemetry.
 
-발상:
-    `signal_io.interpret_signal` 는 휴리스틱 OR custom interpreter 둘 중 하나만.
-    실 운영에선 *둘 다* 합성 필요:
-      1. 휴리스틱 시도 → 단일 enum 매칭이면 LLM 호출 0 (비용 0).
-      2. 휴리스틱 ambiguous → LLM fallback (비용 ~$0.0001).
+발상 (DCN-CHG-20260430-04 정착):
+    `signal_io.interpret_signal` 의 휴리스틱만 사용.
+    `interpret_with_fallback` = 호환성 wrapper (heuristic 호출 + telemetry 기록).
+    LLM fallback 폐기 — 휴리스틱 ambiguous 시 그대로 raise → 메인 Claude 가 cascade
+    (재호출 / 사용자 위임) 결정.
 
-    본 모듈은 두 단계를 합성하고, 매 호출의 outcome 을 telemetry 에 기록한다.
-    분석 스크립트(`scripts/analyze_metrics.mjs`) 가 비율을 집계.
+LLM fallback 폐기 이유 (DCN-CHG-20260430-04):
+    - dcness 의 도그푸딩 호환 (API 키 의존 회피).
+    - 메타 LLM 호출 = 비용 + latency + 또 다른 사다리 진입 (LLM 결과 검증).
+    - 메인 Claude 가 자체 LLM 이라 별도 LLM judge 불필요.
+    - 트렌드상 [2026 structured output] 으로 가는 길에 [2025 meta LLM] 단계 skip.
 
-Outcome 분류:
-    - heuristic_hit       : 휴리스틱이 단어경계 단일 매칭 → 즉시 결론
-    - llm_fallback_hit    : 휴리스틱 ambiguous → LLM 호출 → 결론
-    - llm_fallback_unknown: 휴리스틱 ambiguous → LLM 호출 → 모호 (UNKNOWN/allowed 외)
-    - heuristic_ambiguous : 휴리스틱 ambiguous + LLM 미주입 → MissingSignal propagate
-
-proposal R1 / R8 정합:
-    R1: ambiguous 카탈로그 → `.metrics/heuristic-calls.jsonl` + `meta-llm-calls.jsonl`
-        분석으로 발생 패턴 파악 → agent writing guide 정정 사이클.
-    R8: 비용 측정 — heuristic_hit 비율 ↑ = LLM 호출 ↓ = 비용 ↓.
+Outcome 분류 (telemetry):
+    - heuristic_hit       : 휴리스틱 단어경계 단일 매칭 → 즉시 결론
+    - heuristic_ambiguous : 휴리스틱 ambiguous → MissingSignal propagate (메인이 cascade)
+    - heuristic_not_found : 마커 자체 부재
+    - heuristic_empty     : prose 자체 비어있음
 
 대 원칙 정합 (proposal §2.5):
-    원칙 1: 신규 strategy 모듈 ~80 LOC. signal_io 자체 변경 0 (interface 보존).
-    원칙 3: agent prose 자유 emit 그대로. interpreter 가 결론 추출.
-    원칙 5: 30일 측정 = telemetry JSONL 누적 → 분석 후 정책 결정.
+    원칙 1 (룰 순감소): LLM fallback 코드 / 의존성 (anthropic SDK) 제거.
+    원칙 3 (prose-only): agent 자유 emit, 휴리스틱 단어경계로 결론 추출.
+    원칙 5 (30일 측정): telemetry JSONL 누적 → 휴리스틱 hit/ambiguous 비율 분석.
 """
 from __future__ import annotations
 
@@ -31,7 +29,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Iterable, Optional
+from typing import Iterable, Optional
 
 from harness.signal_io import MissingSignal, interpret_signal
 
@@ -65,23 +63,26 @@ def interpret_with_fallback(
     prose: str,
     allowed: Iterable[str],
     *,
-    llm_interpreter: Optional[Callable[[str, list[str]], str]] = None,
     telemetry_dir: Optional[Path] = None,
 ) -> str:
-    """휴리스틱 우선, LLM fallback. 매 호출 outcome 기록.
+    """휴리스틱 enum 추출 + telemetry. ambiguous 시 그대로 propagate.
 
     Args:
         prose: agent 의 자유 emit.
         allowed: 허용 enum 리스트.
-        llm_interpreter: heuristic ambiguous 시 호출. None 이면 ambiguous propagate.
         telemetry_dir: 로그 디렉토리. None = `.metrics/`.
 
     Returns:
         allowed 안의 단일 enum.
 
     Raises:
-        MissingSignal: 휴리스틱 + LLM 모두 ambiguous, 또는 LLM 미주입 + 휴리스틱 ambiguous.
+        MissingSignal: 휴리스틱이 단일 enum 못 뽑음 (ambiguous / not_found / empty).
+                       메인 Claude 가 cascade (재호출 / 사용자 위임) 결정.
         ValueError: allowed 비어 있음.
+
+    Note:
+        함수명에 `_with_fallback` 잔존 — 호환성 (외부 호출자 변경 비용 ↓).
+        실제론 LLM fallback 폐기 (DCN-CHG-20260430-04). 휴리스틱-only.
     """
     allowed_list = [str(a) for a in allowed]
     if not allowed_list:
@@ -93,8 +94,6 @@ def interpret_with_fallback(
         "prose_len": len(prose),
     }
 
-    # 1단계: 휴리스틱
-    heuristic_detail = ""
     try:
         result = interpret_signal(prose, allowed_list)  # interpreter=None → 휴리스틱
         _record(
@@ -102,57 +101,13 @@ def interpret_with_fallback(
             base_dir=telemetry_dir,
         )
         return result
-    except MissingSignal as heuristic_exc:
-        # Python 3 에선 except as 변수가 블록 종료 시 unbind 됨 → 외부 변수에 보존
-        heuristic_detail = heuristic_exc.detail
-        heuristic_reason = heuristic_exc.reason
-        if heuristic_reason != "ambiguous":
-            # not_found / empty 는 fallback 무의미 (prose 자체 부재)
-            _record(
-                {
-                    **base_event,
-                    "outcome": f"heuristic_{heuristic_reason}",
-                    "detail": heuristic_detail[:200],
-                },
-                base_dir=telemetry_dir,
-            )
-            raise
-        saved_exc = heuristic_exc
-
-    # 2단계: LLM fallback (heuristic ambiguous 만)
-    if llm_interpreter is None:
+    except MissingSignal as exc:
         _record(
             {
                 **base_event,
-                "outcome": "heuristic_ambiguous_no_fallback",
-                "detail": heuristic_detail[:200],
-            },
-            base_dir=telemetry_dir,
-        )
-        raise saved_exc
-
-    try:
-        llm_result = llm_interpreter(prose, allowed_list)
-    except MissingSignal as llm_exc:
-        _record(
-            {
-                **base_event,
-                "outcome": "llm_fallback_unknown",
-                "heuristic_detail": heuristic_detail[:200],
-                "llm_detail": llm_exc.detail[:200],
+                "outcome": f"heuristic_{exc.reason}",
+                "detail": exc.detail[:200],
             },
             base_dir=telemetry_dir,
         )
         raise
-
-    if llm_result not in allowed_list:
-        # llm_interpreter contract 위반 — defensive
-        raise ValueError(
-            f"llm_interpreter returned {llm_result!r} not in allowed {allowed_list}"
-        )
-
-    _record(
-        {**base_event, "outcome": "llm_fallback_hit", "parsed": llm_result},
-        base_dir=telemetry_dir,
-    )
-    return llm_result
