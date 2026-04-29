@@ -18,6 +18,42 @@
 
 ## Records
 
+### DCN-CHG-20260429-29
+- **Date**: 2026-04-29
+- **Rationale**:
+  - 직전 PR #28 (`DCN-CHG-20260429-28`, 옵션 c JSON 결정자 모델) 이 dcNess proposal §2.5 (prose-only) 와 충돌. 사용자 직접 검증 — 결정 LLM 의 JSON 출력 강제 = 형식 강제 사다리 부활. 도그푸딩 결과 (Claude Code CLI 어댑터 라이브 호출) 에서 LLM 이 ```json fence + Rationale prose 추가로 형식 미준수, 휴리스틱 파싱 추가는 정신 위반. → PR #28 close 결정.
+  - 사용자와의 1시간+ 토론으로 새 모델 합의: **메인 클로드 = 시퀀스 결정자**, 컨베이어 = 멍청한 순회기, catastrophic = PreToolUse 훅. proposal §2.5 직접 정합.
+  - 멀티세션이 사용자 환경 기본값. 격리 메커니즘 = OMC `SkillActiveStateV2` (active_runs map) + RWH `_meta` envelope/3-tier session_id resolution 차용. 글로벌 `~/.claude` 폴백 (RWH issue #19) 은 도그푸딩 가치 < 4-가드 복잡도라 미채택.
+  - 코드 작업 시작 전 **spec 문서 먼저 박음** — 이전 토론 흐름이 디자인 표류 (옵션 c 채택 → 도그푸딩 → JSON 충돌 → 재토론) 였던 회귀 방지.
+- **Alternatives**:
+  1. *PR #28 그대로 머지 + 후속 PR 로 깎기* — 코드 ~95% 재사용 불가, 머지 이력 누적, governance docs 의 misleading entries 부담. 기각.
+  2. *PR #28 force-push 갈아엎기* — 리뷰 어려움, 작업 이력 소실. 기각.
+  3. *옵션 (α) 단일 라벨 결정 하이쿠 (`ADVANCE/RETRY/INSERT_SPEC_GAP/ESCALATE`)* — 라벨 늘면 driver hardcode 부담, 메인 결정 + 훅이 더 단순. 기각.
+  4. *옵션 (β) 정적 dict 라우팅 (= 옵션 b 부활)* — 분기 룰 hardcode = §2.5 원칙 1 (룰 순감소) 약화. 기각.
+  5. *PM 오케스트레이터 서브에이전트 즉시 도입* — stateless 단점 + 메인 직접 결정 round trip 추가. plugin Phase follow-up 으로 미룸.
+  6. *(채택)* **PR #28 close + spec 문서 (`docs/conveyor-design.md`) 먼저 + 코드는 spec 후 별도 Task** — 디자인 표류 방지 + 코드 작업의 단일 spec 확보.
+- **Decision**:
+  - 옵션 6. PR #28 close (이미 GitHub 처리됨), `docs/conveyor-design.md` 12 절 신규 작성, `docs/orchestration.md` §9 정정.
+  - **컨베이어 모델 핵심**:
+    1. 메인 클로드가 `orchestration.md` §4 결정표 prose 직접 읽고 `list[Step]` 구성 → JSON 파싱 0
+    2. 컨베이어 (`harness/impl_driver.py` 별도 Task ~50 줄) = 시퀀스 순회 + Agent 호출 + `signal_io.interpret_signal` + `Step.advance_when` 비교 + `ConveyorPause` 반환
+    3. `Step.allowed_enums` (interpret_signal 후보 집합) ⊇ `advance_when` (성공 enum 부분집합) — 두 필드로 분리
+    4. catastrophic backbone (§2.3 4룰) + HARNESS_ONLY_AGENTS (§7.1) = `hooks/catastrophic-gate.sh` (별도 Task) 가 PreToolUse Agent 에서 강제. 컨베이어 코드 conditional 0.
+    5. `_meta` envelope + atomic write (O_EXCL+fsync+rename+dir fsync, 0o600) = RWH 차용
+    6. `live.json.active_runs` map = OMC 차용 (다중 동시 run 지원, soft tombstone, heartbeat)
+  - **세션 정책**:
+    - session_id = OMC stdin 3 변형 fallback + RWH 3-tier resolution (env → project pointer). 글로벌 폴백 미채택.
+    - run_id = `run-{token_hex(4)}` (16M 조합, sid 안 격리)
+    - 디렉토리 = `.claude/harness-state/.sessions/{sid}/runs/{run_id}/<agent>[-mode].md`
+    - env 전파: 컨베이어가 `DCNESS_SESSION_ID` / `DCNESS_RUN_ID` set/unset
+- **Follow-Up**:
+  - **별도 Task** — `harness/impl_driver.py` 새로 작성 (~50 줄), `harness/orchestration_agent.py` 폐기, `harness/session_state.py` 신규 (OMC+RWH 차용)
+  - **별도 Task** — `hooks/session-start.sh` (sid 추출 + pointer + live.json 초기화), `hooks/catastrophic-gate.sh` (PreToolUse Agent §2.3 검사) 신규
+  - **별도 Task** — `signal_io.write_prose` 의 atomic write 강화 (현재 `os.replace` → O_EXCL+fsync+rename+dir fsync, 0o600)
+  - **plugin Phase follow-up** — `agents/orchestrator.md` (PM 도입 검토), 도입 시점 사용자 결정
+  - **회귀 위험**: 본 spec 박힌 이후 후속 코드 Task 들이 spec 어긋나는지 — 매 코드 Task PR review 시 conveyor-design.md 정합 확인 필수
+  - **측정 (proposal §2.5 원칙 5)**: 30일 후 `live.json` 의 active_runs 슬롯 평균 수, last_confirmed_at heartbeat 신선도, ConveyorPause 빈도 측정 → 메인 직접 결정 vs PM 도입 의사결정 데이터화
+
 ### DCN-CHG-20260429-27
 - **Date**: 2026-04-29
 - **Rationale**:
