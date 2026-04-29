@@ -273,11 +273,17 @@ harness 가 prose 의 *의미* 를 LLM 으로 해석.
 - [ ] agent-config/ 디렉토리 0
 - [ ] cache hit ±2pp baseline 비교 (R11 control)
 
-### Phase 3
-- [ ] commit-gate.py Gate 1/4/5 코드 0
-- [ ] `.github/workflows/*` 3 신설
-- [ ] ENV 게이트 (`HARNESS_PROSE_*`) 모두 제거
-- [ ] CHG-14.1 폐기 정정
+### Phase 3 — dcNess 적용 결과 (PHASE_3_DONE)
+- [x] commit-gate.py Gate 1/4/5 코드 0 — *dcNess 자연 만족* (migration-decisions §2.2 — commit-gate.py DISCARD, 처음부터 미도입)
+- [x] `.github/workflows/*` 3+ 신설 — `document-sync.yml` (`DCN-CHG-20260429-08`) + `python-tests.yml` (`-09`) + `plugin-manifest.yml` (`-10`) + `task-id-validation.yml` (`-20`) **= 4 워크플로 + branch protection (`-21`)**
+- [x] ENV 게이트 (`HARNESS_PROSE_*`) 모두 제거 — *dcNess 자연 만족* (도입 0)
+- [x] CHG-14.1 폐기 정정 — *RWHarness 영역* (dcNess 외, 본 acceptance 비대상)
+- [x] **dcNess 한정 추가 acceptance**:
+  - [x] Task-ID 형식 검증 게이트 (`DCN-CHG-20260429-20`)
+  - [x] LGTM 게이트 외부화 = branch protection required reviewers (`-21`)
+  - [x] 메타 LLM (haiku) interpreter 통합 = `harness/llm_interpreter.py` (`-22`)
+  - [x] heuristic-first + LLM-fallback 합성 + telemetry 분석기 (`-23`)
+  - [x] plugin 배포 dry-run 가이드 = `docs/process/plugin-dryrun-guide.md` (`-24`)
 
 ### Phase 4
 - [ ] 위 §5 Phase 4 측정 항목 모두 통과

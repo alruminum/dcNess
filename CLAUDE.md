@@ -52,6 +52,7 @@
 | [`scripts/check_task_id.mjs`](scripts/check_task_id.mjs) | Task-ID 형식 검증 게이트 (governance §2.1) |
 | [`scripts/setup_branch_protection.mjs`](scripts/setup_branch_protection.mjs) | main 브랜치 보호 적용 스크립트 (governance §2.8) |
 | [`docs/process/branch-protection-setup.md`](docs/process/branch-protection-setup.md) | branch protection 적용/검증 가이드 |
+| [`docs/process/plugin-dryrun-guide.md`](docs/process/plugin-dryrun-guide.md) | RWHarness 와 공존 plugin 배포 dry-run 절차 (proposal §12 풀어쓴 운영 가이드) |
 | [`scripts/hooks/pre-commit`](scripts/hooks/pre-commit) | git pre-commit hook |
 | [`scripts/hooks/cc-pre-commit.sh`](scripts/hooks/cc-pre-commit.sh) | Claude Code PreToolUse hook |
 
