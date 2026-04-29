@@ -2,6 +2,14 @@
 
 ## 현재 상태
 
+- **🚀 Conveyor 인프라 Step 1 — `harness/session_state.py` 신규** (`DCN-CHG-20260429-30`):
+  - OMC `SkillActiveStateV2` (active_runs map, soft tombstone, heartbeat) + RWH `_meta` envelope + 3-tier resolution (글로벌 폴백 제외) + atomic write (O_EXCL+fsync+rename+dir fsync, 0o600) 차용.
+  - 14 함수 export — session_id 검증/추출/resolution, session pointer R/W, run_id 생성, atomic_write, session_dir/run_dir/live_path, read_live/update_live, start_run/update_current_step/complete_run, cleanup_stale_runs.
+  - 49 신규 테스트 (전체 101/101 PASS).
+  - **컨베이어 spec** (`docs/conveyor-design.md` PR #29) 의 첫 코드 구현. 후속 Task 들 (-31 impl_driver / -32 SessionStart hook / -33 catastrophic-gate hook) 의 인프라 기반.
+- **🎯 Conveyor 디자인 spec — `docs/conveyor-design.md`** (`DCN-CHG-20260429-29`, PR #29 머지):
+  - 메인 클로드 = 시퀀스 결정자, 컨베이어 = 멍청한 순회기, catastrophic = PreToolUse 훅. 12 절 660 줄.
+  - PR #28 (옵션 c JSON 결정자) close 후 새 spec. proposal §2.5 (prose-only) 정합.
 - 거버넌스 시스템 부트스트랩 완료 (`DCN-CHG-20260429-01`, PR #1 머지)
 - 프로젝트 루트 `CLAUDE.md` + 루트 정책 파일 게이트 분류 추가 (`DCN-CHG-20260429-02`)
 - **Plugin 배포 인프라**: `.claude-plugin/{plugin,marketplace}.json` (`DCN-CHG-20260429-04`)
