@@ -32,6 +32,7 @@ import os
 import re
 import secrets
 import select
+import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -41,8 +42,21 @@ from typing import Any, Dict, Optional
 __all__ = [
     "SESSION_ID_RE",
     "DEFAULT_RUN_TTL_SEC",
+    "DEFAULT_PID_TTL_SEC",
     "LIVE_JSON_VERSION",
     "STDIN_TIMEOUT_SEC",
+    "valid_cc_pid",
+    "pid_session_path",
+    "pid_run_path",
+    "write_pid_session",
+    "read_pid_session",
+    "write_pid_current_run",
+    "read_pid_current_run",
+    "clear_pid_current_run",
+    "cleanup_stale_pid_files",
+    "get_cc_pid_via_ppid_chain",
+    "auto_detect_session_id",
+    "auto_detect_run_id",
     "valid_session_id",
     "session_id_from_stdin",
     "current_session_id",
@@ -66,9 +80,11 @@ SESSION_ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$")
 RUN_ID_RE = re.compile(r"^run-[a-z0-9]{8}$")
 
 DEFAULT_RUN_TTL_SEC = 24 * 60 * 60        # 24h — completed slot 보관 후 cleanup
+DEFAULT_PID_TTL_SEC = 24 * 60 * 60        # 24h — by-pid 파일 stale 기준 (PID 재사용 보호)
 LIVE_JSON_VERSION = 1                      # 스키마 진화 추적
 STDIN_TIMEOUT_SEC = 2.0                    # 훅 stdin 읽기 hang 방지
 _ATOMIC_FILE_MODE = 0o600
+_PPID_LOOKUP_TIMEOUT_SEC = 2.0
 
 
 # ── 경로 유틸 ───────────────────────────────────────────────────────
@@ -501,3 +517,319 @@ def cleanup_stale_runs(
     if removed:
         update_live(session_id, base_dir=base_dir, active_runs=survivors)
     return removed
+
+
+# ── by-pid 레지스트리 (멀티세션 정합 핵심) ─────────────────────────
+
+
+def valid_cc_pid(cc_pid: Any) -> bool:
+    """양수 정수만 유효."""
+    return isinstance(cc_pid, int) and cc_pid > 0
+
+
+def pid_session_path(cc_pid: int, *, base_dir: Optional[Path] = None) -> Path:
+    """`.by-pid/{cc_pid}` 절대 경로."""
+    if not valid_cc_pid(cc_pid):
+        raise ValueError(f"invalid cc_pid: {cc_pid!r}")
+    return _resolve_base(base_dir) / ".by-pid" / str(cc_pid)
+
+
+def pid_run_path(cc_pid: int, *, base_dir: Optional[Path] = None) -> Path:
+    """`.by-pid-current-run/{cc_pid}` 절대 경로."""
+    if not valid_cc_pid(cc_pid):
+        raise ValueError(f"invalid cc_pid: {cc_pid!r}")
+    return _resolve_base(base_dir) / ".by-pid-current-run" / str(cc_pid)
+
+
+def write_pid_session(
+    cc_pid: int, session_id: str, *, base_dir: Optional[Path] = None
+) -> Path:
+    """`.by-pid/{cc_pid}` ← session_id atomic 작성."""
+    if not valid_session_id(session_id):
+        raise ValueError(f"invalid session_id: {session_id!r}")
+    target = pid_session_path(cc_pid, base_dir=base_dir)
+    atomic_write(target, session_id.encode("utf-8"))
+    return target
+
+
+def read_pid_session(cc_pid: int, *, base_dir: Optional[Path] = None) -> str:
+    """`.by-pid/{cc_pid}` 읽기. 미존재 / 잘못된 sid → 빈 문자열."""
+    try:
+        path = pid_session_path(cc_pid, base_dir=base_dir)
+    except ValueError:
+        return ""
+    try:
+        if not path.exists():
+            return ""
+        sid = path.read_text(encoding="utf-8").strip()
+        return sid if valid_session_id(sid) else ""
+    except OSError:
+        return ""
+
+
+def write_pid_current_run(
+    cc_pid: int, run_id: str, *, base_dir: Optional[Path] = None
+) -> Path:
+    """`.by-pid-current-run/{cc_pid}` ← run_id atomic 작성."""
+    if not RUN_ID_RE.match(run_id):
+        raise ValueError(f"invalid run_id: {run_id!r}")
+    target = pid_run_path(cc_pid, base_dir=base_dir)
+    atomic_write(target, run_id.encode("utf-8"))
+    return target
+
+
+def read_pid_current_run(cc_pid: int, *, base_dir: Optional[Path] = None) -> str:
+    """`.by-pid-current-run/{cc_pid}` 읽기. 미존재 → 빈 문자열."""
+    try:
+        path = pid_run_path(cc_pid, base_dir=base_dir)
+    except ValueError:
+        return ""
+    try:
+        if not path.exists():
+            return ""
+        rid = path.read_text(encoding="utf-8").strip()
+        return rid if RUN_ID_RE.match(rid) else ""
+    except OSError:
+        return ""
+
+
+def clear_pid_current_run(
+    cc_pid: int, *, base_dir: Optional[Path] = None
+) -> bool:
+    """`.by-pid-current-run/{cc_pid}` 삭제. 성공 여부 반환."""
+    try:
+        path = pid_run_path(cc_pid, base_dir=base_dir)
+    except ValueError:
+        return False
+    try:
+        path.unlink()
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False
+
+
+def cleanup_stale_pid_files(
+    *,
+    ttl_sec: int = DEFAULT_PID_TTL_SEC,
+    base_dir: Optional[Path] = None,
+) -> int:
+    """오래된 by-pid 파일 삭제 (PID 재사용 보호).
+
+    `.by-pid/*` 와 `.by-pid-current-run/*` 의 mtime 기준 ttl_sec 초과 파일 제거.
+    Returns: 삭제된 파일 수.
+    """
+    base = _resolve_base(base_dir)
+    now = datetime.now(timezone.utc).timestamp()
+    removed = 0
+    for sub in (".by-pid", ".by-pid-current-run"):
+        d = base / sub
+        if not d.exists():
+            continue
+        for f in d.iterdir():
+            try:
+                age = now - f.stat().st_mtime
+                if age > ttl_sec:
+                    f.unlink()
+                    removed += 1
+            except OSError:
+                pass
+    return removed
+
+
+# ── PPID chain — Bash 에서 호출된 helper 의 cc_pid 추출 ───────────
+
+
+def get_cc_pid_via_ppid_chain() -> Optional[int]:
+    """python helper 가 자신의 grandparent (CC main) PID 추출.
+
+    호출 chain: CC main → Bash subprocess → python helper.
+    `os.getppid()` = Bash pid. `ps -o ppid= -p <bash_pid>` = CC main pid.
+
+    Returns None if can't determine (e.g. ps 실패, 단독 실행).
+    """
+    try:
+        bash_pid = os.getppid()
+        result = subprocess.run(
+            ["ps", "-o", "ppid=", "-p", str(bash_pid)],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=_PPID_LOOKUP_TIMEOUT_SEC,
+        )
+        cc_pid = int(result.stdout.strip())
+        if cc_pid > 0:
+            return cc_pid
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+        ValueError,
+    ):
+        pass
+    return None
+
+
+def auto_detect_session_id(*, base_dir: Optional[Path] = None) -> str:
+    """helper 컨텍스트 — by-pid (멀티세션 정합) 우선, env/pointer 폴백."""
+    cc_pid = get_cc_pid_via_ppid_chain()
+    if cc_pid is not None:
+        sid = read_pid_session(cc_pid, base_dir=base_dir)
+        if sid:
+            return sid
+    return current_session_id(base_dir=base_dir)
+
+
+def auto_detect_run_id(*, base_dir: Optional[Path] = None) -> str:
+    """helper 컨텍스트 — by-pid-current-run 에서 rid 추출."""
+    cc_pid = get_cc_pid_via_ppid_chain()
+    if cc_pid is None:
+        return ""
+    return read_pid_current_run(cc_pid, base_dir=base_dir)
+
+
+# ── CLI (python3 -m harness.session_state <subcommand>) ─────────────
+
+
+def _cli_init_session(args: Any) -> int:
+    """SessionStart 훅이 호출. by-pid 작성 + live.json 초기화."""
+    if not valid_session_id(args.sid):
+        print(f"[session_state] invalid sid: {args.sid!r}", file=sys.stderr)
+        return 1
+    if not valid_cc_pid(args.cc_pid):
+        print(f"[session_state] invalid cc_pid: {args.cc_pid!r}", file=sys.stderr)
+        return 1
+    write_pid_session(args.cc_pid, args.sid)
+    if not read_live(args.sid):
+        update_live(args.sid)  # 빈 active_runs 로 초기화
+    return 0
+
+
+def _cli_begin_run(args: Any) -> int:
+    """sid auto-detect → rid 생성 → start_run + by-pid-current-run."""
+    sid = auto_detect_session_id()
+    if not sid:
+        print("[session_state] sid 미해결 — SessionStart 훅 미실행?", file=sys.stderr)
+        return 1
+    rid = generate_run_id()
+    issue_num = args.issue_num if args.issue_num is not None else None
+    start_run(sid, rid, args.entry_point, issue_num=issue_num)
+    cc_pid = get_cc_pid_via_ppid_chain()
+    if cc_pid is not None:
+        write_pid_current_run(cc_pid, rid)
+    print(rid)
+    return 0
+
+
+def _cli_end_run(args: Any) -> int:
+    """sid+rid auto-detect → complete_run + clear by-pid-current-run."""
+    sid = auto_detect_session_id()
+    rid = auto_detect_run_id()
+    if not sid or not rid:
+        print("[session_state] sid/rid 미해결", file=sys.stderr)
+        return 1
+    complete_run(sid, rid)
+    cc_pid = get_cc_pid_via_ppid_chain()
+    if cc_pid is not None:
+        clear_pid_current_run(cc_pid)
+    return 0
+
+
+def _cli_begin_step(args: Any) -> int:
+    """sid+rid auto-detect → update_current_step."""
+    sid = auto_detect_session_id()
+    rid = auto_detect_run_id()
+    if not sid or not rid:
+        print("[session_state] sid/rid 미해결", file=sys.stderr)
+        return 1
+    mode = args.mode if args.mode else None
+    update_current_step(sid, rid, args.agent, mode)
+    print("ok")
+    return 0
+
+
+def _cli_end_step(args: Any) -> int:
+    """sid+rid auto-detect → write_prose + interpret_with_fallback."""
+    # 지연 import — interpret_strategy 는 telemetry 등 무거움
+    from harness.signal_io import write_prose
+    from harness.interpret_strategy import interpret_with_fallback
+    from harness.signal_io import MissingSignal
+
+    sid = auto_detect_session_id()
+    rid = auto_detect_run_id()
+    if not sid or not rid:
+        print("[session_state] sid/rid 미해결", file=sys.stderr)
+        return 1
+
+    prose = Path(args.prose_file).read_text(encoding="utf-8")
+    if not prose.strip():
+        print("[session_state] empty prose", file=sys.stderr)
+        return 1
+
+    mode = args.mode if args.mode else None
+    # prose 저장 — base_dir 은 .sessions/{sid}/runs/ (signal_io 가 그 아래 rid 디렉토리 생성)
+    base = session_dir(sid) / "runs"
+    write_prose(args.agent, rid, prose, mode=mode, base_dir=base)
+
+    allowed = [s.strip() for s in args.allowed_enums.split(",") if s.strip()]
+    if not allowed:
+        print("[session_state] empty --allowed-enums", file=sys.stderr)
+        return 1
+
+    try:
+        enum = interpret_with_fallback(prose, allowed)
+    except MissingSignal as e:
+        print("AMBIGUOUS", file=sys.stdout)
+        print(f"[session_state] interpret 실패: {e.detail[:200]}", file=sys.stderr)
+        return 0  # ambiguous 자체는 정상 결과 — 메인이 이 신호 보고 pause 결정
+
+    print(enum)
+    return 0
+
+
+def _build_arg_parser() -> Any:
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="python3 -m harness.session_state",
+        description="dcNess 세션/run 격리 helper CLI",
+    )
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_init = sub.add_parser("init-session", help="SessionStart 훅 보조")
+    p_init.add_argument("sid")
+    p_init.add_argument("cc_pid", type=int)
+    p_init.set_defaults(func=_cli_init_session)
+
+    p_br = sub.add_parser("begin-run", help="run_id 발급 + start_run")
+    p_br.add_argument("entry_point")
+    p_br.add_argument("--issue-num", type=int, default=None)
+    p_br.set_defaults(func=_cli_begin_run)
+
+    p_er = sub.add_parser("end-run", help="complete_run + clear by-pid-current-run")
+    p_er.set_defaults(func=_cli_end_run)
+
+    p_bs = sub.add_parser("begin-step", help="current_step + heartbeat 갱신")
+    p_bs.add_argument("agent")
+    p_bs.add_argument("mode", nargs="?", default="")
+    p_bs.set_defaults(func=_cli_begin_step)
+
+    p_es = sub.add_parser("end-step", help="prose 저장 + enum 추출 (stdout)")
+    p_es.add_argument("agent")
+    p_es.add_argument("mode", nargs="?", default="")
+    p_es.add_argument("--allowed-enums", required=True, help="comma-separated")
+    p_es.add_argument("--prose-file", required=True, help="prose 본문 파일 경로")
+    p_es.set_defaults(func=_cli_end_step)
+
+    return parser
+
+
+def _main(argv: Optional[list] = None) -> int:
+    parser = _build_arg_parser()
+    args = parser.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(_main())

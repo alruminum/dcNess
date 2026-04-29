@@ -543,5 +543,290 @@ class CleanupStaleRunsTests(unittest.TestCase):
         self.assertIn("run-dddddddd", active)
 
 
+# ---------------------------------------------------------------------------
+# by-pid 레지스트리 (멀티세션 정합)
+# ---------------------------------------------------------------------------
+
+
+class ByPidRegistryTests(unittest.TestCase):
+    def setUp(self) -> None:
+        from harness.session_state import (
+            valid_cc_pid, pid_session_path, pid_run_path,
+            write_pid_session, read_pid_session,
+            write_pid_current_run, read_pid_current_run,
+            clear_pid_current_run,
+        )
+        self.valid_cc_pid = valid_cc_pid
+        self.pid_session_path = pid_session_path
+        self.pid_run_path = pid_run_path
+        self.write_pid_session = write_pid_session
+        self.read_pid_session = read_pid_session
+        self.write_pid_current_run = write_pid_current_run
+        self.read_pid_current_run = read_pid_current_run
+        self.clear_pid_current_run = clear_pid_current_run
+        self._td = TemporaryDirectory()
+        self.base = Path(self._td.name)
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+
+    def test_valid_cc_pid(self) -> None:
+        self.assertTrue(self.valid_cc_pid(12345))
+        self.assertFalse(self.valid_cc_pid(0))
+        self.assertFalse(self.valid_cc_pid(-1))
+        self.assertFalse(self.valid_cc_pid("12345"))
+        self.assertFalse(self.valid_cc_pid(None))
+
+    def test_pid_session_path_format(self) -> None:
+        path = self.pid_session_path(12345, base_dir=self.base)
+        self.assertEqual(path, (self.base / ".by-pid" / "12345").resolve())
+
+    def test_pid_run_path_format(self) -> None:
+        path = self.pid_run_path(12345, base_dir=self.base)
+        self.assertEqual(
+            path,
+            (self.base / ".by-pid-current-run" / "12345").resolve(),
+        )
+
+    def test_write_then_read_pid_session(self) -> None:
+        self.write_pid_session(12345, "abc-sid", base_dir=self.base)
+        self.assertEqual(
+            self.read_pid_session(12345, base_dir=self.base), "abc-sid"
+        )
+
+    def test_read_pid_session_missing(self) -> None:
+        self.assertEqual(self.read_pid_session(99999, base_dir=self.base), "")
+
+    def test_read_pid_session_invalid_returns_empty(self) -> None:
+        # Force write invalid sid bypassing validator
+        path = self.pid_session_path(12345, base_dir=self.base)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("../bad", encoding="utf-8")
+        self.assertEqual(self.read_pid_session(12345, base_dir=self.base), "")
+
+    def test_write_then_read_pid_current_run(self) -> None:
+        self.write_pid_current_run(12345, "run-12345678", base_dir=self.base)
+        self.assertEqual(
+            self.read_pid_current_run(12345, base_dir=self.base),
+            "run-12345678",
+        )
+
+    def test_clear_pid_current_run(self) -> None:
+        self.write_pid_current_run(12345, "run-12345678", base_dir=self.base)
+        ok = self.clear_pid_current_run(12345, base_dir=self.base)
+        self.assertTrue(ok)
+        self.assertEqual(self.read_pid_current_run(12345, base_dir=self.base), "")
+
+    def test_clear_pid_current_run_idempotent(self) -> None:
+        self.assertFalse(self.clear_pid_current_run(99999, base_dir=self.base))
+
+    def test_invalid_sid_write_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            self.write_pid_session(12345, "../bad", base_dir=self.base)
+
+    def test_invalid_run_id_write_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            self.write_pid_current_run(12345, "not-a-run", base_dir=self.base)
+
+    def test_invalid_cc_pid_path_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            self.pid_session_path(-1, base_dir=self.base)
+
+    def test_multi_session_isolation(self) -> None:
+        # 두 세션 동시 by-pid 작성 — 서로 영향 0
+        self.write_pid_session(12345, "ses-A", base_dir=self.base)
+        self.write_pid_session(23456, "ses-B", base_dir=self.base)
+        self.write_pid_current_run(12345, "run-aaaaaaaa", base_dir=self.base)
+        self.write_pid_current_run(23456, "run-bbbbbbbb", base_dir=self.base)
+        self.assertEqual(
+            self.read_pid_session(12345, base_dir=self.base), "ses-A"
+        )
+        self.assertEqual(
+            self.read_pid_session(23456, base_dir=self.base), "ses-B"
+        )
+        self.assertEqual(
+            self.read_pid_current_run(12345, base_dir=self.base), "run-aaaaaaaa"
+        )
+        self.assertEqual(
+            self.read_pid_current_run(23456, base_dir=self.base), "run-bbbbbbbb"
+        )
+
+
+class CleanupStalePidTests(unittest.TestCase):
+    def setUp(self) -> None:
+        from harness.session_state import (
+            cleanup_stale_pid_files, write_pid_session, write_pid_current_run,
+        )
+        self.cleanup_stale_pid_files = cleanup_stale_pid_files
+        self.write_pid_session = write_pid_session
+        self.write_pid_current_run = write_pid_current_run
+        self._td = TemporaryDirectory()
+        self.base = Path(self._td.name)
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+
+    def test_removes_old_pid_files(self) -> None:
+        import time
+        self.write_pid_session(12345, "old-sid", base_dir=self.base)
+        # mtime 25h 전으로 조작
+        path = self.base / ".by-pid" / "12345"
+        old = time.time() - (25 * 3600)
+        os.utime(path, (old, old))
+
+        # 신선한 파일
+        self.write_pid_session(23456, "fresh-sid", base_dir=self.base)
+
+        removed = self.cleanup_stale_pid_files(base_dir=self.base)
+        self.assertEqual(removed, 1)
+        self.assertFalse((self.base / ".by-pid" / "12345").exists())
+        self.assertTrue((self.base / ".by-pid" / "23456").exists())
+
+
+# ---------------------------------------------------------------------------
+# CLI subcommands (subprocess 통해 호출 — 회귀 검증)
+# ---------------------------------------------------------------------------
+
+
+class CliInitSessionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        from harness.session_state import _cli_init_session, read_pid_session, read_live
+        self._cli_init_session = _cli_init_session
+        self.read_pid_session = read_pid_session
+        self.read_live = read_live
+        self._td = TemporaryDirectory()
+        self.base = Path(self._td.name)
+        self._cwd = os.getcwd()
+        os.chdir(self.base)
+
+    def tearDown(self) -> None:
+        os.chdir(self._cwd)
+        self._td.cleanup()
+
+    def test_init_session_writes_by_pid_and_live(self) -> None:
+        from types import SimpleNamespace
+        rc = self._cli_init_session(
+            SimpleNamespace(sid="abc-sid", cc_pid=12345)
+        )
+        self.assertEqual(rc, 0)
+        self.assertEqual(self.read_pid_session(12345), "abc-sid")
+        live = self.read_live("abc-sid")
+        self.assertEqual(live["session_id"], "abc-sid")
+        self.assertEqual(live["active_runs"], {})
+
+    def test_init_session_invalid_sid(self) -> None:
+        from types import SimpleNamespace
+        rc = self._cli_init_session(
+            SimpleNamespace(sid="../bad", cc_pid=12345)
+        )
+        self.assertEqual(rc, 1)
+
+    def test_init_session_invalid_cc_pid(self) -> None:
+        from types import SimpleNamespace
+        rc = self._cli_init_session(
+            SimpleNamespace(sid="abc-sid", cc_pid=0)
+        )
+        self.assertEqual(rc, 1)
+
+
+class CliBeginStepEndStepTests(unittest.TestCase):
+    """auto_detect_* 를 mock 하고 CLI subcommand 동작 검증."""
+
+    def setUp(self) -> None:
+        self._td = TemporaryDirectory()
+        self.base = Path(self._td.name)
+        self._cwd = os.getcwd()
+        os.chdir(self.base)
+        # init session
+        from harness.session_state import (
+            write_pid_session, write_pid_current_run,
+            start_run, generate_run_id,
+        )
+        self.sid = "test-sid"
+        self.rid = "run-12345678"
+        self.cc_pid = 99999  # 임의
+        write_pid_session(self.cc_pid, self.sid)
+        from harness.session_state import update_live
+        update_live(self.sid)
+        start_run(self.sid, self.rid, "test-entry")
+        write_pid_current_run(self.cc_pid, self.rid)
+        # auto_detect 가 self.cc_pid 반환하도록 mock
+        from unittest.mock import patch
+        self._patcher = patch(
+            "harness.session_state.get_cc_pid_via_ppid_chain",
+            return_value=self.cc_pid,
+        )
+        self._patcher.start()
+        # interpret 텔레메트리 off
+        self._prev_telemetry = os.environ.get("DCNESS_LLM_TELEMETRY")
+        os.environ["DCNESS_LLM_TELEMETRY"] = "0"
+
+    def tearDown(self) -> None:
+        self._patcher.stop()
+        os.chdir(self._cwd)
+        self._td.cleanup()
+        if self._prev_telemetry is None:
+            os.environ.pop("DCNESS_LLM_TELEMETRY", None)
+        else:
+            os.environ["DCNESS_LLM_TELEMETRY"] = self._prev_telemetry
+
+    def test_begin_step_updates_current_step(self) -> None:
+        from harness.session_state import _cli_begin_step, read_live
+        from types import SimpleNamespace
+        rc = _cli_begin_step(SimpleNamespace(agent="validator", mode="PLAN_VALIDATION"))
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid)
+        slot = live["active_runs"][self.rid]
+        self.assertEqual(slot["current_step"]["agent"], "validator")
+        self.assertEqual(slot["current_step"]["mode"], "PLAN_VALIDATION")
+
+    def test_end_step_writes_prose_and_extracts_enum(self) -> None:
+        from harness.session_state import _cli_end_step, session_dir
+        from types import SimpleNamespace
+        prose_path = self.base / "tmp_prose.md"
+        prose_path.write_text("## 결과\n검증.\n## 결론\nPASS\n", encoding="utf-8")
+
+        # capture stdout
+        from io import StringIO
+        from contextlib import redirect_stdout
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_end_step(SimpleNamespace(
+                agent="validator",
+                mode="PLAN_VALIDATION",
+                allowed_enums="PASS,FAIL,SPEC_MISSING",
+                prose_file=str(prose_path),
+            ))
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue().strip(), "PASS")
+
+        # prose 종이 저장 확인
+        prose_md = (
+            session_dir(self.sid) / "runs" / self.rid /
+            "validator-PLAN_VALIDATION.md"
+        )
+        self.assertTrue(prose_md.exists())
+
+    def test_end_step_ambiguous_returns_AMBIGUOUS(self) -> None:
+        from harness.session_state import _cli_end_step
+        from types import SimpleNamespace
+        prose_path = self.base / "tmp_prose.md"
+        prose_path.write_text("no enum here at all", encoding="utf-8")
+
+        from io import StringIO
+        from contextlib import redirect_stdout, redirect_stderr
+        out = StringIO()
+        err = StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = _cli_end_step(SimpleNamespace(
+                agent="validator",
+                mode="PLAN_VALIDATION",
+                allowed_enums="PASS,FAIL",
+                prose_file=str(prose_path),
+            ))
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue().strip(), "AMBIGUOUS")
+
+
 if __name__ == "__main__":
     unittest.main()
