@@ -18,6 +18,40 @@
 
 ## Records
 
+### DCN-CHG-20260429-25
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Phase 3 종결(`-24`) 직후 사용자 지적 — proposal §2.5 원칙 4 가 "impl_loop 시퀀스 보존" 명시했고 §11.4 "작업 순서 강제" 도입 의무 명문이지만, *그 시퀀스의 정의 SSOT* 자체가 dcNess 안에 부재. agents/*.md 13 docs 는 *개별 agent* 의 결론 enum 박음, signal_io 등 인프라는 *결론 추출기*, 거버넌스는 *commit/PR 룰* — 어디에도 시퀀스 정의 (어떤 enum → 어떤 다음 agent / retry / escalate / 권한 매트릭스) SSOT 없음.
+  - 사용자 정정 — RWHarness 도 시퀀스 SSOT 가 따로 있음 (`harness-spec.md` §4.2/§4.3 + `harness-architecture.md` §3). impl_loop.py 는 그 SSOT 의 *코드 driver* 일 뿐. dcNess 도 같은 패턴 가야 한다.
+  - migration-decisions §2.1 의 RWHarness `impl_loop.py` "DISCARD (dcNess 한정)" 처리는 *코드 driver* 폐기 의도였으나 *룰 자체* 까지 같이 폐기한 결과가 됨. 룰 부활 필요.
+  - dcNess 정체성 = "RWHarness 의 오케스트레이션 동일 보존 + 형식 강제만 LLM 으로 대체" (사용자 정리). 따라서 본 SSOT = RWHarness 의 시퀀스/핸드오프/권한 매트릭스 *그대로* + 형식 어휘만 변환.
+- **Alternatives**:
+  1. *분산 정의* — 각 agents/*.md 끝에 "다음 trigger" 권고 추가 (per-agent SSOT). 13 곳 일관성 보장 어려움. 또한 RWHarness 의 단일 spec 패턴과 어긋남. 기각.
+  2. *메인 Claude 자율* — CLAUDE.md 가이드만, 시퀀스 명문 X. 결정 일관성 ↓. proposal §2.5 원칙 4 보존 의무 충족 X. 기각.
+  3. *(채택)* **단일 SSOT `docs/orchestration.md`** — RWHarness §4.2 + §4.3 + §3 통째 가져와 형식 어휘만 변환. 11 섹션 단일 파일.
+  4. *별도 권한 매트릭스 분리* (`docs/access-matrix.md`) — 시퀀스와 매트릭스 두 파일. RWHarness 의 §3 안에 묶인 패턴과 어긋남, cross-link 깨짐 위험. 기각.
+  5. *proposal §부록 으로 박기* — proposal SSOT 와 운영 SSOT 분리 흐려짐. proposal 은 *발상*, 본 SSOT 는 *적용 표현*. 분리 유지. 기각.
+- **Decision**:
+  - 옵션 3. 단일 파일 `docs/orchestration.md` 11 섹션 + proposal `status-json-mutate-pattern.md` §11.4 cross-link 만 추가.
+  - **Mermaid 분할**: 큰 흐름 1 (game gate sequence) + 진입 경로별 mini graph 6 (신규 기능 / UI / 리디자인 / 일반 구현 / 작은 버그 / 버그 보고). RWHarness §4.3 표 정합 — 단일 거대 그래프는 가독성 ↓.
+  - **결정표 13 agent 펼침**: validator 5 mode + architect 7 mode 별 행 분리. agent 단일 행 + sub-row 패턴은 markdown 표에서 읽기 어려움.
+  - **catastrophic 백본 4 항목 명시** (§2.3): src/ 변경 후 validator 우회 금지 / pr-reviewer LGTM 없이 merge 금지 / engineer 가 module-plan 통과 없이 src/ 작성 금지 / PRD 변경 후 plan-reviewer + ux-architect 검토 없이 architect 진입 금지. 코드 driver 도입 시 hook 강제 대상.
+  - **DCNESS_INFRA_PATTERNS** (§7.4): RWHarness `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 옛 어휘 잔재를 본 SSOT 가 정정 — dcNess 의 SSOT 파일명은 `docs/orchestration.md` (단일).
+  - **옵션 (c) Orchestration Agent + 동적 시퀀스** (§9): 사용자 회의 발상. driver 가 sequence list 만 받아 순회, 각 step 후 메타 LLM agent 가 prose 보고 sequence 동적 갱신. catastrophic backbone (§2.3 + §7) 은 코드 hook 으로 강제. 채택 결정은 별도 Task — 본 SSOT 안엔 옵션 카탈로그로만.
+  - **proposal §2.5 원칙 정합**:
+    - 원칙 1 (룰 순감소): 신규 docs ~450 줄. 그러나 *기존 분산된 의도* (proposal §2.5 / §11.4 / 13 agents/*.md) 의 *집계 + 명시화* — 새 진실 없음.
+    - 원칙 2 (강제 vs 권고): §8 에서 명시 분리 — catastrophic 만 코드 강제, 그 외 권고/측정.
+    - 원칙 3 (agent 자율성): §8.2 agent 자율 영역 명시 — prose 형식 / handoff 본문 / preamble / 도구 호출 순서 자유.
+    - 원칙 4 (catastrophic 시퀀스 보존): §10 직접 인용 + §2.3 catastrophic 4 항목 명문화.
+    - 원칙 5 (30일 측정 후 강제): 옵션 (c) 동적 시퀀스 도입 결정은 도그푸딩 후 — 본 SSOT 는 옵션 카탈로그만.
+  - **메인 dcNess 자체 작업 모드 처리**: §1.2 에 명시 — 본 SSOT 는 *권고* (CLAUDE.md §0 정합). hook 차단 X.
+- **Follow-Up**:
+  - **(별도 Task)** 옵션 (a)/(b)/(c) 채택 결정 + 코드 driver 구현. 옵션 (c) 가 가장 dcNess 정신 정합이지만 결정론 risk → smoke test 후 결정.
+  - **(별도 Task)** Orchestration Agent (옵션 c 채택 시) 의 prompt 설계 — 입력 = 직전 prose + 현재 sequence + 컨텍스트, 출력 = 갱신된 sequence list. 메타 LLM 호출 비용 측정.
+  - **(별도 Task)** dcNess 의 `agent-boundary.py` (또는 등가) 도입 — 본 SSOT §7 권한 매트릭스의 *코드 강제*. 현재 dcNess 자체엔 hook 없음 (인프라 미도입).
+  - **(별도 Task)** 본 SSOT 와 RWHarness 의 drift 모니터링 — RWHarness 가 §4.2 시퀀스 변경 시 본 SSOT 도 갱신 의무. proposal §11.5 정합.
+  - **(검증)** plugin-dryrun-guide §6 의 1 cycle 도그푸딩 시 본 SSOT 가 실제 가이드 역할 하는지 확인.
+
 ### DCN-CHG-20260429-24
 - **Date**: 2026-04-29
 - **Rationale**:

@@ -20,7 +20,18 @@
 
 ## Records
 
-### DCN-CHG-20260429-24
+### DCN-CHG-20260429-25
+- **Date**: 2026-04-29
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `docs/orchestration.md` (신규 — 오케스트레이션 SSOT 11 섹션, RWHarness §4.2/§4.3/§3 통합)
+  - `docs/status-json-mutate-pattern.md` (§11.4 에 본 SSOT cross-link 추가)
+  - `CLAUDE.md` (§3 docs map 에 orchestration.md 추가)
+  - `PROGRESS.md` (Phase 3 사후 보강 entry 추가)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Phase 3 사후 보강 — 오케스트레이션 SSOT 신규 작성. proposal §2.5 원칙 4 ("impl_loop 시퀀스 보존") + §11.4 ("작업 순서 강제") 가 명시했지만 *시퀀스 정의 spec* 자체가 dcNess 안에 부재했던 사용자 지적 보강. RWHarness `harness-spec.md` §4.2 (게이트 시퀀스) + §4.3 (진입 경로 6 시나리오) + `harness-architecture.md` §3 (호출 권한 / Write 허용 / Read 금지 / INFRA_PATTERNS) 통째 dcNess 형식으로 변환. 형식 강제 어휘 (`---MARKER---` 마커, `_handoffs/{from}_to_{to}_{ts}.md` 파일, `class Flag` boolean) 모두 prose + signal_io / interpret_strategy 표현으로 치환. 11 섹션: 정체성·적용모드·게이트시퀀스 (큰 흐름 mermaid)·진입경로 (mini graph 6개)·13 agent 결론 enum 결정표·retry 한도·escalate 카탈로그·핸드오프 매트릭스·catastrophic vs 자율·코드 driver 결정 보류 (옵션 a/b/c)·proposal 인용. 옵션 (c) Orchestration Agent + 동적 시퀀스 (driver 가 sequence 파라미터 받음, 메타 LLM 이 prose 보고 동적 갱신, catastrophic backbone 만 코드 강제) 신규 발상으로 §9 에 박음 — 사용자 회의 발상 출처.
+- **Document-Exception**: 없음 (agent + docs-only 카테고리 모두 deliverable 의무 N/A — agent 는 agents/* 변경 없이 CLAUDE.md cross-link 만)
 - **Date**: 2026-04-29
 - **Change-Type**: spec, agent, docs-only
 - **Files Changed**:

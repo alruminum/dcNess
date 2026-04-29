@@ -428,10 +428,11 @@ RWHarness 자체엔 적용 안 함 — 본 proposal 은 신규 프로젝트의 d
 ### 11.4 도입할 것 / 도입 안 할 것 / 안전망
 
 > **대 원칙 정합** (§2.5): 작업 순서 + 접근 영역만 제어.
+> **본 §11.4 의 *적용 SSOT*** = [`docs/orchestration.md`](orchestration.md) (`DCN-CHG-20260429-25`).
 
 #### 도입할 것
-- **작업 순서 강제**: 시퀀스 (validator → engineer → pr-reviewer) + retry 정책 (사용자 프로젝트 적용 시)
-- **접근 영역 강제**: agent-boundary ALLOW/READ_DENY + plugin-write-guard (사용자 프로젝트 적용 시)
+- **작업 순서 강제**: 시퀀스 (validator → engineer → pr-reviewer) + retry 정책 (사용자 프로젝트 적용 시) → `docs/orchestration.md` §2/§4/§5
+- **접근 영역 강제**: agent-boundary ALLOW/READ_DENY + plugin-write-guard (사용자 프로젝트 적용 시) → `docs/orchestration.md` §7
 - **추적**: orchestration/{changelog, rationale}.md (HARNESS-CHG-* 1부터, 4섹션) + PR `[invariant-shift]` 토큰 + Task-ID gh action 검증 + Document-Exception escape hatch
 
 #### 도입 안 할 것
