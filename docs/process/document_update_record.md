@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260429-14
+- **Date**: 2026-04-29
+- **Change-Type**: agent, ci, docs-only
+- **Files Changed**:
+  - `CLAUDE.md` (§4 단일 모듈 테스트 명령어 → `tests.test_signal_io`)
+  - `.github/workflows/python-tests.yml` (헤더 코멘트 — state_io → signal_io)
+  - `.gitignore` (.claude/harness-state 코멘트 — status JSON → prose)
+  - `.claude-plugin/marketplace.json` (description / metadata / plugin tags — status-json-mutate → prose-only)
+  - `docs/migration-decisions.md` (§0 framework 질문 + §2.3 Plugin 배포 모드 — prose-only 표현으로 정정)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: DCN-CHG-20260429-13 후 잔존하는 stale `status JSON` / `state_io` 표현 sweep — 현재/forward-looking 문서 + plugin manifest + CI workflow 코멘트만 정정. 과거 이력 record 항목은 governance §2.4 스코핑 정합으로 미수정 (당시 사실 보존).
+- **Document-Exception**: history 보존 — 이전 Task-ID 의 record/rationale 항목 본문은 *그 시점 사실* 이라 수정하지 않는다. governance §2.4 의 "현재 diff 추가 라인만 유효" 정합.
+
 ### DCN-CHG-20260429-13
 - **Date**: 2026-04-29
 - **Change-Type**: spec, harness, agent, test, docs-only

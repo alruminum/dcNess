@@ -18,6 +18,22 @@
 
 ## Records
 
+### DCN-CHG-20260429-14
+- **Date**: 2026-04-29
+- **Rationale**:
+  - DCN-CHG-20260429-13 가 prose-only 로 패턴 전환했으나 forward-looking 문서/메타 (CLAUDE.md test 명령어 / python-tests.yml 헤더 / marketplace.json description / .gitignore 코멘트 / migration-decisions framework 질문) 에 stale `status JSON` / `state_io` 표현이 잔존.
+  - Plugin manifest 의 `tags: ["status-json-mutate"]` 는 marketplace 검색 인덱스에 노출되는 *공개 메타* 라 정정 우선 순위 높음. CLAUDE.md §4 의 stale 단일 모듈 테스트 명령은 실행 시 `ModuleNotFoundError` (이미 삭제된 모듈) — 신규 기여자 onboarding 함정.
+- **Alternatives**:
+  1. *과거 record/rationale 항목까지 일괄 정정* — governance §2.4 "현재 diff 추가 라인만 유효" 정합 위반. 과거 사실 (당시 status JSON 도입했음) 을 사후에 prose-only 로 위장하면 history 신뢰성 손상. 기각.
+  2. *Phase 2 시점에 일괄* — Phase 2 는 메타 LLM 통합 + 12 agent docs 변환이라 *별도 책임*. stale 표현은 onboarding 비용을 매일 발생시키므로 즉시 cleanup 이 옳음. 기각.
+  3. *(채택)* **forward-looking 문서만 sweep + history 항목 보존 + Document-Exception 명시**.
+- **Decision**:
+  - 옵션 3. 5 파일 cleanup. history record 본문은 governance §2.4 정합으로 *명시적 미수정*. record 의 "본 변경" 자체는 새 Task-ID 의 추가 라인이라 게이트 통과.
+  - tags 변경: `status-json-mutate` → `prose-only`. marketplace 사용자가 본 plugin 의 결정론 메커니즘을 정확히 식별 가능.
+- **Follow-Up**:
+  - **(별도 Task-ID)** RWHarness 와 plugin name 충돌 시나리오 dry-run — plugin 메타 변경이 install/disable 동작에 영향 주는지 확인.
+  - **측정**: marketplace 검색 키워드 분석 시 `prose-only` 매칭 횟수 추적 (해당 메트릭 도입 시).
+
 ### DCN-CHG-20260429-13
 - **Date**: 2026-04-29
 - **Rationale**:

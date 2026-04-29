@@ -10,7 +10,7 @@
 `status-json-mutate-pattern.md` §11.2 framework 를 RWHarness 모듈 카탈로그에 적용한 결과를 단일 문서로 박는다. 모듈마다 다음 3 질문 중 하나로 분류:
 
 1. **Catastrophic-prevention 인가?** — 돌이킬 수 없는 사고를 막는가? → **PRESERVE**
-2. **발상 변경으로 자연 폐기되는가?** — status JSON mutate / dcNess 메인 직접 작업 모드 적용 시 의미 잃는가? → **DISCARD**
+2. **발상 변경으로 자연 폐기되는가?** — Prose-Only Pattern / dcNess 메인 직접 작업 모드 적용 시 의미 잃는가? → **DISCARD**
 3. **단순화 가능한가?** — 룰 누적·중복 패턴인가? → **REFACTOR**
 
 본 문서는 **결정 기록** 이지 *재작성 금지의 헌법* 이 아니다. 분류가 잘못된 것으로 판명되면 별도 Task-ID 로 정정.
@@ -94,7 +94,7 @@ dcNess 는 RWHarness 와 다른 *모드* 다. 분류 전 다음 전제 박는다
 
 > **dcNess 메인 작업 모드 vs Plugin 배포 모드**:
 > - **메인 작업 모드 (본 저장소 내부)**: agent prompt 가 *자료* 일 뿐 의무 호출 없음. 메인 Claude 가 `Task` 도구로 호출 시에만 활성화.
-> - **Plugin 배포 모드 (사용자 프로젝트에서 활성화)**: agent prompt 가 *실 호출 대상*. status JSON mutate 형식 강제.
+> - **Plugin 배포 모드 (사용자 프로젝트에서 활성화)**: agent prompt 가 *실 호출 대상*. prose 자유 emit + 메타 LLM 해석 (형식 강제 X).
 >
 > 두 모드 다 같은 agent docs 형식 사용 → 변환은 한 번만.
 

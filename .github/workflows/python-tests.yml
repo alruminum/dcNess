@@ -1,8 +1,8 @@
 # GitHub Actions — Python unittest 자동 실행
 #
 # 목적:
-# - harness/state_io.py 회귀 차단 (R8 5 failure modes / atomic write / path safety)
-# - agents/validator/*.md schema round-trip 회귀 차단 (DCN-CHG-20260429-07)
+# - harness/signal_io.py 회귀 차단 (prose I/O / interpret_signal 휴리스틱 / path safety)
+# - DCN-CHG-20260429-13 prose-only 패턴 회귀 차단
 #
 # 트리거:
 # - PR / push to main 시 tests/ 또는 harness/ 또는 agents/ 변경 시
