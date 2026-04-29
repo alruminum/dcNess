@@ -18,6 +18,37 @@
 
 ## Records
 
+### DCN-CHG-20260429-35
+- **Date**: 2026-04-29
+- **Rationale**:
+  - PR #33 (DCN-CHG-20260429-34) 머지 후 사용자 지적 — "멀티세션 코드는 들어갔는데 e2e 검증 안 함" 부분 보강 필요.
+  - 기존 단위 테스트는 모두 mock 기반 (`base_dir` 격리, `cc_pid` 인자 명시). 실 bash → python 파이프라인은 검증 안 됨.
+  - smoke 단계 = 실 subprocess 호출 + 실 stdin payload + 실 파일 시스템 부수효과 검증.
+- **Alternatives**:
+  1. *manual smoke (사용자가 두 `claude` 띄워 검증)* — 가장 정확하나 자동화 0, 회귀 검증 어려움. follow-up 으로 보존.
+  2. *fixture 기반 mock subprocess* — 빠르지만 실 파이프라인 검증 X. 기각.
+  3. *(채택)* **subprocess.run + Popen 으로 실 bash 호출 + 동시 spawn 으로 race 검증**. 한계 (PPID 가 pytest pid 라 bash 자체 PPID 검증 불가) 는 `--cc-pid` 명시로 우회.
+- **Decision**:
+  - **3 테스트 그룹**:
+    - `BashPipelineSmokeTests` (4) — bash 훅 동작 + invalid sid silent + 빈 payload silent
+    - `MultiSessionIsolationTests` (3) — 두 cc_pid 격리 + live.json 자기참조 + 동시 Popen 격리
+    - `CatastrophicRuleE2eTests` (4) — engineer §2.3.3 / pr-reviewer §2.3.1 / HARNESS_ONLY 차단 + plan 있을 때 통과
+  - **subprocess 환경**:
+    - cwd 격리 (TemporaryDirectory)
+    - PYTHONPATH 명시 (REPO_ROOT)
+    - timeout 10s
+    - stdin = JSON payload, capture_output=True
+  - **명시 한계** (docstring):
+    - bash 의 자기 PPID 가 pytest pid 라 두 호출이 같은 cc_pid → 격리 검증은 python CLI 직접 호출 (`--cc-pid` 명시) 로 우회
+    - 실 Claude Code 환경의 PPID 신뢰성 / stdin payload 형식은 별도 manual smoke 필요
+- **Follow-Up**:
+  - **manual smoke**: 사용자가 동시 두 `claude` 띄움 → 같은 working dir 에서 작업 → `.claude/harness-state/` 검사로 격리 확인. README 또는 dcNess 자체 도그푸딩 가이드에 추가.
+  - **CC 환경 검증**:
+    - SessionStart payload 의 `sessionId` 필드 실측
+    - PreToolUse Agent payload 의 `tool_input.subagent_type` / `tool_input.mode` 필드 실측
+    - PPID 가 CC main 인지 shell 인지 실측 (TBD)
+  - **회귀 위험**: 본 smoke 는 subprocess 가 macOS / Linux 동작 가정. Windows 미지원. tmux/screen 같은 환경에서 PPID 비표준일 수 있음.
+
 ### DCN-CHG-20260429-34
 - **Date**: 2026-04-29
 - **Rationale**:

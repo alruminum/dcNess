@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260429-35
+- **Date**: 2026-04-29
+- **Change-Type**: test, docs-only
+- **Files Changed**:
+  - `tests/test_multisession_smoke.py` (신규, 11 케이스) — bash 훅 + Python 파이프라인 e2e + 멀티세션 격리 검증.
+  - `PROGRESS.md`
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 멀티세션 격리 e2e smoke 추가. 3 그룹: (1) bash pipeline (4 케이스 — bash 훅 종료코드 + 부수효과 + invalid sid silent + 빈 payload silent) (2) MultiSessionIsolation (3 케이스 — by-pid 격리 + live.json 격리 + 동시 spawn 격리) (3) CatastrophicRule e2e (4 케이스 — engineer §2.3.3 차단/통과 + pr-reviewer §2.3.1 차단 + HARNESS_ONLY_AGENTS run 컨텍스트 부재 차단). subprocess 통한 실제 bash → python 호출 + 동시 Popen 으로 race 검증. 160/160 tests PASS (149 기존 + 11 신규). 한계 명시 — 실 Claude Code 환경의 PPID 신뢰성 / stdin payload 형식은 별도 manual smoke 필요.
+- **Document-Exception**: 없음 (test 카테고리, deliverable 자체)
+
 ### DCN-CHG-20260429-34
 - **Date**: 2026-04-29
 - **Change-Type**: harness, hooks, test, docs-only
