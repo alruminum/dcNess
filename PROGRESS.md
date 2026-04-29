@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🌲 Worktree 격리 옵션 C** (`DCN-CHG-20260429-39`):
+  - `harness/session_state.py` `_default_base()` γ 설계 — `git rev-parse --git-common-dir` 로 main repo `.claude/harness-state/` 를 단일 source. cwd 별 캐시. 비-git 폴백 보존.
+  - `commands/quick.md` / `commands/product-plan.md` Step 0a — keyword (`worktree` / `wt` / `격리` / `isolate`) 트리거 시 EnterWorktree, 종료 step 에 ExitWorktree 옵션.
+  - `docs/conveyor-design.md` §13 신규 — 옵션 검토 (A/B/C/D) + γ 설계 + skill protocol + EnterWorktree 룰 정합.
+  - 신규 5 테스트 (전체 165/165 PASS).
+  - v2 후속: 자동 cleanup / PR merge 감지 / 옵션 D 디폴트 마이그레이션.
 - **🧪 Conveyor 인프라 Step 4 — multi-session e2e smoke** (`DCN-CHG-20260429-35`):
   - `tests/test_multisession_smoke.py` 신규 (11 케이스):
     - bash 훅 파이프라인 (4) — 실 subprocess 호출 + 부수효과 검증

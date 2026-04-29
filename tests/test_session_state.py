@@ -63,6 +63,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -826,6 +828,132 @@ class CliBeginStepEndStepTests(unittest.TestCase):
             ))
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "AMBIGUOUS")
+
+
+class DefaultBaseWorktreeTests(unittest.TestCase):
+    """`_default_base()` γ 설계 — main repo `.claude/harness-state/` 단일 source 검증.
+
+    옵션 C (worktree keyword 트리거) 도입 시:
+      - Skill Step 0 에서 EnterWorktree → cwd = `.claude/worktrees/{name}/`
+      - SessionStart 훅은 main repo cwd 에서 발화 → main repo 의 .by-pid 작성
+      - worktree 안 helper 가 by-pid 못 찾으면 catastrophic 미동작
+
+    γ 해법: `_default_base()` 가 git rev-parse --git-common-dir 으로 main repo
+    `.git` 추출 → parent = main repo root → state root 단일 source.
+    """
+
+    def setUp(self) -> None:
+        from harness.session_state import _clear_default_base_cache
+        self._orig_cwd = os.getcwd()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.addCleanup(lambda: os.chdir(self._orig_cwd))
+        _clear_default_base_cache()
+        self.addCleanup(_clear_default_base_cache)
+
+    def _init_git_repo(self, path: Path) -> None:
+        path.mkdir(parents=True, exist_ok=True)
+        for cmd in (
+            ["git", "init", "-q"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "test"],
+            ["git", "commit", "-q", "--allow-empty", "-m", "init"],
+        ):
+            subprocess.run(cmd, cwd=path, check=True, capture_output=True)
+
+    def test_resolves_to_main_repo_in_plain_repo(self) -> None:
+        """일반 repo cwd 에서 _default_base() = repo/.claude/harness-state."""
+        from harness.session_state import _default_base
+        repo = Path(self._tmp.name) / "repo"
+        self._init_git_repo(repo)
+        os.chdir(repo)
+        base = _default_base()
+        self.assertEqual(
+            base.resolve(),
+            (repo / ".claude" / "harness-state").resolve(),
+        )
+
+    def test_resolves_to_main_repo_from_worktree(self) -> None:
+        """worktree 안에서 _default_base() = main repo 의 harness-state.
+
+        γ 핵심 — worktree 안 helper 가 main repo state 를 단일 source 로 본다.
+        """
+        from harness.session_state import _default_base
+        repo = Path(self._tmp.name) / "main"
+        self._init_git_repo(repo)
+        wt_path = Path(self._tmp.name) / "wt-test"
+        subprocess.run(
+            ["git", "worktree", "add", "-q", str(wt_path), "-b", "wt-branch"],
+            cwd=repo, check=True, capture_output=True,
+        )
+        try:
+            os.chdir(wt_path)
+            base = _default_base()
+            self.assertEqual(
+                base.resolve(),
+                (repo / ".claude" / "harness-state").resolve(),
+            )
+        finally:
+            os.chdir(self._orig_cwd)
+            subprocess.run(
+                ["git", "worktree", "remove", str(wt_path), "--force"],
+                cwd=repo, check=False, capture_output=True,
+            )
+
+    def test_falls_back_to_cwd_outside_git(self) -> None:
+        """git 리포 아닌 cwd → cwd/.claude/harness-state 폴백."""
+        from harness.session_state import _default_base
+        non_git = Path(self._tmp.name) / "no-git"
+        non_git.mkdir()
+        os.chdir(non_git)
+        base = _default_base()
+        self.assertEqual(
+            base.resolve(),
+            (non_git / ".claude" / "harness-state").resolve(),
+        )
+
+    def test_cache_returns_same_path_for_same_cwd(self) -> None:
+        """동일 cwd 두 번 호출 → 같은 Path."""
+        from harness.session_state import _default_base
+        repo = Path(self._tmp.name) / "repo"
+        self._init_git_repo(repo)
+        os.chdir(repo)
+        b1 = _default_base()
+        b2 = _default_base()
+        self.assertEqual(b1, b2)
+
+    def test_pid_session_consistent_main_and_worktree(self) -> None:
+        """main repo 에서 write 한 by-pid 를 worktree cwd 에서도 read — γ 정합 핵심."""
+        from harness.session_state import (
+            write_pid_session,
+            read_pid_session,
+            _clear_default_base_cache,
+        )
+        repo = Path(self._tmp.name) / "main"
+        self._init_git_repo(repo)
+        wt_path = Path(self._tmp.name) / "wt"
+        subprocess.run(
+            ["git", "worktree", "add", "-q", str(wt_path), "-b", "wt"],
+            cwd=repo, check=True, capture_output=True,
+        )
+        cc_pid = 12345
+        try:
+            os.chdir(repo)
+            _clear_default_base_cache()
+            write_pid_session(cc_pid, "test-sid")
+            self.assertTrue(
+                (repo / ".claude" / "harness-state" / ".by-pid" / str(cc_pid)).exists()
+            )
+            os.chdir(wt_path)
+            _clear_default_base_cache()
+            sid_from_wt = read_pid_session(cc_pid)
+            self.assertEqual(sid_from_wt, "test-sid")
+        finally:
+            os.chdir(self._orig_cwd)
+            subprocess.run(
+                ["git", "worktree", "remove", str(wt_path), "--force"],
+                cwd=repo, check=False, capture_output=True,
+            )
 
 
 if __name__ == "__main__":

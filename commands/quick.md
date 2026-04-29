@@ -30,7 +30,32 @@ qa (분류) → architect LIGHT_PLAN → engineer IMPL → validator BUGFIX_VALI
 
 ## 절차 (Task tool + helper protocol)
 
-### Step 0 — run 시작 + 사용자 확인
+### Step 0a — worktree 격리 진입 (선택, keyword 트리거)
+
+사용자 발화에 다음 keyword 가 포함된 경우에만 worktree 진입 (옵션 C — 명시 트리거):
+- `worktree`, `wt`, `격리`, `isolate`
+
+해당 keyword 없으면 본 step 통째로 skip → 바로 Step 0b 진행 (main repo cwd).
+
+```
+EnterWorktree(name="quick-{rid_prefix}")
+```
+
+`{rid_prefix}` = 곧 발급될 run_id 의 prefix 추정 (예: `q1`, `q2` 같은 짧은 토큰). 실 run_id 는
+Step 0b 에서 발급되니, worktree 이름은 `quick-{ts_short}` 처럼 시간 토큰으로 채워도 무방.
+
+진입 후 cwd = `.claude/worktrees/quick-.../`.
+
+`harness/session_state.py` 의 `_default_base()` 가 `git rev-parse --git-common-dir` 로 main
+repo `.git` 를 추출 → main repo `.claude/harness-state/` 가 단일 source. SessionStart 훅이
+main repo 에서 박은 by-pid / live.json 을 worktree 안 helper 도 그대로 읽는다 (`docs/conveyor-design.md` §13 참조).
+
+사용자에게 진입 사실 1줄 보고:
+```
+[quick] worktree 격리 진입 — cwd: .claude/worktrees/quick-...
+```
+
+### Step 0b — run 시작 + 사용자 확인
 
 ```bash
 RUN_ID=$(python3 -m harness.session_state begin-run quick)
@@ -238,7 +263,7 @@ python3 -m harness.session_state end-run
 [quick] 완료
 - run_id: $RUN_ID
 - 변경: <src/ 변경 파일 요약>
-- prose 종이: .claude/harness-state/.sessions/{sid}/runs/$RUN_ID/
+- prose 종이: <main repo>/.claude/harness-state/.sessions/{sid}/runs/$RUN_ID/
 
 커밋/PR 진행할까요?
 
@@ -246,6 +271,17 @@ python3 -m harness.session_state end-run
 ```
 
 사용자 응답 받으면 git commit / push / gh pr create 등.
+
+worktree 진입 (Step 0a) 했으면 commit/PR 후 또는 사용자 결정 시 종료:
+
+```
+ExitWorktree(action="<keep|remove>")
+```
+
+- `keep` — worktree 보존 (이어서 추가 작업 가능). 사용자가 cwd 를 main repo 로 돌리고 싶을 때.
+- `remove` — worktree + branch 삭제. PR merged 후 정리. uncommitted 시 `discard_changes=true` 필요.
+
+기본 추천 — PR merged 확인 시 `remove`, 그 외 `keep`. 자동 결정 금지 (사용자 in-progress 작업 유실 위험).
 
 ## AMBIGUOUS 처리 — 매 step 동일
 

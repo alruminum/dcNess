@@ -18,6 +18,32 @@
 
 ## Records
 
+### DCN-CHG-20260429-39
+- **Date**: 2026-04-29
+- **Rationale**:
+  - 멀티세션 = dcNess 컨베이어의 기본 가정 (`docs/conveyor-design.md` §4.1). 단 §4 의 by-pid 레지스트리 + `.sessions/{sid}/runs/{rid}/` 격리는 *상태/prose* 차원만 분리하고 src/ 파일 차원에선 main repo cwd 를 공유. 동시 다중 작업 시 working tree 충돌 + commit/staging 침범 위험.
+  - `EnterWorktree` 가 제공하는 git worktree 격리를 결합하면 src/ 차원 분리까지 달성. 단 worktree 진입 시 cwd 가 `.claude/worktrees/{name}/` 으로 변경 → 기존 `_default_base()` (cwd 기준) 가 worktree 안 빈 `.claude/harness-state/` 를 봄 → SessionStart 훅이 main repo 에서 박은 by-pid / live.json 미발견 → catastrophic 미동작.
+- **Alternatives** (트리거 정책):
+  1. *옵션 A — 매번 자동* (skill Step 0 무조건 EnterWorktree). EnterWorktree 룰 ("explicit user instruction") 회색지대. 기각.
+  2. *옵션 B — 사용자 1회 확인* ("worktree 격리?" 묻기). round-trip 1회 추가. 기각.
+  3. *옵션 D — 디폴트 + opt-out* (`--no-worktree` 시만 main). 단발 작업 90% 에 과한 격리 + cwd 변경 surprise + worktree 누적 cleanup 룰 위험 + 세션 종료 시 매번 keep/remove 모달. 4 함정. 기각.
+  4. **(채택) 옵션 C — 명시 keyword** ("worktree" / "wt" / "격리" / "isolate" 발화 시만). 점진 도입 + EnterWorktree 룰 정합 + 단발 작업 friction 0 + 누적 부담 ↓.
+- **Alternatives** (sid 단일 source 해법):
+  1. *옵션 α — 런타임 read 폴백* (helper 의 `read_pid_session` 등에 worktree → main repo cross-search). 함수 다수 수정 + race window. 기각.
+  2. *옵션 β — 진입 직후 inheritance step* (EnterWorktree → `inherit-session` helper 가 main 의 by-pid 를 worktree 로 복사). 별도 step + 동기화 룰 부담. 기각.
+  3. **(채택) 옵션 γ — `_default_base()` 단일 변경** (`git rev-parse --git-common-dir` 으로 main repo `.git` 추출 → main repo `.claude/harness-state/` 단일 source). 1 함수 수정으로 모든 R/W 호출 사이트 일관 정합. cwd 별 캐시로 subprocess 비용 1회/cwd. main repo 안 호출 시 동작 변화 0 (`.git` 상대경로 → cwd 그대로). 비-git 환경 폴백 보존.
+- **Decision**:
+  - 트리거 = 옵션 C, sid 해법 = 옵션 γ.
+  - `commands/quick.md` `commands/product-plan.md` 에 Step 0a (keyword 트리거) + 종료 step 에 ExitWorktree 옵션 (keep/remove 사용자 결정).
+  - `commands/qa.md` 는 src/ 미수정 → 미적용.
+  - `_default_base()` 의 캐시는 cwd 별 dict (`_DEFAULT_BASE_CACHE`). `_clear_default_base_cache()` 는 테스트 보조 (production 미사용).
+  - 테스트 5개 (`DefaultBaseWorktreeTests`) — plain repo / worktree / 비-git / 캐시 멱등 / by-pid cross-cwd 일관성.
+- **Follow-Up**:
+  - **(별도 Task — v2)** 자동 cleanup 룰 — 24h 보관 후 ExitWorktree(remove) 자동 후보.
+  - **(별도 Task — v2)** PR merge 감지 자동화 (`gh pr merge` 후 ExitWorktree(remove)).
+  - **(별도 Task — v2)** 사용 데이터 측정 후 옵션 D 디폴트 마이그레이션 검토.
+  - **측정**: keyword 트리거 사용 빈도 vs 일반 호출 빈도. 30일 후 v2 디폴트 검토 자료.
+
 ### DCN-CHG-20260429-38
 - **Date**: 2026-04-29
 - **Rationale**:
