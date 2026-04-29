@@ -18,6 +18,30 @@
 
 ## Records
 
+### DCN-CHG-20260430-01
+- **Date**: 2026-04-30
+- **Rationale**:
+  - Manual smoke 결과 (`/quick src/greet.py 빈 문자열 처리`) 5 step 전부 PASS. 사용자 피드백:
+    1. "별일 없으면 커밋/PR 까지 자동 진행" — 매 quick run 끝에 사용자가 확인 답하는 round-trip 비용 ↑. clean run 은 자동, caveat 만 멈춤이 합리적.
+    2. "중간 출력 가시성" — CC 가 Agent / Bash 출력 collapsed 표시 (ctrl+o expand 필요). step 간 무엇이 일어나는지 표면 모름.
+- **Alternatives** (자동 commit/PR):
+  1. *항상 사용자 확인* (현재). round-trip 매번. 기각.
+  2. *항상 자동* (clean / caveat 무관). pr-reviewer CHANGES_REQUESTED 무시 위험. 기각.
+  3. **(채택) clean 자동 + caveat 확인** — clean 조건 = 모든 enum expected (LIGHT_PLAN_READY/IMPL_DONE/PASS/LGTM) + AMBIGUOUS 0 + MUST FIX 키워드 0. caveat 1건이라도 → Step 7b (사용자 확인 fallback).
+  4. *opt-in 키워드* (예: `/quick auto …`). 사용자가 매번 명시 부담. 기각 (default 가 safer 동작이라 의식적 opt-out 불필요).
+- **Alternatives** (출력 가시성):
+  1. *full prose 자동 출력 (cat)* — transcript 폭발 (각 prose 수십 줄). 기각.
+  2. **(채택) 매 step 후 메인이 3~5줄 요약 출력** — enum + 핵심 1~2줄. ctrl+o expand 와 별개로 기본 표면.
+- **Decision**:
+  - 옵션 3 (자동 commit/PR clean only) + 옵션 2 (3~5줄 요약 매 step). 같은 PR.
+  - **Safety guard**: clean 이어도 sensitive untracked (`.env`, `secrets.json` 등) / 10+ unstaged 파일 / submodule 변경 있으면 caveat 분류 → 7b fallback.
+  - **graceful degrade**: git remote 없으면 local commit 까지만. branch protection 차단 시 PR 만 열고 종료.
+  - **dcNess self-repo**: doc-sync gate (governance §2.5) 가 git pre-commit 단에서 확인. 자동 commit 도 정상 동작이면 통과.
+- **Follow-Up**:
+  - **(별도 Task)** product-plan.md 동일 패턴 검토 (현재 spec/design 종료 → 구현 진입은 별도라 자동 commit/PR 무관, 단 doc-only 변경은 자동 가능 후보).
+  - **(측정)** clean run 비율 — 첫 100 quick run 후 자동 진입율 / 사용자 인터럽트 빈도 측정.
+  - **(별도 Task — v2)** 사용자 차단 발생 시 자동 fallback (예: branch protection block → 사용자 알림 + PR 보존).
+
 ### DCN-CHG-20260429-42
 - **Date**: 2026-04-29
 - **Rationale**:

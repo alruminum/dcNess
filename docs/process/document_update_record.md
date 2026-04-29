@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260430-01
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `commands/quick.md` — Step 7 분기 (Step 7a clean 자동 commit/PR + Step 7b caveat 사용자 확인). 매 step 후 prose 요약 출력 (5 step 모두 가시성 ↑).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Manual smoke 사용자 피드백 반영. (1) "별일 없으면 자동 commit/PR" — clean 조건 (모든 enum expected + AMBIGUOUS 0 + MUST FIX 0) 충족 시 메인이 자동으로 branch + commit + push + PR + squash merge. caveat 시만 사용자 확인. graceful degrade — git remote 없으면 local commit 까지만. (2) "중간 출력 가시성" — 매 step end 직후 prose 핵심 3~5줄 transcript 출력 (ctrl+o expand 외 자동 가시).
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260429-42
 - **Date**: 2026-04-29
 - **Change-Type**: docs-only
