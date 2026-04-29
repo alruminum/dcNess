@@ -120,19 +120,33 @@ class AmbiguousResponseTests(unittest.TestCase):
 
 
 class ApiFailureTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._td = TemporaryDirectory()
+        self.tele = Path(self._td.name)
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+
     def test_api_exception_wrapped_runtime_error(self) -> None:
         client = MagicMock()
         client.messages.create.side_effect = RuntimeError("rate limit")
-        fn = make_haiku_interpreter(client=client)
+        fn = make_haiku_interpreter(client=client, telemetry_dir=self.tele)
         with self.assertRaises(RuntimeError) as ctx:
             fn("text", ["PASS"])
         self.assertIn("Anthropic API 호출 실패", str(ctx.exception))
 
 
 class ValidationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._td = TemporaryDirectory()
+        self.tele = Path(self._td.name)
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+
     def test_empty_allowed_raises(self) -> None:
         client = _make_mock_client("PASS")
-        fn = make_haiku_interpreter(client=client)
+        fn = make_haiku_interpreter(client=client, telemetry_dir=self.tele)
         with self.assertRaises(ValueError):
             fn("text", [])
 
@@ -206,9 +220,16 @@ class SignalIoIntegrationTests(unittest.TestCase):
 
 
 class PromptConstructionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._td = TemporaryDirectory()
+        self.tele = Path(self._td.name)
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+
     def test_long_prose_truncated_to_tail(self) -> None:
         client = _make_mock_client("PASS")
-        fn = make_haiku_interpreter(client=client)
+        fn = make_haiku_interpreter(client=client, telemetry_dir=self.tele)
         long_prose = "X" * 50_000 + " conclusion: PASS"
         fn(long_prose, ["PASS"])
 
@@ -220,7 +241,7 @@ class PromptConstructionTests(unittest.TestCase):
 
     def test_system_prompt_lists_allowed(self) -> None:
         client = _make_mock_client("PASS")
-        fn = make_haiku_interpreter(client=client)
+        fn = make_haiku_interpreter(client=client, telemetry_dir=self.tele)
         fn("text", ["PASS", "FAIL", "SPEC_MISSING"])
         call = client.messages.create.call_args
         system = call.kwargs["system"]
