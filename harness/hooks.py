@@ -222,6 +222,20 @@ def handle_pretooluse_agent(
                 )
                 return 1
 
+    # 5. §2.3.5 (DCN-CHG-20260430-05) — architect TASK_DECOMPOSE 직전 validator
+    #    DESIGN_VALIDATION (DESIGN_REVIEW_PASS) 필수. 시스템 설계 검증 안 한 채
+    #    impl batch 분해 = 무의미.
+    if subagent == "architect" and mode == "TASK_DECOMPOSE":
+        # SYSTEM_DESIGN 단계가 있었다는 사실 확인 — design-validation 검사 발동 조건
+        if (rd / "architect-SYSTEM_DESIGN.md").exists():
+            if not _has_design_review_pass(rd):
+                print(
+                    "[catastrophic §2.3.5] architect TASK_DECOMPOSE 직전 "
+                    "validator DESIGN_VALIDATION DESIGN_REVIEW_PASS 필수",
+                    file=sys.stderr,
+                )
+                return 1
+
     return 0
 
 
@@ -259,6 +273,11 @@ def _has_plan_review_pass(rd: Path) -> bool:
 def _has_ux_flow_ready(rd: Path) -> bool:
     text = _read_or_empty(rd / "ux-architect.md")
     return "UX_FLOW_READY" in text or "UX_FLOW_PATCHED" in text
+
+
+def _has_design_review_pass(rd: Path) -> bool:
+    """validator-DESIGN_VALIDATION.md 안 DESIGN_REVIEW_PASS 확인 (DCN-CHG-20260430-05)."""
+    return "DESIGN_REVIEW_PASS" in _read_or_empty(rd / "validator-DESIGN_VALIDATION.md")
 
 
 # ── CLI 진입점 (bash 훅 → python -m harness.hooks <subcommand>) ─────

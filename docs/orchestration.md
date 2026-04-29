@@ -117,6 +117,7 @@ flowchart TD
 2. **pr-reviewer LGTM 없이 merge 금지**
 3. **engineer 가 architect.module-plan 통과 (READY_FOR_IMPL) 없이 src/ 작성 금지**
 4. **PRD 변경 후 plan-reviewer + ux-architect 검토 없이 architect 진입 금지**
+5. **architect TASK_DECOMPOSE 직전 validator DESIGN_VALIDATION (DESIGN_REVIEW_PASS) 없이 진입 금지** (DCN-CHG-20260430-05) — 시스템 설계가 구현 가능성 검증 통과 안 했으면 impl batch 분해 무의미.
 
 이는 proposal §2.5 원칙 4 ("흐름 강제는 catastrophic 시퀀스만") 의 catastrophic 백본. 코드 driver 도입 시 hook 으로 강제.
 
@@ -138,9 +139,14 @@ flowchart LR
     ux -->|UX_FLOW_READY| uv[validator UX_VALIDATION]
     uv -->|PASS| sd[architect SYSTEM_DESIGN]
     uv -->|FAIL| ux
-    sd -->|SYSTEM_DESIGN_READY| td[architect TASK_DECOMPOSE]
+    sd -->|SYSTEM_DESIGN_READY| dv[validator DESIGN_VALIDATION]
+    dv -->|DESIGN_REVIEW_PASS| td[architect TASK_DECOMPOSE]
+    dv -->|DESIGN_REVIEW_FAIL| sd
+    dv -->|DESIGN_REVIEW_ESCALATE| esc((escalate))
     td -->|READY_FOR_IMPL| impl[구현 루프 §2.1]
 ```
+
+DESIGN_VALIDATION cycle 한도 = 2 (DCN-CHG-20260430-05). 초과 시 사용자 위임. catastrophic 룰 §2.3.5 — TASK_DECOMPOSE 직전 DESIGN_REVIEW_PASS 필수.
 
 진입: `product-plan` 스킬 호출 또는 사용자가 "기능 추가" 발화.
 
@@ -288,8 +294,9 @@ flowchart LR
 | CODE_VALIDATION | `PASS` | pr-reviewer |
 | CODE_VALIDATION | `FAIL` | engineer 재시도 (attempt < 3) |
 | CODE_VALIDATION | `SPEC_MISSING` | architect SPEC_GAP |
-| DESIGN_VALIDATION | `PASS` | (system design 통과) impl 진입 |
-| DESIGN_VALIDATION | `FAIL` | architect SYSTEM_DESIGN 재진입 |
+| DESIGN_VALIDATION | `DESIGN_REVIEW_PASS` | architect TASK_DECOMPOSE (DCN-CHG-20260430-05) |
+| DESIGN_VALIDATION | `DESIGN_REVIEW_FAIL` | architect SYSTEM_DESIGN 재진입 (cycle 한도 2) |
+| DESIGN_VALIDATION | `DESIGN_REVIEW_ESCALATE` | 사용자 위임 |
 | UX_VALIDATION | `PASS` | architect SYSTEM_DESIGN |
 | UX_VALIDATION | `FAIL` | ux-architect 재진입 |
 | BUGFIX_VALIDATION | `PASS` | pr-reviewer |

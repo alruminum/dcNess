@@ -385,6 +385,105 @@ class CatastrophicArchitectTests(_PreToolBase):
 
 
 # ---------------------------------------------------------------------------
+# §2.3.5 — architect TASK_DECOMPOSE 직전 DESIGN_VALIDATION PASS (DCN-CHG-20260430-05)
+# ---------------------------------------------------------------------------
+
+
+class CatastrophicDesignValidationTests(_PreToolBase):
+    """architect TASK_DECOMPOSE 직전 validator DESIGN_VALIDATION DESIGN_REVIEW_PASS 필수.
+
+    조건: SYSTEM_DESIGN.md 가 존재할 때만 발동 (시스템 설계 단계가 있었음). 단순
+    MODULE_PLAN 진입은 미적용.
+    """
+
+    def _setup_full_review(self) -> None:
+        """SD 까지의 정합 prose 들 박기 (§2.3.4 통과 + §2.3.5 검사 발동 조건)."""
+        (self.run_path / "product-planner.md").write_text(
+            "PRODUCT_PLAN_READY", encoding="utf-8",
+        )
+        (self.run_path / "plan-reviewer.md").write_text(
+            "PLAN_REVIEW_PASS", encoding="utf-8",
+        )
+        (self.run_path / "ux-architect.md").write_text(
+            "UX_FLOW_READY", encoding="utf-8",
+        )
+        (self.run_path / "architect-SYSTEM_DESIGN.md").write_text(
+            "SYSTEM_DESIGN_READY", encoding="utf-8",
+        )
+
+    def test_td_blocked_without_design_review_pass(self) -> None:
+        self._setup_full_review()
+        # validator-DESIGN_VALIDATION.md 부재 → 차단
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("architect", "TASK_DECOMPOSE"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_td_blocked_with_design_review_fail(self) -> None:
+        self._setup_full_review()
+        (self.run_path / "validator-DESIGN_VALIDATION.md").write_text(
+            "DESIGN_REVIEW_FAIL — 인터페이스 미정의", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("architect", "TASK_DECOMPOSE"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_td_passes_with_design_review_pass(self) -> None:
+        self._setup_full_review()
+        (self.run_path / "validator-DESIGN_VALIDATION.md").write_text(
+            "DESIGN_REVIEW_PASS — 3 계층 모두 통과", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("architect", "TASK_DECOMPOSE"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_sd_passes_without_design_review(self) -> None:
+        """architect SYSTEM_DESIGN 호출 자체는 §2.3.5 미적용 (TD 만 검사)."""
+        (self.run_path / "product-planner.md").write_text(
+            "PRODUCT_PLAN_READY", encoding="utf-8",
+        )
+        (self.run_path / "plan-reviewer.md").write_text(
+            "PLAN_REVIEW_PASS", encoding="utf-8",
+        )
+        (self.run_path / "ux-architect.md").write_text(
+            "UX_FLOW_READY", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("architect", "SYSTEM_DESIGN"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_td_skipped_when_no_system_design(self) -> None:
+        """SYSTEM_DESIGN.md 부재 시 §2.3.5 발동 X — 단순 TASK_DECOMPOSE 직접 호출 케이스."""
+        (self.run_path / "product-planner.md").write_text(
+            "PRODUCT_PLAN_READY", encoding="utf-8",
+        )
+        (self.run_path / "plan-reviewer.md").write_text(
+            "PLAN_REVIEW_PASS", encoding="utf-8",
+        )
+        (self.run_path / "ux-architect.md").write_text(
+            "UX_FLOW_READY", encoding="utf-8",
+        )
+        # SYSTEM_DESIGN 없으면 §2.3.5 검사 skip — §2.3.4 만 적용 (이미 통과)
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("architect", "TASK_DECOMPOSE"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+
+# ---------------------------------------------------------------------------
 # rid 폴백 (by-pid-current-run 없을 때 live.json 에서 추정)
 # ---------------------------------------------------------------------------
 

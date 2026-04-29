@@ -18,6 +18,27 @@
 
 ## Records
 
+### DCN-CHG-20260430-05
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 manual smoke 도중 (`/product-plan` 실행) 발견 — 설계 루프가 SYSTEM_DESIGN_READY 후 곧바로 TASK_DECOMPOSE 진입. 사용자 지적: "아키텍트 루프의 최종은 벨리데이터가 검증하고 필요하면 다시 아키텍트가 재설계해서 최종 설계 리뷰 완료까지" — 검증 step 누락.
+  - 검증 결과: `agents/validator/design-validation.md` 가 *이미 존재* (enum: DESIGN_REVIEW_PASS / FAIL / ESCALATE) — agent 정의는 있는데 *orchestration §3.1 + /product-plan skill 시퀀스에 호출 자리 없음*. 갭.
+  - 결과: SYSTEM_DESIGN 후 검증 없이 TASK_DECOMPOSE → 구현 가능성 / 스펙 완결성 / 리스크 검증 안 된 채 impl batch 분해. 잘못된 설계가 batch 단계로 흐르면 후속 impl loop 에서야 발견 → 비싼 rollback.
+- **Alternatives**:
+  1. *DESIGN_VALIDATION step 도입 안 함* — 사용자 지적 무시. 기각.
+  2. *DESIGN_VALIDATION 을 architect 자체에 inline* (architect SD 가 자가 검증). 동일 LLM 의 자가 검증은 검증 가치 ↓. 기각.
+  3. **(채택) validator DESIGN_VALIDATION step 신규** — orchestration §3.1 mermaid 에 노드 + FAIL 루프 추가, /product-plan skill Step 6.5 신규, catastrophic §2.3.5 (TD 직전 DESIGN_REVIEW_PASS 필수) hooks.py 강제. cycle 한도 2 (FAIL → SD 재진입).
+- **Decision**:
+  - 옵션 3. 시퀀스 위치 = SD 와 TD 사이.
+  - **catastrophic §2.3.5 강제 조건**: `architect-SYSTEM_DESIGN.md` 가 존재할 때만 발동 — 단순 `MODULE_PLAN` 후 TASK_DECOMPOSE 직접 호출 등 다른 진입 경로엔 미적용 (그 케이스는 §3.4 직접 호출 시퀀스).
+  - **cycle 한도 2 일관성**: PLAN_REVIEW_CHANGES_REQUESTED (2) / UX_VALIDATION FAIL (2) 와 동일. 초과 시 사용자 위임.
+  - **enum 매트릭스**: DESIGN_REVIEW_PASS / DESIGN_REVIEW_FAIL / DESIGN_REVIEW_ESCALATE — 기존 agent 정의 그대로.
+  - **task 등록 6 → 7**: /product-plan Step 1 갱신.
+- **Follow-Up**:
+  - **(별도 Task — PR 후속)** `/impl` skill 신규 — TASK_DECOMPOSE 의 impl batch 1개 받아 정식 impl 루프 (architect MODULE_PLAN → test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer).
+  - **(별도 Task — PR 후속)** `/impl-loop` skill — impl batch list sequential /impl chain.
+  - **(별도 Task — 측정)** 30 회 /product-plan run 후 DESIGN_REVIEW_FAIL 비율. 30%+ 면 architect SYSTEM_DESIGN 의 prompt 또는 input 형식 정정 (FAIL 잦으면 SD 자가 검증 강화 후보 — cycle 비용 vs 검증 정확도 트레이드오프).
+
 ### DCN-CHG-20260430-04
 - **Date**: 2026-04-30
 - **Rationale**:

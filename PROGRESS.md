@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🔍 DESIGN_VALIDATION step 추가** (`DCN-CHG-20260430-05`):
+  - orchestration §3.1 mermaid + §2.3.5 catastrophic 룰 + §4.9 결정표 갱신.
+  - /product-plan Step 6.5 신규 (validator DESIGN_VALIDATION) + cycle 한도 2.
+  - hooks.py §2.3.5 검사 (architect TASK_DECOMPOSE + SYSTEM_DESIGN.md 존재 시 DESIGN_REVIEW_PASS 필수).
+  - 신규 5 테스트 (`CatastrophicDesignValidationTests`). 171/171 PASS.
+  - 사용자 manual smoke 발견 — validator/design-validation.md agent 정의는 있는데 orchestration 시퀀스에서 호출 자리 빠져있던 갭 메움.
 - **🧹 heuristic-only 정착 + dead code 제거** (`DCN-CHG-20260430-04`):
   - `harness/llm_interpreter.py` + `tests/test_llm_interpreter.py` 삭제 (dead code, 호출 경로 0).
   - `interpret_with_fallback` 의 `llm_interpreter=` 인자 제거 — heuristic-only.
