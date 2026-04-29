@@ -23,6 +23,9 @@
 - **Python 테스트 CI**: `.github/workflows/python-tests.yml` (`DCN-CHG-20260429-09`)
   - paths 필터(`harness/` / `tests/` / `agents/`) 로 docs-only PR 면제
   - state_io 32 케이스 + validator schemas 9 케이스 자동 회귀 차단
+- **Plugin manifest 검증 CI**: `scripts/check_plugin_manifest.mjs` + `plugin-manifest.yml` (`DCN-CHG-20260429-10`)
+  - required 필드 + name regex + cross-reference 검증
+  - claude CLI 의존 회피 — Node-only minimum guard
 
 ## TODO
 ### Phase 1 — validator 단위 완성 ✅

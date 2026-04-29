@@ -168,3 +168,28 @@
   - **(별도 Task)** `.github/workflows/plugin-validate.yml` — `claude plugin validate` 자동.
   - **(별도 Task)** branch protection 룰에 `python-tests / unittest discover` required 등록 (사용자 수동).
   - **측정**: 본 workflow 가 차단한 회귀 카탈로그 → 30일 후 운영 데이터로 false positive / 평균 실행 시간 / 회귀 발견율 분석.
+
+### DCN-CHG-20260429-10
+- **Date**: 2026-04-29
+- **Rationale**:
+  - DCN-CHG-20260429-04 에서 명시한 follow-up: "`claude plugin validate .claude-plugin/` 자동 실행 CI workflow — plugin manifest 형식 검증". 본 Task 가 그 항목.
+  - **`claude plugin validate` 도입 위험**: claude CLI 자체가 GitHub Actions runner 에 설치/인증 필요. 토큰 secret 도입 + maintenance burden + CI 의존성 폭증. proposal §2.5 원칙 1 (룰 순감소) 위반.
+  - **하지만 manifest 형식 자체 검증은 가치**: `plugin.json` 의 `name` 이 regex 위반 (예: 대문자 포함) 또는 `marketplace.json.plugins[0].name` 이 `plugin.json.name` 과 다른 경우 — plugin install 시점에 발견되면 사용자 환경 파괴. 형식 무결성은 *catastrophic-prevention* 성격 (proposal §2.5 원칙 2).
+- **Alternatives**:
+  1. *`claude plugin validate` 도입* — CLI 의존 폭증. 기각.
+  2. *JSON Schema (ajv) 기반 엄밀 검증* — schema 정의 + ajv 의존 추가. 의존성 install 단계 발생. 첫 모듈 단위로 과함. 기각.
+  3. *(채택)* **Node-only minimum guard** — 표준 라이브러리 (fs / path) 만. required 필드 + name regex + cross-reference 만 검증. ~70 LOC.
+- **Decision**:
+  - 옵션 3 채택. `scripts/check_plugin_manifest.mjs` (~70 LOC) + `.github/workflows/plugin-manifest.yml`.
+  - **검증 항목**:
+    - `plugin.json`: name (regex `^[a-z][a-z0-9-]*$`), version (string), description (string)
+    - `marketplace.json`: plugins[] non-empty, plugins[0].name + source 존재
+    - cross-reference: `plugin.json.name === marketplace.json.plugins[0].name`
+  - **검증 외 (의도적 제외)**:
+    - hook/agent 매핑 실재 — plugin install 시점에 매니저가 검증
+    - 의미적 정합 (예: keywords 적합성) — manual review
+  - **paths 필터**: `.claude-plugin/**` + `scripts/check_plugin_manifest.mjs` + 본 workflow. 다른 변경 시엔 발동 안 함.
+- **Follow-Up**:
+  - **(별도 Task — 위험 수용 시)** `claude plugin validate` 도입 검토 — 30일 데이터 + 결정 PR. 본 Task 가 *not yet* 결정.
+  - **(별도 Task)** dcNess plugin 실 설치 dry-run — `claude plugin install /Users/dc.kim/project/dcNess/.claude-plugin` 후 hook/agent 매핑 정합 실측. proposal §12.3.2 검증.
+  - **branch protection 권장**: `plugin-manifest / validate manifest` required 등록 (사용자 수동).
