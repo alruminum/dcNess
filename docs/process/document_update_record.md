@@ -61,3 +61,16 @@
   - `docs/process/change_rationale_history.md`
   - `PROGRESS.md`
 - **Summary**: Phase 1 foundation — `harness/state_io.py` 신규(write/read/clear + R8 5 failure modes 단일 normalize) + 테스트 32 케이스 전부 PASS. `parse_marker` 사다리 폐기를 위한 첫 모듈.
+
+### DCN-CHG-20260429-04
+- **Date**: 2026-04-29
+- **Change-Type**: agent, ci, docs-only
+- **Files Changed**:
+  - `.claude-plugin/plugin.json` (신규 — plugin 메타)
+  - `.claude-plugin/marketplace.json` (신규 — marketplace 정의)
+  - `docs/process/governance.md` (§2.2 agent 패턴에 `^\.claude-plugin/` 추가)
+  - `scripts/check_document_sync.mjs` (CATEGORY_RULES agent 토큰 동기 갱신)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Plugin 배포 인프라 — `dcness@dcness` plugin/marketplace manifest 신규. `status-json-mutate-pattern.md` §12 (RWHarness → 신규 Plugin 전환 절차) 정합. governance §2.2 의 `agent` 카테고리에 `.claude-plugin/` 패턴 추가하여 plugin manifest 변경에도 record/rationale 동반 강제.

@@ -33,7 +33,7 @@
 | 토큰 | 감시 경로 (regex) | 의미 |
 |---|---|---|
 | `spec` | `^docs/spec/`, `^docs/proposals/`, `^prd\.md$`, `^trd\.md$` | 헌법 / 사양 문서 |
-| `agent` | `^agents/`, `^\.claude/agent-config/`, `^CLAUDE\.md$`, `^AGENTS\.md$` | agent prompt / 정책 (메인·외부 에이전트 지침 포함) |
+| `agent` | `^agents/`, `^\.claude/agent-config/`, `^\.claude-plugin/`, `^CLAUDE\.md$`, `^AGENTS\.md$` | agent prompt / plugin 메타 / 정책 (메인·외부 에이전트 지침 + plugin manifest 포함) |
 | `harness` | `^harness/`, `^src/` | 하네스 코어 / 소스 코드 |
 | `hooks` | `^hooks/`, `^\.claude/hooks/` | 차단·검증 hook |
 | `ci` | `^\.github/workflows/`, `^scripts/` | CI / 빌드 / 게이트 스크립트 |

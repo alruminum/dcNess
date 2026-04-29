@@ -1,0 +1,21 @@
+{
+  "name": "dcness",
+  "version": "0.1.0-alpha",
+  "description": "Lightweight harness — status-JSON-mutate determinism + 4-pillar fitness (CLAUDE.md / CI gates / tool boundaries / feedback loops). RWHarness fork-and-refactor with parse_marker ladder eliminated.",
+  "author": {
+    "name": "alruminum",
+    "email": "alruminum@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "agent",
+    "workflow",
+    "orchestration",
+    "claude-code",
+    "harness",
+    "status-json-mutate",
+    "lightharness"
+  ],
+  "homepage": "https://github.com/alruminum/dcNess",
+  "repository": "https://github.com/alruminum/dcNess"
+}
