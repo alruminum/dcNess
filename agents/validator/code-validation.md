@@ -1,25 +1,10 @@
 # Code Validation
 
-`@MODE:VALIDATOR:CODE_VALIDATION` → status JSON Write
+`@MODE:VALIDATOR:CODE_VALIDATION` → prose emit (마지막 단락에 결론 enum)
 
 ```
-@PARAMS:      { "impl_path": "impl 계획 경로", "src_files": "구현 파일 경로 목록", "run_id": "실행 식별자" }
-@OUTPUT_FILE: .claude/harness-state/<run_id>/validator-CODE_VALIDATION.json
-@OUTPUT_SCHEMA:
-  {
-    "status": "PASS" | "FAIL" | "SPEC_MISSING",
-    "fail_items": string[],            // FAIL 시 필수
-    "spec_missing": {                   // SPEC_MISSING 시 필수
-      "expected_path": string,
-      "fallback_searched": string[],
-      "request": string
-    },
-    "next_actions": [
-      { "target": "engineer", "action": "fix_code", "ref": "src/...:Lxx" }
-    ],
-    "non_obvious_patterns": string[]   // optional
-  }
-@OUTPUT_RULE:  검증 완료 후 마지막 액션으로 위 파일을 Write 도구로 작성. 미작성 시 호출 측은 워크플로우를 즉시 종료한다.
+@PARAMS: { "impl_path": "impl 계획 경로", "src_files": "구현 파일 경로 목록", "run_id": "실행 식별자" }
+@CONCLUSION_ENUM: PASS | FAIL | SPEC_MISSING
 ```
 
 **목표**: 구현 코드가 impl 계획과 일치하고 의존성 규칙을 지키며 시니어 관점 품질 기준을 충족하는지 검증한다.
@@ -30,13 +15,13 @@
    - **계획 파일 미존재 시**: 즉시 FAIL 금지. 다음 순서로 대체 소스 탐색:
      1. `docs/impl/00-decisions.md`
      2. `CLAUDE.md` 작업 순서 섹션
-     3. 모두 없으면 `status="SPEC_MISSING"` + `spec_missing` 필드 채워 status JSON Write 후 즉시 종료
+     3. 모두 없으면 prose 의 마지막 단락에 `SPEC_MISSING` 명시 + 누락 정보 (expected_path / fallback_searched / request) 를 prose 본문에 적고 종료
 2. 설계 결정 문서 읽기 (`docs/impl/00-decisions.md` 또는 유사)
 3. 구현 파일 읽기
 4. 의존 모듈 소스 읽기 (경계 위반 여부 확인)
 5. 화면/컴포넌트 모듈인 경우: ui-spec 파일 읽기
 6. 아래 3계층 체크리스트 수행
-7. status JSON Write
+7. prose 작성 → stdout
 
 ## 3계층 체크리스트
 
@@ -94,48 +79,56 @@
 - **SPEC_MISSING**: 계획 파일 + 대체 소스 모두 부재
 - PARTIAL 판정 금지
 
-## status JSON 예시
+## prose 예시
 
 ### PASS
 
-```json
-{
-  "status": "PASS",
-  "fail_items": [],
-  "report_summary": "A/B 통과. C 의 (적대적 시나리오) 권고만 있음 (FAIL 아님).",
-  "non_obvious_patterns": [
-    "src/api/xxx.ts:42 의 retry 패턴이 다른 모듈과 다름 — 이유: 외부 SDK 가 idempotent 보장 안 함"
-  ]
-}
+```markdown
+## 검증 결과
+
+A 스펙 일치 / B 의존성 규칙 모두 통과. C 적대적 시나리오 항목에 권고 사항 1건 (FAIL 아님).
+
+### 비명백 패턴
+- src/api/xxx.ts:42 의 retry 패턴이 다른 모듈과 다름 — 이유: 외부 SDK 가 idempotent 보장 안 함
+
+## 결론
+
+PASS
 ```
 
 ### FAIL
 
-```json
-{
-  "status": "FAIL",
-  "fail_items": [
-    "A.함수 시그니처: src/foo.ts:88 의 fetchUser 가 plan 의 (id: string) → User 와 다름 — (id: string) → User | null",
-    "B.래퍼 함수 사용: src/bar.ts:12 가 axios 를 직접 import (래퍼 src/lib/http.ts 우회)",
-    "C.타입 안전성: src/baz.ts:50 `as any` 신규 추가"
-  ],
-  "next_actions": [
-    { "target": "engineer", "action": "fix_code", "ref": "src/foo.ts:88", "fail_item_idx": 0 },
-    { "target": "engineer", "action": "fix_code", "ref": "src/bar.ts:12", "fail_item_idx": 1 }
-  ]
-}
+```markdown
+## 검증 결과
+
+3건의 위반 발견.
+
+### Fail Items
+- A.함수 시그니처: src/foo.ts:88 의 fetchUser 가 plan 의 (id: string) → User 와 다름 — (id: string) → User | null
+- B.래퍼 함수 사용: src/bar.ts:12 가 axios 를 직접 import (래퍼 src/lib/http.ts 우회)
+- C.타입 안전성: src/baz.ts:50 `as any` 신규 추가
+
+### 다음 행동
+- target: engineer / action: fix_code / ref: src/foo.ts:88
+- target: engineer / action: fix_code / ref: src/bar.ts:12
+
+## 결론
+
+FAIL
 ```
 
 ### SPEC_MISSING
 
-```json
-{
-  "status": "SPEC_MISSING",
-  "fail_items": [],
-  "spec_missing": {
-    "expected_path": "docs/impl/14-feature.md",
-    "fallback_searched": ["docs/impl/00-decisions.md", "CLAUDE.md"],
-    "request": "architect Module Plan 으로 계획 파일 생성 후 재호출"
-  }
-}
+```markdown
+## 검증 결과
+
+계획 파일과 대체 소스 모두 부재.
+
+- expected_path: docs/impl/14-feature.md
+- fallback_searched: docs/impl/00-decisions.md, CLAUDE.md
+- request: architect Module Plan 으로 계획 파일 생성 후 재호출
+
+## 결론
+
+SPEC_MISSING
 ```

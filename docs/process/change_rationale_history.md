@@ -18,6 +18,32 @@
 
 ## Records
 
+### DCN-CHG-20260429-13
+- **Date**: 2026-04-29
+- **Rationale**:
+  - `docs/status-json-mutate-pattern.md` 가 Prose-Only Pattern 으로 전면 개정됨 — *형식 강제 자체가 사다리를 부른다* 는 자각. 이전 dcNess Phase 1 산출물(`state_io.py` 의 JSON schema + validator docs 의 `@OUTPUT_SCHEMA` + 32+9 schema round-trip 테스트)은 *status JSON 으로 형식만 바꾼 같은 함정* 이라는 진단. 폐기 대상.
+  - 갱신된 proposal §1 의 사다리 다이어그램: parse_marker → MARKER_ALIASES → status JSON schema → 더 정교한 schema → 같은 함정 부활. JSON 으로 형식만 바꿔도 같은 cycle.
+  - 갱신된 proposal §2.5 대 원칙: harness 가 강제하는 것은 *작업 순서 + 접근 영역만*. 출력 형식 / handoff 형식 / preamble 구조 / marker / status JSON / Flag 모두 agent 자율.
+  - dcNess 메인 작업 모드(§10/§11.4)는 RWHarness 가드 미적용이라 작업 순서·접근 영역 강제 자체가 환경 경계 밖. 본 저장소가 Phase 1 에서 산출할 수 있는 것은 *prose I/O foundation* (signal_io.py) + *prose writing guide* (validator docs) + 회귀 테스트.
+- **Alternatives**:
+  1. *기존 state_io.py 보존 + 신규 signal_io.py 병행* — JSON schema 강제 자체를 *deprecated* 로 박고 이전 패턴 회귀 가능성 유지. proposal §2.5 원칙 1(룰 순감소) 위반. 코드/문서 양쪽에 두 패턴이 공존하면 *형식 사다리 부활 입구* 가 됨. 기각.
+  2. *Phase 2 까지 status JSON 잔존 + Phase 3 에서 일괄 폐기* — proposal 갱신본의 acceptance("형식 강제 0, flag 0, schema 0") 와 직접 충돌. 본 저장소 잔존 코드가 plugin 배포 시 사용자 프로젝트의 reactive 룰 추가 진입점이 될 수 있음. 기각.
+  3. *(채택)* **state_io / schema 테스트 / validator @OUTPUT_SCHEMA 모두 동일 commit 에 폐기 + signal_io 로 교체** — proposal §5 Phase 1 단순화 정합. 형식 강제 0 일관성 유지. 폐기 LOC ~390 vs 신규 ~290(signal_io ~290 + 29 테스트 + 5 mode docs 변경) → 순감소.
+- **Decision**:
+  - 옵션 3. 단일 Task-ID(`DCN-CHG-20260429-13`) 로 폐기 + 신규 + 문서 갱신 일괄.
+  - **proposal §2.5 원칙 1 정합**: 룰 순감소 — JSON schema required 키 / allowed_status set / 5 failure modes (`schema_violation` 포함) → prose 자유 + ambiguous 단일 reason 으로 압축.
+  - **proposal §2.5 원칙 3 (자율성 최대화)**: agent 가 prose 자유 emit. 마지막 단락에 enum 단어 1개만 가이드 (형식 X, *의미* O).
+  - **interpret_signal 휴리스틱 + DI swap point**: 본 저장소는 메타 LLM 호출 환경 외부 (claude CLI 의존 없음, Anthropic SDK 미설치) → 휴리스틱(`prose 의 마지막 2000자 영역에서 allowed enum 1개 word-boundary 매칭`) 을 기본 interpreter 로 제공. 프로덕션은 `interpret_signal(..., interpreter=anthropic_haiku_call)` 로 swap. 휴리스틱 자체도 도그푸딩 baseline 제공.
+  - **path traversal 자기검증 + 화이트리스트 보존**: signal_io 도 `_AGENT_NAME_RE` / `_MODE_NAME_RE` / `_RUN_ID_RE` + `Path.relative_to(base)` 로 catastrophic-prevention 유지 (proposal §2.5 원칙 2 — 강제 vs 권고 분리: 보안은 catastrophic 강제).
+  - **atomic write (POSIX `os.replace`) 보존**: race 회피는 catastrophic-prevention.
+  - **MissingSignal reasons 압축**: not_found / empty / ambiguous 3종으로 충분. race / malformed_json / schema_violation 모두 폐기 (race 는 휴리스틱 인터프리터의 retry 정책 영역, malformed/schema 는 prose 에 의미 없음).
+- **Follow-Up**:
+  - **(다음 Task-ID)** Anthropic SDK 통합 — `interpret_signal` 의 메타 LLM interpreter 구현. cycle 당 비용 측정 (proposal R8 정합).
+  - **(다음 Task-ID)** ambiguous 카탈로그 — `interpret_signal` 이 `MissingSignal(ambiguous)` raise 시 prose 를 `.metrics/ambiguous-prose.jsonl` 에 누적. proposal R1 acceptance.
+  - **(다음 Task-ID)** prose hash checkpoint — `plan_loop.py` 류 도입 시 prose 파일 hash 안정성 측정 (proposal R7).
+  - **(별도 Task-ID)** plugin 배포 dry-run — RWHarness 와 공존 시나리오 검증 (proposal §12.3.2). Phase 1 prose-only foundation 위에서.
+  - **측정 항목**: 휴리스틱 interpreter 의 hit rate (단어 경계 매칭 성공률 vs ambiguous 빈도). 30일 사용 후 enum 매칭 누락 빈도 분석 → writing guide 정정 input (proposal R1 정합).
+
 ### DCN-CHG-20260429-01
 - **Date**: 2026-04-29
 - **Rationale**: 신규 프로젝트 dcNess 는 RWHarness fork-and-refactor 의 메인 Claude 직접 작업 모드(`status-json-mutate-pattern.md` §10/§11). 코드/정책/빌드 변경이 관련 문서를 동반하지 않아 발생하는 drift 를 commit 단위에서 차단할 거버넌스가 부재.

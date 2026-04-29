@@ -1,25 +1,10 @@
 # UX Validation
 
-`@MODE:VALIDATOR:UX_VALIDATION` → status JSON Write
+`@MODE:VALIDATOR:UX_VALIDATION` → prose emit (마지막 단락에 결론 enum)
 
 ```
-@PARAMS:      { "ux_flow_doc": "docs/ux-flow.md 경로", "prd_path": "prd.md 경로", "run_id": "실행 식별자" }
-@OUTPUT_FILE: .claude/harness-state/<run_id>/validator-UX_VALIDATION.json
-@OUTPUT_SCHEMA:
-  {
-    "status": "UX_REVIEW_PASS" | "UX_REVIEW_FAIL" | "UX_REVIEW_ESCALATE",
-    "fail_items": string[],
-    "next_actions": [
-      { "target": "ux-architect", "action": "rework_flow", "ref": "docs/ux-flow.md§..." }
-    ],
-    "metrics": {                       // optional
-      "screen_count": number,
-      "flow_path_count": number,
-      "prd_coverage_pct": number
-    },
-    "non_obvious_patterns": string[]
-  }
-@OUTPUT_RULE:  검증 완료 후 마지막 액션으로 위 파일을 Write 도구로 작성. 미작성 시 호출 측은 워크플로우를 즉시 종료한다.
+@PARAMS: { "ux_flow_doc": "docs/ux-flow.md 경로", "prd_path": "prd.md 경로", "run_id": "실행 식별자" }
+@CONCLUSION_ENUM: UX_REVIEW_PASS | UX_REVIEW_FAIL | UX_REVIEW_ESCALATE
 ```
 
 **목표**: ux-architect 가 생성한 UX Flow Doc 이 PRD 요구사항을 충족하는지 검증한다.
@@ -29,7 +14,7 @@
 1. PRD (`prd.md`) 읽기
 2. UX Flow Doc (`docs/ux-flow.md`) 읽기
 3. 아래 체크리스트 수행
-4. status JSON Write
+4. prose 작성 → stdout
 
 ## 검증 체크리스트
 
@@ -65,67 +50,62 @@
 - **UX_REVIEW_FAIL**: 하나라도 미충족
 - **UX_REVIEW_ESCALATE**: ux-architect 재설계(max 1회) 후에도 FAIL
 
-## status JSON 예시
+## prose 예시
 
 ### PASS
 
-```json
-{
-  "status": "UX_REVIEW_PASS",
-  "fail_items": [],
-  "metrics": {
-    "screen_count": 12,
-    "flow_path_count": 28,
-    "prd_coverage_pct": 100
-  },
-  "report_summary": "5 카테고리 통과. 화면 12, 플로우 28, PRD 100% 매핑.",
-  "non_obvious_patterns": []
-}
+```markdown
+## 검증 결과
+
+5 카테고리 통과. 화면 12, 플로우 28, PRD 100% 매핑.
+
+### Metrics
+- screen_count: 12
+- flow_path_count: 28
+- prd_coverage_pct: 100
+
+## 결론
+
+UX_REVIEW_PASS
 ```
 
 ### FAIL
 
-```json
-{
-  "status": "UX_REVIEW_FAIL",
-  "fail_items": [
-    "1.화면 커버리지: PRD §3.4 'export 기능' 매핑 화면 부재",
-    "3.상태 커버리지: ScreenA 의 에러 상태 미정의",
-    "4.인터랙션 정합성: PRD §5 Edge case '네트워크 실패' 가 ScreenB 인터랙션에 미반영"
-  ],
-  "next_actions": [
-    {
-      "target": "ux-architect",
-      "action": "rework_flow",
-      "ref": "docs/ux-flow.md — export 화면 추가",
-      "fail_item_idx": 0
-    },
-    {
-      "target": "ux-architect",
-      "action": "rework_flow",
-      "ref": "docs/ux-flow.md§ScreenA 에러 상태",
-      "fail_item_idx": 1
-    }
-  ],
-  "metrics": {
-    "screen_count": 11,
-    "flow_path_count": 24,
-    "prd_coverage_pct": 87
-  }
-}
+```markdown
+## 검증 결과
+
+3건의 위반 발견.
+
+### Fail Items
+- 1.화면 커버리지: PRD §3.4 'export 기능' 매핑 화면 부재
+- 3.상태 커버리지: ScreenA 의 에러 상태 미정의
+- 4.인터랙션 정합성: PRD §5 Edge case '네트워크 실패' 가 ScreenB 인터랙션에 미반영
+
+### 다음 행동
+- target: ux-architect / action: rework_flow / ref: docs/ux-flow.md — export 화면 추가
+- target: ux-architect / action: rework_flow / ref: docs/ux-flow.md§ScreenA 에러 상태
+
+### Metrics
+- screen_count: 11
+- flow_path_count: 24
+- prd_coverage_pct: 87
+
+## 결론
+
+UX_REVIEW_FAIL
 ```
 
 ### ESCALATE
 
-```json
-{
-  "status": "UX_REVIEW_ESCALATE",
-  "fail_items": [
-    "재검에도 1.화면 커버리지: export 화면 미추가",
-    "재검에도 3.상태 커버리지: ScreenA 에러 상태 미정의"
-  ],
-  "next_actions": [
-    { "target": "main_claude", "action": "user_decision", "ref": "rework limit 1회 초과" }
-  ]
-}
+```markdown
+## 검증 결과
+
+재검에도 1.화면 커버리지 / 3.상태 커버리지 미해결. rework limit 1회 초과.
+
+### 다음 행동
+- target: main_claude / action: user_decision / ref: rework limit 1회 초과
+
+## 결론
+
+UX_REVIEW_ESCALATE
 ```

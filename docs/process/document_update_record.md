@@ -20,6 +20,29 @@
 
 ## Records
 
+### DCN-CHG-20260429-13
+- **Date**: 2026-04-29
+- **Change-Type**: spec, harness, agent, test, docs-only
+- **Files Changed**:
+  - `docs/status-json-mutate-pattern.md` (제목/§1~§12 전면 개정 — Prose-Only Pattern 으로 정정, 형식 강제 폐기)
+  - `harness/state_io.py` (삭제 — JSON schema 강제 자체가 형식 사다리)
+  - `harness/signal_io.py` (신규 — prose write/read + interpret_signal 휴리스틱 + DI swap point)
+  - `tests/test_state_io.py` (삭제)
+  - `tests/test_validator_schemas.py` (삭제 — schema round-trip 자체가 폐기)
+  - `tests/test_signal_io.py` (신규 — 29 케이스, prose 라운드트립 + 해석 휴리스틱 + DI)
+  - `agents/validator.md` (재작성 — `@OUTPUT_*` 형식 강제 제거, prose writing guide 로)
+  - `agents/validator/plan-validation.md` (재작성)
+  - `agents/validator/code-validation.md` (재작성)
+  - `agents/validator/design-validation.md` (재작성)
+  - `agents/validator/bugfix-validation.md` (재작성)
+  - `agents/validator/ux-validation.md` (재작성)
+  - `docs/migration-decisions.md` (state_io DONE → DISCARDED + signal_io 신규, validator docs REFACTOR 갱신)
+  - `README.md` (status-JSON 표현 → prose-only 표현)
+  - `PROGRESS.md` (Phase 1 재정의 — prose-only 기반 acceptance)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: status-JSON-mutate-pattern.md 개정(형식 강제 폐기 → prose-only + 메타 LLM 해석)에 맞춰 dcNess Phase 1 산출물 재정렬. 기존 state_io.py + schema-bound validator docs + 32+9 schema 테스트를 모두 폐기하고, prose I/O + 휴리스틱 interpreter (DI swap point) + prose-writing-guide 형식의 validator 6 docs + 29 prose 테스트로 교체. 형식 강제 LOC ~290 → ~80 으로 순감소. 메타 LLM 통합은 Phase 2 swap point 로 남김.
+
 ### DCN-CHG-20260429-01
 - **Date**: 2026-04-29
 - **Change-Type**: ci, docs-only
