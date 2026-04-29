@@ -15,5 +15,5 @@ node_modules/
 .claude/ralph-loop.local.md
 .claude/settings.local.json
 
-# 하네스 런타임 상태 (status JSON 등 — agent 가 mutate)
+# 하네스 런타임 상태 (agent prose 파일 등)
 .claude/harness-state/
