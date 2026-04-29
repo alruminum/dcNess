@@ -42,7 +42,12 @@ def _run_bash_hook(
         text=True,
         capture_output=True,
         cwd=str(cwd),
-        env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+        env={
+            **os.environ,
+            "PYTHONPATH": str(REPO_ROOT),
+            # smoke 테스트는 임시 cwd 라 whitelist 미등록 → 게이트 우회 강제 활성화
+            "DCNESS_FORCE_ENABLE": "1",
+        },
         timeout=10,
     )
 
@@ -64,7 +69,12 @@ def _run_python_hook(
         text=True,
         capture_output=True,
         cwd=str(cwd),
-        env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+        env={
+            **os.environ,
+            "PYTHONPATH": str(REPO_ROOT),
+            # smoke 테스트는 임시 cwd 라 whitelist 미등록 → 게이트 우회 강제 활성화
+            "DCNESS_FORCE_ENABLE": "1",
+        },
         timeout=10,
     )
 
@@ -80,7 +90,12 @@ def _run_python_cli(
         capture_output=True,
         text=True,
         cwd=str(cwd),
-        env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+        env={
+            **os.environ,
+            "PYTHONPATH": str(REPO_ROOT),
+            # smoke 테스트는 임시 cwd 라 whitelist 미등록 → 게이트 우회 강제 활성화
+            "DCNESS_FORCE_ENABLE": "1",
+        },
         timeout=10,
     )
 
@@ -214,7 +229,12 @@ class MultiSessionIsolationTests(unittest.TestCase):
             ],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             cwd=str(self.cwd),
-            env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+            env={
+            **os.environ,
+            "PYTHONPATH": str(REPO_ROOT),
+            # smoke 테스트는 임시 cwd 라 whitelist 미등록 → 게이트 우회 강제 활성화
+            "DCNESS_FORCE_ENABLE": "1",
+        },
         )
         p_b = subprocess.Popen(
             [
@@ -223,7 +243,12 @@ class MultiSessionIsolationTests(unittest.TestCase):
             ],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             cwd=str(self.cwd),
-            env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+            env={
+            **os.environ,
+            "PYTHONPATH": str(REPO_ROOT),
+            # smoke 테스트는 임시 cwd 라 whitelist 미등록 → 게이트 우회 강제 활성화
+            "DCNESS_FORCE_ENABLE": "1",
+        },
         )
 
         out_a, _ = p_a.communicate(json.dumps({"sessionId": self.sid_a}).encode(), timeout=10)
