@@ -18,6 +18,17 @@
 
 ## Records
 
+### DCN-CHG-20260430-10
+- **Date**: 2026-04-30
+- **Rationale**: 8 skill 흡수 + 5 PR 누적 후 사용자 요청 — "재인스톨 가이드 + 스킬별 도그푸딩 재료 + 발화 prompt". 매 smoke 마다 사용자가 발화 만들고 기대 동작 추론하는 비용 ↑. 가이드 1 문서로 표준화 가치.
+- **Decision**:
+  - `docs/process/manual-smoke-guide.md` 단일 파일 — 사전 준비 (plugin 재설치 + RWHarness 충돌 회피) + 8 skill 발화 + 검증 체크리스트 + 트러블슈팅 + 보고 양식.
+  - dcTest 자체 변경 X — 현 상태 (greet 가드 + calc subtract + prd + architecture + ux-flow + milestones) 가 8 skill smoke 에 충분.
+  - **/efficiency dcTest 외 추천**: dcTest 가 CC 사용 history 부재 → "분석할 세션 없음". dcness repo 에서 시도 권장 명시.
+- **Follow-Up**:
+  - **(별도 Task — 측정)** 사용자 smoke 결과 누적 후 가이드 정합 갱신 (실 동작과 다른 항목 발견 시).
+  - **(별도 Task — automation)** 사용자 보고 양식 → 자동 회귀 테스트 변환 (현재는 manual + `tests/test_multisession_smoke.py` 일부만).
+
 ### DCN-CHG-20260430-09
 - **Date**: 2026-04-30
 - **Rationale**: README skill 표가 7개 시점 stale. /efficiency 흡수로 8개. 또 yolo/worktree keyword 가 행동형 skill 만 적용되는데 README 가 "모든 skill 공통" 으로 표기 → 읽기형 (`/qa` `/smart-compact` `/efficiency`) 에서 혼동 가능.
