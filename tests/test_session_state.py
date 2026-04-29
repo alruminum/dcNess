@@ -956,5 +956,167 @@ class DefaultBaseWorktreeTests(unittest.TestCase):
             )
 
 
+class ProjectActivationTests(unittest.TestCase):
+    """프로젝트 활성화 (whitelist) — `is_project_active` / `enable_project` / `disable_project`.
+
+    plugin-scoped whitelist 경로는 `~/.claude/plugins/data/dcness-dcness/projects.json`.
+    테스트는 `DCNESS_WHITELIST_PATH` env 로 임시 경로 override.
+    """
+
+    def setUp(self) -> None:
+        from harness.session_state import _clear_default_base_cache
+        self._orig_cwd = os.getcwd()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.addCleanup(lambda: os.chdir(self._orig_cwd))
+        # DCNESS_WHITELIST_PATH override
+        self._whitelist_file = Path(self._tmp.name) / "projects.json"
+        self._env_patch = patch.dict(
+            os.environ,
+            {"DCNESS_WHITELIST_PATH": str(self._whitelist_file)},
+            clear=False,
+        )
+        self._env_patch.start()
+        self.addCleanup(self._env_patch.stop)
+        # DCNESS_FORCE_ENABLE env 가 외부에서 1로 set 되면 테스트 깨짐 — 보호
+        if "DCNESS_FORCE_ENABLE" in os.environ:
+            self._force_patch = patch.dict(
+                os.environ, {"DCNESS_FORCE_ENABLE": ""}, clear=False
+            )
+            self._force_patch.start()
+            self.addCleanup(self._force_patch.stop)
+        _clear_default_base_cache()
+        self.addCleanup(_clear_default_base_cache)
+
+    def _init_git_repo(self, path: Path) -> None:
+        path.mkdir(parents=True, exist_ok=True)
+        for cmd in (
+            ["git", "init", "-q"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "test"],
+            ["git", "commit", "-q", "--allow-empty", "-m", "init"],
+        ):
+            subprocess.run(cmd, cwd=path, check=True, capture_output=True)
+
+    def test_inactive_when_whitelist_empty(self) -> None:
+        from harness.session_state import is_project_active
+        repo = Path(self._tmp.name) / "repo"
+        self._init_git_repo(repo)
+        os.chdir(repo)
+        self.assertFalse(is_project_active())
+
+    def test_enable_then_active(self) -> None:
+        from harness.session_state import is_project_active, enable_project
+        repo = Path(self._tmp.name) / "repo"
+        self._init_git_repo(repo)
+        os.chdir(repo)
+        root = enable_project()
+        self.assertEqual(root, repo.resolve())
+        self.assertTrue(is_project_active())
+        # 파일이 작성됐는지
+        self.assertTrue(self._whitelist_file.exists())
+
+    def test_disable_then_inactive(self) -> None:
+        from harness.session_state import (
+            is_project_active, enable_project, disable_project
+        )
+        repo = Path(self._tmp.name) / "repo"
+        self._init_git_repo(repo)
+        os.chdir(repo)
+        enable_project()
+        self.assertTrue(is_project_active())
+        disable_project()
+        self.assertFalse(is_project_active())
+
+    def test_enable_idempotent(self) -> None:
+        from harness.session_state import enable_project, list_active_projects
+        repo = Path(self._tmp.name) / "repo"
+        self._init_git_repo(repo)
+        os.chdir(repo)
+        enable_project()
+        enable_project()
+        enable_project()
+        self.assertEqual(len(list_active_projects()), 1)
+
+    def test_subdirectory_inherits_active(self) -> None:
+        """activated 프로젝트의 subdir 도 active 로 판정."""
+        from harness.session_state import is_project_active, enable_project
+        repo = Path(self._tmp.name) / "repo"
+        self._init_git_repo(repo)
+        sub = repo / "subdir" / "deep"
+        sub.mkdir(parents=True)
+        os.chdir(repo)
+        enable_project()
+        os.chdir(sub)
+        self.assertTrue(is_project_active())
+
+    def test_worktree_inherits_active_via_gamma(self) -> None:
+        """worktree cwd 에서 is_project_active = True (γ resolution → main repo whitelist hit)."""
+        from harness.session_state import (
+            is_project_active, enable_project, _clear_default_base_cache,
+        )
+        repo = Path(self._tmp.name) / "main"
+        self._init_git_repo(repo)
+        wt = Path(self._tmp.name) / "wt"
+        subprocess.run(
+            ["git", "worktree", "add", "-q", str(wt), "-b", "wt"],
+            cwd=repo, check=True, capture_output=True,
+        )
+        try:
+            os.chdir(repo)
+            _clear_default_base_cache()
+            enable_project()
+            os.chdir(wt)
+            _clear_default_base_cache()
+            self.assertTrue(is_project_active())
+        finally:
+            os.chdir(self._orig_cwd)
+            subprocess.run(
+                ["git", "worktree", "remove", str(wt), "--force"],
+                cwd=repo, check=False, capture_output=True,
+            )
+
+    def test_force_enable_env_override(self) -> None:
+        """DCNESS_FORCE_ENABLE=1 → whitelist 무시 + 무조건 active."""
+        from harness.session_state import is_project_active
+        repo = Path(self._tmp.name) / "repo"
+        self._init_git_repo(repo)
+        os.chdir(repo)
+        with patch.dict(os.environ, {"DCNESS_FORCE_ENABLE": "1"}, clear=False):
+            self.assertTrue(is_project_active())
+
+    def test_other_project_remains_inactive(self) -> None:
+        """A 만 enable 했을 때 B 는 inactive."""
+        from harness.session_state import is_project_active, enable_project
+        repo_a = Path(self._tmp.name) / "a"
+        repo_b = Path(self._tmp.name) / "b"
+        self._init_git_repo(repo_a)
+        self._init_git_repo(repo_b)
+        os.chdir(repo_a)
+        enable_project()
+        os.chdir(repo_b)
+        self.assertFalse(is_project_active())
+
+    def test_whitelist_corrupt_returns_empty(self) -> None:
+        """projects.json 파일 깨졌을 때 빈 리스트 반환 (silent)."""
+        from harness.session_state import list_active_projects
+        self._whitelist_file.parent.mkdir(parents=True, exist_ok=True)
+        self._whitelist_file.write_text("not valid json", encoding="utf-8")
+        self.assertEqual(list_active_projects(), [])
+
+    def test_cli_is_active_exit_code(self) -> None:
+        """`is-active` subcommand exit 0=active, 1=inactive."""
+        from harness.session_state import _cli_is_active, enable_project
+        from types import SimpleNamespace
+        repo = Path(self._tmp.name) / "repo"
+        self._init_git_repo(repo)
+        os.chdir(repo)
+        # 비활성
+        self.assertEqual(_cli_is_active(SimpleNamespace()), 1)
+        # 활성화 후
+        enable_project()
+        self.assertEqual(_cli_is_active(SimpleNamespace()), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

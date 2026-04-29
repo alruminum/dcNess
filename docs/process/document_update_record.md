@@ -20,6 +20,22 @@
 
 ## Records
 
+### DCN-CHG-20260429-40
+- **Date**: 2026-04-29
+- **Change-Type**: harness, hooks, spec, docs-only
+- **Files Changed**:
+  - `harness/session_state.py` — `is_project_active` / `enable_project` / `disable_project` / `list_active_projects` / `whitelist_path` 함수 + 5 CLI subcommand (`enable` / `disable` / `is-active` / `status`). plugin-scoped whitelist (`~/.claude/plugins/data/dcness-dcness/projects.json`) + `DCNESS_WHITELIST_PATH` env override + `DCNESS_FORCE_ENABLE` 디버깅 env.
+  - `hooks/session-start.sh` — PYTHONPATH=$CLAUDE_PLUGIN_ROOT prepend + 활성화 게이트 (`is-active` 실패 시 exit 0).
+  - `hooks/catastrophic-gate.sh` — 동일 패턴.
+  - `commands/init-dcness.md` (신규) — `/init-dcness` skill (현재 cwd main repo 활성화).
+  - `tests/test_session_state.py` — `ProjectActivationTests` 10 케이스 추가.
+  - `tests/test_multisession_smoke.py` — bash hook 호출 env 에 `DCNESS_FORCE_ENABLE=1` 추가 (게이트 우회).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: dcNess plugin 활성화 게이트 도입. 기본 disabled — plugin install 만으로는 hook 발화 0 (다른 프로젝트에 영향 0). `/init-dcness` 으로 명시 활성화 시만 SessionStart / PreToolUse Agent 훅 발화. whitelist 는 plugin-scoped (CC `data/` 컨벤션) → 글로벌 `~/.claude/` 폴더 오염 0, plugin 제거 시 자동 정리. RWHarness `harness-projects.json` 패턴 정합 + γ resolution 으로 worktree 도 main repo whitelist 상속.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260429-39
 - **Date**: 2026-04-29
 - **Change-Type**: harness, spec, docs-only

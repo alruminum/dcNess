@@ -18,6 +18,33 @@
 
 ## Records
 
+### DCN-CHG-20260429-40
+- **Date**: 2026-04-29
+- **Rationale**:
+  - Manual smoke 도중 사용자 발견: dcNess plugin 설치만 했는데도 RWHarness 처럼 자동 활성 안 되면서 hook 미발화. 그 외 cross-project 시나리오 (dcNess repo 밖 cwd 에서 claude 실행) 에선 helper 가 `harness/` import 실패로 ModuleNotFoundError → silent exit. 두 문제 동반 해결 필요.
+  - 더 큰 문제: dcNess plugin 이 모든 프로젝트에 자동 활성되면 부작용 폭증 — RWHarness 와 hook race + 사용자가 의도하지 않은 카테고리 자동 검사 + cross-project 사용자 경험 surprise.
+  - RWHarness 는 `~/.claude/harness-projects.json` 글로벌 whitelist 로 해결. 단 글로벌 파일 = 다른 plugin 도 보일 수 있음 + plugin 제거해도 잔재. 사용자는 plugin-scoped 저장 명시 요구.
+- **Alternatives** (활성화 메커니즘):
+  1. *항상 활성* (현재 디폴트). 부작용 폭증. 기각.
+  2. *RWHarness 와 동일 글로벌 whitelist* (`~/.claude/harness-projects.json`). 명시 거부 (사용자 발화).
+  3. *프로젝트 별 마커 파일* (`<project>/.claude/harness-state/.dcness-enabled`). 자기선언 명확 + 글로벌 0. 단점: plugin 단에서 활성 프로젝트 목록 한눈에 못 봄 + 마커 파일 별도 관리 부담. 차순위.
+  4. **(채택) plugin-scoped whitelist** (`~/.claude/plugins/data/dcness-dcness/projects.json`). CC 공식 plugin-data 컨벤션 정합 — plugin namespace + reinstall 보존 + plugin 제거 시 자동 cleanup. 사용자 발화 정합.
+- **Alternatives** (PYTHONPATH 해법):
+  1. *plugin install 시 PYTHONPATH 환경변수 자동 추가* — 사용자 shell init 변경 부담. 기각.
+  2. **(채택) hook 스크립트가 `${CLAUDE_PLUGIN_ROOT}` 를 PYTHONPATH 에 prepend** — 1줄 추가, plugin install 위치 자동 추적, 사용자 환경 영향 0.
+- **Decision**:
+  - 활성화 = 옵션 4 (plugin-scoped whitelist). PYTHONPATH = 옵션 2 (hook 스크립트 prepend). 같은 PR 에 묶음 — 둘 다 cross-project 인프라.
+  - **게이트 위치**: hook 스크립트 첫 줄 (`is-active` exit 1 시 즉시 `exit 0`). Python 진입 전이라 inactive 프로젝트는 import 비용도 0.
+  - **`/init-dcness` skill**: `python3 -m harness.session_state enable` 호출 + 사용자 안내 (다음 세션 재시작 권장).
+  - **`/disable-dcness`**: v1 미구현 — 명시 비활성화는 CLI 직접 호출 (`python3 -m harness.session_state disable`). v2 follow-up.
+  - **테스트 환경 우회**: `DCNESS_FORCE_ENABLE=1` env 로 whitelist 무시 + 무조건 active. multisession smoke 11 테스트가 의존.
+  - **γ resolution 정합**: `is_project_active` 가 `_resolve_project_root` (worktree → main repo) 사용 → worktree cwd 도 main repo whitelist 상속.
+- **Follow-Up**:
+  - **(별도 Task — v1.1)** `/disable-dcness` skill 신규 (cousin to /init-dcness).
+  - **(별도 Task — v2)** plugin uninstall hook — `data/dcness-dcness/` 자동 cleanup 검증.
+  - **(별도 Task — v2)** `/init-dcness` 가 첫 호출 시 plugin uninstall reminder + 추천 후속 skill 안내.
+  - **측정**: 첫 manual smoke 결과 — hook 게이트가 inactive 프로젝트에서 100% no-op 인지.
+
 ### DCN-CHG-20260429-39
 - **Date**: 2026-04-29
 - **Rationale**:

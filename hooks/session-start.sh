@@ -12,6 +12,14 @@
 
 set -uo pipefail
 
+# plugin root 를 PYTHONPATH 에 prepend — cwd 에 harness/ 없는 cross-project 시나리오 대응.
+# CLAUDE_PLUGIN_ROOT 는 CC 가 plugin hook 실행 시 자동 설정.
+export PYTHONPATH="${CLAUDE_PLUGIN_ROOT:-.}:${PYTHONPATH:-}"
+
+# 활성화 게이트 — 현재 프로젝트가 dcness whitelist 에 없으면 즉시 pass-through.
+# /init-dcness 로 활성화. 미활성 프로젝트에선 hook 자체가 no-op.
+python3 -m harness.session_state is-active >/dev/null 2>&1 || exit 0
+
 # bash 의 PPID = CC main process
 CC_PID=$PPID
 

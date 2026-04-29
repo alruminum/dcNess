@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🚪 Plugin 활성화 게이트 + cross-project PYTHONPATH** (`DCN-CHG-20260429-40`):
+  - `harness/session_state.py` — `is_project_active` / `enable_project` / `disable_project` + 4 CLI subcommand. plugin-scoped whitelist (`~/.claude/plugins/data/dcness-dcness/projects.json`) — CC `data/` 컨벤션 정합 + 글로벌 `~/.claude/` 오염 0.
+  - hook 양쪽 (`hooks/session-start.sh` `hooks/catastrophic-gate.sh`) — PYTHONPATH=$CLAUDE_PLUGIN_ROOT prepend + `is-active` 게이트 (inactive 프로젝트 즉시 exit 0). hook 자체는 모든 프로젝트에서 호출되지만 dcness 미활성 프로젝트는 import 비용도 0.
+  - `commands/init-dcness.md` 신규 — `/init-dcness` skill (현재 cwd 활성화 + 안내).
+  - 신규 10 테스트 (`ProjectActivationTests`). 175/175 PASS.
+  - manual smoke 사용자 발견에서 출발 — dcness install 후 hook 미발화 + cross-project ModuleNotFoundError. 두 문제 동반 해결.
 - **🌲 Worktree 격리 옵션 C** (`DCN-CHG-20260429-39`):
   - `harness/session_state.py` `_default_base()` γ 설계 — `git rev-parse --git-common-dir` 로 main repo `.claude/harness-state/` 를 단일 source. cwd 별 캐시. 비-git 폴백 보존.
   - `commands/quick.md` / `commands/product-plan.md` Step 0a — keyword (`worktree` / `wt` / `격리` / `isolate`) 트리거 시 EnterWorktree, 종료 step 에 ExitWorktree 옵션.
