@@ -100,7 +100,37 @@ TaskCreate("pr-reviewer: 검토")
 
 **`/impl-loop` 안 inner 호출**: 호출자 (`/impl-loop`) 가 batch index `i` 와 함께 호출 시 prefix 컨벤션 — `b<i>.<agent>` (예: `b1.architect: MODULE_PLAN`). 자세한 컨벤션 = `commands/impl-loop.md` Step 2 참조. 본 skill standalone 시 prefix 없음.
 
-### Step 2 — architect MODULE_PLAN
+### Step 2 — architect MODULE_PLAN (state-aware skip 가능)
+
+#### 2.0 batch 마커 검사 (DCN-CHG-20260430-13)
+
+batch 파일 안 `MODULE_PLAN_READY` 마커 검사:
+
+```bash
+if grep -q "MODULE_PLAN_READY" "<batch path>"; then
+    echo "[impl] batch 자체에 MODULE_PLAN_READY 박힘 — architect MODULE_PLAN step skip"
+    SKIP_MODULE_PLAN=true
+else
+    SKIP_MODULE_PLAN=false
+fi
+```
+
+조건: `architect TASK_DECOMPOSE` (`/product-plan` Step 7) 가 batch 산출 시 ## 생성/수정 파일 / ## 인터페이스 / ## 의사코드 / ## 결정 근거 박고 마지막 줄에 `MODULE_PLAN_READY` 마커 박음 (`agents/architect/task-decompose.md` 컨벤션).
+
+**SKIP_MODULE_PLAN=true 시**:
+- TaskUpdate("architect: MODULE_PLAN", completed) + label 정정 → "skipped (batch 자체 MODULE_PLAN_READY)"
+- batch 파일 자체를 MODULE_PLAN prose 로 사용 (architect-MODULE_PLAN.md 자리에 batch path symlink 또는 cp)
+- catastrophic 훅 §2.3.3 (engineer 직전 plan READY 검사) 통과 위해 prose 종이 필요:
+  ```bash
+  cp "<batch path>" "$RUN_DIR/architect-MODULE_PLAN.md"
+  ```
+- → Step 3 (test-engineer) 직진
+
+**SKIP_MODULE_PLAN=false 시**: 정상 호출 (아래 2.1).
+
+근거: RWHarness 의 plan_loop 가 의도했던 "산출물 있으면 통과 + 없으면 다시 호출". dcness 가 분기 폐기로 일관성 회피하느라 잃었던 효율성 복원. 분기 추가 0 — skill prompt 의 grep 1줄 + 메인 자율.
+
+#### 2.1 architect MODULE_PLAN 정상 호출 (마커 부재 시)
 
 ```
 TaskUpdate("architect: MODULE_PLAN", in_progress)

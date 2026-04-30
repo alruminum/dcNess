@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🪄 MODULE_PLAN_READY 마커 → state-aware skip** (`DCN-CHG-20260430-13`):
+  - 사용자 통찰 — RWHarness plan_loop 의 원래 의도 (산출물 있으면 통과 / 없으면 다시 호출) 복원.
+  - `agents/architect/task-decompose.md` — 각 batch 산출 시 ## 생성/수정 파일 / ## 인터페이스 / ## 의사코드 / ## 결정 근거 + `MODULE_PLAN_READY` 마커 박는 컨벤션.
+  - `commands/impl.md` Step 2.0 — batch 파일 마커 grep → SKIP_MODULE_PLAN 시 batch 파일을 architect-MODULE_PLAN.md 자리에 cp + test-engineer 직진. catastrophic §2.3.3 정합.
+  - 분기 추가 = 1 (grep 1줄). branch-surface-tracking warning 임계 미달.
+  - 옵션 D — 컨벤션 + 메인 자율. dcness 철학 정합.
 - **🧷 /impl-loop inner sub-task 의무 + `b<i>.<agent>` prefix 컨벤션** (`DCN-CHG-20260430-12`):
   - 사용자 smoke 발견 — 메인이 inner 5 sub-task TaskCreate inline skip → outer 5 batch entry 만 보임.
   - `commands/impl-loop.md` Step 2 에 ⚠️ "skip 금지" 경고 + `b<i>.<agent>` prefix 컨벤션 박음.

@@ -35,3 +35,39 @@ design-handoff.md 있는 경우 (B 모드 = 디자인 후 구현) 는 스킵.
 - impl 목차 outline (파일명 + 다룰 스토리 + depth + 1 줄 요약 + 의존·순서)
 - 추가된 태스크 (Story → impl 매핑)
 - 생성된 impl 파일 목록 (경로 + depth + 가드레일 표시 — 듀얼 모드 시 `01-theme-tokens.md`)
+
+## 각 impl 파일 형식 의무 (DCN-CHG-20260430-13)
+
+각 impl batch 파일 (`docs/milestones/vNN/epics/epic-NN-*/impl/NN-*.md`) 은 다음 섹션 박는다 — `/impl` skill 의 MODULE_PLAN step skip 판정 근거:
+
+```markdown
+## 생성/수정 파일
+- `src/foo.py` — <변경 요약 1줄>
+- ...
+
+## 인터페이스
+- `foo(a: int, b: int) -> int` — <signature + 반환 의미>
+- ...
+
+## 의사코드
+```python
+def foo(a, b):
+    if b == 0:
+        raise ValueError(...)
+    return a // b
+```
+
+## 결정 근거
+- <왜 이 인터페이스 / 분기 / 에러 처리 채택했는지>
+
+## 다른 모듈과의 경계
+- <다른 impl 과의 의존 / 충돌 / 순서>
+
+## MODULE_PLAN_READY
+```
+
+마지막 줄에 `MODULE_PLAN_READY` 마커 박음 = "이 batch 자체가 MODULE_PLAN 수준 detail 충족". `/impl` 가 이 마커 grep 후 architect MODULE_PLAN step skip → test-engineer 직진 (DCN-CHG-20260430-13).
+
+마커 박지 않으면 (또는 위 섹션 미충족) `/impl` 가 architect MODULE_PLAN 정상 호출 — 본 컨벤션이 *권장* 이지 의무 아님 (메인 자율 + state-aware skip).
+
+근거: RWHarness 의 plan_loop 가 의도했던 "산출물 있으면 통과 + 없으면 다시 호출" 패턴 정합. 분기 0 추가 (skill prompt 의 마커 grep 1줄만 추가).

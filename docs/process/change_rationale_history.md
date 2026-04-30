@@ -18,6 +18,34 @@
 
 ## Records
 
+### DCN-CHG-20260430-13
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 통찰 (manual smoke 도중) — "근데 이미 아키텍트가 모듈 나누고 왔는데 왜 B1에서 아키텍트부터 다시 시작해? 원래 루프에 있던 의미는 없으면 다시하고 오라는거였고 패스되는거였을텐데."
+  - RWHarness plan_loop 원래 의도 = state-aware skip:
+    ```
+    impl_loop 진입:
+      if 산출물 (MODULE_PLAN.md) 있음 → 통과 + test-engineer 직진
+      else → architect MODULE_PLAN 호출 ("다시 하고 와")
+    ```
+  - dcness 가 사다리 #2 (state hole — checkpoint 보존 의무 자리) 회피하느라 분기 자체를 없앤 결과 *효율성도 함께 잃음*. 매 batch 마다 무조건 MODULE_PLAN 호출 = LLM 비용 / 시간 N×.
+  - architect TASK_DECOMPOSE 가 이미 batch 산출 시 ## 생성/수정 파일 / ## 인터페이스 / ## 의사코드 / ## 결정 근거 박는 컨벤션 일부 — MODULE_PLAN 수준 detail 충족이면 *재설계* 의미 없음.
+- **Alternatives** (사용자 의문 정합 4 옵션):
+  1. *옵션 A — 현재 유지* (매 batch 마다 MODULE_PLAN 호출). 보수적 / 비효율. 기각.
+  2. *옵션 B — batch 충분 상세 시 skip* (자동 판정). detail 판정 룰이 새 hole 후보 자리. 기각.
+  3. *옵션 C — helper 단 격리* (`dcness-helper batch-status`). 자동화 + skill prompt 의 분기 추가 0. 단 helper 안 분기 추가. 차순위.
+  4. **(채택) 옵션 D — 컨벤션 + 메인 자율** — TASK_DECOMPOSE 가 batch 산출 시 `MODULE_PLAN_READY` 마커 박음. /impl Step 2.0 에서 grep 1줄 — 마커 충족 시 skip / 부재 시 정상 호출. 분기 추가 = 1 (skip vs 호출 / grep 단순 검사). branch-surface-tracking 임계 미달.
+- **Decision**:
+  - 옵션 D. 사용자 발화 ("D 가 맞지 이게 우리 철학이잖아") 정합.
+  - **컨벤션 박는 자리** = `agents/architect/task-decompose.md` 의 "각 impl 파일 형식 의무" 절. architect TASK_DECOMPOSE 가 prose 산출 시 batch 파일 마지막에 `MODULE_PLAN_READY` 마커 박음.
+  - **검사 자리** = `commands/impl.md` Step 2.0. `grep -q "MODULE_PLAN_READY" "<batch>"` 1줄. SKIP_MODULE_PLAN=true 시 batch 파일을 MODULE_PLAN prose 로 cp + Step 3 (test-engineer) 직진.
+  - **catastrophic 훅 §2.3.3 정합**: engineer 직전 architect-MODULE_PLAN.md (or LIGHT_PLAN.md) 안 READY_FOR_IMPL grep 검사. SKIP 케이스도 batch path 를 cp 했으므로 자연 정합 (batch 파일이 architect-MODULE_PLAN.md 위치에 박힘).
+  - **권장 vs 의무**: 본 컨벤션은 *권장*. 마커 안 박힌 batch 도 정상 호출 (옵션 A 동작). dcness 정신 정합 — agent 자율 + 메인 자율.
+- **Follow-Up**:
+  - **(별도 Task)** /impl-loop 의 resume 메커니즘 — 본 마커 + 코드 검사 결합으로 이미 구현된 batch 검출 (사용자 이전 질문 정합).
+  - **(측정)** 30 batch 산출 후 `MODULE_PLAN_READY` 마커 박힘 비율. 80%+ 면 컨벤션 정합. 그 미만이면 task-decompose prompt 강도 추가 보강.
+  - **(branch-surface-tracking 자가 점검)**: 본 PR 이 추가하는 분기 = 1 (impl Step 2.0 의 grep 분기). hole 후보 자리 = batch 파일에 마커 박는 의무 자리 1곳 (TASK_DECOMPOSE prompt 강화). warning 임계 (3 회/30일) 미달.
+
 ### DCN-CHG-20260430-12
 - **Date**: 2026-04-30
 - **Rationale**:
