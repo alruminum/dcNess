@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260430-13
+- **Date**: 2026-04-30
+- **Change-Type**: agent, spec, docs-only
+- **Files Changed**:
+  - `agents/architect/task-decompose.md` — "각 impl 파일 형식 의무" 절 추가. 각 batch 산출 시 ## 생성/수정 파일 / ## 인터페이스 / ## 의사코드 / ## 결정 근거 / ## 다른 모듈과의 경계 + `MODULE_PLAN_READY` 마커 컨벤션 박음.
+  - `commands/impl.md` Step 2 — `2.0 batch 마커 검사` 절 신규 (`MODULE_PLAN_READY` 마커 grep → SKIP_MODULE_PLAN 분기). 정상 호출은 2.1 로.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: 사용자 통찰 — RWHarness 의 plan_loop 원래 의도 = "산출물 있으면 통과, 없으면 다시 호출". dcness 가 분기 폐기 (사다리 #2 회피) 하면서 *효율성도 함께 잃음* — 매 batch 마다 architect MODULE_PLAN 무조건 호출. 옵션 D (메인 자율 + 컨벤션) 채택 — TASK_DECOMPOSE 가 batch 산출 시 MODULE_PLAN 수준 detail + `MODULE_PLAN_READY` 마커 박음. /impl Step 2 가 마커 grep → 충족 시 skip + test-engineer 직진. 분기 0 추가 (grep 1줄 + 메인 판단). RWHarness 원래 의도 복원.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-12
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only
