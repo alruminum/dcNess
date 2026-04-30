@@ -18,6 +18,12 @@
 
 ## Records
 
+### DCN-CHG-20260430-24
+- **Date**: 2026-04-30
+- **Rationale**: 사용자 jajang 분석 디버그 도중 ts 가 `04:xx` 로 보여 헷갈림. `.steps.jsonl` UTC 저장 + 사용자 KST 환경 + Mac mtime local 표시의 timezone mix.
+- **Decision**: render 측 `astimezone()` 변환 (system local). 저장 형식 (UTC ISO) 변경 X — 시스템 간 전송 표준 보존.
+- **Follow-Up**: 후속 debug 도구 작성 시 동일 패턴 적용.
+
 ### DCN-CHG-20260430-23
 - **Date**: 2026-04-30
 - **Rationale**:

@@ -20,6 +20,15 @@
 
 ## Records
 
+### DCN-CHG-20260430-24
+- **Date**: 2026-04-30
+- **Change-Type**: harness
+- **Files Changed**:
+  - `harness/run_review.py` `render_report()` — `## 단계별 상세` 표에 `시작(local)` 컬럼 추가. UTC `.steps.jsonl` ts 를 `astimezone()` 로 system local timezone (KST) 변환해서 `HH:MM:SS` 표시.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 보고 — 디버그 출력에서 step ts 가 `04:xx` UTC 로 표시되어 KST 와 9시간 차이로 헷갈림. dcness `.steps.jsonl` 은 ISO UTC 저장 (시스템 표준), 매칭/계산은 timezone 무관 (delta 기반). 표시 측만 system local timezone 변환. `--list` mtime 은 이미 local — 일관성 확보.
+
 ### DCN-CHG-20260430-23
 - **Date**: 2026-04-30
 - **Change-Type**: harness, spec, test
