@@ -100,27 +100,21 @@ Document-Exception-Task: DCN-CHG-YYYYMMDD-NN
 
 CI 레벨(`.github/workflows/document-sync.yml`)은 별도 Task-ID 로 추가.
 
-### 2.8 Branch Protection (CI 게이트 강제)
+### 2.8 Branch Protection (현재 비활성)
 
-`main` 브랜치는 GitHub Repository Settings 의 branch protection 으로 다음을 강제한다:
+**현 상태 (DCN-CHG-20260501-06 이후)**: `main` 브랜치 protection **OFF**. doc-sync gate 만 실질 강제.
 
-| 항목 | 설정 |
-|---|---|
-| Required pull request reviews | ❌ 비활성 (1인 운영 — PR author self-approve GitHub 정책 차단. DCN-30-04) |
-| Required status checks | `Document Sync gate`, `unittest discover`, `validate manifest`, `Task-ID format gate` (4 게이트 모두 PASS 의무) |
-| Strict (up-to-date) | ✅ — base 와 sync 안 된 PR 머지 차단 |
-| Required conversation resolution | ✅ |
-| Required linear history | ✅ — squash merge 전제 |
-| Allow force pushes | ❌ |
-| Allow deletions | ❌ |
+**비활성 사유**:
+- 사용자 의도는 doc-sync 수준의 mechanical 차단. CI 4 checks 전부 강제는 과함.
+- protection 켜면 `paths` 필터 미스매치 PR 이 영원 BLOCKED → workflow 의 `paths` 폐기 동반 강요 → docs-only PR 도 python-tests 실행 (불필요 비용).
+- doc-sync 는 로컬 `pre-commit` hook + Claude Code PreToolUse hook + git pre-commit hook 3중 (§2.7) 으로 commit 시점 차단. CI workflow (`document-sync.yml`) 는 표시만 하면 충분.
+- 나머지 게이트 (`unittest discover`, `validate manifest`, `Task-ID format gate`) 는 *권고* 레벨. paths 필터로 변경 영역만 발화. 실패는 PR 페이지에 표시되지만 mechanical 차단은 안 함.
 
-**적용**: [`branch-protection-setup.md`](branch-protection-setup.md) §1 자동 적용 (`scripts/setup_branch_protection.mjs`) 또는 §2 GitHub UI 수동.
+**도입 옵션 (필요 시 재활성)**: [`branch-protection-setup.md`](branch-protection-setup.md) 자동/수동 적용 가이드 보존. `scripts/setup_branch_protection.mjs` 도 보존. 단 적용 전 `paths` 필터 폐기 트레이드오프 재검토 필요.
 
-**근거**: dcNess 는 RWHarness 의 `class Flag` 기반 in-process LGTM flag 를 *자연 폐기* (migration-decisions §2.2 DISCARD). LGTM 의 의미적 강제는 GitHub CI 4 checks 로 *외부* 에서 제공 → proposal §11 4-pillar #2 (CI/CD 게이트) 정합. 1인 운영이라 review approve 의무는 self-approve 불가 (GitHub 정책) 로 비활성화 — CI 4 checks 가 실질 게이트.
+**머지 룰**: `gh pr merge --squash` (자동 flag `--auto` 의무 폐기 — protection 없으면 작동 X).
 
-**`gh pr merge --squash --auto` 의무**: protection 적용 후 모든 PR merge 명령에 `--auto` flag 의무. CI 통과 *후* 자동 머지. CI 진행 중 머지 시도 시 차단됨 (DCN-30-04 도입 직접 동기 — DCN-30-37 ~ DCN-30-40 7+ PR 동안 CI 결과 안 보고 즉시 머지하던 회귀 패턴 차단).
-
-**CI 게이트 추가/제거 시**: `setup_branch_protection.mjs` 의 `REQUIRED_CHECKS` 와 본 §2.8 표 동시 갱신. 워크플로우 `jobs.<id>.name` 과 protection rule status check 이름이 *문자열 일치* 필수.
+**근거**: dcNess 는 RWHarness 의 `class Flag` 기반 in-process LGTM flag 를 *자연 폐기* (migration-decisions §2.2 DISCARD). dcNess 는 1인 운영 + RWHarness 가드 미적용 환경. mechanical 강제 최소화 (proposal §2.5 함정 회피 — 흐름 강제 최소). doc-sync 는 위반 패턴 잦아서 hook 강제 정당화 — 그 외 CI 게이트는 PR 표시로 충분.
 
 ## 3. 참조 파일
 
