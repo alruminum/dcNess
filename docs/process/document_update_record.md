@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260501-07
+- **Date**: 2026-05-01
+- **Change-Type**: ci, spec
+- **Files Changed**:
+  - `scripts/check_python_tests.sh` (신규) — staged 파일이 `harness/` / `tests/` / `agents/` / `python-tests.yml` 매칭 시만 `python3 -m unittest discover -s tests`. CI 환경 (`GITHUB_ACTIONS`) skip. 우회 시 `--no-verify` (룰 위반).
+  - `scripts/hooks/pre-commit` — chain 화 (doc-sync + pytest).
+  - `scripts/hooks/cc-pre-commit.sh` — `git commit` 매칭 case 안 doc-sync 통과 후 pytest 게이트 추가.
+  - `docs/process/governance.md` §2.7 — 강제 메커니즘 표 신설 (게이트 / 스크립트 / 적용 범위 / 우회). 참조 파일 표에 `check_python_tests.sh` 추가.
+  - `CLAUDE.md` §1 (commit 직전 단계) + 문서 지도 — 2 게이트 명시.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: 사용자 요청 ("pytest 도 강제 못해?") 정합. doc-sync 패턴 그대로 — paths 분기 (옵션 B) 채택. 비매칭 commit 비용 0, 매칭 시 ~3초. branch protection 미사용 환경에서 mechanical 차단 확장.
+
 ### DCN-CHG-20260501-06
 - **Date**: 2026-05-01
 - **Change-Type**: ci, spec

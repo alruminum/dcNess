@@ -33,6 +33,11 @@ case "$COMMAND" in
         exit 2
       fi
     fi
+    if [ -f scripts/check_python_tests.sh ]; then
+      if ! sh scripts/check_python_tests.sh; then
+        exit 2
+      fi
+    fi
     ;;
 esac
 exit 0
