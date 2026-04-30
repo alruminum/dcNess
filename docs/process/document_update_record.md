@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260430-15
+- **Date**: 2026-04-30
+- **Change-Type**: spec
+- **Files Changed**:
+  - `commands/quick.md` — "가시성 룰" 절 SSOT 강화. should → MUST. 의무 템플릿 (`[<task-id>.<agent>] echo` + `▎` prefix + 결론 줄). 자가 점검 4 항. 안티패턴 4 종 (압축 paraphrase / table 생략 / 결론만 echo / 늦은 echo). 토큰 비용 인지 (3~5%) 명시.
+  - `commands/impl.md` — "가시성 룰" 절 강화. dcTest 위반 사례 명시 + SSOT 인용 강조 + 5 step 모두 의무 echo.
+  - `commands/impl-loop.md` — "가시성 룰" 절 강화. multi-batch 환경 cumulative 누락 risk 명시 + `b<i>.<agent>` prefix.
+  - `commands/qa.md` — "가시성 룰" 절 CRITICAL banner 추가.
+  - `commands/product-plan.md` — "가시성 룰" 절 CRITICAL banner 추가. 7 step 모두 의무 강조.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: dcTest manual smoke 에서 메인 Claude 가 prose echo 룰을 *알면서도* 토큰 절약 본능으로 압축/생략한 사례 확인. prompt 텍스트 톤이 *should* 수준이라 LLM 이 무시 가능. should → MUST + 의무 템플릿 박힘 + 자가 점검 4 항 + 안티패턴 4 종 + 토큰 비용 인지로 격상. helper-side stdout 강제 (옵션 B/C) 는 사용자 거부 — prompt 강화로 해결. 5 skill 동일 톤 정합.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-14
 - **Date**: 2026-04-30
 - **Change-Type**: spec

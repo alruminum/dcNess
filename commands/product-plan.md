@@ -54,13 +54,18 @@ helper auto-resolve 호출 (yolo 진행 시):
 
 catastrophic 룰 (PreToolUse 훅 §2.3.4) 은 그대로 — yolo 무관 hard safety.
 
-## 가시성 룰 — 매 Agent 호출 후 메인 text echo (필수)
+## 가시성 룰 — 매 Agent 호출 후 메인 text echo (🚨 CRITICAL — skip = bug)
 
-CC collapsed 회피 — Agent 호출 후 메인이 text reply 로 prose 핵심 5~12줄 echo
-(DCN-CHG-30-11). prose 의 `## 결론` / `## Summary` / `## 변경 요약` 섹션 우선 인용.
-`/product-plan` 의 7 step 모두 적용 — PRD diff / 심사 결론 / UX flow / 시스템 설계 /
-DESIGN_VALIDATION 결과 / TASK_DECOMPOSE batch 목록 모두 사용자가 ctrl+o 안 눌러도
-보이도록 echo. 자세한 룰은 `commands/quick.md` "가시성 룰" 참조.
+> ⚠️ **DCN-CHG-20260430-15 강화**: 본 룰은 *should* 가 아닌 **MUST**. 토큰 절약 본능
+> 으로 압축/생략 금지. 의무 템플릿 + 자가 점검 + 안티패턴 SSOT = `commands/quick.md`
+> "가시성 룰".
+
+CC collapsed 회피 — Agent 호출 후 메인이 text reply 로 의무 템플릿 (5~12줄) echo
+(DCN-CHG-30-11 + 30-15). prose 의 `## 결론` / `## Summary` / `## 변경 요약` 섹션 우선
+인용. `/product-plan` 의 **7 step 모두 적용** — PRD diff / 심사 결론 / UX flow /
+시스템 설계 / DESIGN_VALIDATION 결과 / TASK_DECOMPOSE batch 목록 모두 사용자가
+ctrl+o 안 눌러도 보이도록 echo. **end-step 직후 즉시, TaskUpdate(completed) *전***
+echo. 자세한 룰은 `commands/quick.md` "가시성 룰" 참조.
 
 ## 절차 (Task tool + helper protocol)
 
