@@ -18,6 +18,52 @@
 
 ## Records
 
+### DCN-CHG-20260430-16
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 dcness 실전 푸딩 (jajang 진입) 직전 architect / engineer / test-engineer / reviewer agent 강화 요청.
+  - 핵심 요구 5건:
+    1. **DDD 기반 데이터 도메인 모델 *선정의*** — 시스템 설계 *전*에 도메인 모델 확정. 추후 갈아엎기 비용 회피.
+    2. **Clean Arch (Robert Martin) + SOLID 5** — 가급적 준수. 특히 DIP 는 조심스럽게 사용하되 *필요한 곳엔 반드시*.
+    3. **시스템 디자인 문서 300줄 cap + 상세 도면 링크 분리 + 항상 현행화** — 컨텍스트 부담 / 변경 충돌 / 집중력 회피.
+    4. **모듈 분할 = 테스트 단위** — test-engineer 가 명확한 테스트 짤 수 있는 범위.
+    5. **Domain Model 문서 SSOT + 수정 권한 격리** — 구현 관련 엔지니어 (engineer / test-engineer / validator / pr-reviewer / security-reviewer) 가 read 가능, 수정 시 architect escalate.
+  - 사용자 추가 통찰 — 전화앱 도메인 예시:
+    - 녹음 (독립) ← 요약 (재생 시 녹음 의존) ← 기록 (요약·녹음 알아야 UI 분기)
+    - 역방향 cascade (녹음 삭제 시 Pending 요약 같이 삭제) → DIP listener interface 로 의존 방향 보존
+    - "누가 봐도 납득 가능한 논리로 의존성 설정 + 깨지지 않도록".
+- **Alternatives**:
+  1. *옵션 1 — 단일 agent (architect) 만 강화*. 영향 작음. 단 engineer/test-engineer 가 도메인 모델 모르고 구현 → invariant 위반 위험. 기각.
+  2. *옵션 2 — domain-model.md 를 architect 외 agent 도 수정 가능*. 빠른 변경. 단 도메인 SSOT 가 분산되어 invariant 깨짐. 사용자 명시 거부 ("수정이 필요한 경우 반드시 아키텍쳐에게 에스컬레이션해서 바꿀수 있도록"). 기각.
+  3. *옵션 3 — 의무 read 를 engineer 만*. test-engineer 는 의존성 그래프 모르고 단순 입출력 테스트만 짜게 됨. 차순위.
+  4. **(채택) 옵션 4 — 9 agent 강화 + 권한 매트릭스** — architect 단독 수정 / engineer + test-engineer 의무 read / validator + pr-reviewer + security-reviewer + 그 외 권한 read. 사용자 매트릭스 그대로 승인.
+- **Decision**:
+  - 옵션 4 채택. 9 agent 동시 강화.
+  - 핵심 산출물:
+    - **`docs/domain-model.md` 신규** — DDD 4 요소 (Entity / VO / Aggregate / Domain Service) + invariant + bounded context. architect 단독 수정.
+    - **`docs/architecture.md`** + 분리 detail 파일 — 모듈 의존성 인과관계 1줄 의무 + 독립성 자가 검증 표 + DIP interface 모음.
+  - 의존성 설계 4 원칙:
+    1. 모든 의존성 화살표에 인과관계 1줄
+    2. 독립성 자가 검증 표 (단독 lifecycle 가능? / 의존 부재 시 동작? / DIP 필요?)
+    3. 역방향 cascade 필요 시 DIP 의무 (직접 import 금지, listener interface)
+    4. 누가 봐도 납득 (추측 0)
+  - 모듈 = 테스트 단위 = 의존성 1 묶음 3 정합 (충돌 시 testable 우선 — 사용자 룰).
+  - 300줄 cap + 현행화 룰 (architect SYSTEM_DESIGN / SPEC_GAP 호출마다 정합 검사).
+  - 권한 매트릭스:
+    | Agent | 읽기 | 수정 |
+    |---|---|---|
+    | architect (SD/SPEC_GAP) | 의무 | 권한 (SSOT) |
+    | engineer (IMPL) | 의무 (Phase 1) | 금지 → SPEC_GAP escalate |
+    | test-engineer | 의무 | 금지 → SPEC_GAP escalate |
+    | validator (CODE_VAL) | 권한 | 금지 |
+    | pr-reviewer | 권한 | 금지 |
+    | security-reviewer | 권한 | 금지 |
+- **Follow-Up**:
+  - **jajang 실전 푸딩 회귀 측정** — 도메인 모델 + Clean Arch + SOLID 룰이 실제 PR 에서 발화하는지 첫 1~2 사이클 모니터.
+  - **domain-model.md 템플릿** — jajang 첫 진입 시 architect SYSTEM_DESIGN 가 빈 prd → domain-model 생성 흐름 측정. 템플릿화 후속 검토.
+  - **DIP 남용 vs 미사용 측정** — "필요한 곳엔 반드시" 가 실제 LLM 판단으로 잘 작동하는지 사례 수집. 미작동 시 trigger keyword 추가 검토.
+  - **300줄 cap enforcement** — 현재 룰만 박힘. 자동 체크 (linter / gate) 도입 여부 후속 결정.
+
 ### DCN-CHG-20260430-15
 - **Date**: 2026-04-30
 - **Rationale**:

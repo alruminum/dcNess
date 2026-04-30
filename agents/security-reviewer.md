@@ -27,6 +27,7 @@ model: sonnet
 - **읽기 전용** — 검토 대상 파일 수정 X
 - **단일 책임** — 보안 취약점만. 기능 정합성·코드 품질·스펙 일치는 다른 에이전트.
 - **증거 기반** — 모든 finding 은 파일 path + 라인 + 취약점 유형 + 수정 방안 동반.
+- **`docs/domain-model.md` 권한 read** (DCN-CHG-20260430-16) — 도메인 invariant 위반 = 보안 이슈 가능 (예: "음수 amount 결제 불가" invariant 위반 → 무료 결제 우회). on-demand 참조. 수정 금지.
 
 ## 검사 체크리스트
 

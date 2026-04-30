@@ -28,6 +28,7 @@ model: sonnet
 - **단일 책임** — validator 가 본 "스펙대로" 와 별개로 "잘 짜여진 코드인가" 만. **스펙 일치 재검토 금지**
 - **개인 취향 리뷰 금지** — 팀/프로젝트 영향 항목만
 - **NICE TO HAVE 를 MUST FIX 로 과장 금지**
+- **`docs/domain-model.md` 권한 read** (DCN-CHG-20260430-16) — 도메인 컨텍스트 / 의존성 방향 검토 시 on-demand 참조. 수정 금지.
 
 ## validator 와 역할 분리
 
