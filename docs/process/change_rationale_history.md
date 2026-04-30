@@ -18,6 +18,35 @@
 
 ## Records
 
+### DCN-CHG-20260430-23
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 jajang 실측 분석 후 2 결함 보고:
+    1. `/run-review` Phase 2 (DCN-30-20) 매칭 알고리즘 cascade 결함 — 9 step 중 2 만 매칭. step 0 invocation 부재 (다른 세션 이력) → 후속 step 매칭 모두 한 칸씩 어긋남.
+    2. skill prompt 의 `/tmp/dcness-*.md` 고정 path 가 세션 격리 X — 멀티세션 race / stale prose 잔여로 helper 가 옛 prose 의 enum 추출.
+  - 두 결함 모두 jajang 실측 데이터로 확인 — 추측 X.
+- **Alternatives**:
+  1. *옵션 1 — 2 PR 분리* (매칭 fix + /tmp fix). 깔끔. 사용자 "한번에 하자" 발화 X.
+  2. **(채택) 옵션 2 — 단일 PR 동시 fix**. 사용자 "한번에 하자" 정합 + 두 결함이 같은 jajang 실측에서 발견.
+- **Decision**:
+  - 옵션 2. 단일 PR 동시 fix.
+  - **매칭 알고리즘**: 단순 순서 + agent name → timestamp-proximity:
+    - inv.ts < step.ts (sub-agent 가 end-step 전에 끝남)
+    - step.ts - inv.ts ≤ 600s (10분 — sub-agent budget 한도)
+    - inv.agent == step.agent
+    - 같은 agent 후보 여럿이면 가장 최근 (closest before step.ts)
+    - 1 invocation = 1 step (used set)
+  - **prose-file path 격리**:
+    - helper 신규 subcommand `run-dir` — 현재 active run 의 run_dir 절대 경로 stdout
+    - skill prompt 4개 (`quick` / `product-plan` / `impl` / `qa`) 가 `RUN_DIR=$("$HELPER" run-dir)` + `mkdir -p "$RUN_DIR/.prose-staging"` + `--prose-file "$RUN_DIR/.prose-staging/<step>.md"` 패턴 사용
+    - 멀티세션 자동 격리. 명시 cleanup 의존도 0 (run-dir 자체가 run 별).
+  - **검증**: jajang run-657d86fc 재실행 → 8 매칭 (이전 2). step 0 만 정당 미매칭 (다른 세션 이력).
+- **Follow-Up**:
+  - **매칭 결과 보고 보강** — 미매칭 step 에 대해 "왜 매칭 X" 진단 prose 출력 (Phase 3 후보)
+  - **자동 트리거** — finalize-run post-hook (Phase 3 미해결)
+  - **30일 누적 ranking** — Phase 3 미해결
+  - **STREAM_STALL** — stream_event gap 분석 (Phase 3 미해결)
+
 ### DCN-CHG-20260430-22
 - **Date**: 2026-04-30
 - **Rationale**: DCN-CHG-20260430-21 슬림 작업 시 Antigravity language server 의 file revert 우회를 위해 `commands/slim/` 에 staging 사본을 두고 atomic cp + git add 로 race 회피했음. follow-up 으로 staging 디렉토리 정리 약속 (rationale §Follow-Up).

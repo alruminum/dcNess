@@ -55,7 +55,12 @@ TaskCreate("architect: TASK_DECOMPOSE")
 TaskUpdate("<task>", in_progress)
 "$HELPER" begin-step <agent> [<MODE>]
 Agent(subagent_type="<agent>", mode="<MODE>", description="...")
-ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<list>" --prose-file /tmp/dcness-pp-<n>.md)
+# DCN-30-21: prose-file 을 run-dir 안 격리 (멀티세션 안전)
+RUN_DIR=$("$HELPER" run-dir)
+mkdir -p "$RUN_DIR/.prose-staging"
+PROSE_PATH="$RUN_DIR/.prose-staging/<n>.md"
+# (메인이 sub-agent prose 를 위 경로에 Write)
+ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<list>" --prose-file "$PROSE_PATH")
 # 의무 echo (commands/quick.md 가시성 룰 의무 템플릿) → TaskUpdate(completed)
 ```
 

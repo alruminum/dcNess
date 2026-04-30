@@ -924,6 +924,22 @@ def _cli_begin_step(args: Any) -> int:
     return 0
 
 
+def _cli_run_dir(args: Any) -> int:
+    """현재 active run 의 run_dir 절대 경로 stdout (DCN-CHG-20260430-21).
+
+    skill prompt 가 prose-file path 를 /tmp 대신 run-dir 안에 박을 때 사용.
+    멀티세션 격리 + stale prose 회피.
+    """
+    sid = auto_detect_session_id()
+    rid = auto_detect_run_id()
+    if not sid or not rid:
+        print("[session_state] sid/rid 미해결", file=sys.stderr)
+        return 1
+    rd = run_dir(sid, rid)
+    print(str(rd))
+    return 0
+
+
 _SUMMARY_LINE_LIMIT = 12      # prose 요약 최대 줄 수 (DCN-CHG-30-11: 8 → 12)
 _SUMMARY_CHAR_LIMIT = 1200    # 요약 총 길이 cap (DCN-CHG-30-11: 600 → 1200)
 
@@ -1277,6 +1293,9 @@ def _build_arg_parser() -> Any:
     p_es.add_argument("--allowed-enums", required=True, help="comma-separated")
     p_es.add_argument("--prose-file", required=True, help="prose 본문 파일 경로")
     p_es.set_defaults(func=_cli_end_step)
+
+    p_rd = sub.add_parser("run-dir", help="현재 active run 의 run_dir 절대 경로 (DCN-30-21)")
+    p_rd.set_defaults(func=_cli_run_dir)
 
     p_en = sub.add_parser("enable", help="현재 cwd 의 main repo 활성화 (whitelist 추가)")
     p_en.set_defaults(func=_cli_enable)
