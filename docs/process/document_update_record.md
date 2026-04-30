@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260430-31
+- **Date**: 2026-04-30
+- **Change-Type**: agent (skill prompt)
+- **Files Changed**:
+  - `commands/quick.md` — 215 → 32줄 (85% 절감). `quick-bugfix-loop` cross-ref. Inputs (이슈 요약 / 영향 파일 / 재현 / 원하는 방향) + 비대상 + qa enum 별 후속 라우팅 (advance / 종료 / 위임).
+  - `commands/impl.md` — 205 → 32줄 (84% 절감). `impl-batch-loop` cross-ref + UI 감지 시 `impl-ui-design-loop` 자동 전환. State-aware skip (DCN-30-13) + Step 4.5 (loop-catalog §3 풀스펙) cross-ref.
+  - `commands/impl-loop.md` — 127 → 36줄 (72% 절감). `impl-batch-loop × N` chain. outer task `impl-<i>` / inner sub-task `b<i>.<agent>` 컨벤션 (DCN-30-12). catalog §3 + §10 cross-ref.
+  - `commands/product-plan.md` — 113 → 32줄 (72% 절감). `feature-build-loop` cross-ref. Inputs (요구사항 / 사용자 시나리오 / 제약 / 우선순위 / 변경 vs 신규) — `CLARITY_INSUFFICIENT` 사전 회피.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: 4 PR migration (skill 슬림화 + procedure SSOT) 의 마지막 PR. 5 skill 합계 660 → 132줄 (80% 절감). 모든 mechanics 제거 — `loop-procedure.md` (Step 0~8) + `loop-catalog.md` (loop spec) 단일 source. skill = 트리거 + Inputs 정형화 + 후속 라우팅 추천. 메인 Claude 가 catalog 행 + procedure 보고 동적 task 구성. 8 loop 모두 reconstruct 가능 (PR2 self-test pass 2 입증). 후속 — orchestration.md (540줄) split 별도 Task-ID.
+
 ### DCN-CHG-20260430-30
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only, spec
