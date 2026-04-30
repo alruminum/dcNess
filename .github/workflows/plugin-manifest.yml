@@ -14,18 +14,12 @@
 name: plugin-manifest
 
 on:
+  # DCN-30-04: paths 필터 폐기 — branch protection required check 가 paths
+  # 미스매치로 발화 안 하면 PR BLOCKED 영원히. 모든 PR 에 발화.
   pull_request:
     branches: [main]
-    paths:
-      - '.claude-plugin/**'
-      - 'scripts/check_plugin_manifest.mjs'
-      - '.github/workflows/plugin-manifest.yml'
   push:
     branches: [main]
-    paths:
-      - '.claude-plugin/**'
-      - 'scripts/check_plugin_manifest.mjs'
-      - '.github/workflows/plugin-manifest.yml'
 
 permissions:
   contents: read

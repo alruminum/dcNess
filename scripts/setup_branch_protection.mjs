@@ -37,11 +37,9 @@ const PAYLOAD = {
     contexts: REQUIRED_CHECKS,
   },
   enforce_admins: false, // governance 운영자(자기) 가 hot-fix 가능
-  required_pull_request_reviews: {
-    required_approving_review_count: 1,
-    dismiss_stale_reviews: true,
-    require_code_owner_reviews: false,
-  },
+  // DCN-CHG-20260501-04: 1인 운영 — PR author self-approve 불가 (GitHub 정책).
+  // CI 4 checks 가 게이트 본질 → review approve 의무 폐기. CI 통과만 강제.
+  required_pull_request_reviews: null,
   restrictions: null, // push 권한 제한 없음 (PR 만 강제)
   required_linear_history: true, // squash merge 전제
   allow_force_pushes: false,
@@ -56,7 +54,7 @@ const dryRun = args.includes('--dry-run');
 
 console.log(`[branch-protection] target: ${REPO}/branches/${BRANCH}/protection`);
 console.log(`[branch-protection] required checks: ${REQUIRED_CHECKS.join(', ')}`);
-console.log(`[branch-protection] required reviewers: 1 (proposal §5 Phase 3 LGTM gate 외부화)`);
+console.log(`[branch-protection] required reviewers: 0 (1인 운영 — CI 4 checks 가 게이트 본질, DCN-30-04)`);
 
 if (dryRun) {
   console.log('[branch-protection] --dry-run — payload 만 출력:');

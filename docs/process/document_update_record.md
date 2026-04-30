@@ -20,6 +20,24 @@
 
 ## Records
 
+### DCN-CHG-20260501-04
+- **Date**: 2026-05-01
+- **Change-Type**: ci, spec
+- **Files Changed**:
+  - `.github/workflows/python-tests.yml` / `.github/workflows/plugin-manifest.yml` — paths 필터 폐기. branch protection required check 가 paths 미스매치로 발화 안 하면 PR BLOCKED 영원 → 모든 PR 에 발화. CI 비용 < 안전성.
+  - `scripts/setup_branch_protection.mjs` — `required_pull_request_reviews: { count: 1, ... }` → `null`. 1인 운영 PR author self-approve 불가 (GitHub 정책) → review 의무 폐기. CI 4 checks 가 실질 게이트.
+  - `docs/process/governance.md` §2.8 — 표 갱신 (review 1 → 비활성), 근거 갱신, `gh pr merge --squash --auto` 의무 룰 추가.
+  - branch protection live 적용 (`PUT repos/alruminum/dcNess/branches/main/protection`):
+    - required_status_checks contexts = `Document Sync gate` / `unittest discover` / `validate manifest` / `Task-ID format gate`
+    - strict = true (base sync 의무)
+    - required_pull_request_reviews = null
+    - required_linear_history = true
+    - allow_force_pushes = false
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: 사용자 명령 ("CI 로 강제해서 앞으로는 실패 못하게") 반영. DCN-30-37 ~ DCN-30-40 7+ PR 동안 CI fail 누적 + 머지 즉시 진행 회귀 차단. branch protection 적용 — CI 4 checks 모두 SUCCESS 전 squash merge 차단. 본 PR 부터 즉시 적용.
+
 ### DCN-CHG-20260501-03
 - **Date**: 2026-05-01
 - **Change-Type**: test
