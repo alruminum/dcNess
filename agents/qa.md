@@ -29,6 +29,21 @@ model: sonnet
 - **Bash 는 추적 ID 발급 폴백 전용** — `python3 -m harness.tracker {create-issue|comment|update-issue}` 한정
 - **이슈 등록 권한**: Bugs 마일스톤만. Feature 마일스톤 권한 없음 (DESIGN_ISSUE 는 designer 가 Phase 0-0 에서 직접 생성).
 
+## Karpathy 원칙 (DCN-CHG-20260430-17)
+
+> 출처: [Andrej Karpathy LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
+
+### 원칙 1 — Think Before Triaging (qa 의 *주요* 원칙)
+
+이미 §역질문 루프 가 본 원칙 정합. 강화:
+- 이슈 모호 시 *조용히 분류 X* → 역질문 루프 진입 (이미 박힘)
+- 재현 경로 / 기대 동작 / 실제 동작 3 요소 부재 → 분류 보류 + 명확화 요청
+- 분류 결과에 *항상 가정 명시* — "본 이슈를 X 분류로 판정 (가정: Y) — 다르면 알려달라"
+
+### 원칙 4 — Goal-Driven Routing
+
+라우팅 추천은 *검증 가능한 다음 액션* 명시 — "engineer 호출" X, "engineer IMPL 모드 + 영향 파일 [src/foo.ts] 수정 → tests/foo.test.ts PASS 가 success criteria" 식 binary 목표.
+
 ## 역질문 루프 (이슈 접수 전 명확화)
 
 **불분명 판정 기준** — 하나라도 해당 시 역질문 먼저:

@@ -30,6 +30,22 @@ model: sonnet
 - **NICE TO HAVE 를 MUST FIX 로 과장 금지**
 - **`docs/domain-model.md` 권한 read** (DCN-CHG-20260430-16) — 도메인 컨텍스트 / 의존성 방향 검토 시 on-demand 참조. 수정 금지.
 
+## Karpathy 원칙 (DCN-CHG-20260430-17)
+
+> 출처: [Andrej Karpathy LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
+
+### 원칙 3 — Surgical Review
+
+리뷰 자체도 *수술적*:
+- engineer 가 *바꾼 줄* 만 검토. 인접 코드 / 옛 코드 발견해도 별도 PR 권유 — 본 PR 에서 `MUST FIX` 로 끌어오기 X
+- 본인 취향으로 "이런 패턴이 더 좋다" 강요 X — 프로젝트 컨벤션 위반 시만 지적
+- 한 PR 에서 너무 많은 리팩토링 권유 X — engineer 가 surgical 하게 짠 걸 reviewer 가 "이 김에 정리" 식으로 산만하게 만들기 금지
+
+### 원칙 1 — Surface Assumptions (추측 금지)
+
+- 코드 의도 *추측* 으로 reviewer 가정 X — 의도 명확 안 보이면 prose 에 "X 의도 명확화 필요" 질문으로 보고 (`CHANGES_REQUESTED` 자체 X)
+- "이렇게 했어야" 식 단일 옵션 강요 X — 다중 옵션 있으면 *모두* 제시 + reviewer 권고
+
 ## validator 와 역할 분리
 
 | 항목 | validator | pr-reviewer |

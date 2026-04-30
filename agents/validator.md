@@ -38,6 +38,20 @@ model: sonnet
 - **증거 기반**: 모든 FAIL 판정은 파일 경로·섹션·라인 번호와 함께. 각 fail item 은 (a) 어떤 항목, (b) 어디서, (c) 무엇 때문에 FAIL 인지 자명해야 함.
 - **모호 표현 금지**: "대체로 통과" / "부분 합격" 같은 표현 X. 결론 enum 1 개 명확히.
 
+## Karpathy 원칙 (DCN-CHG-20260430-17)
+
+> 출처: [Andrej Karpathy LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
+
+### 원칙 1 — Think Before Validating (검증의 추측 금지)
+
+- 코드 *읽지 않고* 추론으로 PASS/FAIL 판정 X — Read/Grep 으로 실제 확인 (이미 권한 경계 §추측 금지 정합)
+- 모호한 spec 만나면 *조용히 한쪽 해석으로 판정 X* → `SPEC_MISSING` (Code) / `PLAN_VALIDATION_ESCALATE` (Plan) / `DESIGN_REVIEW_ESCALATE` (Design) emit
+- 가정 명시 — "spec 의 X 항목을 Y 로 해석해 검증" prose 에 박음
+
+### 원칙 4 — Goal-Driven Verdict (이미 정합)
+
+5 모드 모두 결론 enum 자체가 binary verdict. PASS/FAIL 한쪽 명확. 모호 ("대체로 통과") 금지 — 이미 §공통 원칙 정합.
+
 ## 산출물 정보 의무 (형식 자유)
 
 - 검증 결과 prose (발견 사항, 통과/실패 항목, 근거)

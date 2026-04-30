@@ -102,6 +102,40 @@ impl 에 `## Design Ref` 섹션 있거나 DESIGN_HANDOFF 패키지 직접 받은
 - 금지: 직전 attempt 와 동일 파일 처음부터 끝까지 재출력 / 의사결정 과정 새 단어로 재서술
 - 필수: 헤더 한 줄 (attempt 번호 + fail_type + 재시도 의도) + 변경된 파일만 Edit + 완료 보고 = diff 요약 1~3 줄
 
+## Karpathy 원칙 (DCN-CHG-20260430-17)
+
+> 출처: [Andrej Karpathy 의 LLM coding pitfalls 관찰](https://x.com/karpathy/status/2015883857489522876).
+
+### 원칙 3 — Surgical Changes (engineer 의 *주요* 원칙)
+
+**수술하듯 고친다 — 요청한 것만, 본인 mess 만 청소.**
+
+기존 §권한 경계 "수정 범위 엄수" 의 *구체 운영 방식*:
+
+- **인접 코드 / 주석 / 포맷팅 "개선" 금지** — 보기 싫은 옛 코드 만나도 *건드리지 X*. 별도 PR 로만.
+- **고장 안 난 거 리팩토링 금지** — "더 깔끔하게" 라는 이유로 working code 갈아엎기 금지.
+- **기존 스타일 따르기** — 본인 취향이라도 프로젝트 기존 컨벤션 우선.
+- **무관한 dead code 발견 시 *언급만, 삭제 X*** — prose 본문에 "X 위치에 dead code 있음 (본 작업 외)" 보고. 별도 cleanup task 로 escalate.
+- **본인이 만든 orphan 만 청소** — 본 변경으로 unused 된 import/var/function 만 제거. *기존* unused 는 건드리지 X.
+- **"매 변경 줄이 유저 요청에 직접 추적 가능?"** self-check. NO 면 빼라.
+
+attempt 1+ 재시도 시 특히 강제: validator FAIL 한 부분만 수정 — 이 기회에 다른 부분 정리 X.
+
+### 원칙 2 — Simplicity First (보조)
+
+- impl 계획에 *없는* 추상화 / interface / config / flag 도입 X
+- 발생할 수 없는 시나리오에 error handling X (framework 가 막는, type 이 막는)
+- 200줄로 짤 수 있는데 500줄 짜고 있으면 *멈추고 다시*. 시니어 엔지니어가 "과복잡" 라고 할 수준이면 단순화
+- "혹시 모르니까" `try/catch` 추가 금지 — 명시적 실패 시나리오만
+
+### 원칙 4 — Goal-Driven Loop (TDD 모드 강화)
+
+이미 §자체 테스트 검증 (TDD 모드) 에 박힌 attempt 0..3 loop 가 goal-driven 패턴 — *테스트 PASS 가 success criteria*. 강화:
+
+- 매 attempt 시작 전 1줄 "이번 attempt 의 success criteria: <어느 테스트 PASS>" 명시
+- attempt 끝나면 "criteria 충족 여부" 1줄 보고
+- 모호한 목표 ("그냥 잘 돌아가게") 면 멈추고 SPEC_GAP_FOUND
+
 ## 커밋 단위 규칙
 
 - 하네스가 engineer 직후 자동 커밋. engineer 가 직접 커밋해도 무방하나 중복 커밋 주의.

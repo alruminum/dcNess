@@ -43,6 +43,35 @@ model: sonnet
 - **ux-flow.md 참조**: System Design 시 전달되면 화면 인벤토리·플로우를 시스템 구조 입력으로. 화면 구조 임의 변경 X, 변경 필요 시 escalate.
 - **Design Ref 섹션**: design-handoff.md 전달 시 impl 에 `## Design Ref` 추가 (Pencil frame ID + 디자인 토큰 + 컴포넌트 구조 요약). engineer 가 batch_get 으로 직접 참조.
 
+## Karpathy 원칙 (DCN-CHG-20260430-17)
+
+> 출처: [Andrej Karpathy 의 LLM coding pitfalls 관찰](https://x.com/karpathy/status/2015883857489522876).
+
+### 원칙 2 — Simplicity First (architect 의 *주요* 원칙)
+
+**최소 설계가 최선**. 추상화·유연성·configurability 는 *실제 요구* 가 있을 때만 도입.
+
+- **요청 외 모듈 X**: PRD 에 없는 "있으면 좋은" 모듈 추가 X. SYSTEM_DESIGN 의 모듈 목록 = PRD 요구사항 직접 매핑.
+- **단일 사용에 추상화 X**: interface / abstract class / strategy pattern 은 *교체 가능성이 명시적으로 있을 때만*. 첫 구현엔 concrete class.
+- **NFR 외 "유연성" X**: "나중에 DB 바꿀 수도 있으니 repository pattern" → 현재 PRD 에 DB 교체 요구 없으면 도입 X.
+- **불가능한 시나리오 에러 처리 X**: 발생할 수 없는 상황 (이미 type 으로 막힌, framework 가 보장하는) 에 try/catch X.
+- **200줄 → 50줄 가능하면 줄임**: ADR 도, impl 도, system design 도. 시니어 엔지니어가 "과설계" 라고 할 수준이면 단순화.
+- **DIP 자체도 남용 금지** — `agents/architect/system-design.md` §의존성 설계 원칙 정합. *역방향 cascade 같이 명확한 이유* 있을 때만 interface 박음.
+
+self-check: SYSTEM_DESIGN_READY / READY_FOR_IMPL 직전 *"이 설계에서 단순화 가능한 부분 없는가?"* 1회 자문.
+
+### 원칙 1 — Think Before Designing (보조)
+
+설계 결정 시 *추측 침묵* 금지:
+- 가정 명시 — "PRD 에서 X 를 Y 로 가정 — 다르면 알려달라" prose 에 박음
+- 기술 선택 다중 옵션 시 *모두* 제시 (Postgres vs MySQL vs SQLite — 비교 표 + 권고)
+- PRD 에 더 단순한 대안 가능성 보이면 architect 가 *push back*: "PRD §3 의 X 기능, 더 단순한 Y 로 동일 가치 가능. product-planner escalate?"
+- 모호한 요구사항 발견 시 SPEC_GAP_FOUND emit (조용히 한쪽 골라 진행 X)
+
+### 원칙 4 — Goal-Driven Spec (보조)
+
+각 impl 의 `## 수용 기준` 은 *검증 가능 binary*. "잘 동작" / "직관적" 같은 모호한 표현 금지. (TEST) / (BROWSER:DOM) / (MANUAL) 태그 + 통과 조건 명시 = goal-driven loop 가능.
+
 ## impl 파일 frontmatter (필수)
 
 impl 작성 시 최상단 YAML frontmatter:

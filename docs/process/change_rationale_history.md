@@ -18,6 +18,42 @@
 
 ## Records
 
+### DCN-CHG-20260430-17
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 forrestchang/andrej-karpathy-skills 분석 + dcness agent 에 분배 삽입 요청.
+  - Andrej Karpathy 의 LLM coding pitfalls 관찰 정합 — "wrong assumptions / hidden confusion / overcomplicate / orthogonal edits / weak success criteria".
+  - dcness 의 기존 agent 룰들이 이 원칙들과 *부분* 정합 ("추측 금지", "수정 범위 엄수" 등) 이지만 *구체 운영 방식* 부재. LLM 의 압축/추측/over-engineer 본능을 prompt 텍스트만으로 막기 어려운 문제는 DCN-CHG-20260430-15 에서 이미 인지됨 (echo 룰 강화).
+- **Alternatives**:
+  1. *옵션 1 — 글로벌 CLAUDE.md 에 4 원칙 박기*. 단순. 단 dcness 는 plugin 으로 다른 프로젝트에 배포되므로 글로벌 CLAUDE.md 외 agent 별 inject 가 정확. 차순위.
+  2. *옵션 2 — agent 1개에 통합*. 모든 agent 가 1 file 참조. 분리 책임 위반 + 각 agent 의 *적합한* 원칙만 박는 fine-grained 안 됨. 기각.
+  3. **(채택) 옵션 3 — agent 별 적합한 원칙 분배 (중복 허용)** — 사용자 매핑 (1→planner, 2→architect, 3→engineer) 우선 + 4 (test-engineer 주요) 추가 + 나머지 agent 에 적합한 원칙 보조 삽입.
+- **Decision**:
+  - 옵션 3 채택. 10 agent 동시 강화.
+  - 분배 매트릭스:
+    | Agent | 주요 원칙 | 보조 원칙 |
+    |---|---|---|
+    | product-planner | 1 Think Before | 4 Goal-Driven Spec |
+    | architect | 2 Simplicity First | 1, 4 |
+    | engineer | 3 Surgical Changes | 2, 4 |
+    | test-engineer | 4 Goal-Driven Execution | 1 |
+    | validator | — (정합 강화) | 1, 4 |
+    | pr-reviewer | — | 3, 1 |
+    | security-reviewer | — | 1, 4 |
+    | designer | — | 2, 1 |
+    | ux-architect | — | 1, 2 |
+    | qa | 1 Think Before Triaging | 4 |
+  - 각 agent 의 기존 룰 (예: planner 의 "추측 금지", engineer 의 "수정 범위 엄수") 을 Karpathy 원칙의 *구체 운영 방식* 으로 강화. 별도 신설 X — 기존 룰 정합 강화.
+  - 출처 링크 1회 인용 (각 agent 첫 Karpathy 절에).
+  - DCN-CHG-30-15 (echo 룰 should → MUST) 와 동일 정신 — prompt 텍스트의 신뢰성 격상.
+- **Follow-Up**:
+  - **jajang 실전 푸딩 측정** — 첫 1~2 사이클에서 Karpathy 원칙 발화 확인. 특히:
+    - product-planner 가 가정 명시 / 다중 해석 제시하는가
+    - architect 가 단순화 push back / "200줄 → 50줄 가능?" self-check 하는가
+    - engineer 가 인접 코드 안 건드리는가 (실측 위반 사례 수집)
+    - test-engineer 가 모호한 spec 에 SPEC_GAP_FOUND emit 하는가
+  - **회귀 시 강화 추가 검토** — 위반 사례 수집되면 mechanical enforcement (helper-side 등) fallback.
+
 ### DCN-CHG-20260430-16
 - **Date**: 2026-04-30
 - **Rationale**:

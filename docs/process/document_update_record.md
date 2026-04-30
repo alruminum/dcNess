@@ -20,6 +20,25 @@
 
 ## Records
 
+### DCN-CHG-20260430-17
+- **Date**: 2026-04-30
+- **Change-Type**: agent
+- **Files Changed**:
+  - `agents/product-planner.md` — Karpathy 원칙 1 (Think Before Speccing — 가정 surface / 다중 해석 / push back / 명확화) 신규 + 원칙 4 (Goal-Driven Spec — 수용 기준 검증 가능 binary) 보조.
+  - `agents/architect.md` — Karpathy 원칙 절 신규. 원칙 2 (Simplicity First) *주요* + 원칙 1 (Think Before Designing) + 원칙 4 (Goal-Driven Spec) 보조.
+  - `agents/engineer.md` — Karpathy 원칙 절 신규. 원칙 3 (Surgical Changes) *주요* + 원칙 2 (Simplicity First) + 원칙 4 (Goal-Driven Loop — TDD attempt 강화) 보조.
+  - `agents/test-engineer.md` — Karpathy 원칙 절 신규. 원칙 4 (Goal-Driven Execution) *주요* + 원칙 1 (Think Before Testing) 보조.
+  - `agents/validator.md` — Karpathy 원칙 절 신규. 원칙 1 (검증의 추측 금지) + 원칙 4 (Goal-Driven Verdict 정합).
+  - `agents/pr-reviewer.md` — Karpathy 원칙 절 신규. 원칙 3 (Surgical Review) + 원칙 1 (Surface Assumptions).
+  - `agents/security-reviewer.md` — Karpathy 원칙 절 신규. 원칙 1 (Surface Threat Model Assumptions) + 원칙 4 (Goal-Driven Findings).
+  - `agents/designer.md` — Karpathy 원칙 절 신규. 원칙 2 (Simplicity 디자인 측면) + 원칙 1 (Surface Design Assumptions).
+  - `agents/ux-architect.md` — Karpathy 원칙 절 신규. 원칙 1 (Surface Flow Assumptions) + 원칙 2 (Simplicity UX 측면).
+  - `agents/qa.md` — Karpathy 원칙 절 신규. 원칙 1 (Think Before Triaging) *주요* + 원칙 4 (Goal-Driven Routing).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: forrestchang/andrej-karpathy-skills 의 4 원칙 (Think Before / Simplicity First / Surgical Changes / Goal-Driven Execution) 을 dcness 10 agent 에 분배 삽입. 사용자 매핑 (1→planner, 2→architect, 3→engineer) + 추가 (4→test-engineer 주요, 나머지 agent 에 적합한 원칙 보조). 중복 허용 — 각 agent 에 적합한 원칙 모두 박음. 각 agent 의 기존 룰과 정합성 검토 후 *구체 운영 방식* 으로 강화 ("추측 금지" → 4 항 구체화 등).
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-16
 - **Date**: 2026-04-30
 - **Change-Type**: agent, spec
