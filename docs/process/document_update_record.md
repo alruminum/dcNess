@@ -20,6 +20,15 @@
 
 ## Records
 
+### DCN-CHG-20260501-08
+- **Date**: 2026-05-01
+- **Change-Type**: agent (commands/ 는 미분류이지만 사용자 가시 skill 변경 → governance trail 정책 정합)
+- **Files Changed**:
+  - `commands/init-dcness.md` — Step 2.5 신규 (`~/.claude/settings.json` 의 `.permissions.allow` 에 `Read(~/.claude/plugins/cache/dcness/**)` jq append). settings 부재 시 신규 생성. 멱등 (이미 존재 시 skip). jq 미설치 시 WARN. 재설치 시 settings 보존 안내 추가.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 보고 — SessionStart 훅이 plugin cache (`~/.claude/plugins/cache/dcness/**`) 안 SSOT 를 inject 해도 메인 Claude 가 read 권한 부재로 못 읽음. acceptEdits 모드라도 plugin cache 는 디폴트 차단 → init-dcness 가 활성화 시 명시 allow append. 멱등 jq merge 3 케이스 (existing / empty allow / no permissions) 모두 PASS 직접 검증.
+
 ### DCN-CHG-20260501-07
 - **Date**: 2026-05-01
 - **Change-Type**: ci, spec
