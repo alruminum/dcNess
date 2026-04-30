@@ -38,6 +38,8 @@ __all__ = [
     "HARNESS_ONLY_AGENTS",
     "handle_session_start",
     "handle_pretooluse_agent",
+    "handle_pretooluse_file_op",
+    "handle_posttooluse_agent",
 ]
 
 
@@ -236,6 +238,121 @@ def handle_pretooluse_agent(
                 )
                 return 1
 
+    # DCN-CHG-20260501-01: 통과 시 live.json.active_agent 기록 — sub-agent 내부
+    # PreToolUse(Edit/Write/Read/Bash) 훅이 활성 agent 판정에 사용 (agent_boundary).
+    if subagent:
+        try:
+            update_live(sid, base_dir=base_dir, active_agent=subagent, active_mode=(mode or None))
+        except (OSError, ValueError):
+            pass  # 실패해도 Agent 호출은 통과 — 식별만 누락.
+
+    return 0
+
+
+# ── DCN-CHG-20260501-01 — sub-agent path 강제 (handoff-matrix.md §4) ─
+
+
+def handle_pretooluse_file_op(
+    stdin_data: Optional[Dict[str, Any]] = None,
+    cc_pid: Optional[int] = None,
+    *,
+    base_dir: Optional[Path] = None,
+) -> int:
+    """PreToolUse Edit/Write/Read/Bash — agent_boundary 강제.
+
+    활성 sub-agent (live.json.active_agent) 가 있을 때만 검사. 메인 Claude 는
+    governance Document Sync 게이트가 별도 보호하므로 본 훅 통과.
+    """
+    from harness.agent_boundary import (
+        check_read_allowed,
+        check_write_allowed,
+        extract_bash_paths,
+    )
+
+    if stdin_data is None:
+        try:
+            raw = sys.stdin.read()
+            stdin_data = json.loads(raw) if raw.strip() else {}
+        except (json.JSONDecodeError, OSError):
+            return 0
+
+    if not isinstance(stdin_data, dict):
+        return 0
+
+    sid = _extract_sid(stdin_data)
+    if not valid_session_id(sid):
+        return 0
+
+    live = read_live(sid, base_dir=base_dir) or {}
+    active_agent = live.get("active_agent") or ""
+    if not active_agent:
+        return 0  # 메인 Claude — governance 가 보호.
+
+    tool_name = stdin_data.get("tool_name", "") or ""
+    tool_input = stdin_data.get("tool_input") or {}
+    if not isinstance(tool_input, dict):
+        return 0
+
+    cwd = Path.cwd()
+
+    # Read — `file_path` 직접.
+    if tool_name == "Read":
+        fp = tool_input.get("file_path", "") or ""
+        if fp:
+            reason = check_read_allowed(active_agent, fp, cwd=cwd)
+            if reason:
+                print(f"[agent-boundary] {reason}", file=sys.stderr)
+                return 1
+        return 0
+
+    # Edit / Write / NotebookEdit — `file_path` 직접 = write op.
+    if tool_name in ("Edit", "Write", "NotebookEdit"):
+        fp = tool_input.get("file_path", "") or ""
+        if fp:
+            reason = check_write_allowed(active_agent, fp, cwd=cwd)
+            if reason:
+                print(f"[agent-boundary] {reason}", file=sys.stderr)
+                return 1
+        return 0
+
+    # Bash — heuristic. write indicator (sed -i / cp / mv / rm / >) 시만 path 추출.
+    if tool_name == "Bash":
+        cmd = tool_input.get("command", "") or ""
+        for fp in extract_bash_paths(cmd):
+            reason = check_write_allowed(active_agent, fp, cwd=cwd)
+            if reason:
+                print(f"[agent-boundary][Bash] {reason}", file=sys.stderr)
+                return 1
+        return 0
+
+    return 0
+
+
+def handle_posttooluse_agent(
+    stdin_data: Optional[Dict[str, Any]] = None,
+    cc_pid: Optional[int] = None,
+    *,
+    base_dir: Optional[Path] = None,
+) -> int:
+    """PostToolUse Agent — live.json.active_agent / active_mode 해제."""
+    if stdin_data is None:
+        try:
+            raw = sys.stdin.read()
+            stdin_data = json.loads(raw) if raw.strip() else {}
+        except (json.JSONDecodeError, OSError):
+            return 0
+
+    if not isinstance(stdin_data, dict):
+        return 0
+
+    sid = _extract_sid(stdin_data)
+    if not valid_session_id(sid):
+        return 0
+
+    try:
+        update_live(sid, base_dir=base_dir, active_agent=None, active_mode=None)
+    except (OSError, ValueError):
+        return 0
     return 0
 
 
@@ -299,6 +416,14 @@ def _main(argv: Optional[list] = None) -> int:
     p_ag = sub.add_parser("pretooluse-agent", help="PreToolUse Agent 훅 처리")
     p_ag.add_argument("--cc-pid", type=int, default=None)
 
+    p_fo = sub.add_parser("pretooluse-file-op",
+                          help="PreToolUse Edit/Write/Read/Bash agent_boundary 강제")
+    p_fo.add_argument("--cc-pid", type=int, default=None)
+
+    p_pa = sub.add_parser("posttooluse-agent",
+                          help="PostToolUse Agent — live.json.active_agent 해제")
+    p_pa.add_argument("--cc-pid", type=int, default=None)
+
     args = parser.parse_args(argv)
 
     # cc_pid 미명시 시 PPID 사용 (bash 훅 의 PPID = CC main)
@@ -308,6 +433,10 @@ def _main(argv: Optional[list] = None) -> int:
         return handle_session_start(cc_pid=cc_pid)
     elif args.cmd == "pretooluse-agent":
         return handle_pretooluse_agent(cc_pid=cc_pid)
+    elif args.cmd == "pretooluse-file-op":
+        return handle_pretooluse_file_op(cc_pid=cc_pid)
+    elif args.cmd == "posttooluse-agent":
+        return handle_posttooluse_agent(cc_pid=cc_pid)
     return 0
 
 

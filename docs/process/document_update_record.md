@@ -20,6 +20,23 @@
 
 ## Records
 
+### DCN-CHG-20260501-01
+- **Date**: 2026-05-01
+- **Change-Type**: harness, hooks, spec, test
+- **Files Changed**:
+  - `harness/agent_boundary.py` (신규) — `DCNESS_INFRA_PATTERNS` 9 패턴 / `ALLOW_MATRIX` 12 agent / `READ_DENY_MATRIX` / `is_infra_project()` 4 OR 신호 / `is_opt_out()` `.no-dcness-guard` 마커 / `check_write_allowed()` / `check_read_allowed()` / `extract_bash_paths()` heuristic. handoff-matrix.md §4 spec 의 코드 SSOT.
+  - `harness/hooks.py` — `handle_pretooluse_agent` 끝에 `update_live(active_agent=subagent, active_mode=mode)` 추가 (sub-agent 식별). `handle_pretooluse_file_op()` 신규 (Edit/Write/Read/Bash agent_boundary 강제). `handle_posttooluse_agent()` 신규 (live.json clear). CLI 2개 subcommand 추가.
+  - `hooks/file-guard.sh` (신규) — PreToolUse Edit/Write/Read/Bash wrapper.
+  - `hooks/post-agent-clear.sh` (신규) — PostToolUse Agent wrapper.
+  - `hooks/hooks.json` — `Edit|Write|NotebookEdit|Read|Bash` matcher 추가 (PreToolUse) + `Agent` matcher 추가 (PostToolUse).
+  - `tests/test_agent_boundary.py` (신규) — 27 테스트 (is_infra_project / write / read / opt-out / Bash heuristic / 통합).
+  - `tests/test_hooks.py` — `FileOpAgentRecordTests` + `FileOpHookTests` + `PostToolUseAgentClearTests` 11 테스트 추가. import 갱신.
+  - `docs/handoff-matrix.md` §4.4 코드 SSOT cross-ref + §4.5 강제 노트 추가. spec 의 INFRA_PATTERNS 리스트도 코드와 동기화 (loop-procedure / loop-catalog / dcness-guidelines / hooks·session_state·agent_boundary 보호 추가).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: handoff-matrix.md §4.4/§4.5 spec 의 코드 enforcement 0 갭 해소. PreToolUse Edit/Write/Read/Bash 훅 신설로 sub-agent 인프라 path 침해 차단. live.json.active_agent 기록 (PreToolUse Agent) + 해제 (PostToolUse Agent) 로 메인 vs sub-agent 분기. user 프로젝트 활성 시만 enforce — dcness 자체 (`is_infra_project()` True) 는 통과. `.no-dcness-guard` opt-out 마커 + DCNESS_INFRA env 우회 가능. 38 신규 테스트 / all PASS.
+
 ### DCN-CHG-20260430-40
 - **Date**: 2026-04-30
 - **Change-Type**: hooks

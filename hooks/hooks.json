@@ -1,5 +1,5 @@
 {
-  "description": "dcNess — 컨베이어 인프라 훅 (SessionStart sid 추출 + PreToolUse Agent catastrophic-gate)",
+  "description": "dcNess — 컨베이어 인프라 훅 (SessionStart sid + PreToolUse Agent catastrophic-gate + Edit/Write/Read/Bash file-guard + PostToolUse Agent post-clear)",
   "hooks": {
     "SessionStart": [
       {
@@ -20,6 +20,28 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/catastrophic-gate.sh\"",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit|Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/file-guard.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/post-agent-clear.sh\"",
+            "timeout": 5
           }
         ]
       }

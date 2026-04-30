@@ -39,7 +39,9 @@ from tempfile import TemporaryDirectory
 
 from harness.hooks import (
     HARNESS_ONLY_AGENTS,
+    handle_posttooluse_agent,
     handle_pretooluse_agent,
+    handle_pretooluse_file_op,
     handle_session_start,
 )
 from harness.session_state import (
@@ -559,6 +561,159 @@ class SilentAllowTests(_PreToolBase):
     def test_non_dict_stdin_silent(self) -> None:
         rc = handle_pretooluse_agent(
             stdin_data="invalid",  # type: ignore[arg-type]
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+
+# ---------------------------------------------------------------------------
+# DCN-CHG-20260501-01 — handle_pretooluse_file_op + handle_posttooluse_agent
+# ---------------------------------------------------------------------------
+
+
+class FileOpAgentRecordTests(_PreToolBase):
+    """PreToolUse Agent 통과 시 live.json.active_agent 기록 확인."""
+
+    def test_active_agent_recorded_on_pass(self) -> None:
+        # qa = HARNESS_ONLY 외 + run 컨텍스트 있음 → 통과
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("qa"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertEqual(live.get("active_agent"), "qa")
+
+    def test_active_agent_with_mode(self) -> None:
+        # validator + DESIGN_VALIDATION = HARNESS_ONLY 아님 (DESIGN_VALIDATION 미포함)
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("validator", mode="DESIGN_VALIDATION"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertEqual(live.get("active_agent"), "validator")
+        self.assertEqual(live.get("active_mode"), "DESIGN_VALIDATION")
+
+
+class FileOpHookTests(_PreToolBase):
+    """PreToolUse Edit/Write/Read/Bash agent_boundary 강제."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        # 모든 infra 신호 해제 — user 프로젝트 시뮬레이션.
+        self._old_env = {}
+        for k in ("DCNESS_INFRA", "CLAUDE_PLUGIN_ROOT"):
+            self._old_env[k] = os.environ.get(k)
+            os.environ.pop(k, None)
+        # cwd 도 whitelist 외로 임시 이동.
+        self._old_cwd = os.getcwd()
+        os.chdir(str(self.base))
+
+    def tearDown(self) -> None:
+        os.chdir(self._old_cwd)
+        for k, v in self._old_env.items():
+            if v is not None:
+                os.environ[k] = v
+        super().tearDown()
+
+    def _file_op_payload(self, tool_name: str, **tool_input) -> dict:
+        return {
+            "sessionId": self.sid,
+            "tool_name": tool_name,
+            "tool_input": tool_input,
+        }
+
+    def test_main_claude_passes(self) -> None:
+        # active_agent 미설정 → 통과.
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload("Edit", file_path="hooks/x.sh"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_engineer_blocked_on_infra_edit(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload(
+                "Edit", file_path="hooks/catastrophic-gate.sh"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_engineer_allowed_on_src_edit(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload("Edit", file_path="src/foo.ts"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_engineer_blocked_on_random_path(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload("Write", file_path="README.md"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_product_planner_blocked_on_src_read(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="product-planner")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload("Read", file_path="src/main.ts"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_engineer_bash_sed_blocks_infra(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload(
+                "Bash", command="sed -i 's/x/y/' hooks/foo.sh"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_bash_no_indicator_passes(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload("Bash", command="ls -la docs/"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+
+class PostToolUseAgentClearTests(_PreToolBase):
+    def test_clears_active_agent(self) -> None:
+        update_live(
+            self.sid, base_dir=self.base,
+            active_agent="engineer", active_mode="IMPL",
+        )
+        rc = handle_posttooluse_agent(
+            stdin_data={"sessionId": self.sid},
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+        self.assertNotIn("active_mode", live)
+
+    def test_invalid_sid_silent(self) -> None:
+        rc = handle_posttooluse_agent(
+            stdin_data={"sessionId": "!"},
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
