@@ -18,6 +18,35 @@
 
 ## Records
 
+### DCN-CHG-20260430-28
+- **Date**: 2026-04-30
+- **Rationale**:
+  - PR1 (DCN-30-27 — loop-procedure.md SSOT 신설) 머지 후 self-test 진행. 메인 Claude 가 §7 매트릭스만 보고 8 loop reconstruct 가능한지 확인.
+  - **Gap 발견** (4 loop + 공통 4):
+    - `feature-build-loop` 분기 (PRODUCT_PLAN_UPDATED skip / UX_REFINE_READY / CLARITY_INSUFFICIENT) 매트릭스에 없음
+    - `impl-ui-design-loop` task 모호 — designer + design-critic 가 1 step 인지 2 step 인지 불명, DESIGN_LOOP_ESCALATE 분기 없음
+    - `ux-design-stage` designer mode (ONE/THREE_WAY) / 사용자 PICK 단계 미명시
+    - `ux-refine-stage` 사용자 승인 단계 (§3.3 mini-graph 에 있음) 매트릭스에 없음
+    - 공통: `allowed_enums` full set / `branch_prefix` decision rule (impl-batch-loop feat vs chore 분기 기준) / sub_cycle agent (SPEC_GAP / POLISH / IMPL-RETRY / SCREEN-ROUND) / Step 4.5 적용 여부 컬럼 부재
+  - 사용자 의도: skill 슬림화 후 메인 Claude 가 §7 만 보고 task 동적 구성. baseline reconstruct 가능해도 분기 / sub_cycle 부족하면 실전 운영에서 매번 commands/<skill>.md 또는 orchestration.md §3 / §4 cross-ref 필요 → 슬림화 효과 ↓.
+- **Alternatives**:
+  1. **(채택) Option A — §7 매트릭스 보강 후 PR3 진입**. 매트릭스를 §7.0 인덱스 (간소) + §7.1~§7.8 행별 풀스펙 sub-section 으로 재구조화. 가독성 ↑ + reconstruct 100%.
+  2. *Option B — 매트릭스 그대로 두고 cross-ref 강화*. §7 행마다 "분기 details = §3.3 / §4.X" link 박음. 가벼움. 단 메인 Claude 가 cross-ref 따라가는 부담 ↑ → 슬림화 의도 약화.
+  3. *Option C — 현 상태로 PR2 (qa.md pilot) 진행*. PR2 자체는 가장 단순한 loop (qa-triage 1 step) — 즉시 가능. 단 PR3 진입 *전* 보강 필요 = 결국 미루기. 기각.
+- **Decision**:
+  - Option A 채택 (사용자 명시 컨펌).
+  - **§7 재구조화**:
+    - §7.0 인덱스: 8 loop × 6 컬럼 (loop / entry_point / task_list / advance / clean_enum / expected_steps). 한눈 인지용.
+    - §7.1~§7.8 행별 풀스펙: 각 loop 별 sub-section. 컬럼 = `branch_prefix` / `Step 4.5 적용` / Step 별 `allowed_enums` 표 / 분기 표 / sub_cycles 표.
+    - §7.9 = `impl-loop` multi-batch chain
+    - §7.10 = catastrophic 룰 정합
+  - **Migration Plan 갱신**: PR2 (현재) = §7 보강. PR3 (-29) = `--auto-review` flag + qa.md slim. PR4 (-30) = 4 skill bulk slim. 총 4 PR.
+- **Follow-Up**:
+  - **PR3 (DCN-CHG-20260430-29 예정)**: `harness/session_state.py:_cli_finalize_run --auto-review` flag + tests + `commands/qa.md` slim pilot.
+  - **PR4 (DCN-CHG-20260430-30 예정)**: 4 skill bulk slim.
+  - **drift 가드**: §7.0 인덱스 ↔ §7.1~§7.8 sub-section 행 수 1:1 강제. 행 추가 시 sub-section 추가 의무. cross-ref drift = doc-sync gate 자동 검출 X (수동) — 후속 PR 에서 sanity check script 검토.
+  - **잠재 미흡 부분 모니터링**: ONE_WAY 키워드 트리거 룰 (사용자 발화 어떤 keyword 포함 시?), Step 2.5 사용자 승인 helper 처리 (begin/end-step 비대상 명시 — driver 도입 시 review).
+
 ### DCN-CHG-20260430-27
 - **Date**: 2026-04-30
 - **Rationale**:

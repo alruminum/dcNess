@@ -20,6 +20,23 @@
 
 ## Records
 
+### DCN-CHG-20260430-28
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/loop-procedure.md` — §7 매트릭스 보강. 252 → 436 줄. PR1 self-test 에서 발견된 gap 반영:
+    - §7.0 인덱스 (한눈) 6 컬럼만
+    - §7.1~§7.8 행별 풀스펙 sub-section 8 개 — Step 별 `allowed_enums` 표 / 분기 / sub_cycles / branch_prefix decision rule / Step 4.5 적용 여부 명시
+    - feature-build-loop §7.1 분기 (PRODUCT_PLAN_UPDATED skip / UX_REFINE_READY / CLARITY_INSUFFICIENT 등) 명시
+    - impl-ui-design-loop §7.3 design-critic 별도 step 으로 분리 + DESIGN_LOOP_ESCALATE / VARIANTS_ALL_REJECTED 분기
+    - ux-design-stage §7.6 / ux-refine-stage §7.7 designer mode (THREE_WAY 권장 / 키워드 ONE_WAY) + 사용자 PICK / Step 2.5 사용자 승인 명시
+    - impl-batch-loop §7.2 state-aware skip (DCN-30-13 MODULE_PLAN_READY 마커) 보존
+    - sub_cycle agent (architect:SPEC_GAP / engineer:POLISH-<n> / engineer:IMPL-RETRY-<n> / designer:SCREEN-ROUND-<n>) allowed_enums 명시
+    - branch_prefix decision rule (impl-batch-loop = feat/chore/fix 결정 기준 / quick-bugfix-loop = qa enum 기반) 명시
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: PR1 (DCN-30-27) self-test 결과 — §7 매트릭스 baseline reconstruct 가능하나 분기 / sub-cycle / allowed_enums full set / branch decision rule 디테일 부족. 사용자 결정 (Option A — 보강 후 PR2 진행) 따라 매트릭스를 §7.0 인덱스 + §7.1~§7.8 행별 풀스펙 으로 재구조화. PR3 (--auto-review + qa.md slim pilot) / PR4 (4 skill bulk slim) 진입 전 SSOT self-sufficiency 확보.
+
 ### DCN-CHG-20260430-27
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only
