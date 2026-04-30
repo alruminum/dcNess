@@ -18,6 +18,30 @@
 
 ## Records
 
+### DCN-CHG-20260430-37
+- **Date**: 2026-04-30
+- **Rationale**:
+  - DCN-30-36 prior count hint 도입했으나 *효과 측정 인프라* 부재 — 다음 epic 진행 후 회귀 자동 발화 X. /run-review 수동 분석 의존.
+  - 자장 실 데이터 (5.5MB JSONL, 5 epic-08/09 incidents) 분석 결과 — 4 패턴 모두 textually 식별 가능했으나 자동화 부재.
+  - first-principle: 사후 측정은 자율 무관 — 결과 측정만, 실시간 강제 X. **dcness-guidelines.md §0.1 행동지침 md 의 measurement** 인프라가 없으면 회귀 검출이 매번 수동 → 비용 ↑.
+- **Alternatives**:
+  1. *옵션 A — 매 incident 시 사용자가 수동 회고*. 비용 ↑, drift.
+  2. *옵션 B — agent prompt 안에 self-check 룰 inject*. 자율 침해 + 형식 강제 + 토큰 누적.
+  3. **(채택) 옵션 C — `/run-review` 회귀 패턴 4종 자동 검출**. 사후 측정만 — 자율 무관. fix 효과 측정 가능.
+- **Decision**:
+  - 옵션 C 채택. 4 패턴 + StepRecord `tool_use_count` 필드.
+  - `TOOL_USE_OVERFLOW` 임계 `≥ 100` — 자장 실측 5건 (102/119/153/170/223) 모두 PR PARTIAL 회귀. 마법수 아님 — 실측 기반.
+  - `PARTIAL_LOOP` 임계 `≥ 3` — DCN-30-34 권고 cycle ≤ 3 정합.
+  - `END_STEP_SKIP` margin `1` — sub-agent self-recurse / POLISH 같은 정상 변동 흡수.
+  - `MAIN_SED_MISDIAGNOSIS` — 텍스트 패턴 검출 (한국어 + 영어). 휴리스틱 — false positive 가능, 단 sed 후 검증 누락은 큰 incident 라 보수적 검출 가치 ↑.
+  - `MISSING_SELF_VERIFY` 패턴 **제외** (DCN-34 anchor 자율화 후 PR3 에서 추가 — 다중 anchor 옵션 검출 로직 필요).
+  - signature 확장 — kwargs default None 으로 backward compat 보존. 기존 9 test caller 영향 0.
+- **Follow-Up**:
+  - **PR3 (DCN-30-38)**: DCN-34 self-verify echo `## 자가 검증` 섹션 anchor 자율화 (`## 자가 검증` / `## Verification` / `## 검증` 등 다중) + dcness-guidelines.md §12 안티패턴 1줄 강화 (sed 후 실측 의무) + `/run-review` `MISSING_SELF_VERIFY` 패턴 추가.
+  - **자장 실 검증** — 자장 plugin 재install 후 다음 epic 시 4 패턴 모두 자동 검출 확인. 임계값 (100/3/1) tuning 후속.
+  - **`MAIN_SED_MISDIAGNOSIS` false positive 모니터링** — 정상 자기 정정 텍스트도 패턴 매칭 가능. 30일 누적 측정 후 임계 강화 검토.
+  - **render_report 컬럼 확장** — 단계별 표에 `tool_uses` 컬럼 추가 후속 (현재 duration / out_tok / total_tok / cost / matched 만).
+
 ### DCN-CHG-20260430-36
 - **Date**: 2026-04-30
 - **Rationale**:

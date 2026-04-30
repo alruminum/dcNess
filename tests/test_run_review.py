@@ -355,5 +355,145 @@ class ThinkingLoopDetectionTests(unittest.TestCase):
         self.assertFalse(any(w.pattern == "THINKING_LOOP" for w in wastes))
 
 
+class RegressionPatternsTests(unittest.TestCase):
+    """DCN-CHG-20260430-37 — 4 신규 회귀 패턴."""
+
+    def test_tool_use_overflow_emits_finding(self):
+        # 자장 실측 임계 ≥ 100. 102/119/153/170/223 모두 PARTIAL 회귀.
+        s = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                        enum="IMPL_DONE", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
+        s.matched_invocation = True
+        s.tool_use_count = 119
+        wastes = detect_wastes([s])
+        kinds = {w.pattern for w in wastes}
+        self.assertIn("TOOL_USE_OVERFLOW", kinds)
+
+    def test_tool_use_overflow_below_threshold(self):
+        # ≤ 99 = silent. 정상 invocation 36~64 영역.
+        s = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                        enum="IMPL_DONE", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
+        s.matched_invocation = True
+        s.tool_use_count = 64
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "TOOL_USE_OVERFLOW" for w in wastes))
+
+    def test_tool_use_overflow_unmatched_invocation_skipped(self):
+        # matched_invocation=False → tool_use_count 신뢰 X → skip
+        s = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                        enum="IMPL_DONE", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
+        s.matched_invocation = False
+        s.tool_use_count = 200
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "TOOL_USE_OVERFLOW" for w in wastes))
+
+    def test_partial_loop_three_or_more(self):
+        # IMPL_PARTIAL ≥ 3 회 → PARTIAL_LOOP 검출
+        steps = [
+            StepRecord(idx=i, ts=f"t{i}", agent="engineer", mode="IMPL",
+                        enum="IMPL_PARTIAL", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
+            for i in range(3)
+        ]
+        wastes = detect_wastes(steps)
+        kinds = {w.pattern for w in wastes}
+        self.assertIn("PARTIAL_LOOP", kinds)
+
+    def test_partial_loop_two_silent(self):
+        # 2회는 정상 (cycle 한도 ≤ 3 권고 안)
+        steps = [
+            StepRecord(idx=i, ts=f"t{i}", agent="engineer", mode="IMPL",
+                        enum="IMPL_PARTIAL", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
+            for i in range(2)
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "PARTIAL_LOOP" for w in wastes))
+
+    def test_end_step_skip_when_invocations_exceed_steps(self):
+        # invocations 3 vs steps 1 (engineer) — 2 누락 의심
+        from datetime import datetime
+        steps = [
+            StepRecord(idx=0, ts="2026-04-30T10:00:00", agent="engineer", mode="IMPL",
+                        enum="IMPL_DONE", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5"),
+        ]
+        invocations = [
+            {"agent": "engineer", "ts": datetime(2026, 4, 30, 10, 0, 0),
+             "duration_ms": 1000, "output_tokens": 100, "total_tokens": 100,
+             "input_tokens": 100, "cache_read": 0, "cost_usd": 0.0,
+             "tool_use_count": 50, "agent_type_raw": "dcness:engineer"},
+            {"agent": "engineer", "ts": datetime(2026, 4, 30, 10, 5, 0),
+             "duration_ms": 1000, "output_tokens": 100, "total_tokens": 100,
+             "input_tokens": 100, "cache_read": 0, "cost_usd": 0.0,
+             "tool_use_count": 60, "agent_type_raw": "dcness:engineer"},
+            {"agent": "engineer", "ts": datetime(2026, 4, 30, 10, 10, 0),
+             "duration_ms": 1000, "output_tokens": 100, "total_tokens": 100,
+             "input_tokens": 100, "cache_read": 0, "cost_usd": 0.0,
+             "tool_use_count": 40, "agent_type_raw": "dcness:engineer"},
+        ]
+        wastes = detect_wastes(steps, invocations=invocations)
+        kinds = {w.pattern for w in wastes}
+        self.assertIn("END_STEP_SKIP", kinds)
+
+    def test_end_step_skip_silent_within_margin(self):
+        # invocations 2 vs steps 1 = diff 1, margin 1 안 → silent
+        from datetime import datetime
+        steps = [
+            StepRecord(idx=0, ts="2026-04-30T10:00:00", agent="engineer", mode="IMPL",
+                        enum="IMPL_DONE", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5"),
+        ]
+        invocations = [
+            {"agent": "engineer", "ts": datetime(2026, 4, 30, 10, 0, 0),
+             "duration_ms": 0, "output_tokens": 0, "total_tokens": 0,
+             "input_tokens": 0, "cache_read": 0, "cost_usd": 0.0,
+             "tool_use_count": 0, "agent_type_raw": "dcness:engineer"},
+            {"agent": "engineer", "ts": datetime(2026, 4, 30, 10, 5, 0),
+             "duration_ms": 0, "output_tokens": 0, "total_tokens": 0,
+             "input_tokens": 0, "cache_read": 0, "cost_usd": 0.0,
+             "tool_use_count": 0, "agent_type_raw": "dcness:engineer"},
+        ]
+        wastes = detect_wastes(steps, invocations=invocations)
+        self.assertFalse(any(w.pattern == "END_STEP_SKIP" for w in wastes))
+
+    def test_main_sed_misdiagnosis_detects_self_correction(self):
+        # CC JSONL 안 메인 self-correction 패턴 — 실제 fixture 박음
+        from datetime import datetime
+        from harness.run_review import encode_repo_path_dcness
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            os.chdir(tmp)
+            try:
+                # CC JSONL fake — 메인 정정 발화
+                encoded = encode_repo_path_dcness(str(tmp))
+                proj = Path.home() / ".claude" / "projects" / encoded
+                proj.mkdir(parents=True, exist_ok=True)
+                jsonl = proj / "fake-sid.jsonl"
+                jsonl.write_text(json.dumps({
+                    "type": "assistant",
+                    "timestamp": "2026-04-30T10:05:00.000Z",
+                    "message": {"content": [
+                        {"type": "text", "text": "**중요 정정** — sed 변경사항 0 (실제 0개)."}
+                    ]},
+                }, ensure_ascii=False) + "\n", encoding="utf-8")
+                try:
+                    steps = [
+                        StepRecord(idx=0, ts="2026-04-30T10:00:00", agent="engineer", mode="IMPL",
+                                    enum="IMPL_DONE", must_fix=False,
+                                    prose_excerpt="line1\nline2\nline3\nline4\nline5"),
+                    ]
+                    window = (datetime(2026, 4, 30, 10, 0, 0), datetime(2026, 4, 30, 10, 30, 0))
+                    wastes = detect_wastes(steps, repo_path=tmp, window=window)
+                    kinds = {w.pattern for w in wastes}
+                    self.assertIn("MAIN_SED_MISDIAGNOSIS", kinds)
+                finally:
+                    jsonl.unlink(missing_ok=True)
+            finally:
+                os.chdir(REPO_ROOT)
+
+
 if __name__ == "__main__":
     unittest.main()

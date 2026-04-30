@@ -107,6 +107,8 @@ class StepRecord:
     total_tokens: int = 0
     cost_usd: float = 0.0
     matched_invocation: bool = False
+    # DCN-CHG-20260430-37: tool_use_count — TOOL_USE_OVERFLOW 검출 + DCN-30-36 hint 짝.
+    tool_use_count: int = 0
 
 
 @dataclass
@@ -228,7 +230,74 @@ def parse_steps(run_dir: Path) -> list[StepRecord]:
 
 # ── Waste 탐지 ────────────────────────────────────────────────────────
 
-def detect_wastes(steps: list[StepRecord]) -> list[WasteFinding]:
+def _scan_main_sed_misdiagnosis(
+    repo_path: Optional[Path],
+    window: Optional[tuple],
+) -> list[str]:
+    """CC session JSONL within run window 에서 메인 self-correction 패턴 검출
+    (DCN-CHG-20260430-37). I5 회귀 추적 — "정정 — 변경 0" / "잘못 진단" 등.
+
+    return: 매칭된 assistant text excerpt list (최대 3).
+    """
+    if not repo_path or not window:
+        return []
+    first_ts, last_ts = window
+    keyword_filter = ["정정", "잘못 진단", "실측 시", "misdiagnosis", "변경사항 0"]
+    patterns = [
+        r"정정[^\n]{0,80}(0개|0\s*변경|실제\s*0|변경사항\s*0)",
+        r"sed[^\n]{0,80}변경[^\n]{0,20}0",
+        r"실측\s*시\s*0",
+        r"잘못\s*진단",
+        r"misdiagnosis",
+    ]
+    hits: list[str] = []
+    try:
+        for jsonl in find_session_jsonls(repo_path):
+            try:
+                lines = jsonl.read_text(encoding="utf-8").splitlines()
+            except OSError:
+                continue
+            for line in lines:
+                if not any(kw in line for kw in keyword_filter):
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if rec.get("type") != "assistant":
+                    continue
+                ts = _parse_iso(rec.get("timestamp", ""))
+                if not ts:
+                    continue
+                ts_naive = ts.replace(tzinfo=None)
+                if ts_naive < first_ts.replace(tzinfo=None) or ts_naive > last_ts.replace(tzinfo=None):
+                    continue
+                content = rec.get("message", {}).get("content", [])
+                matched = False
+                for blk in content:
+                    if blk.get("type") != "text":
+                        continue
+                    text = blk.get("text", "")
+                    for pat in patterns:
+                        if re.search(pat, text):
+                            hits.append(text[:300].replace("\n", " "))
+                            matched = True
+                            break
+                    if matched:
+                        break
+                if len(hits) >= 3:
+                    return hits
+    except Exception:
+        pass
+    return hits
+
+
+def detect_wastes(
+    steps: list[StepRecord],
+    invocations: Optional[list[dict]] = None,
+    repo_path: Optional[Path] = None,
+    window: Optional[tuple] = None,
+) -> list[WasteFinding]:
     findings: list[WasteFinding] = []
 
     # RETRY_SAME_FAIL — 연속 동일 FAIL enum
@@ -369,6 +438,75 @@ def detect_wastes(steps: list[StepRecord]) -> list[WasteFinding]:
                 fix=(f"agents/{s.agent}.md 'thinking 본문 드래프트 금지' 룰 ⚠️ CRITICAL banner 격상 + "
                       "Agent description 에 'extended thinking 의사결정 분기만, prose 즉시 emit' 추가"),
             ))
+
+    # TOOL_USE_OVERFLOW (DCN-CHG-20260430-37) — step 의 tool_use_count ≥ 100.
+    # 자장 epic-08/09 실측 — 102/119/153/170/223 모두 PR PARTIAL 회귀.
+    # DCN-30-36 hint 와 짝 — 사후 측정.
+    for s in steps:
+        if not s.matched_invocation or s.tool_use_count < 100:
+            continue
+        findings.append(WasteFinding(
+            pattern="TOOL_USE_OVERFLOW",
+            severity="HIGH",
+            step_idx=s.idx,
+            agent=s.agent,
+            detail=f"{s.agent} step {s.idx} tool_use_count={s.tool_use_count} (≥ 100). "
+                   f"context overflow / IMPL_PARTIAL 회귀 위험 (자장 실측 임계).",
+            fix="DCN-30-36 prior count hint 활용 + agent prompt 분할 자율 판단 강화. "
+                "임계 ≥ 100 = 자장 실측 5건 모두 PR PARTIAL.",
+        ))
+
+    # PARTIAL_LOOP (DCN-CHG-20260430-37) — IMPL_PARTIAL ≥ 3 in same run.
+    # 자장 패턴 "overflow → PARTIAL → 추가 epic → 또 overflow → 무한 반복".
+    partial_count = sum(1 for s in steps if s.enum == "IMPL_PARTIAL")
+    if partial_count >= 3:
+        findings.append(WasteFinding(
+            pattern="PARTIAL_LOOP",
+            severity="HIGH",
+            step_idx=-1,
+            agent="engineer",
+            detail=f"IMPL_PARTIAL {partial_count}회 — 같은 run 무한 분할 의심.",
+            fix="task 자체 split 필요 (epic 단위 재계획). architect TASK_DECOMPOSE 재진입 또는 "
+                "사용자 위임. DCN-30-34 권고 cycle ≤ 3 정합.",
+        ))
+
+    # END_STEP_SKIP (DCN-CHG-20260430-37) — sub-agent invocation > .steps.jsonl row.
+    # 메인 distract → end-step 호출 skip → .steps.jsonl 누락. DCN-30-25 STEP COUNT WARN /
+    # DCN-30-33 STALE STEP WARN 의 사후 측정 보완.
+    if invocations:
+        from collections import Counter
+        inv_count_per_agent = Counter(i["agent"] for i in invocations)
+        step_count_per_agent = Counter(s.agent for s in steps)
+        for agent_name, inv_n in inv_count_per_agent.items():
+            step_n = step_count_per_agent.get(agent_name, 0)
+            # margin 1 — sub-agent self-recurse 등 false positive 회피.
+            if inv_n > step_n + 1:
+                findings.append(WasteFinding(
+                    pattern="END_STEP_SKIP",
+                    severity="HIGH",
+                    step_idx=-1,
+                    agent=agent_name,
+                    detail=f"{agent_name} invocations={inv_n} > steps={step_n} "
+                           f"(diff={inv_n-step_n}) — end-step 호출 누락 의심.",
+                    fix="commands/<skill>.md begin/end-step 1:1 의무 (DCN-30-25 / DCN-30-33). "
+                        "메인 distract 회피 — Agent 직후 즉시 end-step.",
+                ))
+
+    # MAIN_SED_MISDIAGNOSIS (DCN-CHG-20260430-37) — 메인 self-correction 패턴.
+    # I5 회귀 — "130개 fix" → 실측 0개 → 정정. CC JSONL 텍스트 검출.
+    sed_hits = _scan_main_sed_misdiagnosis(repo_path, window)
+    if sed_hits:
+        findings.append(WasteFinding(
+            pattern="MAIN_SED_MISDIAGNOSIS",
+            severity="HIGH",
+            step_idx=-1,
+            agent="main",
+            detail=f"메인 self-correction 패턴 {len(sed_hits)}회 — 추측 진단 → 사용자 알림 → "
+                   f"실측 시 0 발견 → 정정. 첫 발췌: {sed_hits[0][:120]}...",
+            fix="dcness-guidelines.md §12 self-verify 원칙 (DCN-30-35) — Bash sed/awk 후 "
+                "*전·후* 실측 의무 (git diff --stat / 결과 grep). 글로벌 ~/.claude/CLAUDE.md "
+                "제1룰 정합.",
+        ))
 
     return findings
 
@@ -576,6 +714,7 @@ def assign_invocations_to_steps(steps: list[StepRecord], invocations: list[dict]
             step.total_tokens = inv["total_tokens"]
             step.cost_usd = inv["cost_usd"]
             step.matched_invocation = True
+            step.tool_use_count = inv.get("tool_use_count", 0)
             used.add(best_idx)
 
 
@@ -743,14 +882,19 @@ def build_report(run_dir: Path, repo_path: Path) -> RunReport:
     steps = parse_steps(run_dir)
 
     # DCN-CHG-20260430-20: per-Agent invocation 매칭 — wastes 탐지 *전*에 enrichment.
+    invocations: list[dict] = []
+    window: Optional[tuple] = None
     if steps:
         first_ts = _parse_iso(steps[0].ts)
         last_ts = _parse_iso(steps[-1].ts)
         if first_ts and last_ts:
-            invocations = extract_agent_invocations(repo_path, (first_ts, last_ts))
+            window = (first_ts, last_ts)
+            invocations = extract_agent_invocations(repo_path, window)
             assign_invocations_to_steps(steps, invocations)
 
-    wastes = detect_wastes(steps)
+    # DCN-CHG-20260430-37: detect_wastes 에 invocations + repo_path + window 전달
+    # (END_STEP_SKIP / MAIN_SED_MISDIAGNOSIS run-level 패턴 검출 위해).
+    wastes = detect_wastes(steps, invocations=invocations, repo_path=repo_path, window=window)
     goods = detect_goods(steps)
     cost, in_tok, out_tok = compute_run_cost(run_dir, repo_path)
 
