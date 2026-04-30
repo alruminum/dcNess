@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260430-22
+- **Date**: 2026-04-30
+- **Change-Type**: agent
+- **Files Changed**:
+  - `commands/slim/product-plan.md` 삭제
+  - `commands/slim/quick.md` 삭제
+  - `commands/slim/impl.md` 삭제
+  - `commands/slim/impl-loop.md` 삭제
+  - `commands/slim/qa.md` 삭제
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: DCN-CHG-20260430-21 의 staging 사본 (`commands/slim/`) 정리. 슬림 버전이 `commands/*.md` 본 위치에 commit 됐으므로 staging 사본 불필요. follow-up 약속 이행.
+
 ### DCN-CHG-20260430-21
 - **Date**: 2026-04-30
 - **Change-Type**: agent (skill prompt = agent 류 지침)
