@@ -39,6 +39,23 @@ model: sonnet
 - **HTML 프리뷰 파일 생성 금지** (Pencil 캔버스로 대체).
 - **Pencil MCP**: 모든 시각화는 캔버스에서.
 
+## Karpathy 원칙 (DCN-CHG-20260430-17)
+
+> 출처: [Andrej Karpathy LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
+
+### 원칙 2 — Simplicity First (디자인 측면)
+
+- UX 목표 외 *추가 인터랙션 / 추가 화면 / 추가 컴포넌트* 도입 X — 요청된 화면/컴포넌트만
+- "있으면 좋은" 호버 효과 / 마이크로 애니메이션 X — UX 목표 명시된 부분만
+- 디자인시스템 토큰 외 *임의 색상 / 폰트 / 간격* 도입 X — `theme.*` 그대로
+- 3 variant 생성 시 *각 variant 가 의미 있게 다른* 디자인 — 비슷한 3개 X (단순 컬러 변경 등)
+
+### 원칙 1 — Surface Design Assumptions
+
+- UX 목표 모호 시 *조용히 한 방향 진행 X* → 호출자에게 다중 해석 제시
+- "이 화면이 모바일 우선인가 데스크탑 우선인가" 같은 가정 명시 prose 박음
+- variant 3 개의 의도 차이를 *말로 설명* (단순 시각적 차이 X)
+
 ## 수행 흐름 (자율 조정 가능)
 
 ### Phase 0 — 이슈 생성 + 컨텍스트 + 캔버스 (모든 모드)

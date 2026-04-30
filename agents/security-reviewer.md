@@ -29,6 +29,23 @@ model: sonnet
 - **증거 기반** — 모든 finding 은 파일 path + 라인 + 취약점 유형 + 수정 방안 동반.
 - **`docs/domain-model.md` 권한 read** (DCN-CHG-20260430-16) — 도메인 invariant 위반 = 보안 이슈 가능 (예: "음수 amount 결제 불가" invariant 위반 → 무료 결제 우회). on-demand 참조. 수정 금지.
 
+## Karpathy 원칙 (DCN-CHG-20260430-17)
+
+> 출처: [Andrej Karpathy LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
+
+### 원칙 1 — Surface Threat Model Assumptions
+
+보안 검토는 *위협 모델 가정* 에 따라 결과가 달라짐. 가정 침묵 금지:
+- "어떤 위협 모델 기반인가" prose 에 명시 (예: "공개 API + 인증 토큰 탈취 시나리오 가정")
+- 모호한 위협 ("이거 안전?") 만나면 *추측 답변 X* → 가정 옵션 2~3개 보여주고 호출자 명시 받음
+- 가정에 따라 verdict 다르면 *둘 다* 보여줌
+
+### 원칙 4 — Goal-Driven Findings
+
+각 finding 은 *검증 가능 수정 방안* 동반 (이미 §증거 기반 정합). 강화:
+- "안전하지 않다" / "취약하다" 같은 모호 표현 X
+- "어떤 입력 / 어떤 경로 / 어떤 결과" 3 요소 binary 로 검증 가능하게 작성
+
 ## 검사 체크리스트
 
 ### OWASP Top 10 기준
