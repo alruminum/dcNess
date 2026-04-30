@@ -153,6 +153,7 @@ python3 -m harness.run_review --run-id "$RUN_ID" --repo "$(pwd)"
 | `CLARITY_INSUFFICIENT` / `*_ESCALATE` (soft) / `AMBIGUOUS` | 사용자 위임 | `auto-resolve` 적용 |
 | `SPEC_GAP_FOUND` | 사용자 위임 | architect SPEC_GAP cycle (≤2) |
 | `TESTS_FAIL` / validator FAIL | 재시도 (≤3) | 동일 |
+| `IMPL_PARTIAL` (DCN-30-34) | engineer 재호출 (split ≤ 3) | 동일 — 새 context window |
 | `CHANGES_REQUESTED` | 사용자 위임 | engineer POLISH (cycle ≤2) |
 | Step 7 caveat (NICE TO HAVE only, MUST FIX 0) | 사용자 위임 | 7a 자동 |
 | catastrophic 룰 (PreToolUse §2.3) | hard safety | hard safety (yolo 우회 X) |

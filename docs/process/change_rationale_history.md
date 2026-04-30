@@ -18,6 +18,23 @@
 
 ## Records
 
+### DCN-CHG-20260430-34
+- **Date**: 2026-04-30
+- **Rationale**: jajang impl-loop epic-08 회고 — 5 incident 중 I1 (mobile pivot batch 4 engineer overflow 119 tool uses) / I2 (e08 batch 2 overflow 119) / I3 (e08 batch 3 overflow 170 + sed 보다 Edit 선호) / I5 (메인 sed misdiagnosis "130개 fix" → 실제 0개) 회귀 방지. 부수 발견: architect/validator 가 `setupFilesAfterFramework` (jest 에 없는 키) 출력 — LLM 학습 데이터 노이즈.
+- **Alternatives**:
+  1. **숫자 cap 강제 (file edits ≤ 20 / tool uses ≤ 60 / bash output ≤ 2000 lines)** — 기각: 자율 정신 (`status-json-mutate-pattern.md` §2.5) 위반. agent 가 자기 capacity 자율 판단 못 하게 봉쇄.
+  2. **mass mechanical transform 강제 (Edit 금지, sed/codemod 의무)** — 기각: 도구 자율 선택 침해. 권고로 완화.
+  3. **catalog 를 architect 3 prompt 에 직접 박기** — 기각: 매 호출마다 read = 토큰 누적. SSOT 분리 + cross-ref 1줄로 충분.
+  4. **WebFetch 의무 광역 적용 (모든 architect agent + 모든 외부 도구)** — 기각: 광역 강제는 자율 침해. *의심 시 권고* 로 완화.
+  5. **채택**: ① IMPL_PARTIAL enum 도입 (순서 정의, 분할 시점 자율 판단) + 새 context window 로 follow-up. ② mass transform 권고 (도구 자율 선택). ③ self-verify echo 의무 (형식만 강제, 명령 자율 — I5 회귀 방지). ④ known-hallucinations.md SSOT + 4 agent cross-ref 1줄 (정보 제공, 활용 자율). ⑤ validator 자율 schema 검증 권고.
+- **Decision**: 옵션 5. SSOT 위치는 검토자 피드백 정합 — handoff-matrix.md §1.5 + §2 (engineer enum + retry), loop-catalog.md §3 + §5 (allowed_enums), dcness-guidelines.md §5 (yolo 매트릭스). agent prompt 의 IMPL_PARTIAL / mass transform 권고 / self-verify echo 는 engineer.md 내부 (행동 정의 자체이므로). known-hallucinations.md 는 신설 SSOT, 4 agent cross-ref 1줄.
+- **Follow-Up**:
+  - 다음 impl-loop 운용 시 engineer caveat 비율 측정 (목표: jajang epic-08 의 13회 → 5회 미만).
+  - prose 종이 `## 자가 검증` 섹션 박힘 비율 측정.
+  - known-hallucinations.md 카탈로그 누적 — `change_rationale_history` alternatives / 발견 사례 자동 추출 follow-up (governance active loop 정합, 별도 Task).
+  - jajang Epic 09 (mobile test triage 156 fails) 진행 시 효과 검증.
+  - I4 (`.steps.jsonl` engineer 누락) 는 DCN-30-33 으로 cover. I5 부분 cover — 나머지는 글로벌 `~/.claude/CLAUDE.md` 제1룰 영역 (사용자 결정).
+
 ### DCN-CHG-20260430-33
 - **Date**: 2026-04-30
 - **Rationale**: jajang impl-loop epic-08 회고에서 발견된 I4 — e08 batch 2 의 `.steps.jsonl` 에 engineer step 통째 누락. 메인 Claude 가 git 작업으로 distract → engineer end-step 호출 skip → 다음 step 의 begin-step 이 current_step 덮어쓰면서 직전 step 기록 휘발. DCN-30-25 의 end-step drift detector / `--expected-steps` 검증은 *end-step 호출 자체가 발생한 케이스* 만 cover. *end-step 누락 + 다음 begin-step* 패턴은 미커버.

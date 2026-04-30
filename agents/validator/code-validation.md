@@ -55,3 +55,7 @@
 - FAIL 시 Fail Items 별 (계층 + 위치 + 문제)
 - SPEC_MISSING 시 expected_path + fallback_searched + request
 - (선택) 다음 행동 권고 (target / action / ref)
+
+## 외부 도구 config 키 schema 검증 (자율, DCN-CHG-20260430-34)
+
+`git diff` 또는 architect prose 의 변경 파일에 외부 도구 config (jest / tsconfig / eslint / vite / metro / babel 등) 변경 발견 시, 변경 키가 schema 에 *실존* 하는지 자율 판단으로 검증. hallucination 의심 시 공식 docs 1회 확인 또는 [`docs/known-hallucinations.md`](../../docs/known-hallucinations.md) 카탈로그 매칭. 잘못된 키 발견 시 FAIL + 정확한 키 제안.
