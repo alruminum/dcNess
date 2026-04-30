@@ -4,6 +4,12 @@
 > 룰 추가 시 본 파일에만 append — skill 들은 cross-ref 만.
 > Task-ID: DCN-CHG-20260430-26 (SSOT 분리 + hook inject).
 
+## 0. 루프 실행 절차 SSOT — `docs/loop-procedure.md` (DCN-30-27)
+
+dcness 의 8 loop 공통 실행 절차 (Step 0~8 — worktree / begin-run / TaskCreate / agent 호출 / Step 4.5 stories sync / finalize-run / clean 7a / caveat 7b / auto-review) 는 [`docs/loop-procedure.md`](../loop-procedure.md) 단일 SSOT. **본 가이드라인이 inject 되는 매 세션에서 메인 Claude 는 본 항을 통해 loop-procedure.md 를 의무 read** — skill 트리거 또는 직접 발화 시 동일.
+
+skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure.md.
+
 ## 1. 가시성 룰 (DCN-30-15) — MUST
 
 매 Agent 호출 후 메인이 prose 5~12줄 의무 echo. 의무 템플릿:

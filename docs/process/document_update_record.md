@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260430-27
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/loop-procedure.md` (신규, 252 줄) — dcness 8 loop 의 공통 *실행 절차* SSOT. Step 0 worktree+begin-run / Step 1 TaskCreate / Step 2~N agent 호출 골격 (begin-step → Agent → prose-staging Write → end-step → echo → TaskUpdate) / Step 4.5 stories.md/backlog.md sync (impl 계열) / Step 7 finalize-run --auto-review + clean 매트릭스 + 7a/7b commit-PR / Step 8 review 결과 인지. §7 = `loop × step` 매트릭스 (8 행 × 7 컬럼). 8 loop name 확정: `feature-build-loop` / `impl-batch-loop` / `impl-ui-design-loop` / `quick-bugfix-loop` / `qa-triage` / `ux-design-stage` / `ux-refine-stage` / `direct-impl-loop`.
+  - `docs/process/dcness-guidelines.md` — §0 신설 (loop-procedure.md cross-ref + 의무 read 명시). SessionStart 훅이 guidelines.md inject 시 메인 Claude 가 자동으로 loop-procedure.md 도 인지.
+  - `docs/orchestration.md` §3 헤더 — loop-procedure.md §1~§7 cross-ref + 8 loop name 매핑 (§3.1↔feature-build-loop 등) 추가. §3 = *시퀀스* (what), loop-procedure §7 = *실행 매트릭스* (how) 1:1.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: skill 5종 (`commands/{qa,quick,impl,impl-loop,product-plan}.md`) 이 Step 0~7 *실행 절차* 를 통째로 중복 보유 (100~215줄) — /run-review 같은 새 룰 도입 시 5 군데 동시 수정 = 중복 누적. 사용자 아키텍처 의도: skill = 트리거 + 인풋 정형화, 메인 Claude = SSOT 보고 동적 Task 구성. 본 PR (3 PR migration 의 1단계) = 절차 SSOT 신설 + 진입점 cross-ref. PR2 (`harness/session_state.py --auto-review` + qa.md slim pilot), PR3 (4 skill bulk slim) 후속.
+
 ### DCN-CHG-20260430-26
 - **Date**: 2026-04-30
 - **Change-Type**: spec, hooks

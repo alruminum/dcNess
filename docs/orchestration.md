@@ -126,6 +126,8 @@ flowchart TD
 ## 3. 진입 경로별 시나리오 (mini graph 6개)
 
 > RWHarness `harness-spec.md` §4.3 의 dcNess 변환.
+> **실행 절차** (Step 0~8 mechanics — begin-run / TaskCreate / agent 호출 / finalize-run / 7a 7b / auto-review) 는 [`loop-procedure.md`](loop-procedure.md) §1~§7 SSOT. 본 §3 = *시퀀스* (what), loop-procedure §7 = *실행 매트릭스* (how) 1:1.
+> 8 loop name (`feature-build-loop` §3.1, `impl-batch-loop` §2.1, `impl-ui-design-loop` §2.2, `quick-bugfix-loop` §3.5, `qa-triage` §3.6, `ux-design-stage` §3.2, `ux-refine-stage` §3.3, `direct-impl-loop` §3.4) — loop-procedure.md §7 매트릭스 행 ID.
 
 ### 3.1 신규 기능 / PRD 변경
 
