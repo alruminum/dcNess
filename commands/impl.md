@@ -85,8 +85,11 @@ echo "[impl] run started: $RUN_ID"
 진행할까요?
 ```
 
-### Step 1 — 5 task 생성
+### Step 1 — 5 sub-task 등록 (의무, skip 금지)
 
+⚠️ **inline skip 금지 (DCN-CHG-30-12)**: 본 step 은 *반드시 수행*. begin-step → Agent 직행 X. Step 2~6 의 각 단계에서 TaskUpdate 가 본 task 를 in_progress / completed 변환하므로 사전 등록 필수.
+
+**standalone 호출** (`/impl <batch>` 단독):
 ```
 TaskCreate("architect: MODULE_PLAN")
 TaskCreate("test-engineer: TDD attempt 0")
@@ -94,6 +97,8 @@ TaskCreate("engineer: IMPL")
 TaskCreate("validator: CODE_VALIDATION")
 TaskCreate("pr-reviewer: 검토")
 ```
+
+**`/impl-loop` 안 inner 호출**: 호출자 (`/impl-loop`) 가 batch index `i` 와 함께 호출 시 prefix 컨벤션 — `b<i>.<agent>` (예: `b1.architect: MODULE_PLAN`). 자세한 컨벤션 = `commands/impl-loop.md` Step 2 참조. 본 skill standalone 시 prefix 없음.
 
 ### Step 2 — architect MODULE_PLAN
 

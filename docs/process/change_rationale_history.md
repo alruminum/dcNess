@@ -18,6 +18,25 @@
 
 ## Records
 
+### DCN-CHG-20260430-12
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 manual smoke (`/dcness:impl-loop yolo`, 5 batch v0.3) 도중 발견 — 메인이 batch-1 진입 시 INNER_RUN 시작 + begin-step architect MODULE_PLAN + Agent 호출까지 진행했지만 *inner 5 sub-task TaskCreate* 가 누락. 외부 task list 에 "impl-1: ..." 1개만 보이고 inner 진행 (MODULE_PLAN / test-engineer / engineer / validator / pr-reviewer) 무가시.
+  - 사용자가 명시 instruction ("각 batch 진입 시 /impl 의 5 sub-task TaskCreate 의무, inline skip 금지") 으로 워크어라운드 → 메인이 `b1.architect: MODULE_PLAN` 등 prefix 컨벤션으로 등록 → 사용자가 "오 잘되네 이런식으로 표시해주면 좋겠다" 피드백.
+  - 결함 = `/impl-loop.md` Step 2 의 명시 강도 부족. "→ /impl 의 Step 1~7 시퀀스 호출" 만 박혀 있어 메인이 inline skip 가능. 사용자가 매번 명시 발화 안 해도 되도록 default 컨벤션화 필요.
+- **Alternatives**:
+  1. *현 prompt 유지 + 매번 사용자 명시* — 매번 부담. 기각.
+  2. *helper 단에서 sub-task 강제* — Task tool 은 메인이 호출 (helper subprocess 가 호출 못 함). 기각.
+  3. **(채택) skill prompt 의무 강도 ↑** — Step 2 에 ⚠️ 경고 ("inline skip 금지") + `b<i>.<agent>` prefix 컨벤션 + 사용자가 본 가시성 형식 그대로 박음. /impl.md Step 1 도 같은 강도.
+- **Decision**:
+  - 옵션 3.
+  - **prefix 컨벤션 = `b<i>.<agent>: <mode_or_state>`** (예: `b1.architect: MODULE_PLAN` / `b3.engineer: IMPL`). 사용자가 본 형식 그대로 default. /impl-loop 안에서만 prefix, /impl standalone 시 prefix 없음.
+  - **outer task = `impl-{i}: <짧은 제목>`** (DCN-30-6 의 컨벤션 유지).
+  - **batch 종료 시 inner sub-task 정리 vs 보존**: 메인 자유. b1 끝났을 때 `b1.*` 들 ✓ 표시 후 b2 시작 시 새 sub-task 등록. UX 단순.
+- **Follow-Up**:
+  - **(별도 Task — v2)** `/impl-loop` resume 메커니즘 — batch 의 ## 생성/수정 파일 자동 검사로 이미 구현된 batch skip. 사용자 질문 정합 ("이미 구현된 batch 인지 어떻게 판단?").
+  - **(별도 Task — measurement)** /impl-loop run 후 inner sub-task 등록률 측정. 100% 면 본 fix 정합. 그 미만이면 prompt 강도 추가 보강.
+
 ### DCN-CHG-20260430-11
 - **Date**: 2026-04-30
 - **Rationale**:
