@@ -18,6 +18,28 @@
 
 ## Records
 
+### DCN-CHG-20260430-30
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 지시 (PR3 작업 중 발화) — "loop-procedure.md 이거 좀 쪼개자 가급적 300라인 넘기지 말랬잖아 행동지침 md는 이것도 룰로 적어놔줘". loop-procedure.md 436줄 = cap 초과. 룰 자체도 dcness-guidelines.md 에 SSOT 화해야 미래 회귀 방지.
+  - 사용자 의도: 행동지침 md (메인/sub-agent 가 결정 시 직접 read 하는 md) 는 토큰 + thinking 시간 부담 ↑ → 300줄 임계 강제. 초과 시 *책임 축* 분리 (단순 복붙 X).
+- **Alternatives**:
+  1. *옵션 1 — loop-procedure.md 전체를 단일 파일 유지 + 사용자에게 "300줄 위반 OK" 요청*. 사용자 지시 거부 = 비대상.
+  2. **(채택) 옵션 2 — procedure (Step 0~8 mechanics) ↔ catalog (8 loop 행별 풀스펙) 책임 축 split**. 자연스러운 분리 (mechanics vs spec). 둘 다 < 300줄.
+  3. *옵션 3 — Step 별 sub-file 8개 (loop-procedure-step-0.md, step-1.md, ...)*. 과도 fragmentation. 메인이 한 루프 reconstruct 위해 8 파일 read = 부담 ↑. 기각.
+  4. *옵션 4 — 행별 sub-file 8개 (loops/feature-build.md, impl-batch.md, ...)*. PR1 plan 단계에서 검토했던 안. 8 파일 = 너무 잘게. 단일 catalog 파일 (옵션 2) 가 보기 좋음.
+- **Decision**:
+  - **옵션 2 채택**.
+  - **`docs/loop-catalog.md` 신규** (239줄) — 8 loop 행별 풀스펙 SSOT. 책임: loop spec.
+  - **`docs/loop-procedure.md` 슬림** (436 → 242줄) — Step 0~8 mechanics 보존. 책임: 절차.
+  - **300줄 cap 룰** = `dcness-guidelines.md` §0.1 신설 — 대상 (skill / agent / loop SSOT / guidelines 자체) / 대상 외 (역사 로그 / spec / proposals / 코드) / Why (토큰 + thinking) / How to apply (모니터링 + split PR + 양방향 cross-ref) / **현재 알려진 위반** (`orchestration.md` 540줄, split 후속 Task-ID 예정 명시).
+  - cross-ref drift 가드: 양 파일 (procedure + catalog) 양방향 link + governance §2.2 doc-sync gate. orchestration.md §3 헤더도 catalog cross-ref 추가.
+- **Follow-Up**:
+  - **PR4 (DCN-CHG-20260430-31 예정)** — 4 skill bulk slim (quick / impl / impl-loop / product-plan). loop-procedure + catalog 2 SSOT cross-ref 만 박는 형태로.
+  - **orchestration.md split (별도 Task-ID 예정)** — 540줄 cap 위반. 책임 축 후보: 시퀀스+결정표 (§2~§4) ↔ retry+escalate+handoff (§5~§7).
+  - **다른 cap 위반 모니터링** — `git ls-files | xargs wc -l` 등 sanity script 검토 (후속).
+  - **사용자 검증** — 다음 세션 SessionStart inject 시 §0 (procedure + catalog 의무 read) + §0.1 (300줄 cap) 모두 반영 확인.
+
 ### DCN-CHG-20260430-29
 - **Date**: 2026-04-30
 - **Rationale**:

@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260430-30
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only, spec
+- **Files Changed**:
+  - `docs/loop-catalog.md` (신규, 239줄) — 8 loop 행별 풀스펙 SSOT. loop-procedure.md 의 §7.0 인덱스 + §7.1~§7.10 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix decision rule / Step 4.5 적용) 통째 이전.
+  - `docs/loop-procedure.md` — 436 → 242줄. §7 = catalog cross-ref 1 단락 + §7.1 catastrophic 룰 정합 만 보존. §0 진입 모델 + §1~§6 Step 0~8 mechanics + §8 참조 (loop-catalog.md 추가).
+  - `docs/process/dcness-guidelines.md` — §0 갱신 (procedure + catalog 2 SSOT 분담). §0.1 신설 (행동지침 md 300줄 cap 룰 + 대상/대상 외 + Why + How to apply + 현재 알려진 위반 = orchestration.md 540줄). 218 → 224줄.
+  - `docs/orchestration.md` — §3 헤더 cross-ref 갱신 (loop-catalog.md 추가).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: 사용자 지시 ("쪼개자 가급적 300라인 넘기지 말랬잖아 행동지침 md는 이것도 룰로 적어놔줘") 반영. loop-procedure.md (436줄) split + 300줄 cap 룰을 dcness-guidelines.md SSOT 에 명문화. 책임 축 = procedure (mechanics) ↔ catalog (loop spec) 으로 자연 분리. 양 파일 모두 < 300줄 (242 / 239). orchestration.md (540줄) 는 알려진 위반 — split 후속 Task-ID 예정. PR4 (4 skill bulk slim) 는 -31 로 밀림.
+
 ### DCN-CHG-20260430-29
 - **Date**: 2026-04-30
 - **Change-Type**: harness, agent, test
