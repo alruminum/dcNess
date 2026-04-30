@@ -2,6 +2,13 @@
 
 ## 현재 상태
 
+- **🪶 4 skill bulk slim (quick/impl/impl-loop/product-plan)** (`DCN-CHG-20260430-31`):
+  - 4 PR migration 의 마지막 PR. 5 skill 합계 660 → 132줄 (80% 절감).
+  - `commands/quick.md` 215 → 32줄 — `quick-bugfix-loop` cross-ref + Inputs (이슈 / 영향 파일 / 재현 / 원하는 방향).
+  - `commands/impl.md` 205 → 32줄 — `impl-batch-loop` + UI 감지 시 `impl-ui-design-loop` 자동 전환 명시. State-aware skip / Step 4.5 / catalog §3 cross-ref.
+  - `commands/impl-loop.md` 127 → 36줄 — `impl-batch-loop × N` chain. outer `impl-<i>` / inner `b<i>.<agent>` 컨벤션 (DCN-30-12). catalog §3 + §10 cross-ref.
+  - `commands/product-plan.md` 113 → 32줄 — `feature-build-loop`. Inputs 정형화 (요구사항 / 시나리오 / 제약 / 우선순위 / 변경 vs 신규) — `CLARITY_INSUFFICIENT` 사전 회피.
+  - 모든 mechanics 제거 — `loop-procedure.md` (Step 0~8) + `loop-catalog.md` (loop spec) 단일 source.
 - **✂️ loop-procedure.md split + 300줄 cap 룰 신설** (`DCN-CHG-20260430-30`):
   - 사용자 지시 — "loop-procedure.md 쪼개자 가급적 300라인 넘기지 말랬잖아 행동지침 md는 이것도 룰로 적어놔줘". loop-procedure.md (436줄) cap 위반.
   - **`docs/loop-catalog.md` 신규** (239줄) — 8 loop 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix). loop-procedure.md §7.0 인덱스 + §7.1~§7.10 풀스펙 모두 이전.

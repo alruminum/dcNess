@@ -18,6 +18,30 @@
 
 ## Records
 
+### DCN-CHG-20260430-31
+- **Date**: 2026-04-30
+- **Rationale**:
+  - PR1~PR4 (DCN-30-27/28/29/30) 로 SSOT 인프라 (loop-procedure.md mechanics + loop-catalog.md loop spec + 300줄 cap 룰 + helper --auto-review) 완성.
+  - PR3 에서 `commands/qa.md` slim pilot (127 → 28줄) 으로 새 SSOT cross-ref 만으로 동작 가능 입증.
+  - 사용자 명령 ("줄이고 검증하고 split하자 죽 해") — 나머지 4 skill bulk slim 즉시 진행. migration 본 목표 = skill 통째로 트리거화.
+- **Alternatives**:
+  1. **(채택) 옵션 A — 4 skill 일괄 bulk slim**. PR3 qa.md pilot 패턴 동일 적용. 5 skill 합계 80%+ 절감.
+  2. *옵션 B — 1 skill 씩 4 PR 분할*. 안전 ↑ 단 review 부담 ↑ + drift (간 PR 사이 SSOT 변경) 위험. pilot 이미 완료 → bulk 안전.
+- **Decision**:
+  - 옵션 A.
+  - **slim 형식 (5 절 표준)** — frontmatter (description trigger keyword 보존) / Loop / Inputs / 비대상 + 후속 라우팅 / 절차 cross-ref.
+  - **per-skill 핵심**:
+    - `quick.md` — Inputs (이슈 / 영향 파일 / 재현 / 방향) + qa enum 별 라우팅 (FUNCTIONAL_BUG/CLEANUP advance, DESIGN_ISSUE → /ux 추천).
+    - `impl.md` — batch 경로 필수 Input + UI 감지 시 `impl-ui-design-loop` 자동 전환 + state-aware skip (DCN-30-13).
+    - `impl-loop.md` — outer/inner 컨벤션 명시 (DCN-30-12 의무) + chain 정책 (clean 자동 / caveat 멈춤).
+    - `product-plan.md` — 5 Input 항목 (요구사항 / 시나리오 / 제약 / 우선순위 / 변경 vs 신규) — `CLARITY_INSUFFICIENT` 사전 회피.
+  - 모든 mechanics (helper begin-run / TaskCreate / begin-step / Agent / end-step / prose-staging / finalize-run / 7a 7b / commit-PR) 제거. catalog + procedure 단일 source.
+- **Follow-Up**:
+  - **orchestration.md split** (별도 Task-ID, 540줄 cap 위반) — 책임 축 후보: §2~§4 시퀀스+결정표 ↔ §5~§7 retry+escalate+handoff.
+  - **jajang plugin 재설치 후 검증** — 새 세션에서 SessionStart 훅이 dcness-guidelines.md (§0 + §0.1) inject 확인 + 5 slim skill 모두 catalog/procedure cross-ref 만으로 정상 동작 확인.
+  - **drift 모니터링** — skill 안에 mechanics 재유입 (다음 fix 시 누가 helper 호출 inline 박는지) 감시. /run-review 에서 SKILL_BLOAT 패턴 추가 검토.
+  - **THINKING_LOOP fix** (smart-compact 미해결 #5) — agents/{architect,ux-architect,product-planner}.md "thinking 본문 드래프트 금지" CRITICAL banner 격상 후속.
+
 ### DCN-CHG-20260430-30
 - **Date**: 2026-04-30
 - **Rationale**:
