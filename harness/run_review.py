@@ -87,6 +87,25 @@ EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
 
 DCNESS_AGENT_NAMES = set(EXPECTED_AGENT_BUDGETS.keys())
 
+# DCN-CHG-20260430-38: engineer self-verify echo anchor 옵션 (DCN-30-34 강제 → DCN-30-38 자율화).
+# prose 끝에 *어느 한 anchor* 라도 있으면 통과. 형식 자율 + substance 의무.
+SELF_VERIFY_ANCHORS = [
+    r"^\s*#{1,6}\s*자가\s*검증",
+    r"^\s*#{1,6}\s*검증",
+    r"^\s*#{1,6}\s*verification",
+    r"^\s*#{1,6}\s*self[-\s]?verify",
+]
+
+
+def _has_self_verify_anchor(prose: str) -> bool:
+    """engineer prose 에 self-verify anchor 중 하나라도 있는지 (DCN-30-38)."""
+    if not prose:
+        return False
+    for pat in SELF_VERIFY_ANCHORS:
+        if re.search(pat, prose, re.MULTILINE | re.IGNORECASE):
+            return True
+    return False
+
 
 # ── 데이터 모델 ────────────────────────────────────────────────────────
 
@@ -491,6 +510,28 @@ def detect_wastes(
                     fix="commands/<skill>.md begin/end-step 1:1 의무 (DCN-30-25 / DCN-30-33). "
                         "메인 distract 회피 — Agent 직후 즉시 end-step.",
                 ))
+
+    # MISSING_SELF_VERIFY (DCN-CHG-20260430-38) — engineer prose 에 self-verify anchor 부재.
+    # DCN-30-34 의무 (anchor 자율, substance 의무) 회귀 검출. prose_full 부재 시 skip.
+    for s in steps:
+        if s.agent != "engineer":
+            continue
+        if s.enum not in ("IMPL_DONE", "IMPL_PARTIAL", "POLISH_DONE"):
+            continue
+        if not s.prose_full:
+            continue
+        if not _has_self_verify_anchor(s.prose_full):
+            findings.append(WasteFinding(
+                pattern="MISSING_SELF_VERIFY",
+                severity="MEDIUM",
+                step_idx=s.idx,
+                agent="engineer",
+                detail=f"engineer step {s.idx} ({s.enum}) prose 에 자가 검증 anchor 부재 — "
+                       f"DCN-30-34 의무 (anchor 자율: `## 자가 검증` / `## Verification` / "
+                       f"`## 검증` / `## Self-Verify` 등).",
+                fix="agents/engineer.md § 자가 검증 echo 의무 — prose 끝에 anchor 추가 + "
+                    "실측 명령 + 결과 수치 인용. substance (검증 결과) 만 의무.",
+            ))
 
     # MAIN_SED_MISDIAGNOSIS (DCN-CHG-20260430-37) — 메인 self-correction 패턴.
     # I5 회귀 — "130개 fix" → 실측 0개 → 정정. CC JSONL 텍스트 검출.

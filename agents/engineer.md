@@ -93,12 +93,14 @@ impl 에 `## Design Ref` 섹션 있거나 DESIGN_HANDOFF 패키지 직접 받은
 - `useEffect` 비동기 콜백에서 언마운트 후 상태 변경 없음
 - 계획과 다르게 구현한 부분 있으면 prose 본문에 이유 명시
 
-## 작업 분할 — IMPL_PARTIAL (DCN-CHG-20260430-34)
+## 작업 분할 — IMPL_PARTIAL (DCN-CHG-20260430-34, anchor 자율화 DCN-30-38)
 
 단일 호출에 다 끝내기 무리 인지 시 (context 압박 / 도메인 광범위 / 진행 중 새 GAP 발견 등):
 1. 진행한 부분 commit (자체 git OK)
-2. `IMPL_PARTIAL` 결론 + prose 의 `## 남은 작업` 섹션에 미완 항목 명시 (파일 경로 / 의도 / 예상 단위)
+2. `IMPL_PARTIAL` 결론 + prose 안 *남은 작업* 섹션에 미완 항목 명시 (파일 경로 / 의도 / 예상 단위)
 3. 메인이 follow-up 호출 — 새 호출 = 새 context window
+
+**anchor 자율** — `## 남은 작업` / `## Remaining` / `## TODO` / `## 미완` 등 자기 판단. substance (미완 항목 + 파일 경로 + 의도 + 예상 단위) 만 의무.
 
 *숫자 cap 없음 — 자기 capacity 자율 판단*. 분할 자체가 정상 흐름 (jajang epic-08 의 I1/I2/I3 회귀 방지). attempt 카운터 미소비 — 분할은 retry 와 다름.
 
@@ -106,9 +108,11 @@ impl 에 `## Design Ref` 섹션 있거나 DESIGN_HANDOFF 패키지 직접 받은
 
 같은 패턴 N 파일 변환 시 codemod / bash sed / Edit 중 *자율 선택*. 단 단일 호출 capacity 압박 인지 시 codemod·sed 가 일반적으로 가벼움 (참고). 검증은 grep 1줄로 mass result 확인 권고.
 
-## 자가 검증 echo 의무 (DCN-CHG-20260430-34)
+## 자가 검증 echo 의무 (DCN-CHG-20260430-34, anchor 자율화 DCN-30-38)
 
-prose 결과 끝에 `## 자가 검증` 섹션 + 검증 결과 인용 의무. *어느 명령을 쓸지는 자율*. 형식만 강제 — 메인이 결과 신뢰 가능하도록 근거 박힘.
+prose 결과 끝에 *자가 검증 섹션* + 검증 결과 인용 의무. **anchor 자율** — `## 자가 검증` / `## Verification` / `## 검증` / `## Self-Verify` 등 자기 판단. substance (실측 명령 + 결과 수치 인용) 만 의무.
+
+*어느 명령을 쓸지도 자율* — grep / ls / Read / Bash / WebFetch 등. 메인이 결과 신뢰 가능하도록 근거 박힘.
 
 예시 (어느 한 패턴 채택):
 - grep 결과 (변환 잔여 0 확인): `grep -c "vi\." src/__tests__/ -r --exclude-dir=_setup` → 0

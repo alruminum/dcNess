@@ -250,7 +250,8 @@ agent 별 적용:
 ❌ "보통 jest config 는 X 키 쓰니까" — 학습 데이터 의존 → hallucination (예: `setupFilesAfterFramework`)
 ❌ "이 함수 (대략) 어디 있을 것" — grep 안 함 → 잘못된 경로
 ❌ engineer 보고 즉시 신뢰 → 실측 안 함 (`agents/engineer.md` § 자가 검증 echo 의무 와 짝)
+❌ Bash `sed -i` / `awk -i` / 광역 변환 후 *전·후* 실측 누락 — 변경 결과 의무 검증 (방법 자율: `git diff --stat` / 결과 grep / Read 등). 메인이 sed 직후 "X개 fix" 단언 = I5 회귀 (DCN-30-37 `MAIN_SED_MISDIAGNOSIS` 자동 검출).
 
 ### 효과
 
-I5 (메인 sed misdiagnosis) 회귀 방지. agent 측 self-verify echo (engineer.md `## 자가 검증`) 와 짝 — agent 가 인용 + 메인이 그 명령 직접 실행해 verify.
+I5 (메인 sed misdiagnosis) 회귀 방지. agent 측 self-verify echo (engineer.md *자가 검증* 섹션, anchor 자율) 와 짝 — agent 가 인용 + 메인이 그 명령 직접 실행해 verify.
