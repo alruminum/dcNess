@@ -23,8 +23,29 @@ python3 -m harness.session_state is-active >/dev/null 2>&1 || exit 0
 # bash 의 PPID = CC main process
 CC_PID=$PPID
 
-# Python 으로 stdin 처리 + 핸들러 호출
+# Python 으로 stdin 처리 + 핸들러 호출 (silent — stdout 안 씀)
 python3 -m harness.hooks session-start --cc-pid "$CC_PID"
+
+# DCN-CHG-20260430-26: dcness guidelines 를 system-reminder 로 inject.
+# 활성 프로젝트 한정 (위 is-active 게이트 통과 후만 실행). plugin 비활성 X.
+# CC SessionStart 훅 출력 = JSON {continue, additionalContext} → 매 세션 자동 인지.
+GUIDELINES="${CLAUDE_PLUGIN_ROOT:-.}/docs/process/dcness-guidelines.md"
+if [ -f "$GUIDELINES" ]; then
+    python3 -c "
+import json
+try:
+    with open('$GUIDELINES', encoding='utf-8') as f:
+        content = f.read()
+    msg = (
+        '## dcness Guidelines (자동 로드 — DCN-30-26)\n\n'
+        '**[필수 인지]** 본 프로젝트는 dcness plugin 활성. 아래 룰 모든 dcness skill 진행 시 의무 적용.\n\n'
+        '---\n\n' + content
+    )
+    print(json.dumps({'continue': True, 'additionalContext': msg}))
+except Exception:
+    pass
+" 2>/dev/null
+fi
 
 # 모든 실패는 silent
 exit 0

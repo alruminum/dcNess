@@ -18,6 +18,46 @@
 
 ## Records
 
+### DCN-CHG-20260430-26
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 지적 — quick.md (light path 전용 skill) 에 범용 룰들 (가시성 / yolo / AMBIGUOUS / worktree / Step 기록) 이 다 박혀 책임 혼재. 사용자 발화 ("범용적인걸 왜 넣어, 사탄들렀어?") — 아키텍처 잘못.
+  - 미래 추가될 dcness 지침 명시:
+    - Epic/Story/Milestone 분할 기준 (CLAUDE.md 와 ~/.claude/CLAUDE.md 어디에도 부재)
+    - Skill 외 커스텀 루프 가이드 (orchestration.md 참조해 메인 자율 구성)
+    - 등 — 단발 룰 1개가 아닌 *지침 본체* 필요.
+  - 추가로 사용자 명시 룰 2개:
+    - 루프 종료 시 `/run-review` 의무 호출 ("모니터 스킬 빼먹지 말고")
+    - 결과 출력 룰 — Bash stdout 을 텍스트 응답으로 character-for-character 복사 ("백그라운드가 아닌 제대로 출력")
+- **Alternatives**:
+  1. *옵션 A — `init-dcness` 가 `<project>/CLAUDE.md` inject*. CLAUDE.md 자동 로드 ✓. 단 plugin uninstall 시 orphan content. 차순위.
+  2. *옵션 B — SessionStart 훅 reminder 출력 ("guidelines.md 참조해라")*. dynamic. 단 LLM 무시 가능 ("참조" → 실제 read X).
+  3. **(채택) 옵션 C — SessionStart 훅이 guidelines.md 내용 *자체* 를 system-reminder 로 inject**. CC 자동 로드 보장 + plugin 비활성 시 발화 X (orphan 0) + 무시 위험 ↓.
+  4. *옵션 D — quick.md 안 룰 압축만*. 책임 혼재 미해결.
+- **Decision**:
+  - 옵션 C 채택. RWHarness `harness-review-inject.py` 패턴 정합 (이미 검증된 메커니즘).
+  - **`docs/process/dcness-guidelines.md` 신규** (11 섹션):
+    1. 가시성 룰 (DCN-30-15)
+    2. Step 기록 룰 (DCN-30-25)
+    3. **루프 종료 시 `/run-review` 의무 (신규)**
+    4. **결과 출력 룰 (신규)** — Bash collapsed 회피
+    5. yolo 모드
+    6. AMBIGUOUS cascade
+    7. worktree 격리
+    8. (TBD) Epic / Story / Milestone 분할 기준
+    9. (TBD) Skill 외 커스텀 루프 가이드
+    10. 권한/툴 부족 시 사용자 요청 (DCN-30-18)
+    11. (참조) Karpathy 4 원칙 (DCN-30-17)
+  - **`hooks/session-start.sh`** — `is-active` 게이트 통과 후 inline python 으로 guidelines.md 내용 read + JSON `{continue, additionalContext}` stdout. CC 매 세션 자동 인지.
+  - **`commands/quick.md` 슬림화** — 380줄 → 215줄. 범용 룰 본문 제거, cross-ref 만.
+  - **다른 skill (impl / impl-loop / product-plan / qa) cross-ref 통일** — 이미 quick.md SSOT 인용 중이라 자동 정합.
+- **Follow-Up**:
+  - **TBD §8 (분할 기준)** — 다음 PR 후보. 마일스톤 bump 임계 / 에픽 / 스토리 분할 단위 명시.
+  - **TBD §9 (커스텀 루프 가이드)** — 다음 PR 후보. orchestration 시퀀스 카탈로그 참조 패턴.
+  - **테스트** — 현재는 unit test 없음 (hook bash 스크립트 testability 한계). 통합 검증은 jajang plugin 재설치 후 새 세션 시 system-reminder 로 가이드라인 자동 발화 확인.
+  - **다른 skill 의 finalize-run 후 `/run-review` 호출 자동 박음** — `commands/quick.md` Step 7 / `commands/impl.md` Step 7 등에 inline `dcness-review --run-id $RUN_ID` 추가 (별도 PR).
+  - **PR 권한 룰** (engineer commit/push/PR 매트릭스) — 사용자 보류. 별도 follow-up.
+
 ### DCN-CHG-20260430-25
 - **Date**: 2026-04-30
 - **Rationale**:

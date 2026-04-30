@@ -20,6 +20,28 @@
 
 ## Records
 
+### DCN-CHG-20260430-26
+- **Date**: 2026-04-30
+- **Change-Type**: spec, hooks
+- **Files Changed**:
+  - `docs/process/dcness-guidelines.md` (신규) — 모든 dcness skill 공통 룰 단일 SSOT. 11 섹션:
+    1. 가시성 룰 (DCN-30-15)
+    2. Step 기록 룰 (DCN-30-25)
+    3. 루프 종료 시 `/run-review` 의무 (신규)
+    4. 결과 출력 룰 — Bash collapsed 회피 (신규)
+    5. yolo 모드
+    6. AMBIGUOUS cascade
+    7. worktree 격리
+    8. (TBD) Epic / Story / Milestone 분할 기준
+    9. (TBD) Skill 외 커스텀 루프 가이드
+    10. 권한/툴 부족 시 사용자 요청 (DCN-30-18)
+    11. (참조) Karpathy 4 원칙 (DCN-30-17)
+  - `hooks/session-start.sh` — 활성 프로젝트 게이트 통과 후 위 가이드라인을 system-reminder 로 inject. CC SessionStart hook 출력 = JSON `{continue, additionalContext}`. 매 세션 자동 인지.
+  - `commands/quick.md` — 범용 룰 (가시성 / Step 기록 / yolo / AMBIGUOUS / worktree) 본문 제거 + dcness-guidelines.md cross-ref 만. 약 380줄 → 215줄.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 지적 — quick.md (light path 전용 skill) 에 범용 룰들이 다 박혀 책임 혼재. 동시에 미래 추가될 룰 (Epic/Story 분할, 커스텀 루프 가이드 등) 위한 SSOT 필요. `docs/process/dcness-guidelines.md` 신규로 모든 dcness 범용 룰 한 곳에 모음. SessionStart 훅이 활성 프로젝트에 한해 system-reminder 로 inject — CC 자동 로드 보장 + plugin 비활성 시 발화 X (orphan 0). RWHarness `harness-review-inject.py` 패턴 정합. 룰 신규 추가 시 dcness-guidelines.md 1 파일에만 append.
+
 ### DCN-CHG-20260430-25
 - **Date**: 2026-04-30
 - **Change-Type**: harness, spec, test
