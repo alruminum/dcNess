@@ -521,6 +521,7 @@ def extract_agent_invocations(repo_path: Path, run_window: tuple[datetime, datet
                     "input_tokens": usage.get("input_tokens", 0),
                     "cache_read": usage.get("cache_read_input_tokens", 0),
                     "cost_usd": cost,
+                    "tool_use_count": tur.get("totalToolUseCount", 0),
                 })
         except OSError:
             continue

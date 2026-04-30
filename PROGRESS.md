@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🎯 engineer prior tool_use_count hint** (`DCN-CHG-20260430-36`):
+  - jajang epic-08/09 회고 추가 분석 — engineer overflow 5회 (102/119/153/170/223 tool uses) 자장 오후 실측. DCN-30-34 IMPL_PARTIAL enum 만으론 LLM self-monitor 불가능 (CC API 미노출 본질 한계) → 실효 부족.
+  - `harness/run_review.py:extract_agent_invocations` 에 `tool_use_count` 필드 (`totalToolUseCount`) 추가.
+  - `harness/session_state.py:_prior_engineer_tool_use_count(sid)` 신규 + `_cli_begin_step` 가 `agent="engineer"` 시 stderr hint (`[hint] prior engineer tool_use_count=N — IMPL_PARTIAL 분할 자율 판단 권고. 강제 X (정보만).`).
+  - 자율 침해 0 — 측정 정보 보충만, 판단은 agent/메인 자율. 측정 source = `toolUseResult.totalToolUseCount` (CC session JSONL).
+  - 신규 3 테스트 (engineer hint / no prior silent / non-engineer silent). 224 ran / 222 PASS / 2 pre-existing flaky 무관.
 - **🛡️ 진단/제안 self-verify 원칙 SSOT** (`DCN-CHG-20260430-35`):
   - jajang impl-loop epic-08 회고 I5 (메인 sed misdiagnosis "130개 fix" → 실제 0개) 회귀 방지.
   - `docs/process/dcness-guidelines.md` §12 신설 — 글로벌 `~/.claude/CLAUDE.md` "제1 룰" (실존 검증 강제) 을 dcness skill 진행 컨텍스트에 SessionStart 훅 자동 inject 로 재인용.

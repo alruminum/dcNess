@@ -939,6 +939,50 @@ def _cli_end_run(args: Any) -> int:
     return 0
 
 
+def _prior_engineer_tool_use_count(sid: str) -> Optional[int]:
+    """현재 sid 의 CC session JSONL 에서 직전 engineer sub-agent invocation 의
+    `totalToolUseCount` 추출 (DCN-CHG-20260430-36).
+
+    LLM 은 자기 tool use count self-monitor 불가 (CC API 미노출) — helper 가
+    측정해 stderr hint 로 흘려 IMPL_PARTIAL 자율 판단 *조건* 보강. 자율 침해 X.
+
+    return: 직전 engineer invocation count (int) / 측정 실패 None.
+    """
+    try:
+        from harness.run_review import encode_repo_path_dcness
+    except Exception:
+        return None
+    try:
+        cwd = Path.cwd()
+        encoded = encode_repo_path_dcness(str(cwd))
+        jsonl = Path.home() / ".claude" / "projects" / encoded / f"{sid}.jsonl"
+        if not jsonl.exists():
+            return None
+        latest_count: Optional[int] = None
+        latest_ts = ""
+        for line in jsonl.read_text(encoding="utf-8").splitlines():
+            if '"totalToolUseCount"' not in line or '"agentType"' not in line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            tur = rec.get("toolUseResult") or {}
+            agent_type = (tur.get("agentType") or "").lower()
+            if "engineer" not in agent_type:
+                continue
+            cnt = tur.get("totalToolUseCount")
+            if not isinstance(cnt, int):
+                continue
+            ts = rec.get("timestamp", "")
+            if ts > latest_ts:
+                latest_ts = ts
+                latest_count = cnt
+        return latest_count
+    except Exception:
+        return None
+
+
 def _cli_begin_step(args: Any) -> int:
     """sid+rid auto-detect → update_current_step."""
     sid = auto_detect_session_id()
@@ -948,6 +992,20 @@ def _cli_begin_step(args: Any) -> int:
         return 1
     mode = args.mode if args.mode else None
     update_current_step(sid, rid, args.agent, mode)
+
+    # DCN-CHG-20260430-36: agent="engineer" 시 직전 engineer invocation 의
+    # tool_use_count stderr hint. LLM self-monitor 불가 영역 정보 보강.
+    # 측정 실패 silent (노이즈 회피).
+    if args.agent == "engineer":
+        prior = _prior_engineer_tool_use_count(sid)
+        if prior is not None and prior > 0:
+            print(
+                f"[hint] prior engineer tool_use_count={prior} — "
+                f"단일 호출 capacity 압박 인지 시 IMPL_PARTIAL 분할 자율 판단 권고. "
+                f"강제 X (정보만).",
+                file=sys.stderr,
+            )
+
     print("ok")
     return 0
 

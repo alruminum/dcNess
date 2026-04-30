@@ -18,6 +18,29 @@
 
 ## Records
 
+### DCN-CHG-20260430-36
+- **Date**: 2026-04-30
+- **Rationale**:
+  - DCN-30-34 IMPL_PARTIAL enum 도입 후 자장 추가 데이터 분석 (오후 5.5MB JSONL) — engineer overflow 5회 발생 (102/119/153/170/223 tool uses). 정상 invocation = 36~64. enum 만으론 self-monitor 불가능 (LLM 이 자기 tool_use_count 모름 — CC API 미노출 본질 한계).
+  - first-principle 재검토 — "측정 정보 부재로 자율 판단 *원천 불가능* 했던 영역에 정보 보충 = 자율 *조건* 보강 (자율 침해 X)".
+  - 측정 source 발견: CC session JSONL `toolUseResult.totalToolUseCount` 필드. 자장 실측에서 119 / 170 등 실제 값 일치 확인.
+- **Alternatives**:
+  1. *옵션 A — agent prompt 안에 숫자 cap (≤ 60 tool uses)*. 자율 침해 ↑. 마법수 기각.
+  2. *옵션 B — IMPL_PARTIAL enum 만 (DCN-30-34 그대로 유지)*. self-monitor 불가능 → 실효 부족 (자장 실측 입증).
+  3. **(채택) 옵션 C — helper 단 prior count 측정 → stderr hint**. 정보 보강만. 메인이 다음 begin-step 호출 시점에 인지 → agent prompt 에 명시 (예: "이전 87, 이번 분할 고려") 가능. 자율 침해 0.
+  4. *옵션 D — agent 호출 시 prompt 에 자동 inject*. 인프라 복잡도 ↑ (agent invocation context 변형). v1 = stderr hint 단순.
+- **Decision**:
+  - 옵션 C 채택.
+  - **`harness/run_review.py:extract_agent_invocations`** 에 `tool_use_count` 필드 추가 (기존 사용처 영향 0).
+  - **`harness/session_state.py:_prior_engineer_tool_use_count(sid)`** 신규. CC session JSONL 단일 파일 (`<sid>.jsonl`) 만 스캔 — 효율 (전체 project dir scan X).
+  - **`_cli_begin_step`** 가 `agent="engineer"` 시 hint 출력. 다른 agent 는 silent (engineer 가 자장 overflow 95% 점유 — 우선순위).
+  - 측정 실패 silent (jsonl 없음 / 파싱 오류 — 노이즈 회피).
+- **Follow-Up**:
+  - **PR2 (DCN-30-37)**: `/run-review` 회귀 4 패턴 추가 (TOOL_USE_OVERFLOW / END_STEP_SKIP / PARTIAL_LOOP / MAIN_SED_MISDIAGNOSIS). hint 효과 *측정* 인프라.
+  - **PR3 (DCN-30-38)**: DCN-30-34 self-verify echo `## 자가 검증` 섹션 → anchor 자유 약화 (substance 의무, 형식 자율). + dcness-guidelines §12 안티패턴 강화 (sed 후 검증 의무 inline).
+  - **임계값 권고 (≥ 60 등) prompt 명시 X** — 메인 자율 판단. hint 가 정보 보강만.
+  - **다른 agent 확장 후속** — architect/validator 도 overflow 발견 시 (자장 architect 64/58 케이스) 같은 hint 확장 검토. 현재 v1 = engineer.
+
 ### DCN-CHG-20260430-35
 - **Date**: 2026-04-30
 - **Rationale**: jajang impl-loop epic-08 회고 I5 — 메인이 "130개 즉시 fix" 진단 사용자에 전달 → 실측 시 0개 → 15분 추가 cycle. 메인 추측 진단 패턴. 글로벌 `~/.claude/CLAUDE.md` "제1 룰 — 실존 검증 강제" 가 *이미 박혀있음* — but dcness skill 진행 중 메인이 해당 룰을 잊는 경향 발견. SessionStart 훅이 dcness-guidelines.md 자동 inject — 본 룰을 §12 로 박아두면 skill 진행 컨텍스트에서 항시 가시.
