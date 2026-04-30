@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **📜 dcness-guidelines.md SSOT + SessionStart 훅 inject** (`DCN-CHG-20260430-26`):
+  - 사용자 지적 — quick.md (light path 전용) 에 범용 룰 다 박혀 책임 혼재. + 미래 추가 룰 (Epic/Story 분할, 커스텀 루프) SSOT 필요.
+  - `docs/process/dcness-guidelines.md` (신규) — 11 섹션 (가시성 / Step 기록 / **/run-review 의무 (신규)** / **결과 출력 룰 (신규)** / yolo / AMBIGUOUS / worktree / TBD 분할 기준 / TBD 커스텀 루프 / 권한 요청 / Karpathy 참조).
+  - `hooks/session-start.sh` — 활성 프로젝트 게이트 통과 후 guidelines.md 내용을 system-reminder 로 inject (RWHarness review-inject 패턴 정합). CC 매 세션 자동 인지 + plugin 비활성 시 발화 X.
+  - `commands/quick.md` — 380줄 → 215줄 슬림화. 범용 룰 cross-ref 만.
+  - 미래 룰 추가 = 본 SSOT 1 파일에만 append.
 - **🛡️ Step 기록 안전망 — drift/count WARN + skill SSOT 강화** (`DCN-CHG-20260430-25`):
   - jajang DCN-30-23 사후 분석 — engineer 자체 PR 만든 후 메인이 end-step skip → .steps.jsonl 누락 사단.
   - helper 측: `_cli_end_step` drift detector (current_step ≠ args.agent → stderr WARN) + `finalize-run --expected-steps N` row count 검증.
