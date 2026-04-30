@@ -220,6 +220,55 @@ advance: `IMPL_DONE`. 그 외:
 - `IMPLEMENTATION_ESCALATE` → 사용자 위임
 - `AMBIGUOUS` → cascade
 
+### Step 4.5 — stories.md / backlog.md 체크박스 동기화 (DCN-CHG-20260430-14)
+
+engineer IMPL 의 `IMPL_DONE` 직후, validator 진입 *전* 메인이 직접 mechanical edit 수행. agent 위임 X (engineer 는 `src/**` 만, architect 는 spec doc 만 — stories.md/backlog.md 체크박스는 도메인 외).
+
+근거: 글로벌 `~/.claude/CLAUDE.md` "태스크 완료 → stories.md 체크. 에픽 완료 → backlog.md 체크" 룰의 *완료* 시점 = IMPL 완료 시점. impl.md 시퀀스에 step 으로 박지 않으면 매 batch 마다 누락.
+
+#### 4.5.1 batch → epic 경로 추출
+
+batch 파일 경로에서 epic dir 추출:
+```bash
+# 예: docs/milestones/v0.3/epics/epic-01-greet-lang-apply/impl/01-*.md
+EPIC_DIR=$(dirname $(dirname "<batch path>"))
+STORIES_FILE="$EPIC_DIR/stories.md"
+BACKLOG_FILE="$(dirname $(dirname $EPIC_DIR))/../backlog.md"  # milestone root + ..
+```
+
+(실제 경로는 milestone 구조에 따라 메인이 자체 판단 — `find` / `Glob` 으로 stories.md 위치 확인 후 진행.)
+
+#### 4.5.2 stories.md 체크박스 갱신
+
+batch 가 다룬 Story 의 `[ ]` → `[x]`. batch 파일 안 `## 관련 Story` 또는 `## 적용 범위` 등의 메타로 어느 Story 인지 식별. 없으면 batch 파일명/제목으로 매칭.
+
+```
+Edit(STORIES_FILE, "- [ ] Story X: ...", "- [x] Story X: ...")
+```
+
+batch 가 1 Story 의 일부 task 만 처리한 경우 → 해당 task 만 `[x]`. Story 하위 task 모두 `[x]` 면 Story 자체도 `[x]`.
+
+#### 4.5.3 backlog.md 체크박스 갱신 (epic 완료 시만)
+
+stories.md 의 모든 Story 가 `[x]` 면 backlog.md 의 epic 라인도 `[x]`:
+
+```
+if all stories checked:
+    Edit(BACKLOG_FILE, "- [ ] epic-NN-...", "- [x] epic-NN-...")
+```
+
+부분 진행이면 backlog.md 손대지 않음.
+
+#### 4.5.4 가시성
+
+```
+[impl] step 4.5 — stories.md / backlog.md sync
+- stories.md: Story 1 [ ] → [x] (8 task 모두 완료)
+- backlog.md: epic-01 라인 [ ] → [x] (epic 전체 Story 완료)
+```
+
+다음 step (validator) 은 src/ 만 검증 — stories.md 변경 무시. pr-reviewer 가 코드 + doc 같이 검토 (잘못 체크된 항목 catch).
+
 ### Step 5 — validator CODE_VALIDATION
 
 ```

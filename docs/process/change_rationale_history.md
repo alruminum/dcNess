@@ -18,6 +18,31 @@
 
 ## Records
 
+### DCN-CHG-20260430-14
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 글로벌 `~/.claude/CLAUDE.md` 룰 = "태스크 완료 → stories.md 체크. 에픽 완료 → backlog.md 체크". 룰 자체는 존재하나 `/impl` 시퀀스에 *step 으로* 박혀있지 않음.
+  - 실제 dcTest epic-01 manual smoke 에서 발견 — src/ 반영 (commit 4b185b9 `feat: greet lang 인자 실 적용`) 됐는데 stories.md Story 1 체크박스 8개 `[ ]` 상태 그대로. backlog.md epic-01 라인도 미체크.
+  - 메인 Claude 가 매 batch 마다 stories.md/backlog.md 체크 누락 → 사용자가 별도 명령으로 정리해야 함. 사용자 "하나의 구현루프가 끝나면 이런거 작업하게 해줘" 직접 지시.
+- **Alternatives**:
+  1. *옵션 1 — engineer agent 가 직접 처리*. engineer 룰 (`src/**` 만) 위반 위험 + agent prompt 비대해짐. 기각.
+  2. *옵션 2 — Step 6.5 (pr-reviewer LGTM 후, commit 전)*. 1 PR 에 코드+doc 같이 들어가는 건 동일하나, pr-reviewer 가 doc 변경 검토 못 함 (LGTM 후 추가). 사용자 지정한 잘못 체크 catch 기회 상실. 차순위.
+  3. *옵션 3 — Step 7 후 별도 commit/PR*. doc-only PR 추가 — 노이즈 + governance 오버헤드. 기각.
+  4. **(채택) 옵션 A — Step 4.5 (engineer IMPL 직후, validator 전)** — 메인이 mechanical edit. validator 는 src/ 만 검증 (doc 무시). pr-reviewer 가 코드 + doc 같이 검토 (체크 누락/오류 catch). 1 PR = 1 batch 완성.
+- **Decision**:
+  - 옵션 A. engineer 룰 위반 X (메인 직접 edit), pr-reviewer 검토 범위 포함, 1 PR 단위 보존.
+  - 위치 = `commands/impl.md` Step 4.5 (Step 4 engineer IMPL ↔ Step 5 validator CODE_VALIDATION 사이).
+  - 동작:
+    1. batch 파일 경로에서 epic dir + stories.md 위치 추출
+    2. batch 가 다룬 Story 의 `[ ]` → `[x]` (batch 메타 또는 파일명 매칭)
+    3. 모든 Story `[x]` 면 backlog.md epic 라인도 `[x]`
+    4. 부분 진행이면 backlog.md 손대지 않음
+  - `/impl-loop` 는 inner /impl 이 알아서 처리 — 추가 변경 불필요.
+- **Follow-Up**:
+  - **dcTest epic-01 retro 갱신** — 본 변경 적용 *후* 누적된 미체크 stories.md 를 한번에 sync (별도 Task-ID, 본 변경 범위 외).
+  - **batch 메타 컨벤션** — batch 파일 안 `## 관련 Story: Story 1.3` 명시 컨벤션은 architect TASK_DECOMPOSE 산출 시 박힐지 후속 검토. 현재는 메인이 batch 파일명/제목으로 매칭.
+  - **회귀 검증** — 다음 dcTest /impl-loop 실행 시 매 batch 마다 stories.md 체크 동기화 자동 발화 확인.
+
 ### DCN-CHG-20260430-13
 - **Date**: 2026-04-30
 - **Rationale**:

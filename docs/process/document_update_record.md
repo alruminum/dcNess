@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260430-14
+- **Date**: 2026-04-30
+- **Change-Type**: spec
+- **Files Changed**:
+  - `commands/impl.md` — Step 4.5 신규 (engineer IMPL `IMPL_DONE` 직후, validator 진입 전). batch 가 다룬 stories.md Story 체크박스 `[ ]` → `[x]`. 모든 Story 완료 시 backlog.md epic 라인도 `[x]`. 메인이 직접 mechanical edit (agent 위임 X).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 글로벌 `~/.claude/CLAUDE.md` "태스크 완료 → stories.md 체크. 에픽 완료 → backlog.md 체크" 룰의 *완료* 시점 = engineer IMPL 완료 시점. impl.md 시퀀스에 step 으로 박지 않으면 매 batch 마다 누락 (실제 dcTest epic-01 에서 src 반영 후 stories.md 미체크 건 발견). Step 4.5 로 박아서 매 batch 자동 적용. validator 는 src/ 만 검증 → doc 변경 무시. pr-reviewer 가 코드 + doc 같이 검토.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-13
 - **Date**: 2026-04-30
 - **Change-Type**: agent, spec, docs-only
