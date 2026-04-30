@@ -495,5 +495,63 @@ class RegressionPatternsTests(unittest.TestCase):
                 os.chdir(REPO_ROOT)
 
 
+class MissingSelfVerifyTests(unittest.TestCase):
+    """DCN-CHG-20260430-38 — engineer self-verify anchor 자율화 + 회귀 검출."""
+
+    def _engineer_step(self, prose_full: str, enum: str = "IMPL_DONE") -> StepRecord:
+        s = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                        enum=enum, must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
+        s.prose_full = prose_full
+        return s
+
+    def test_missing_anchor_emits_finding(self):
+        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n구현 완료.")
+        wastes = detect_wastes([s])
+        kinds = {w.pattern for w in wastes}
+        self.assertIn("MISSING_SELF_VERIFY", kinds)
+
+    def test_korean_anchor_passes(self):
+        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## 자가 검증\ngrep → 0\n")
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
+    def test_english_verification_anchor_passes(self):
+        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## Verification\nnpm test → PASS\n")
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
+    def test_self_verify_anchor_passes(self):
+        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n### Self-Verify\noutput\n")
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
+    def test_short_검증_anchor_passes(self):
+        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## 검증\noutput\n")
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
+    def test_skipped_when_no_prose_full(self):
+        # prose_full 부재 시 skip (parse 실패 case 등)
+        s = self._engineer_step(prose_full="")
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
+    def test_skipped_for_non_engineer(self):
+        s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
+                        enum="READY_FOR_IMPL", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
+        s.prose_full = "## 결론\nREADY"  # no self-verify anchor
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
+    def test_skipped_for_non_impl_enum(self):
+        # SPEC_GAP_FOUND 같은 escalate enum 은 self-verify 의무 비대상
+        s = self._engineer_step(prose_full="## 결론\nSPEC_GAP_FOUND",
+                                 enum="SPEC_GAP_FOUND")
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
+
 if __name__ == "__main__":
     unittest.main()

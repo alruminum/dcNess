@@ -2,6 +2,14 @@
 
 ## 현재 상태
 
+- **🪶 self-verify echo anchor 자율화 + §12 sed 안티패턴** (`DCN-CHG-20260430-38`):
+  - DCN-30-34 self-verify `## 자가 검증` 단일 형식 강제 → first-principle ("출력 형식 자유") 회색 영역. anchor 자율화 (다중 옵션) + substance 만 의무.
+  - `agents/engineer.md` 양 섹션 (자가 검증 + IMPL_PARTIAL 남은 작업) anchor 자율 명시.
+  - 4 anchor 옵션: `## 자가 검증` / `## Verification` / `## 검증` / `## Self-Verify`.
+  - `harness/run_review.py:SELF_VERIFY_ANCHORS` 패턴 4 + `_has_self_verify_anchor` helper.
+  - `MISSING_SELF_VERIFY` 패턴 (MEDIUM) — engineer step (IMPL_DONE / IMPL_PARTIAL / POLISH_DONE) 에 anchor 부재 시 emit.
+  - `dcness-guidelines.md` §12 안티패턴 1줄 추가 — Bash sed/awk 후 *전·후* 실측 의무 (방법 자율).
+  - 8 신규 테스트. 240 ran / 238 PASS / 2 pre-existing flaky 무관.
 - **📊 /run-review 회귀 4 패턴 자동 검출** (`DCN-CHG-20260430-37`):
   - DCN-30-36 prior count hint 의 *사후 측정* 인프라 + 자장 실 패턴 4종 자동 검출.
   - `harness/run_review.py:StepRecord.tool_use_count` 필드 + `assign_invocations_to_steps` propagate.

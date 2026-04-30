@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260430-38
+- **Date**: 2026-04-30
+- **Change-Type**: agent, harness, test, docs-only
+- **Files Changed**:
+  - `agents/engineer.md` `## 자가 검증 echo 의무` — anchor 자율화. `## 자가 검증` 단일 강제 → 다중 anchor 허용 (`## 자가 검증` / `## Verification` / `## 검증` / `## Self-Verify` 등 자율). substance (실측 명령 + 결과 수치) 만 의무. 첫 원칙 ("출력 형식 자유") 정합 강화.
+  - `agents/engineer.md` `## 작업 분할 — IMPL_PARTIAL` `## 남은 작업` — 동일 anchor 자율화 (`## 남은 작업` / `## Remaining` / `## TODO` / `## 미완` 등).
+  - `docs/process/dcness-guidelines.md` §12 안티패턴 1줄 추가 — Bash `sed -i` / `awk -i` / 광역 변환 후 *전·후* 실측 의무 (방법 자율). DCN-30-37 `MAIN_SED_MISDIAGNOSIS` 자동 검출 cross-ref.
+  - `harness/run_review.py` — `SELF_VERIFY_ANCHORS` 패턴 4개 + `_has_self_verify_anchor(prose)` 신규. `detect_wastes` 에 `MISSING_SELF_VERIFY` 패턴 (MEDIUM): engineer step (IMPL_DONE / IMPL_PARTIAL / POLISH_DONE) prose 에 anchor 부재 시 emit.
+  - `tests/test_run_review.py:MissingSelfVerifyTests` — 8 신규 테스트 (missing emit / 한국어 anchor / 영어 verification / Self-Verify / 짧은 검증 / prose 부재 skip / non-engineer skip / non-impl enum skip). 240 ran (이전 232) / 238 PASS / 2 pre-existing flaky 무관.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: DCN-30-34 self-verify echo `## 자가 검증` 섹션 단일 anchor 형식 강제 → 첫 원칙 ("출력 형식 자유") 회색 영역. anchor 자율화 (다중 옵션) + substance 만 의무로 약화. `MISSING_SELF_VERIFY` 회귀 검출 패턴 추가 (DCN-30-37 4 패턴 + 본 PR 1 패턴 = 5 신규 회귀 패턴 누적). dcness-guidelines.md §12 안티패턴에 sed 후 검증 의무 1줄 추가 (#39 흡수). 4 PR migration (skill 슬림화 + procedure SSOT) + 회귀 fix 시리즈 모두 마무리.
+
 ### DCN-CHG-20260430-37
 - **Date**: 2026-04-30
 - **Change-Type**: harness, test

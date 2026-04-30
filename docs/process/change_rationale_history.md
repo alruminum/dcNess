@@ -18,6 +18,35 @@
 
 ## Records
 
+### DCN-CHG-20260430-38
+- **Date**: 2026-04-30
+- **Rationale**:
+  - DCN-30-34 self-verify echo `## 자가 검증` 섹션 단일 형식 강제 — first-principle ("출력 형식 자유") 회색 영역. dcness-guidelines §1 가시성 룰 (다중 anchor `## 결론 / ## Summary / ## 변경 요약`) 와 비교 strict.
+  - 사용자 명령 ("자율성을 심하게 저하하는 부분이 있는지 형식에 얽매게하는 부분이 있는지 자율 판단으로 어려운건지 1원칙에 입각해서 고민") — strict anchor 형식 약화 권고.
+  - DCN-30-37 follow-up 으로 `MISSING_SELF_VERIFY` 패턴 추가 약속 — anchor 자율화 후 다중 anchor 검출 로직 필요.
+  - DCN-30-37 follow-up 으로 §12 안티패턴 강화 약속 — Bash sed/awk 후 검증 의무 1줄 (#39 흡수, B안 — SSOT 강화).
+- **Alternatives**:
+  1. *옵션 A — `## 자가 검증` 단일 anchor 유지*. 형식 strict, agent 자율 약함. first-principle 회색.
+  2. *옵션 B — anchor 완전 자율 (특정 섹션 명 X)*. 메인 추출 로직 구현 어려움 (regex 매칭 불가).
+  3. **(채택) 옵션 C — 다중 anchor 옵션 + substance 의무**. dcness §1 가시성 룰 패턴 정합. 자율 + 검출 가능성 양립.
+- **Decision**:
+  - 옵션 C 채택. 4 anchor 옵션:
+    - `## 자가 검증` (기존 DCN-30-34)
+    - `## Verification` (영어)
+    - `## 검증` (한국어 짧은 형)
+    - `## Self-Verify` / `## Self Verify` (영어 dash 변형)
+  - `agents/engineer.md` 양 섹션 (자가 검증 + IMPL_PARTIAL 남은 작업) anchor 자율화 명시.
+  - `harness/run_review.py:SELF_VERIFY_ANCHORS` regex 4개 + `_has_self_verify_anchor(prose)` helper.
+  - `MISSING_SELF_VERIFY` MEDIUM (HIGH 아님) — 누락 시 메인 결과 신뢰 어려운 정도지 critical 아님. engineer agent + IMPL_DONE/IMPL_PARTIAL/POLISH_DONE enum 한정 (escalate enum 비대상).
+  - `dcness-guidelines.md` §12 안티패턴 1줄 추가 — Bash sed/awk 후 *전·후* 실측 의무 (방법 자율: git diff --stat / 결과 grep / Read 등). DCN-30-37 `MAIN_SED_MISDIAGNOSIS` 자동 검출 cross-ref.
+- **Follow-Up**:
+  - **자장 plugin 재install + 새 epic 검증** — DCN-30-33~38 효과 실 측정. 다음 epic 진행 시 prior count hint stderr / `MISSING_SELF_VERIFY` 검출 / `MAIN_SED_MISDIAGNOSIS` 검출 모두 자동 발화 확인.
+  - **agent prompt §4/§5/§6/§7 → handoff-matrix sweep** (DCN-30-32 follow-up) — 별도 PR 후보.
+  - **THINKING_LOOP CRITICAL banner** (smart-compact #5) — agents/{architect,ux-architect,product-planner}.md.
+  - **render_report `tool_uses` 컬럼** — 단계별 표 보강.
+  - **catastrophic-gate.sh handoff-matrix.md 보호 sync 검증**.
+  - **임계값 30일 누적 tuning** — TOOL_USE_OVERFLOW 100 / PARTIAL_LOOP 3 / END_STEP_SKIP margin 1.
+
 ### DCN-CHG-20260430-37
 - **Date**: 2026-04-30
 - **Rationale**:
