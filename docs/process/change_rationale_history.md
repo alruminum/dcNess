@@ -18,6 +18,31 @@
 
 ## Records
 
+### DCN-CHG-20260430-40
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 자장 jajang 사용자 보고 — `/product-plan` 진입 시 메인이 dcness 룰 (loop-procedure / Step 기록 / TaskCreate / begin-step) 미인지. SessionStart system-reminder 에 "OK" 만 보일 뿐 dcness 본문 부재.
+  - 본 dcness 세션 jsonl `grep -c "dcness Guidelines (자동 로드"` = 0 직접 검증 — DCN-30-26 inject 처음부터 작동 0회.
+  - 진짜 위반 — DCN-30-26 머지 후 *실제 작동 검증 없이* 후속 PR 5+개 진행. 글로벌 제1룰 ("실존 검증 강제") + dcness §12 self-verify 원칙 (우리 박은 룰) 위반. I5 회귀 패턴 동일.
+- **2 Bug**:
+  - **B1: JSON schema 잘못** — claude-code-guide 검증 결과 `{"continue", "additionalContext"}` top-level 은 CC honor X. 정확 schema = `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}`. nested wrapper 필수.
+  - **B2: content 10K cap 초과** — guidelines.md 12,077 char inject 시도. CC additionalContext cap 10,000 초과 → truncate 또는 silent drop.
+- **Alternatives**:
+  1. *옵션 A — guidelines.md 자체 < 10K 압축*. SSOT 정보 손실.
+  2. *옵션 B — 핵심 룰 5K inject + 자세 read*. 강제력 약함.
+  3. **(채택) 옵션 C — directive only inject (~1K) + SSOT path + 핵심 강제 룰 4**. CLAUDE.md 와 동일 레벨 강제. cap 회피.
+- **Decision**:
+  - 옵션 C 채택.
+  - Schema fix — `hookSpecificOutput` wrapper.
+  - Content compression — directive 1.2K. 5 SSOT path + 핵심 강제 룰 4 (가시성 echo / Step 기록 / self-verify / finalize-run --auto-review).
+  - 글로벌 강제 표현 — "글로벌 `~/.claude/CLAUDE.md` 와 동일 레벨 강제. 미인지 진행 = 룰 위반".
+- **Follow-Up (의무)**:
+  - **본 PR 머지 후 새 dcness 세션 시작** — system-reminder 에 "DCN-30-40 자동 로드" 출현 확인. 검증 *전* 다른 작업 금지.
+  - **자장 plugin reinstall** — 사용자 환경. 새 자장 세션 → inject 검증 → 새 epic 진입 시 메인이 SSOT read + Step 절차 자율 적용 확인.
+  - **DCN-30-27 ~ -39 의존성 재검증** — inject 작동 후 5 slim skill 메인이 SSOT 만 보고 task 동적 구성 가능 self-test.
+  - **회귀 안전망** — `/run-review` 에 `INJECT_NOT_RECEIVED` 패턴 추가 후속.
+  - **본 incident 회고 룰화** — dcness §12 안티패턴 1줄 추가 ("자기 박은 mechanical 메커니즘도 실 작동 검증 후 후속 PR 진행. 가정 진행 금지").
+
 ### DCN-CHG-20260430-39
 - **Date**: 2026-04-30
 - **Rationale**:
