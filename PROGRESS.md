@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+- **✂️ orchestration.md split (handoff-matrix 분리)** (`DCN-CHG-20260430-32`):
+  - PR4 의 follow-up — orchestration.md (540줄) 300줄 cap 위반 해소.
+  - **`docs/handoff-matrix.md` 신규** (256줄) — agent 측 강제 영역 SSOT. §4 결정표 (12 agent enum) + §5 retry 한도 + §6 escalate 카탈로그 + §7 권한 매트릭스 (호출 / Write / Read / 인프라) 통째 이전.
+  - **`docs/orchestration.md` 슬림** (540 → 298줄) — 시퀀스 SSOT 만 보존 (§0 정체성, §1 모드, §2 게이트 시퀀스, §3 진입 경로 mini-graph 6, §4 cross-ref to handoff-matrix, §5 catastrophic vs 자율 영역, §6 driver 결정, §7 proposal cross-ref, §8 참조).
+  - 책임 축: 시퀀스 spec ↔ agent 결정/권한. 모든 cross-ref 양방향 + dcness-guidelines.md §0.1 "현재 알려진 위반" 항목 해소 (없음).
 - **🪶 4 skill bulk slim (quick/impl/impl-loop/product-plan)** (`DCN-CHG-20260430-31`):
   - 4 PR migration 의 마지막 PR. 5 skill 합계 660 → 132줄 (80% 절감).
   - `commands/quick.md` 215 → 32줄 — `quick-bugfix-loop` cross-ref + Inputs (이슈 / 영향 파일 / 재현 / 원하는 방향).

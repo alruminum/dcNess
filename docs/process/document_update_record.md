@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260430-32
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/handoff-matrix.md` (신규, 256줄) — agent 측 강제 영역 SSOT. orchestration.md §4 결정표 (12 agent enum 표) + §5 retry 한도 + §6 escalate 카탈로그 + §7 권한 매트릭스 (HARNESS_ONLY_AGENTS / ALLOW / READ_DENY / 인프라 패턴 / 인프라 프로젝트 판정) 통째 이전. §1~§4 = 결정표 / Retry / Escalate / 접근 권한, §5 = 참조.
+  - `docs/orchestration.md` — 540 → 298줄. §4 = handoff-matrix cross-ref 1 단락. §5/6/7 → handoff-matrix.md 로 이전. §8 → §5 (Catastrophic vs 자율) renumber. §9 → §6, §10 → §7 (proposal cross-ref 압축), §11 → §8 (참조 갱신 — handoff-matrix / loop-procedure / loop-catalog 추가). §5.1/5.2/5.3 sub-section 안 §6/§7.X 참조 → handoff-matrix §1/§2/§3/§4 로 갱신.
+  - `docs/process/dcness-guidelines.md` §0.1 — "현재 알려진 위반" 항목 갱신 (orchestration.md 540줄 → 해소, 없음).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: PR4 (DCN-30-30) 의 follow-up. orchestration.md (540줄) = 알려진 cap 위반. 책임 축 = 시퀀스 spec ↔ agent 결정/권한 으로 자연 분리. handoff-matrix.md 신설로 결정표 + retry + escalate + 권한 매트릭스 통합 (RWHarness `harness-architecture.md` §3 어휘 정합). 양 파일 모두 < 300줄 (298 / 256). 모든 §X.Y cross-ref 양방향 박힘.
+
 ### DCN-CHG-20260430-31
 - **Date**: 2026-04-30
 - **Change-Type**: agent (skill prompt)

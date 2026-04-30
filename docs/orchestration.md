@@ -209,287 +209,57 @@ flowchart LR
 
 ---
 
-## 4. 결론 enum → 다음 agent trigger 결정표
+## 4. Agent 측 강제 영역 — `handoff-matrix.md` (cross-ref)
 
-> 13 agent (validator/architect 의 mode 펼침). 본 표가 §2/§3 시퀀스의 *상세 분기 spec*.
+결론 enum → 다음 agent trigger 결정표 / Retry 한도 / Escalate 카탈로그 / 접근 권한 매트릭스 (호출 / Write / Read / 인프라 패턴) = [`handoff-matrix.md`](handoff-matrix.md) §1~§4 SSOT.
 
-### 4.1 product-planner
-
-| 결론 | 다음 trigger |
-|---|---|
-| `PRODUCT_PLAN_READY` | plan-reviewer |
-| `CLARITY_INSUFFICIENT` | 사용자 (역질문) |
-| `PRODUCT_PLAN_CHANGE_DIFF` | plan-reviewer (변경 분만 재심사) |
-| `PRODUCT_PLAN_UPDATED` | ux-architect (변경 반영) |
-| `ISSUES_SYNCED` | (다음 단계 없음, 동기화 완료) |
-
-### 4.2 plan-reviewer
-
-| 결론 | 다음 trigger |
-|---|---|
-| `PLAN_REVIEW_PASS` | ux-architect (UX_FLOW) |
-| `PLAN_REVIEW_CHANGES_REQUESTED` | product-planner 재진입 |
-
-### 4.3 ux-architect
-
-| 결론 | 다음 trigger |
-|---|---|
-| `UX_FLOW_READY` | validator (UX_VALIDATION) |
-| `UX_FLOW_PATCHED` | validator (UX_VALIDATION, 변경 부분만) |
-| `UX_REFINE_READY` | 사용자 승인 → designer SCREEN |
-| `UX_FLOW_ESCALATE` | 사용자 (escalate) |
-
-### 4.4 architect (master, 7 mode)
-
-| Mode | 결론 | 다음 trigger |
-|---|---|---|
-| SYSTEM_DESIGN | `SYSTEM_DESIGN_READY` | architect TASK_DECOMPOSE |
-| TASK_DECOMPOSE | `READY_FOR_IMPL` | impl 루프 (architect MODULE_PLAN per impl) |
-| MODULE_PLAN | `READY_FOR_IMPL` | validator PLAN_VALIDATION |
-| SPEC_GAP | `SPEC_GAP_RESOLVED` | engineer 재진입 |
-| SPEC_GAP | `PRODUCT_PLANNER_ESCALATION_NEEDED` | product-planner |
-| SPEC_GAP | `TECH_CONSTRAINT_CONFLICT` | 사용자 (escalate) |
-| TECH_EPIC | `SYSTEM_DESIGN_READY` | architect TASK_DECOMPOSE |
-| LIGHT_PLAN | `LIGHT_PLAN_READY` | engineer simple |
-| DOCS_SYNC | `DOCS_SYNCED` | (완료) |
-| DOCS_SYNC | `SPEC_GAP_FOUND` | architect SPEC_GAP |
-| DOCS_SYNC | `TECH_CONSTRAINT_CONFLICT` | 사용자 |
-
-### 4.5 engineer
-
-| 결론 | 다음 trigger |
-|---|---|
-| `IMPL_DONE` | validator CODE_VALIDATION |
-| `SPEC_GAP_FOUND` | architect SPEC_GAP (attempt < 2) / escalate (attempt ≥ 2) |
-| `TESTS_FAIL` | engineer 재시도 (attempt < 3) / `IMPLEMENTATION_ESCALATE` (≥ 3) |
-| `IMPLEMENTATION_ESCALATE` | 사용자 |
-| `POLISH_DONE` | pr-reviewer (재호출) |
-
-### 4.6 test-engineer
-
-| 결론 | 다음 trigger |
-|---|---|
-| `TESTS_WRITTEN` | engineer (attempt 0 진입) |
-| `SPEC_GAP_FOUND` | architect SPEC_GAP |
-
-### 4.7 designer
-
-| 결론 | 다음 trigger |
-|---|---|
-| `DESIGN_READY_FOR_REVIEW` | (THREE_WAY) design-critic / (ONE_WAY) 사용자 PICK |
-| `DESIGN_LOOP_ESCALATE` | 사용자 |
-
-### 4.8 design-critic
-
-| 결론 | 다음 trigger |
-|---|---|
-| `VARIANTS_APPROVED` | 사용자 PICK → 다음 단계 (test 또는 impl) |
-| `VARIANTS_ALL_REJECTED` | designer 재진입 (round < 3) |
-| `UX_REDESIGN_SHORTLIST` | ux-architect UX_REFINE (round ≥ 3) |
-
-### 4.9 validator (5 mode 펼침)
-
-| Mode | 결론 | 다음 trigger |
-|---|---|---|
-| PLAN_VALIDATION | `PASS` | test-engineer |
-| PLAN_VALIDATION | `FAIL` | architect MODULE_PLAN 재진입 |
-| PLAN_VALIDATION | `SPEC_MISSING` | product-planner / architect SPEC_GAP |
-| CODE_VALIDATION | `PASS` | pr-reviewer |
-| CODE_VALIDATION | `FAIL` | engineer 재시도 (attempt < 3) |
-| CODE_VALIDATION | `SPEC_MISSING` | architect SPEC_GAP |
-| DESIGN_VALIDATION | `DESIGN_REVIEW_PASS` | architect TASK_DECOMPOSE (DCN-CHG-20260430-05) |
-| DESIGN_VALIDATION | `DESIGN_REVIEW_FAIL` | architect SYSTEM_DESIGN 재진입 (cycle 한도 2) |
-| DESIGN_VALIDATION | `DESIGN_REVIEW_ESCALATE` | 사용자 위임 |
-| UX_VALIDATION | `PASS` | architect SYSTEM_DESIGN |
-| UX_VALIDATION | `FAIL` | ux-architect 재진입 |
-| BUGFIX_VALIDATION | `PASS` | pr-reviewer |
-| BUGFIX_VALIDATION | `FAIL` | engineer 재시도 |
-
-### 4.10 pr-reviewer
-
-| 결론 | 다음 trigger |
-|---|---|
-| `LGTM` | 사용자 승인 → squash merge |
-| `CHANGES_REQUESTED` | engineer POLISH |
-
-### 4.11 qa
-
-| 결론 | 다음 trigger |
-|---|---|
-| `FUNCTIONAL_BUG` | architect LIGHT_PLAN |
-| `CLEANUP` | engineer 직접 (light) |
-| `DESIGN_ISSUE` | designer / ux-architect (REFINE) |
-| `KNOWN_ISSUE` | (종료) |
-| `SCOPE_ESCALATE` | 사용자 |
-
-### 4.12 security-reviewer
-
-| 결론 | 다음 trigger |
-|---|---|
-| `SECURE` | (다음 단계 없음, 검증 완료) |
-| `VULNERABILITIES_FOUND` | engineer (수정 요청) |
+본 §3 시퀀스의 *상세 분기 spec* + 두 번째 강제 영역 ("접근 영역") 모두 그쪽으로 이전 (DCN-CHG-20260430-32 split — 행동지침 md 300줄 cap 정합). 이전 본문 §4 결정표 / §5 Retry / §6 Escalate / §7 핸드오프 매트릭스 → handoff-matrix §1/§2/§3/§4.
 
 ---
 
-## 5. Retry 한도
-
-> RWHarness `harness-architecture.md` §4.3 핵심 상수 + impl_loop 정책 정합. dcNess 는 boolean Flag 대신 `.claude/harness-state/<run_id>/.attempts.json` 카운터로 표현.
-
-| 항목 | 한도 | 초과 시 |
-|---|---|---|
-| engineer attempt (TESTS_FAIL → 재시도) | 3 | `IMPLEMENTATION_ESCALATE` |
-| engineer SPEC_GAP_FOUND → architect.spec-gap → engineer 재진입 | 2 | `IMPLEMENTATION_ESCALATE` |
-| validator FAIL → 직전 agent 재진입 | (validator 종속) | 직전 agent 의 retry 한도에 흡수 |
-| design THREE_WAY VARIANTS_ALL_REJECTED 라운드 | 3 | `UX_REDESIGN_SHORTLIST` (ux-architect REFINE) |
-| pr-reviewer CHANGES_REQUESTED → POLISH 라운드 | 2 | 사용자 escalate |
-| product-planner CLARITY_INSUFFICIENT 라운드 | 무제한 (사용자 응답 대기) | (해당 없음) |
-| ESCALATE 누적 (동일 fail_type) | 2 | architect SPEC_GAP 자동 호출 |
-
-`.attempts.json` 형식 (예시):
-```json
-{
-  "plan_validation": 1,
-  "code_validation": 2,
-  "spec_gap": 1,
-  "design_round": 0
-}
-```
-
-force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
-
----
-
-## 6. Escalate 조건 카탈로그
-
-다음 결론 enum 수신 시 **메인 Claude / driver 가 즉시 사용자 보고 후 대기** (proposal §2.5 정합 — 자동 복구 금지):
-
-| Enum | 출처 agent | 의미 |
-|---|---|---|
-| `IMPLEMENTATION_ESCALATE` | engineer | 재시도 한도 초과 또는 구현 불가 |
-| `UX_FLOW_ESCALATE` | ux-architect | UX Flow 정의 불가 (PRD 모순 등) |
-| `DESIGN_LOOP_ESCALATE` | designer | variant 생성 불가 또는 critic 3 round 후 |
-| `SCOPE_ESCALATE` | qa | 이슈 범위가 분류 enum 5개 모두 해당 안 됨 |
-| `PRODUCT_PLANNER_ESCALATION_NEEDED` | architect.spec-gap | PRD 변경 필요 |
-| `TECH_CONSTRAINT_CONFLICT` | architect.spec-gap / docs-sync | 기술 제약 충돌 |
-| `UX_REDESIGN_SHORTLIST` | design-critic | 3 round 누적 reject |
-| `CLARITY_INSUFFICIENT` | product-planner | 사용자 입력 모호 (역질문 필요) |
-
-자동 재시도 / 우회 금지. 사용자 명시 결정 후만 진행.
-
----
-
-## 7. 핸드오프 매트릭스 (접근 영역 강제)
-
-> RWHarness `harness-architecture.md` §3 의 dcNess 변환. 본 SSOT 의 두 번째 강제 영역 = "접근 영역" (proposal §2.5 정합).
-
-### 7.1 호출 권한 (HARNESS_ONLY_AGENTS)
-
-`HARNESS_ONLY_AGENTS = ("engineer",)` — 메인 Claude 가 Agent 도구로 직접 호출 차단. 코드 driver (impl_driver) 경유 필수.
-
-| Agent | Mode | 직접 호출 허용 | 비고 |
-|---|---|---|---|
-| architect | SYSTEM_DESIGN, TASK_DECOMPOSE, TECH_EPIC, LIGHT_PLAN, DOCS_SYNC | ✅ | 메인 직접 |
-| architect | MODULE_PLAN, SPEC_GAP | ❌ | impl_driver / plan_driver 경유 |
-| validator | DESIGN_VALIDATION, UX_VALIDATION | ✅ | 메인 직접 |
-| validator | PLAN_VALIDATION, CODE_VALIDATION, BUGFIX_VALIDATION | ❌ | 루프 경유 |
-| 그 외 11 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, design-critic, security-reviewer, product-planner, test-engineer, plan-reviewer 모두 메인 직접 |
-| engineer | — | ❌ | impl_driver 경유 필수 |
-
-### 7.2 Write/Edit 허용 경로 (ALLOW_MATRIX)
-
-| 에이전트 | 허용 경로 |
-|---|---|
-| engineer | `src/**` |
-| architect | `docs/**`, `backlog.md`, `trd.md` |
-| designer | `design-variants/**`, `docs/ui-spec*` |
-| test-engineer | `src/__tests__/**`, `*.test.*`, `*.spec.*` |
-| product-planner | `prd.md`, `stories.md` |
-| ux-architect | `docs/ux-flow.md` |
-| qa | (Issue tracker mutation 만, 파일 X) |
-| validator / design-critic / pr-reviewer / security-reviewer / plan-reviewer | (없음 — 판정 전용) |
-
-### 7.3 Read 금지 경로 (READ_DENY_MATRIX)
-
-| 에이전트 | 금지 |
-|---|---|
-| product-planner | `src/`, `docs/impl/`, `trd.md` |
-| designer | `src/` |
-| test-engineer | `src/` (impl 외), 도메인 문서 |
-| plan-reviewer | `src/`, `docs/impl/`, `trd.md` |
-
-### 7.4 인프라 패턴 (전 에이전트 공통 차단)
-
-```python
-DCNESS_INFRA_PATTERNS = [
-    r'[./]claude/',
-    r'hooks/',
-    r'harness/(signal_io|interpret_strategy)\.py',
-    r'docs/orchestration\.md',
-    r'docs/process/governance\.md',
-    r'scripts/(check_document_sync|check_task_id|setup_branch_protection|analyze_metrics)\.mjs',
-]
-```
-
-> RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 **본 SSOT 가 정정**: dcNess 의 SSOT 파일명은 `docs/orchestration.md` (단일). 옛 `orchestration-rules.md` 어휘는 본 SSOT 에서 폐기.
-
-인프라 프로젝트(`is_infra_project()` True) 에선 위 패턴 해제 (dcNess 자체 작업 시 본 SSOT 도 편집 가능해야 함).
-
-### 7.5 인프라 프로젝트 판정
-
-RWHarness 4 신호 OR 정합 (proposal §10 fork-and-refactor 정합):
-
-1. `DCNESS_INFRA=1` 환경변수
-2. 마커 파일 `~/.claude/.dcness-infra` 존재
-3. `CLAUDE_PLUGIN_ROOT` 환경변수 non-empty
-4. `cwd.resolve() == Path("/Users/<user>/project/dcNess")` (또는 화이트리스트 매칭)
-
-본 판정 코드는 후속 Task — 코드 driver (§9) 도입 시 함께.
-
----
-
-## 8. Catastrophic vs 자율 영역
+## 5. Catastrophic vs 자율 영역 (was §8)
 
 > proposal §2.5 원칙 4 직접 인용:
 > **"impl_loop 시퀀스 (validator → engineer → pr-reviewer) = 보존"**
 > **"시퀀스 *내부* 행동 = agent 자율"**
 
-### 8.1 보존 (catastrophic — 코드 강제)
+### 5.1 보존 (catastrophic — 코드 강제)
 
 - §2.3 catastrophic 시퀀스 4 항목 (validator/pr-reviewer 우회 금지 등)
-- §7.1 HARNESS_ONLY_AGENTS (engineer 직접 호출 차단)
-- §7.2 ALLOW_MATRIX (Write 경계)
-- §7.3 READ_DENY_MATRIX (Read 격리)
-- §7.4 DCNESS_INFRA_PATTERNS (인프라 보호)
-- §6 escalate 결론은 자동 복구 금지
+- handoff-matrix §4.1 HARNESS_ONLY_AGENTS (engineer 직접 호출 차단)
+- handoff-matrix §4.2 ALLOW_MATRIX (Write 경계)
+- handoff-matrix §4.3 READ_DENY_MATRIX (Read 격리)
+- handoff-matrix §4.4 DCNESS_INFRA_PATTERNS (인프라 보호)
+- handoff-matrix §3 escalate 결론은 자동 복구 금지
 
-### 8.2 자율 (agent 결정)
+### 5.2 자율 (agent 결정)
 
 - prose 출력 형식 (markdown / 평문 / 표 자유)
 - handoff 페이로드 형식 (prose 디렉토리 path 만 강제, 본문 구조 자유)
 - preamble 구조 / agent prompt 안 thinking 분량
-- agent 가 어떤 도구를 어떤 순서로 호출할지 (단 §7 권한 매트릭스 안에서)
+- agent 가 어떤 도구를 어떤 순서로 호출할지 (단 handoff-matrix §4 권한 매트릭스 안에서)
 - mode 별 결론 enum 외 추가 emit (예: validator 가 PASS 외 보강 설명)
 
-### 8.3 권고 (강제 X, 측정 + 사용자 개입)
+### 5.3 권고 (강제 X, 측정 + 사용자 개입)
 
-- §4 결정표의 "다음 trigger" — driver 가 자동 호출 시 따름. 메인 Claude 직접 작업 모드는 *권고*.
-- §5 retry 한도 — 카운터로 측정. 한도 도달 시 escalate, 사용자 결정.
+- handoff-matrix §1 결정표의 "다음 trigger" — driver 가 자동 호출 시 따름. 메인 Claude 직접 작업 모드는 *권고*.
+- handoff-matrix §2 retry 한도 — 카운터로 측정. 한도 도달 시 escalate, 사용자 결정.
 - 휴리스틱 hit rate 90%+ 목표 (`scripts/analyze_metrics.mjs` fitness)
 
 ---
 
-## 9. 코드 Driver — 메인-주도 컨베이어 + PreToolUse 훅 채택 (`DCN-CHG-20260429-29`)
+## 6. 코드 Driver — 메인-주도 컨베이어 + PreToolUse 훅 채택 (`DCN-CHG-20260429-29`)
 
-본 SSOT 의 §2~§7 을 *코드로 강제* 하는 driver 디자인은 **`docs/conveyor-design.md`** 를 SSOT 로 분리. 본 절은 결정 요약만 보존.
+본 SSOT 의 §2~§5 + handoff-matrix.md 를 *코드로 강제* 하는 driver 디자인은 **`docs/conveyor-design.md`** 를 SSOT 로 분리. 본 절은 결정 요약만 보존.
 
 ### 채택 모델 (요약)
 
 > **메인 클로드 = 시퀀스 결정자. 컨베이어 (Python) = 멍청한 순회기. catastrophic backbone = PreToolUse 훅 강제.**
 
-- 메인 클로드가 `orchestration.md` §4 결정표 보고 `list[Step]` 짜서 컨베이어 호출.
+- 메인 클로드가 `handoff-matrix.md` §1 결정표 보고 `list[Step]` 짜서 컨베이어 호출.
 - 컨베이어는 시퀀스 순회 + Agent 호출 + `signal_io.interpret_signal` 로 enum 추출 + `Step.advance_when` 비교.
 - enum ∈ advance_when 이면 다음 step. 아니면 `ConveyorPause` 반환 (예외 아님) — 메인이 받아 자율 처리 (재계획 / 사용자 위임 / 종료).
-- §2.3 catastrophic 4룰 + §7.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` (PreToolUse Agent) 가 코드 hardcode 0 으로 강제.
+- §2.3 catastrophic 4룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` (PreToolUse Agent) 가 코드 hardcode 0 으로 강제.
 - 형식 강제 LLM 출력 (JSON 등) **사용 안 함** — proposal §2.5 (prose-only) 정합.
 
 ### 폐기된 옵션 카탈로그 (참조)
@@ -504,30 +274,17 @@ RWHarness 4 신호 OR 정합 (proposal §10 fork-and-refactor 정합):
 
 ---
 
-## 10. proposal 인용 (강제)
+## 7. proposal 인용 (cross-ref)
 
-> **proposal §2.5 원칙 4** (직접 인용):
-> "**흐름 강제는 catastrophic 시퀀스만**"
-> "impl_loop 시퀀스 (validator → engineer → pr-reviewer) = 보존"
-> "시퀀스 *내부* 행동 = agent 자율"
-
-> **proposal §11.4 도입할 것** (직접 인용):
-> "**작업 순서 강제**: 시퀀스 (validator → engineer → pr-reviewer) + retry 정책 (사용자 프로젝트 적용 시)"
-> "**접근 영역 강제**: agent-boundary ALLOW/READ_DENY + plugin-write-guard (사용자 프로젝트 적용 시)"
-
-> **proposal §11.4 도입 안 할 것** (직접 인용):
-> "출력 형식 강제 (marker / status JSON / @OUTPUT_SCHEMA 일체)"
-> "handoff 형식 (next_actions[] 같은 구조 강제)"
-> "Flag 시스템 (boolean flag 파일)"
-> "preamble 자동 주입"
-> "schema / alias map / parse_marker 사다리"
-
-본 SSOT §2~§7 은 위 인용의 *적용 표현*. 어휘 변환만, 의미 보존.
+본 SSOT 의 강제 영역 정의 = [`status-json-mutate-pattern.md`](status-json-mutate-pattern.md) §2.5 원칙 4 + §11.4 (도입 / 도입 안 할 항목). §2~§5 + handoff-matrix §1~§4 는 위 원전의 *적용 표현* — 어휘 변환만, 의미 보존.
 
 ---
 
-## 11. 참조
+## 8. 참조 (was §11)
 
+- [`handoff-matrix.md`](handoff-matrix.md) — agent 결정표 / Retry / Escalate / 접근 권한 SSOT (§4 cross-ref)
+- [`loop-procedure.md`](loop-procedure.md) — 루프 실행 Step 0~8 mechanics
+- [`loop-catalog.md`](loop-catalog.md) — 8 loop 행별 풀스펙 (allowed_enums / 분기 / sub_cycles)
 - [`status-json-mutate-pattern.md`](status-json-mutate-pattern.md) — proposal SSOT (정체성·Phase·원칙)
 - [`migration-decisions.md`](migration-decisions.md) §2.1 — RWHarness 모듈 분류 (impl_loop.py DISCARD 결정 정합 + 본 SSOT 로 *룰* 만 부활)
 - [`process/governance.md`](process/governance.md) — Task-ID + Document Sync (commit/PR 룰, 본 SSOT 와 직교)
