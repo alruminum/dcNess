@@ -18,6 +18,24 @@
 
 ## Records
 
+### DCN-CHG-20260501-08
+- **Date**: 2026-05-01
+- **Rationale**:
+  - 사용자 — SessionStart 훅이 plugin cache 안 SSOT 문서 (`docs/process/dcness-guidelines.md` 등) 를 inject 해도 메인 Claude 가 `Read(~/.claude/plugins/cache/dcness/**)` 권한 부재로 read 못함. inject 한 system-reminder 안 cross-ref 따라가기 0.
+  - 권한 시스템 본질 — `acceptEdits` defaultMode 라도 plugin cache 디렉토리는 user-managed 영역 (CC 가 자동 관리) 으로 read deny 디폴트. 사용자가 명시 allow 등록해야 read 가능.
+  - `/init-dcness` 가 활성화 부트스트랩의 진입점 → 권한 grant 도 같은 절차 안에 묶는 게 자연스러움. 사용자 직접 요청.
+- **Alternatives**:
+  1. *옵션 A — Step 2.5 inline jq*. 단순. 의존 = jq. CC 환경 표준. **(채택)**.
+  2. *옵션 B — `dcness-helper grant-perm` 신규 subcommand*. python 으로 settings.json merge. 멱등 안전. 재사용 가능. 단 본 use case 만 → over-engineering.
+  3. *옵션 C — settings 직접 편집 안내만*. 사용자 매뉴얼 step. 활성화 자동화 의도 위반. 기각.
+- **Decision**:
+  - 옵션 A 채택. jq merge 3 케이스 (이미 존재 / 빈 allow / permissions key 자체 부재) 직접 검증 PASS.
+  - settings 부재 시 신규 생성 (`mkdir -p` + 빈 JSON). jq 미설치 fallback = WARN + 수동 안내.
+  - 재설치 시 settings 보존 (`~/.claude/plugins/data/dcness-dcness/` 만 정리됨) — 멱등 재실행 안내 추가.
+- **Follow-Up**:
+  - 본 권한이 필요한 다른 plugin path 발견 시 같은 step 에 추가 (예: data/ read 가 필요해지면).
+  - `/disable-dcness` skill 도입 시 권한 제거 step 동반 검토 — 단 다른 dcness 활성 프로젝트 영향 받지 않게 careful (전역 권한이라 사용자 수동 관리 권장).
+
 ### DCN-CHG-20260501-07
 - **Date**: 2026-05-01
 - **Rationale**:
