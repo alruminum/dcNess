@@ -13,6 +13,11 @@
 - 한 태스크 = engineer 가 한 번 루프로 구현 가능한 단위
 - 파일 1~3 개 생성/수정 범위
 - 명확한 PASS/FAIL 판단 가능
+- **DCN-CHG-20260430-16 추가** — 분할 단위 정합 검증:
+  - 각 batch 가 *test-engineer 관점에서 명확히 테스트 가능* 한지 (`docs/domain-model.md` + `docs/architecture.md` 의 의존성 그래프 참조)
+  - 같은 변경 이유로 묶이는가 (SRP 정합 — UI + 비즈니스 로직 한 batch X)
+  - 의존성 1 묶음 = 1 batch (system-design 의 모듈 분할과 정합)
+  - 분할 미달 시 architect SYSTEM_DESIGN 재진입 또는 SPEC_GAP escalate
 
 ## 듀얼 모드 가드레일 — 디자인 토큰 우선 (필수 검사)
 

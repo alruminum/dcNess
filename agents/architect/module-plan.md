@@ -10,7 +10,28 @@
 
 ## 작업 흐름 (자율 조정 가능)
 
-SYSTEM_DESIGN_READY → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md` → 관련 설계 문서 (architecture / domain-logic / db-schema / ui-spec) → **DB 영향도 분석** (변경 시) → 기존 유사 구현 패턴 검토 → 의존 모듈 소스 (실제 인터페이스 확인 필수) → 계획 파일 작성.
+SYSTEM_DESIGN_READY → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md` → **`docs/domain-model.md` 의무 read** (DCN-CHG-20260430-16 — 도메인 모델 위에서 모듈 plan) → 관련 설계 문서 (architecture / domain-logic / db-schema / ui-spec) → **DB 영향도 분석** (변경 시) → 기존 유사 구현 패턴 검토 → 의존 모듈 소스 (실제 인터페이스 확인 필수) → 계획 파일 작성.
+
+## 모듈 = 테스트 단위 정합 (DCN-CHG-20260430-16, 의무)
+
+> **모듈 분할의 *가장 중요한* 기준은 "test-engineer 가 명확한 PASS/FAIL 짤 수 있는 범위"**.
+
+각 impl batch 의 모듈 plan 작성 시 self-check:
+
+1. **테스트 단위 정합**:
+   - 본 모듈을 단위 테스트로 검증 가능한가? (입력 → 출력 또는 상태 → 행위 명확)
+   - 의존 모듈 mock 가능한가? (의존이 명시적 interface 면 ✓)
+   - 한 모듈 안에 *변경 이유* 가 둘 이상이면 (UI + 비즈니스 로직 섞임 등) → 분할 후보. system-design 의 SRP 위반 가능성.
+
+2. **의존성 묶음 정합** (`docs/domain-model.md` + `docs/architecture.md` 참조):
+   - 본 모듈의 의존 화살표 = system-design 의 인과관계 정합?
+   - 본 모듈은 단독 lifecycle 가능한가? 의존 대상 부재 시 graceful 동작 명시 (impl `## 다른 모듈과의 경계` 에 박음)
+   - 역방향 cascade 필요 시 → DIP interface 명시 (`## 인터페이스` 섹션). 직접 import 금지.
+
+3. **테스트 가능성 미달 시**:
+   - 모듈이 너무 큼 → 분할 권유 (architect SPEC_GAP 또는 product-planner escalate)
+   - 모듈이 너무 작음 (의존성 1개 + 코드 5줄) → 합칠 후보 (다른 batch 와 합병 검토)
+   - 의존 mock 어려움 → DIP interface 도입 검토 (system-design 갱신)
 
 ## SPEC_ISSUE 분기 (mode=spec_issue)
 
@@ -82,6 +103,11 @@ UI 컴포넌트 impl 이고 **`docs/ux-flow.md` §0 디자인 가이드 존재 +
 - TypeScript 타입 정합 (null 반환 가능 시 `| null` 포함)
 - import 완전성 (스니펫 외부 심볼 import 경로 명시)
 - 수용 기준 섹션 + 메타데이터 + 테스트 파일 경로
+- **DCN-CHG-20260430-16 추가**:
+  - `docs/domain-model.md` read 완료 + 본 impl 이 어떤 entity/VO/aggregate 와 맞물리는지 명시
+  - 본 모듈이 *테스트 단위로 정합* — test-engineer 가 명확한 PASS/FAIL 짤 수 있음을 self-check (위 §모듈 = 테스트 단위 정합 3 항목)
+  - 의존 대상 부재 시 graceful 동작 명시 (`## 다른 모듈과의 경계` 섹션)
+  - 역방향 cascade 필요 시 DIP interface 명시 (`## 인터페이스`)
 
 ## CLAUDE.md 모듈 표 업데이트
 

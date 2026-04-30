@@ -20,6 +20,24 @@
 
 ## Records
 
+### DCN-CHG-20260430-16
+- **Date**: 2026-04-30
+- **Change-Type**: agent, spec
+- **Files Changed**:
+  - `agents/architect/system-design.md` — 전면 재작성. Phase A (Domain Model 선정의 — DDD 4 요소 + invariant + bounded context) + Phase B (Clean Architecture 4 레이어 + SOLID 5 원칙 + 의존성 설계 원칙 4축). 의존성 인과관계 1줄 의무 + 독립성 자가 검증 표 + 역방향 cascade 시 DIP 의무 + 전화앱 (녹음/요약/기록) 예시. 모듈 = 테스트 단위 = 의존성 1 묶음 3 정합. 300줄 cap (초과 시 detail 분리 링크). 현행화 룰.
+  - `agents/architect/module-plan.md` — 작업 흐름에 `docs/domain-model.md` 의무 read 추가. "모듈 = 테스트 단위 정합" 절 신규 (test-engineer 가 명확한 PASS/FAIL 짤 수 있는 범위 self-check 3 항목). READY_FOR_IMPL 게이트에 4 항목 추가 (domain-model read / 테스트 단위 정합 / graceful 동작 / DIP interface 명시).
+  - `agents/architect/task-decompose.md` — 태스크 도출 기준에 분할 단위 정합 검증 4 항목 추가 (testable / SRP / 의존성 1 묶음 / 미달 시 SYSTEM_DESIGN 재진입).
+  - `agents/architect/spec-gap.md` — 설계 문서 동기화 표에 도메인 모델 / 시스템 구조 행 추가. "Domain Model 변경 사이클" 절 신규 (architect 단독 수정 + 영향 분석 + 300줄 cap).
+  - `agents/engineer.md` — 권한 경계에 `docs/domain-model.md` 수정 금지 추가 (read only, 변경 시 SPEC_GAP_FOUND escalate). Phase 1 스펙 검토에 domain-model 의무 read + 도메인 invariant 보존 + 의존성 방향 보존 + DIP interface 임의 추가 금지.
+  - `agents/test-engineer.md` — 권한 경계에 `docs/domain-model.md` 수정 금지 (read only). 작업 흐름에 domain-model + architecture 의존성 그래프 의무 read. "의존성 그래프 기반 테스트 범위" 절 신규 — 4 의존 패턴 별 테스트 케이스 의무 (단독 / 의존 / 부분 의존 / 역방향 cascade).
+  - `agents/validator/code-validation.md` — 작업 흐름 step 2 에 `docs/domain-model.md` 권한 read 추가 (도메인 invariant / 의존성 방향 위반 의심 시).
+  - `agents/pr-reviewer.md` — 권한 경계에 domain-model.md 권한 read 추가.
+  - `agents/security-reviewer.md` — 권한 경계에 domain-model.md 권한 read 추가 (invariant 위반 = 보안 이슈 가능).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: architect SYSTEM_DESIGN + MODULE_PLAN + TASK_DECOMPOSE + SPEC_GAP 4 모드 + engineer + test-engineer + validator/pr-reviewer/security-reviewer 9 agent 강화. DDD 도메인 모델 선정의 의무 (`docs/domain-model.md` SSOT) + Clean Arch 4 레이어 + SOLID 5 + 의존성 인과관계 명시 + 역방향 cascade 시 DIP 의무 + 모듈 = 테스트 단위 정합. 300줄 cap + 항상 현행화. domain-model.md 는 architect 단독 수정 — 다른 9 agent 는 read only (engineer/test-engineer 의무 read, validator/pr-reviewer/security-reviewer 권한 read). 수정 필요 시 SPEC_GAP_FOUND escalate. 사용자 직접 지시 — 전화앱 통화기록/요약/녹음 의존성 예시로 정신 박음.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-15
 - **Date**: 2026-04-30
 - **Change-Type**: spec

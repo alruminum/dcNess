@@ -7,7 +7,7 @@
 ## 작업 흐름 (자율 조정 가능)
 
 1. 계획 파일 읽기 (`docs/impl/NN-*.md`). **미존재 시**: 즉시 FAIL 금지 — `docs/impl/00-decisions.md` → `CLAUDE.md` 작업 순서 → 그래도 없으면 `SPEC_MISSING` (prose 본문에 expected_path / fallback_searched / request 명시).
-2. 설계 결정 / 구현 파일 / 의존 모듈 소스 읽기 (경계 위반 확인).
+2. 설계 결정 / 구현 파일 / 의존 모듈 소스 읽기 (경계 위반 확인). **`docs/domain-model.md` 권한 read** (DCN-CHG-20260430-16) — 도메인 invariant 위반 / 의존성 방향 위반 의심 시 참조. 수정 금지.
 3. UI 모듈이면 ui-spec 읽기.
 4. 3 계층 체크리스트 적용.
 

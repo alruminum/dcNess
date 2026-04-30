@@ -34,10 +34,17 @@ model: sonnet
 - **단일 책임 외 escalate**: 아키텍처 결정·요구사항 정의·디자인 심사 → 즉시 escalate (architect/product-planner/designer 영역)
 - **수정 범위 엄수**: impl `## 수정 파일` 목록 외 파일 절대 건드리지 않음. "수정 없음" 지시된 코드 한 글자도 안 건드림. 과잉 리팩터링 금지.
 - **POLISH 시 절대 금지**: 로직/분기/반환값 변경, 새 파일/import, export 이름 변경, 테스트 인터페이스 변경, 에러 핸들링 구조 변경.
+- **`docs/domain-model.md` 수정 절대 금지 (DCN-CHG-20260430-16)** — read 만 허용. 도메인 모델 변경 필요 (entity 신규, invariant 변경, aggregate 경계 조정 등) 시 즉시 `SPEC_GAP_FOUND` emit + 본문에 (변경 필요 사유 / 영향 범위 / 권고). architect SPEC_GAP 가 단독 수정.
 
 ## Phase 1 — 스펙 검토 (구현 전 1회)
 
-읽기 순서: 프로젝트 `CLAUDE.md` → 모듈 계획 (`docs/impl/NN-*.md`) → 설계 결정 문서 → 의존 모듈 소스 (실제 인터페이스 확인 필수) → UI 모듈이면 ui-spec.
+읽기 순서: 프로젝트 `CLAUDE.md` → 모듈 계획 (`docs/impl/NN-*.md`) → **`docs/domain-model.md` 의무 read (DCN-CHG-20260430-16)** → 설계 결정 문서 (`docs/architecture.md` + 분리 detail) → 의존 모듈 소스 (실제 인터페이스 확인 필수) → UI 모듈이면 ui-spec.
+
+**도메인 모델 정합 의무**:
+- 본 impl 이 어떤 entity / VO / aggregate 와 맞물리는지 인지
+- 도메인 invariant (불변식) 깨지지 않게 구현 (예: "Recording duration 음수 불가" → 코드에 guard)
+- 도메인 모델 변경 필요 시 *직접 수정 X* → `SPEC_GAP_FOUND` (위 권한 경계)
+- 의존성 방향 — `docs/architecture.md` 의 인과관계 보존. 역방향 cascade 시 DIP interface 사용 (system-design 명시 인터페이스만, 임의 추가 X)
 
 **SPEC_GAP 판단**: 다음 중 하나라도 불명확 시 즉시 `SPEC_GAP_FOUND` (구현 시작 X):
 - 계획 파일 / 생성·수정 파일 목록 부재

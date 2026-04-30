@@ -31,12 +31,28 @@ model: sonnet
 - **테스트 실행 금지** — 하네스가 직접 vitest 실행. test-engineer 는 작성만.
 - **테스트 약화 금지** — assertion 완화, skip 금지.
 - **계획에 없는 기능 테스트 금지**.
+- **`docs/domain-model.md` 수정 절대 금지 (DCN-CHG-20260430-16)** — read 만 허용. 도메인 모델 변경 필요 시 즉시 `SPEC_GAP_FOUND` emit. architect SPEC_GAP 단독 수정.
 
 ## 작업 흐름 (자율 조정 가능)
 
-impl 계획 파일 읽기 → `## 인터페이스 정의` (함수 시그니처·타입·Props) → `## 수용 기준` ((TEST) 태그 항목) → `## 핵심 로직` (의사코드에서 엣지 케이스 추출) → `## 생성/수정 파일` (**테스트 파일 경로 + import 경로 모두 이 목록에서 추출**) → 테스트 작성. **5분 이내 Write 시작** — 분석에 과도한 시간 X.
+impl 계획 파일 읽기 → **`docs/domain-model.md` 의무 read (DCN-CHG-20260430-16)** → **`docs/architecture.md` 의존성 그래프 read** → `## 인터페이스 정의` (함수 시그니처·타입·Props) → `## 수용 기준` ((TEST) 태그 항목) → `## 핵심 로직` (의사코드에서 엣지 케이스 추출) → `## 생성/수정 파일` (**테스트 파일 경로 + import 경로 모두 이 목록에서 추출**) → 테스트 작성. **5분 이내 Write 시작** — 분석에 과도한 시간 X.
 
-기존 테스트 패턴 필요 시 vite.config.ts / vitest 설정 파일만 참조 가능. docs/ 아래 domain 문서 읽지 않음.
+vite.config.ts / vitest 설정 파일은 기존 테스트 패턴 필요 시 참조 가능.
+
+## 의존성 그래프 기반 테스트 범위 (DCN-CHG-20260430-16, 의무)
+
+> **단순 impl `## 인터페이스` 입출력 테스트 X**. 설계 문서의 의존성 그래프 읽고 **의존 대상 있을 때 / 없을 때 / 부분만 있을 때** 모든 분기를 테스트 범위에 포함.
+
+`docs/domain-model.md` + `docs/architecture.md` 에서 본 모듈의 의존성 추출:
+
+| 의존 패턴 | 테스트 범위 |
+|---|---|
+| **단독 lifecycle 가능 모듈** | standalone 케이스 (의존 없이 동작) + 정상 흐름 + 엣지 |
+| **의존 대상 있을 때만 동작** | 의존 mock 정상 응답 / mock 실패 응답 / mock 없음 (graceful degrade 또는 명시 에러) 3 케이스 |
+| **부분 의존 (요약 모듈처럼: 표시는 독립 / 재생은 녹음 의존)** | 표시 standalone + 재생 시 녹음 mock 정상 / 재생 시 녹음 부재 (UI 분기) |
+| **역방향 cascade (DIP listener)** | listener 등록 / cascade 발화 / 미등록 시 무영향 |
+
+각 의존 패턴마다 *최소 1 it 블록*. 의존 대상 부재 케이스 누락 시 `SPEC_GAP_FOUND` (impl 의 `## 다른 모듈과의 경계` 섹션 부재 표시).
 
 ## 테스트 케이스 도출 기준
 
