@@ -20,6 +20,31 @@
 
 ## Records
 
+### DCN-CHG-20260430-18
+- **Date**: 2026-04-30
+- **Change-Type**: agent
+- **Files Changed**:
+  - `agents/plan-reviewer.md` — frontmatter `tools` 에 `WebFetch, WebSearch` 추가. 차원 8 (기술 실현성) 강화 — §8.1 외부 검증 의무 (PRD 명시 외부 의존 1개당 공식 문서 1회 fetch) + §8.2 조건부 약속 자동 탐지 ("M0 에서 검증" 패턴 → Must 직결 시 FAIL). 산출물에 `EXTERNAL_VERIFIED` 섹션 의무 추가.
+  - `agents/architect/system-design.md` — Spike Gate 절 신규. 추상 ABC + Mock 만으로 SYSTEM_DESIGN_READY 통과 금지. PRD Must 직결 외부 의존 spike 1개 실측 의무. Spike PASS 시 concrete 구현 + sdk.md 갱신 / FAIL 시 TECH_CONSTRAINT_CONFLICT. jajang 사례 박음.
+  - `agents/validator/design-validation.md` — Placeholder Leak 룰 추가 (계층 A). `[미기록]` / `[미결]` / `M0 이후` / `NotImplementedError` placeholder 가 PRD Must 핵심 가치 직결 시 → DESIGN_REVIEW_FAIL. Spike Gate 정합.
+  - `agents/architect.md` — 공통 지침 (권한/툴 부족 시 사용자 요청) 추가.
+  - `agents/engineer.md` — 공통 지침 추가.
+  - `agents/test-engineer.md` — 공통 지침 추가.
+  - `agents/product-planner.md` — 공통 지침 추가.
+  - `agents/plan-reviewer.md` — 공통 지침 추가 (위 강화와 별개).
+  - `agents/validator.md` — 공통 지침 추가.
+  - `agents/pr-reviewer.md` — 공통 지침 추가.
+  - `agents/security-reviewer.md` — 공통 지침 추가.
+  - `agents/qa.md` — 공통 지침 추가.
+  - `agents/designer.md` — 공통 지침 추가.
+  - `agents/ux-architect.md` — 공통 지침 추가.
+  - `agents/design-critic.md` — 공통 지침 추가.
+  - `agents/architect/docs-sync.md` — 공통 지침 추가.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 jajang 실전 푸딩에서 사단 발견 보고 — PRD 가 voice cloning 검증을 "M0" 로 미루고 M0 한 번도 실행 안 한 상태에서 F1~F14 구현. PR #144/#145 까지 와서야 핵심 가치 0% 검증 발견 + 후보 4개 모두 허밍 합성 불가 판명. plan-reviewer 가 이걸 잡았어야 하나 도구 (WebFetch/WebSearch) 부재 + "M0 에서 검증한다" 조건부 약속을 그대로 통과시킴. 3 단 처방 — (1) plan-reviewer WebFetch/WebSearch + 외부 검증 의무 + 조건부 약속 탐지 (2) architect Spike Gate (Mock+ABC 통과 금지) (3) validator(Design) Placeholder Leak 룰. 추가 — 공통 지침 "권한/툴 부족 시 사용자 요청" 13 agent 동시 박음. 미래의 약속은 검증이 아니다.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-17
 - **Date**: 2026-04-30
 - **Change-Type**: agent

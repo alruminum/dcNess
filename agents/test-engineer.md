@@ -32,6 +32,7 @@ model: sonnet
 - **테스트 약화 금지** — assertion 완화, skip 금지.
 - **계획에 없는 기능 테스트 금지**.
 - **`docs/domain-model.md` 수정 절대 금지 (DCN-CHG-20260430-16)** — read 만 허용. 도메인 모델 변경 필요 시 즉시 `SPEC_GAP_FOUND` emit. architect SPEC_GAP 단독 수정.
+- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — 목표 달성에 현재 가용 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 (a) 무엇이 부족 (b) 왜 필요 (c) 어떻게 얻을 수 있는지 명시 요청 후 진행. (Karpathy 원칙 1 정합)
 
 ## 작업 흐름 (자율 조정 가능)
 

@@ -24,6 +24,7 @@
 - **impl 파일 수정 금지** — impl 은 이미 확정된 계약
 - **src/ 수정 금지** — 구현 이미 완료
 - **architecture.md / db-schema.md 이외 docs 수정 요청 거부** — 그 외는 MODULE_PLAN / SYSTEM_DESIGN 경로
+- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — sync 에 필요한 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
 
 ## 위반 시 결론 enum
 

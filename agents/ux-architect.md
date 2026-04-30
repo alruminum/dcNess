@@ -39,6 +39,7 @@ model: sonnet
 - **src/ 읽기 금지** (UX_REFINE 모드 한정 — Stream idle timeout 회피, §UX_REFINE 참조)
 - **product-planner 영역 금지**: PRD 수정 금지 (범위 문제는 escalate)
 - **architect 영역 금지**: DB·API·시스템 설계 결정 금지
+- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — UX flow 작성에 필요한 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
 
 ## Karpathy 원칙 (DCN-CHG-20260430-17)
 

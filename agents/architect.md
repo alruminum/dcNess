@@ -34,6 +34,7 @@ model: sonnet
 - **Write 허용**: `docs/**`, `backlog.md`, `trd.md`
 - **단일 책임**: 설계. 실제 코드 구현은 engineer 영역
 - **PRD 위반 시 escalate**: Module Plan / Technical Epic 작성 중 PRD 위반 발견 시 작업 중단 → product-planner escalate. 디자이너가 놓친 위반 포함. 직접 PRD 수정·위반 무시 진행 금지.
+- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — 목표 달성에 현재 가용 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 (a) 무엇이 부족 (b) 왜 필요 (c) 어떻게 얻을 수 있는지 명시 요청 후 사용자 권한 부여 받고 진행. 예: "Spike 실측 위해 Replicate API 키 + 5분 실행 시간 필요" / "외부 모델 검증 위해 WebFetch 권한 필요". (Karpathy 원칙 1 정합)
 
 ## 공통 원칙
 
