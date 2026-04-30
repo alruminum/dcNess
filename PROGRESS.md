@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🚨 SessionStart inject 처음부터 작동 0회 — schema fix + 압축** (`DCN-CHG-20260430-40`):
+  - 자장 사용자 보고 — `/product-plan` 진입 시 메인이 dcness 룰 미인지. system-reminder = "OK" 만, 본문 부재. 본 dcness 세션 jsonl `grep` = 0 직접 검증.
+  - 2 bug 동시: (1) JSON schema 잘못 (`{continue, additionalContext}` top-level → CC honor X). 정확 = `{hookSpecificOutput: {hookEventName, additionalContext}}` nested wrapper. (2) 12K char (CC 10K cap 초과).
+  - **fix**: schema `hookSpecificOutput` wrapper + content directive only (~1.2K) — 5 SSOT path + 핵심 강제 룰 4 (가시성 / Step 기록 / self-verify / --auto-review). 글로벌 `~/.claude/CLAUDE.md` 와 동일 레벨 강제.
+  - **검증 의무 (NEXT 세션)** — 머지 후 새 dcness 세션 시작 시 jsonl `grep "DCN-30-40 자동 로드"` ≥ 1 확인. 자장 plugin reinstall + 동일 검증.
+  - **DCN-30-27 ~ -39 의존성 재검증 필요** — inject 작동 후 5 slim skill 메인이 SSOT 만 보고 동작 가능 self-test.
 - **🪶 /run-review 후속 cleanup 3건** (`DCN-CHG-20260430-39`):
   - DCN-30-38 follow-up — 사용자 우선순위 4-3-1 한 PR 묶음 (5번 catastrophic-gate path 보호는 별도).
   - **(4) cross-ref sweep** — DCN-30-32 split 잔재 1줄 정정. `agents/pr-reviewer.md:86 "(orchestration.md §7 정합)"` → `"(handoff-matrix.md §4 정합)"`. agent prompt grep 매칭 = 단 1줄.

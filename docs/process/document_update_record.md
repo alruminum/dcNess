@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260430-40
+- **Date**: 2026-04-30
+- **Change-Type**: hooks
+- **Files Changed**:
+  - `hooks/session-start.sh` — 2 bug fix:
+    1. **JSON schema** — `{continue, additionalContext}` (top-level, CC honor X) → `{hookSpecificOutput: {hookEventName, additionalContext}}` (CC 정확 schema, claude-code-guide 검증).
+    2. **content 압축** — guidelines.md 본문 inject (12,077 char, CC 10K cap 초과) → directive only (~1.2K). "지금 즉시 read 의무" + 5 SSOT path + 핵심 강제 룰 4 (read 전이라도 즉시 적용). 글로벌 `~/.claude/CLAUDE.md` 와 동일 레벨 강제.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: DCN-30-26 SessionStart inject 처음부터 작동 0회 발견. 검증: 본 dcness 세션 jsonl `grep -c "dcness Guidelines"` = 0 + 자장 jajang 사용자 보고 (system-reminder = "OK" 만, 본문 부재). 2 bug 동시 수정. 후속 PR 5+개 (DCN-30-27 ~ -39) 모두 본 inject 작동 가정 위에 진행 — 가정 거짓 입증. 글로벌 제1룰 + dcness §12 self-verify 원칙 (DCN-30-35) 우리가 박은 룰 자체 위반. 검증 의무: 본 PR 머지 후 *반드시* 새 dcness 세션 시작 시 system-reminder 에 "DCN-30-39 자동 로드" 출현 확인. 자장 plugin reinstall 후 동일 검증.
+
 ### DCN-CHG-20260430-39
 - **Date**: 2026-04-30
 - **Change-Type**: agent, harness, test
