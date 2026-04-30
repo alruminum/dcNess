@@ -1,7 +1,14 @@
 #!/bin/sh
-# dcNess document-sync pre-commit hook
+# dcNess pre-commit hook chain
 # 규칙 정의: docs/process/governance.md §2.7
 #
 # 설치:
 #   cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
-exec node scripts/check_document_sync.mjs
+#
+# 게이트:
+#   1. document-sync (모든 commit)
+#   2. python-tests (harness/tests/agents/yml staged 시만)
+
+set -e
+node scripts/check_document_sync.mjs
+sh scripts/check_python_tests.sh

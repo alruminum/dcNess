@@ -94,11 +94,18 @@ Document-Exception-Task: DCN-CHG-YYYYMMDD-NN
 
 ### 2.7 강제 메커니즘 (3중)
 
-1. **`.git/hooks/pre-commit`** — 모든 사람. 설치: `cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`
-2. **`.claude/settings.json` PreToolUse hook** — Claude Code 자동
+1. **`.git/hooks/pre-commit`** — 모든 사람. 설치: `cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`. 게이트 체인 = doc-sync + pytest (paths 분기, DCN-CHG-20260501-07).
+2. **`.claude/settings.json` PreToolUse hook** — Claude Code 자동. 동일 2 게이트 체인.
 3. **`AGENTS.md` 규칙 명시** — Codex 등 다른 에이전트 강제
 
-CI 레벨(`.github/workflows/document-sync.yml`)은 별도 Task-ID 로 추가.
+**게이트 매트릭스**:
+
+| 게이트 | 스크립트 | 적용 범위 | 우회 |
+|---|---|---|---|
+| doc-sync | `scripts/check_document_sync.mjs` | 모든 commit | `Document-Exception:` 토큰 (§2.4) |
+| pytest | `scripts/check_python_tests.sh` | `harness/` / `tests/` / `agents/` / `python-tests.yml` staged 시만 | `--no-verify` (룰 위반) |
+
+CI 레벨(`.github/workflows/document-sync.yml`, `python-tests.yml`)은 별도 Task-ID 로 추가/유지.
 
 ### 2.8 Branch Protection (현재 비활성)
 
@@ -128,9 +135,10 @@ CI 레벨(`.github/workflows/document-sync.yml`)은 별도 Task-ID 로 추가.
 | `docs/process/branch-protection-setup.md` | §2.8 적용 가이드 (자동 + 수동 + 검증) |
 | `scripts/check_document_sync.mjs` | CI 게이트 구현 |
 | `scripts/check_task_id.mjs` | Task-ID 형식 검증 게이트 (§2.1 강제) |
-| `scripts/setup_branch_protection.mjs` | branch protection 적용 스크립트 (§2.8) |
-| `scripts/hooks/pre-commit` | git pre-commit hook |
-| `scripts/hooks/cc-pre-commit.sh` | Claude Code PreToolUse hook |
+| `scripts/check_python_tests.sh` | pytest pre-commit 게이트 (§2.7 — paths 분기 unittest discover) |
+| `scripts/setup_branch_protection.mjs` | branch protection 적용 스크립트 (§2.8 — 현재 비활성) |
+| `scripts/hooks/pre-commit` | git pre-commit hook (doc-sync + pytest 체인) |
+| `scripts/hooks/cc-pre-commit.sh` | Claude Code PreToolUse hook (doc-sync + pytest 체인) |
 | `.claude/settings.json` | Claude Code 설정(PreToolUse 등록) |
 | `.github/PULL_REQUEST_TEMPLATE.md` | PR 체크리스트 |
 | `AGENTS.md` | 외부 에이전트 지침 |

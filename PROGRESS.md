@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🧪 pytest pre-commit 게이트 (paths 분기)** (`DCN-CHG-20260501-07`):
+  - 직전 task (`-06`) 로 protection 폐기 → CI `unittest discover` 표시 레벨로 떨어짐. 사용자 — doc-sync 동급 mechanical 차단 원함.
+  - **`scripts/check_python_tests.sh`** 신규 — staged `harness/` / `tests/` / `agents/` / `python-tests.yml` 매칭 시만 `python3 -m unittest discover -s tests`. 비매칭 0초, 매칭 ~3초. `GITHUB_ACTIONS` skip.
+  - **pre-commit chain 화** — `scripts/hooks/pre-commit` + `scripts/hooks/cc-pre-commit.sh` 둘 다 doc-sync 통과 후 pytest 호출.
+  - **governance.md §2.7** — 게이트 매트릭스 표 신설 (doc-sync = 모든 commit / pytest = paths 분기). 우회 = `--no-verify` (룰 위반).
+  - 사용자 PICK 옵션 B (paths 분기) — 사용자 의도 정합. 옵션 A (무조건) / C (branch protection 재활성) 기각.
 - **🔄 branch protection 폐기 + paths 필터 복구 (DCN-CHG-20260501-04 revert)** (`DCN-CHG-20260501-06`):
   - 사용자 의도 재확인 — "doc-sync 정도의 제어" 였음. 이전 세션 ("CI 강제해서 실패 못하게") 과해석으로 protection ON + paths 필터 OFF 동반 결정. 본 task 로 둘 다 revert.
   - **branch protection live 폐기** — `gh api -X DELETE repos/alruminum/dcNess/branches/main/protection` 200. 재호출 → 404 "Branch not protected" 확인.

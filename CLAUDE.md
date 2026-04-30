@@ -37,7 +37,9 @@
    - `docs/process/change_rationale_history.md` (spec / agent / harness / hooks / ci 변경 시)
    - `PROGRESS.md` (harness / hooks / ci 변경 시)
    - 카테고리별 deliverable (governance §2.6)
-5. **commit 직전**: `node scripts/check_document_sync.mjs` 통과 확인.
+5. **commit 직전**: doc-sync + pytest 2 게이트 통과 (자동).
+   - `node scripts/check_document_sync.mjs` (모든 commit)
+   - `sh scripts/check_python_tests.sh` (`harness/` / `tests/` / `agents/` / `python-tests.yml` staged 시만)
    - 자동: Claude Code PreToolUse hook (`scripts/hooks/cc-pre-commit.sh`) + git pre-commit hook 이 동시 차단.
 6. **branch → PR → squash merge** (직접 `main` push 금지).
 
@@ -69,8 +71,9 @@
 | [`scripts/setup_branch_protection.mjs`](scripts/setup_branch_protection.mjs) | main 브랜치 보호 적용 스크립트 (governance §2.8) |
 | [`docs/process/branch-protection-setup.md`](docs/process/branch-protection-setup.md) | branch protection 적용/검증 가이드 |
 | [`docs/process/plugin-dryrun-guide.md`](docs/process/plugin-dryrun-guide.md) | RWHarness 와 공존 plugin 배포 dry-run 절차 (proposal §12 풀어쓴 운영 가이드) |
-| [`scripts/hooks/pre-commit`](scripts/hooks/pre-commit) | git pre-commit hook |
-| [`scripts/hooks/cc-pre-commit.sh`](scripts/hooks/cc-pre-commit.sh) | Claude Code PreToolUse hook |
+| [`scripts/check_python_tests.sh`](scripts/check_python_tests.sh) | pytest pre-commit 게이트 (paths 분기) |
+| [`scripts/hooks/pre-commit`](scripts/hooks/pre-commit) | git pre-commit hook (doc-sync + pytest 체인) |
+| [`scripts/hooks/cc-pre-commit.sh`](scripts/hooks/cc-pre-commit.sh) | Claude Code PreToolUse hook (doc-sync + pytest 체인) |
 
 ## 4. 개발 명령어
 

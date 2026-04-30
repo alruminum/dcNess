@@ -18,6 +18,27 @@
 
 ## Records
 
+### DCN-CHG-20260501-07
+- **Date**: 2026-05-01
+- **Rationale**:
+  - 직전 task (`-06`) 로 branch protection 폐기 → CI 4 checks 중 `unittest discover` 표시 레벨로 떨어짐. 사용자 — 회귀 잦았던 만큼 (DCN-30-37 ~ -40) doc-sync 동급 mechanical 차단 원함.
+  - 사용자 직접 선택 — "pytest 도 강제 못해?" → 옵션 B (paths 분기) PICK.
+  - 도입 비용 측정 — 현재 unittest 약 3초. 매 commit 강제 시 비용 누적이지만 paths 분기로 비매칭 commit 0초.
+- **Alternatives**:
+  1. *옵션 A — 무조건 실행*. 단순. docs-only commit 도 3초. 비매칭 비용 누적. 기각 (사용자 PICK X).
+  2. **(채택) 옵션 B — paths 분기 (`harness/` / `tests/` / `agents/` / `python-tests.yml`)**. 사용자 PICK. CI workflow paths 필터와 동일 의도 — 변경 영역만 실행.
+  3. *옵션 C — branch protection 재활성*. doc-sync 정도 의도 위반. 직전 task 정합 깨짐. 기각.
+- **Decision**:
+  - **`scripts/check_python_tests.sh`** 신규 — paths 분기 + `GITHUB_ACTIONS` skip (workflow 가 별도 실행) + 실패 시 exit 1 + 우회 안내 (`--no-verify`, 룰 위반 명시).
+  - **`scripts/hooks/pre-commit`** — chain 화 (`set -e` + node doc-sync + sh pytest). 기존 단일 exec 패턴 유지.
+  - **`scripts/hooks/cc-pre-commit.sh`** — `git commit` case 안 doc-sync 통과 후 pytest 게이트 추가. 실패 시 exit 2 (PreToolUse 차단).
+  - **`docs/process/governance.md` §2.7** — 강제 메커니즘 표 신설 (게이트 / 스크립트 / 적용 범위 / 우회). 참조 파일 표에 신규 스크립트 추가.
+  - **`CLAUDE.md`** — §1 commit 직전 단계 + 문서 지도 표 갱신 (2 게이트 명시).
+- **Follow-Up**:
+  - 신규 hook 효력 측정 — 첫 회귀 시 `--no-verify` 사용 여부 자기 모니터링 (1인 운영 자기 룰 위반 패턴 추적).
+  - tests 수 ↑ 또는 elapsed > 10초 도달 시 paths 추가 분기 / parallel 도입 검토.
+  - AGENTS.md (외부 에이전트 지침) 에 pytest 게이트 룰 명시 후속.
+
 ### DCN-CHG-20260501-06
 - **Date**: 2026-05-01
 - **Rationale**:
