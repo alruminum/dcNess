@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260430-25
+- **Date**: 2026-04-30
+- **Change-Type**: harness, spec, test
+- **Files Changed**:
+  - `harness/session_state.py` `_cli_end_step` — drift detector. live.json 의 current_step 과 args.agent 불일치 또는 current_step 부재 시 stderr WARN. 동작은 정상 진행 (자동 보정 X — 안전).
+  - `harness/session_state.py` `_cli_finalize_run` — `--expected-steps N` 옵션. row count 미달 시 stderr WARN.
+  - `commands/quick.md` SSOT — `## Step 기록 룰` 절 신규. Agent 호출 1회 = begin/end-step 1쌍 의무 + POLISH/재호출/git 작업 동일 + jajang 안티패턴 4건 명시 + helper 안전망 (drift/step count WARN) cross-ref. Step 7 finalize-run 호출에 `--expected-steps 5`.
+  - `commands/impl.md` Step 7 — `--expected-steps 5` (architect/test-engineer/engineer/validator/pr-reviewer).
+  - `tests/test_session_state.py` — 4 신규 케이스 (drift WARN 2 + step count WARN 2). 216/218 PASS (2 pre-existing flaky 무관).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: jajang DCN-30-23 사후 분석 — engineer / pr-reviewer / POLISH step 이 .steps.jsonl 에 누락. 원인: 메인 Claude 가 engineer 자체 PR 생성 후 git status 확인하느라 end-step 호출 skip + POLISH Agent 호출 시 begin/end-step 안 둘러쌈. mechanical 안전망 추가 — helper 측 자동 검출 (drift/step count WARN) + skill SSOT 강화 (Agent ↔ end-step 1:1 의무 + 안티패턴 4건 + POLISH 네이밍 컨벤션). 자동 보정 X (안전) — 메인이 사후 인지 + /run-review 진단으로 반복 학습.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-24
 - **Date**: 2026-04-30
 - **Change-Type**: harness

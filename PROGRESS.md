@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🛡️ Step 기록 안전망 — drift/count WARN + skill SSOT 강화** (`DCN-CHG-20260430-25`):
+  - jajang DCN-30-23 사후 분석 — engineer 자체 PR 만든 후 메인이 end-step skip → .steps.jsonl 누락 사단.
+  - helper 측: `_cli_end_step` drift detector (current_step ≠ args.agent → stderr WARN) + `finalize-run --expected-steps N` row count 검증.
+  - `commands/quick.md` SSOT: `## Step 기록 룰` 절 신규 — Agent ↔ begin/end-step 1:1 의무 + POLISH 네이밍 컨벤션 + 안티패턴 4건 + helper 안전망 cross-ref.
+  - `commands/impl.md` Step 7 — `--expected-steps 5` 박음.
+  - 신규 4 테스트. 자동 보정 X (안전) — WARN 으로 메인 사후 인지.
 - **🕐 /run-review 단계별 표에 local time 시각 컬럼** (`DCN-CHG-20260430-24`):
   - 사용자 디버그 시 UTC `04:xx` 가 헷갈려 보고. `.steps.jsonl` 은 UTC ISO 저장 (시스템 표준), render 측만 `astimezone()` 변환해서 KST 표시.
 - **🩹 /run-review 매칭 fix + skill prompt 의 prose-file 격리** (`DCN-CHG-20260430-23`):
