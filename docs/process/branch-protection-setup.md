@@ -1,5 +1,8 @@
 # Branch Protection 설정 가이드
 
+> ⚠️ **현재 상태 (DCN-CHG-20260501-06 이후): OFF**. 본 가이드는 *옵션 도구* — 필요 시 재활성용 보존.
+> 비활성 사유: governance.md §2.8 참조. doc-sync 만 실질 강제하면 충분 + paths 필터 폐기 트레이드오프 회피.
+>
 > 규칙 정의: [`governance.md`](governance.md) §2.8 (SSOT — 본 가이드는 *적용 도구*).
 > Origin: `DCN-CHG-20260429-21` (proposal §5 Phase 3 "Gate 5 → branch protection required reviewers" 외부화).
 

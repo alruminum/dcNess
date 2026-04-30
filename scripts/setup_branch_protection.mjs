@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 /**
- * dcNess main branch protection 일회성 적용 스크립트
+ * dcNess main branch protection 적용 스크립트 (현재 비활성 — 옵션 도구)
  * 규칙 정의: docs/process/governance.md §2.8 (SSOT)
+ *
+ * ⚠️ 현재 상태 (DCN-CHG-20260501-06 이후): main protection OFF.
+ *   doc-sync 만 실질 강제하면 충분 + paths 필터 폐기 트레이드오프 회피.
+ *   본 스크립트는 필요 시 재활성용 보존.
  *
  * 목적:
  *   proposal §5 Phase 3 "Gate 5 (LGTM flag) → branch protection required reviewers"

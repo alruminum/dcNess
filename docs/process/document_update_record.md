@@ -20,6 +20,21 @@
 
 ## Records
 
+### DCN-CHG-20260501-06
+- **Date**: 2026-05-01
+- **Change-Type**: ci, spec
+- **Files Changed**:
+  - `.github/workflows/python-tests.yml` — paths 필터 복구 (`harness/**` / `tests/**` / `agents/**` / 본 yml). docs-only PR 불필요 실행 회피.
+  - `.github/workflows/plugin-manifest.yml` — paths 필터 복구 (`.claude-plugin/**` / `scripts/check_plugin_manifest.mjs` / 본 yml).
+  - `docs/process/governance.md` §2.8 — "Branch Protection (CI 게이트 강제)" → "Branch Protection (현재 비활성)". 비활성 사유 / 도입 옵션 / 머지 룰 / 근거 재작성. doc-sync 만 실질 강제.
+  - `docs/process/branch-protection-setup.md` — header 에 ⚠️ OFF 상태 명시 + 옵션 도구 안내.
+  - `scripts/setup_branch_protection.mjs` — JSDoc header 에 비활성 상태 명시. 스크립트 자체 보존 (재활성용).
+  - branch protection live 폐기 (`DELETE repos/alruminum/dcNess/branches/main/protection`) — `gh api` 200 → `Branch not protected` 확인.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: DCN-CHG-20260501-04 (branch protection 도입) revert. 사용자 의도는 doc-sync 수준 mechanical 차단이지 CI 4 checks 전부 강제 아님 — 사용자 명령 ("pytest CI 적용") 을 과해석한 결과 protection 켜고 paths 필터 폐기까지 동반. 본 task 로 (1) protection OFF (2) paths 필터 복구. doc-sync 는 §2.7 3중 hook 으로 commit 시점 차단 유지. 나머지 CI 게이트는 paths 매칭 시만 발화 + 표시 레벨.
+
 ### DCN-CHG-20260501-05
 - **Date**: 2026-05-01
 - **Change-Type**: agent

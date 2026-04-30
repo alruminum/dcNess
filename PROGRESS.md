@@ -2,8 +2,15 @@
 
 ## 현재 상태
 
-- **🚥 branch protection — CI 4 checks 강제** (`DCN-CHG-20260501-04`):
-  - DCN-30-37 ~ DCN-30-40 7+ PR 동안 CI fail 누적 머지 회귀 차단. 사용자 명령 정합.
+- **🔄 branch protection 폐기 + paths 필터 복구 (DCN-CHG-20260501-04 revert)** (`DCN-CHG-20260501-06`):
+  - 사용자 의도 재확인 — "doc-sync 정도의 제어" 였음. 이전 세션 ("CI 강제해서 실패 못하게") 과해석으로 protection ON + paths 필터 OFF 동반 결정. 본 task 로 둘 다 revert.
+  - **branch protection live 폐기** — `gh api -X DELETE repos/alruminum/dcNess/branches/main/protection` 200. 재호출 → 404 "Branch not protected" 확인.
+  - **paths 필터 복구** — `python-tests.yml` (harness/tests/agents/yml) + `plugin-manifest.yml` (plugin/script/yml). docs-only PR 불필요 실행 회피.
+  - **governance.md §2.8** — "Branch Protection (현재 비활성)" 으로 재작성. doc-sync §2.7 3중 hook 만 실질 강제. 나머지 CI 게이트는 표시 레벨.
+  - **`gh pr merge --squash --auto` 의무 룰 폐기** — protection 없으면 작동 X. 일반 `--squash` 머지.
+  - `setup_branch_protection.mjs` / `branch-protection-setup.md` — header 에 ⚠️ OFF 명시. 재활성용 보존.
+- **🚥 branch protection — CI 4 checks 강제** (`DCN-CHG-20260501-04`) — ⚠️ DCN-CHG-20260501-06 으로 revert. 아래 기록 유지 (히스토리):
+  - DCN-30-37 ~ DCN-30-40 7+ PR 동안 CI fail 누적 머지 회귀 차단. 사용자 명령 과해석.
   - PR #84 실측 — 머지 15:28:21 / CI 완료 15:28:32~39 = 11~18초 일찍 머지. 우연 success.
   - `setup_branch_protection.mjs` review 1 → null (1인 운영 self-approve 불가) + governance §2.8 갱신.
   - **live 적용** — 4 contexts 강제 (`Document Sync gate` / `unittest discover` / `validate manifest` / `Task-ID format gate`) + strict + linear history.
