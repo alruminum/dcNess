@@ -18,6 +18,27 @@
 
 ## Records
 
+### DCN-CHG-20260501-06
+- **Date**: 2026-05-01
+- **Rationale**:
+  - DCN-CHG-20260501-04 (branch protection 도입) 가 사용자 의도 과해석. 사용자 원본 명령은 "pytest CI 적용" — doc-sync 정도의 제어 의도였음. 이전 세션 메인이 "CI 강제해서 실패 못하게" 로 확장 + branch protection ON + paths 필터 폐기 동반 결정.
+  - 사용자 직접 지적 — "거버넌스 ci 는 document-sync gate 잘 강제하는거 같은데?". doc-sync 는 §2.7 3중 hook (git pre-commit + Claude Code PreToolUse + AGENTS.md) 으로 commit 시점 차단 → CI 의 역할은 표시. 나머지 게이트도 동일 패턴이면 충분.
+  - paths 필터 폐기 부작용 — docs-only PR 도 python-tests / plugin-manifest 매번 실행 (불필요 비용). protection 폐기 시 자연 해소.
+- **Alternatives**:
+  1. *옵션 A — 현 상태 유지 (protection ON + paths 필터 OFF)*. 사용자 의도 이탈 + paths 비용. 기각.
+  2. *옵션 B — protection OFF + paths 필터 복구 + 로컬 hook 으로 python-tests / Task-ID 도 doc-sync 처럼 commit 차단*. 1인 운영 + `--no-verify` 우회 가능 → mechanical 효력 약함. 사용자 의도 ("doc-sync 정도") 초과. 기각.
+  3. **(채택) 옵션 C — protection OFF + paths 필터 복구. 추가 hook 없음**. 사용자 의도 정합 (doc-sync 만 강제). CI 표시 레벨 유지 — fail 시 PR 페이지 빨갛게 보임 + 사용자 자율 판단.
+- **Decision**:
+  - 옵션 C 채택.
+  - **branch protection live 폐기** — `gh api -X DELETE repos/alruminum/dcNess/branches/main/protection` 200. `gh api ... branches/main/protection` 재호출 → 404 "Branch not protected" 확인.
+  - **workflow paths 필터 복구** — `python-tests.yml` (`harness/**` / `tests/**` / `agents/**` / 본 yml), `plugin-manifest.yml` (`.claude-plugin/**` / `scripts/check_plugin_manifest.mjs` / 본 yml).
+  - **governance.md §2.8** — "Branch Protection (CI 게이트 강제)" → "Branch Protection (현재 비활성)" 으로 재작성. 비활성 사유 / 도입 옵션 / 머지 룰 / 근거 명시. `gh pr merge --squash --auto` 의무 룰 폐기 (protection 없으면 작동 X).
+  - **branch-protection-setup.md / setup_branch_protection.mjs** — header 에 ⚠️ OFF 상태 명시. 스크립트 자체는 보존 (재활성용).
+- **Follow-Up**:
+  - python-tests / plugin-manifest CI fail 시 사용자 시각 의존 — 회귀 잦으면 로컬 hook 도입 재검토.
+  - DCN-30-37 ~ DCN-30-40 회귀 패턴 (CI 결과 안 보고 즉시 머지) 은 메인 행동 룰로 흡수 — `/run-review` `CI_NOT_VERIFIED` 패턴 도입 후속 별 task.
+  - main-claude-rules.md / CLAUDE.md 의 `--auto` flag 의무 룰 (있다면) 함께 폐기 검토 — 본 task 범위 외, 후속.
+
 ### DCN-CHG-20260501-05
 - **Date**: 2026-05-01
 - **Rationale**:
