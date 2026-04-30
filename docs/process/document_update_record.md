@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260430-34
+- **Date**: 2026-04-30
+- **Change-Type**: agent, spec
+- **Files Changed**:
+  - `agents/engineer.md` — 3 신규 섹션: ① 작업 분할 — `IMPL_PARTIAL` (단일 호출 무리 시 분할 + `## 남은 작업` 명시 + 메인 follow-up). ② 대량 동일 변환 — 도구 자율 선택 (codemod/sed/Edit). ③ 자가 검증 echo 의무 (`## 자가 검증` 섹션). 모드별 결론 enum 표에 `IMPL_PARTIAL` 추가. 174줄 (300 cap 안).
+  - `agents/architect/{task-decompose,module-plan,light-plan}.md` — `known-hallucinations.md` cross-ref 1줄 각각 추가. 카탈로그는 SSOT 단일 — 토큰 누적 방지.
+  - `agents/validator/code-validation.md` — 외부 도구 config schema 검증 자율 권고 1줄. hallucination 의심 시 공식 docs / 카탈로그 매칭.
+  - `docs/known-hallucinations.md` (신규, 40줄) — 외부 도구 config 키 LLM 학습 데이터 노이즈 카탈로그 SSOT. 첫 entry: jest `setupFilesAfterFramework` ❌ → `setupFilesAfterEnv` ✅ (jajang epic-08 출처).
+  - `docs/handoff-matrix.md` — §1.5 engineer enum 표에 `IMPL_PARTIAL` 행 추가. §2 retry 한도에 engineer split (≤ 3) 추가.
+  - `docs/loop-catalog.md` — §3 `impl-batch-loop` step 4 allowed_enums 에 `IMPL_PARTIAL` 추가, sub_cycles 에 `engineer:IMPL-SPLIT-<n>` 추가, 분기 표 `IMPL_PARTIAL` 행 추가. §5 `quick-bugfix-loop` step 4 allowed_enums 도 동일.
+  - `docs/process/dcness-guidelines.md` — §5 yolo 매트릭스에 `IMPL_PARTIAL` 행 추가.
+  - `docs/process/document_update_record.md` (본 항목) / `docs/process/change_rationale_history.md` / `PROGRESS.md`
+- **Summary**: jajang impl-loop epic-08 회고 I1/I2/I3 (engineer context overflow 3회) + I5 (메인 sed misdiagnosis) 회귀 방지. 자율 정신 정합 — 숫자 cap 강제 X (자기 capacity 자율 판단), 도구 자율 선택, 카탈로그 정보 제공 only.
+
 ### DCN-CHG-20260430-33
 - **Date**: 2026-04-30
 - **Change-Type**: harness, test

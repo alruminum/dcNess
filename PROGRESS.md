@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🛡️ engineer IMPL_PARTIAL + self-verify echo + hallucination catalog** (`DCN-CHG-20260430-34`):
+  - jajang impl-loop epic-08 회고 I1/I2/I3 (engineer context overflow 3회) + I5 (메인 sed misdiagnosis) 회귀 방지.
+  - **`IMPL_PARTIAL` enum 신설** — 단일 호출 무리 인지 시 자율 분할. handoff-matrix.md §1.5 + §2 (split ≤ 3) / loop-catalog.md §3 §5 (allowed_enums) / dcness-guidelines.md §5 (yolo 매트릭스) 박힘.
+  - **engineer.md 3 신규 섹션** — 작업 분할 (IMPL_PARTIAL) / 대량 동일 변환 도구 자율 선택 / 자가 검증 echo 의무. 174줄 (300 cap 안).
+  - **`docs/known-hallucinations.md` 신설 SSOT** — 외부 도구 config 키 학습 데이터 노이즈 카탈로그. architect 3개 + validator 1개 cross-ref 1줄.
+  - **자율 정합** — 숫자 cap 강제 X, 도구 자율, 카탈로그 정보 제공 only.
 - **🛡️ begin-step 시 stale current_step WARN** (`DCN-CHG-20260430-33`):
   - jajang impl-loop epic-08 회고 I4 (e08 batch 2 `.steps.jsonl` engineer 누락) 회귀 방지.
   - `STALE_STEP_TTL_SEC = 30 * 60` (30분) 신설. `update_current_step` 에 stale 검사 — 기존 current_step 의 `last_confirmed_at` 이 30분 초과면 stderr `STALE STEP WARN`.

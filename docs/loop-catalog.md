@@ -71,11 +71,12 @@
 |---|---|---|
 | 2 | architect:MODULE_PLAN | `READY_FOR_IMPL,SPEC_GAP_FOUND,TECH_CONSTRAINT_CONFLICT` |
 | 3 | test-engineer | `TESTS_WRITTEN,SPEC_GAP_FOUND` |
-| 4 | engineer:IMPL | `IMPL_DONE,SPEC_GAP_FOUND,TESTS_FAIL,IMPLEMENTATION_ESCALATE` |
+| 4 | engineer:IMPL | `IMPL_DONE,IMPL_PARTIAL,SPEC_GAP_FOUND,TESTS_FAIL,IMPLEMENTATION_ESCALATE` |
 | 5 | validator:CODE_VALIDATION | `PASS,FAIL,SPEC_MISSING` |
 | 6 | pr-reviewer | `LGTM,CHANGES_REQUESTED` |
 
 **분기**:
+- `IMPL_PARTIAL` → engineer:IMPL-SPLIT-<n> 재호출 (split < 3, 새 context window — DCN-30-34). cycle 초과 시 `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — architect TASK_DECOMPOSE 재진입 권고).
 - `SPEC_GAP_FOUND` → architect:SPEC_GAP cycle (≤ 2) → engineer 재진입
 - `TESTS_FAIL` → engineer:IMPL-RETRY-<n> (attempt < 3, cycle 초과 → `IMPLEMENTATION_ESCALATE`)
 - `SPEC_MISSING` → architect:SPEC_GAP
@@ -87,6 +88,7 @@
 - `architect:SPEC_GAP` (engineer/test-engineer SPEC_GAP_FOUND 시) — allowed_enums = `SPEC_GAP_RESOLVED,PRODUCT_PLANNER_ESCALATION_NEEDED,TECH_CONSTRAINT_CONFLICT`
 - `engineer:POLISH-<n>` (CHANGES_REQUESTED 시, ≤ 2) — allowed_enums = `POLISH_DONE,IMPLEMENTATION_ESCALATE`
 - `engineer:IMPL-RETRY-<n>` (TESTS_FAIL/FAIL 시, attempt < 3) — allowed_enums = engineer:IMPL 동일
+- `engineer:IMPL-SPLIT-<n>` (IMPL_PARTIAL 시, split < 3, DCN-30-34) — allowed_enums = engineer:IMPL 동일. prose 의 `## 남은 작업` 컨텍스트로 진입.
 
 **state-aware skip** (DCN-CHG-30-13): batch 파일 끝에 `MODULE_PLAN_READY` 마커 박혀있으면 Step 2 (architect:MODULE_PLAN) skip — TaskUpdate completed("skipped") + prose 종이는 batch 파일 자체를 `<RUN_DIR>/architect-MODULE_PLAN.md` 로 복사. catastrophic 룰 §2.3.3 통과용.
 
@@ -132,7 +134,7 @@
 |---|---|---|
 | 2 | qa | `FUNCTIONAL_BUG,CLEANUP,DESIGN_ISSUE,KNOWN_ISSUE,SCOPE_ESCALATE` |
 | 3 | architect:LIGHT_PLAN | `LIGHT_PLAN_READY,SPEC_GAP_FOUND,TECH_CONSTRAINT_CONFLICT` |
-| 4 | engineer:IMPL | `IMPL_DONE,SPEC_GAP_FOUND,TESTS_FAIL,IMPLEMENTATION_ESCALATE` |
+| 4 | engineer:IMPL | `IMPL_DONE,IMPL_PARTIAL,SPEC_GAP_FOUND,TESTS_FAIL,IMPLEMENTATION_ESCALATE` |
 | 5 | validator:BUGFIX_VALIDATION | `PASS,FAIL` |
 | 6 | pr-reviewer | `LGTM,CHANGES_REQUESTED` |
 

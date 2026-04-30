@@ -58,6 +58,7 @@
 | 결론 | 다음 trigger |
 |---|---|
 | `IMPL_DONE` | validator CODE_VALIDATION |
+| `IMPL_PARTIAL` | engineer 재호출 (split < 3, 새 context window — DCN-30-34) |
 | `SPEC_GAP_FOUND` | architect SPEC_GAP (attempt < 2) / escalate (attempt ≥ 2) |
 | `TESTS_FAIL` | engineer 재시도 (attempt < 3) / `IMPLEMENTATION_ESCALATE` (≥ 3) |
 | `IMPLEMENTATION_ESCALATE` | 사용자 |
@@ -136,6 +137,7 @@
 | 항목 | 한도 | 초과 시 |
 |---|---|---|
 | engineer attempt (TESTS_FAIL → 재시도) | 3 | `IMPLEMENTATION_ESCALATE` |
+| engineer split (IMPL_PARTIAL → 재호출, DCN-30-34) | 3 | `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — architect TASK_DECOMPOSE 재진입 권고) |
 | engineer SPEC_GAP_FOUND → architect.spec-gap → engineer 재진입 | 2 | `IMPLEMENTATION_ESCALATE` |
 | validator FAIL → 직전 agent 재진입 | (validator 종속) | 직전 agent 의 retry 한도에 흡수 |
 | design THREE_WAY VARIANTS_ALL_REJECTED 라운드 | 3 | `UX_REDESIGN_SHORTLIST` (ux-architect REFINE) |
