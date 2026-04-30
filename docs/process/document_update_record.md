@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260501-05
+- **Date**: 2026-05-01
+- **Change-Type**: agent
+- **Files Changed**:
+  - `agents/architect/task-decompose.md` — `## impl 파일 명명 + H1 제목` 섹션 신규. 파일명 `impl/NN-<slug>.md` + H1 `# impl/NN — [Story Xa / #issue] <요약>` 강제. 자가 검증 regex 박음. 기존 `## 각 impl 파일 형식 의무` (내용 섹션) 와 짝.
+  - `agents/engineer.md` — `## 커밋 단위 규칙` 안에 `### 1 batch = 1 PR` 하위 섹션 추가. impl batch 의 PR 은 코드 + impl spec + stories.md tick 1 셋트로 묶음. 자가 검증 + 안티패턴 박음.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 제공 prompt 2개 agent 주입 — (1) architect TASK_DECOMPOSE 의 impl H1 traceability (Story Xa / #issue 한눈 매핑), (2) engineer IMPL 의 commit/PR 셋트 (코드 + impl spec + stories.md 분리 금지). 기존 룰 (각 impl 파일 형식 의무 / 커밋 단위 규칙) 과 중복 회피하며 미커버 영역 (제목 / batch 셋트) 만 보강. 두 파일 300줄 cap 미충돌 (max 200).
+
 ### DCN-CHG-20260501-04
 - **Date**: 2026-05-01
 - **Change-Type**: ci, spec
