@@ -1,5 +1,7 @@
 # Task Decompose
 
+> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. impl 목차 / 각 impl 본문 / 의사코드 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
+
 **모드**: architect 의 epic stories → 기술 구현 단위 분해 호출. product-planner 완료 후 호출.
 **결론**: 각 분해된 impl 파일 작성 후 prose 마지막 단락에 `READY_FOR_IMPL` 명시 (×N batch 가능).
 **호출자가 prompt 로 전달하는 정보**: Epic stories.md 경로, 설계 문서 경로.

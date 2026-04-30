@@ -18,6 +18,29 @@
 
 ## Records
 
+### DCN-CHG-20260430-39
+- **Date**: 2026-04-30
+- **Rationale**:
+  - DCN-30-38 follow-up 3건 묶음 처리 (사용자 우선순위 결정 — 4-3-1 한 PR, 5번 별도).
+  - **(4) cross-ref sweep**: DCN-30-32 split 시 `orchestration.md §4~§7` → `handoff-matrix.md §1~§4` 이전. agent prompt 안 잔재 전수 grep 결과 = 1줄 (`agents/pr-reviewer.md:86 "orchestration.md §7 정합"`). `orchestration.md` 현재 구조 (§0~§6, §216 자체에서 §7 이전 명시) — 진짜 stale.
+  - **(3) tool_uses 컬럼**: DCN-30-37 `StepRecord.tool_use_count` + TOOL_USE_OVERFLOW 패턴 추가 후 단계별 상세 표 미노출 — 회귀 측정 시 한눈에 안 들어옴.
+  - **(1) sub-mode banner**: DCN-30-20 jajang 6분 stall (extended thinking 안 prose 무한 회전, prose emit X) — `agents/architect.md:98-103` master 룰 강함. 단 architect 의 실제 실행은 `agents/architect/<mode>.md` sub-prompt — sub-mode 7개 banner 부재 → 회귀 회피율 ↓.
+- **Alternatives**:
+  1. *옵션 A — master 파일에만 banner 추가*. 사용자 초안. 단 architect 의 mode-별 sub-prompt 가 실제 실행 → master 단순 중복은 효과 ↓.
+  2. *옵션 B — sub-mode 7개 모두 banner*. 가시성 ↑, 단 7 곳 중복 (LLM 토큰 ↑).
+  3. *옵션 C — sub-mode + import 패턴 (`@agents/architect.md` 참조)*. .md 안 import 미지원 — 기각.
+  4. **(채택) 옵션 B**. 토큰 비용 (각 banner 4줄 × 7 = 28줄) 대비 회귀 회피 가치 ↑. master 중복 X (master 에는 이미 §자기규율 lines 98-103 강한 룰 존재).
+  5. *render_report 컬럼 — 표 너비 ↑ 우려*. tool_uses 12 컬럼 → 13 컬럼. 트레이드오프 수용 — TOOL_USE_OVERFLOW 가시성 ↑ 가치 우선.
+  6. *bold 임계 — 100 / 50 / 200 후보*. **100 채택** — `run_review.py:465` `TOOL_USE_OVERFLOW` 검출 임계와 동일. 두 신호 정합.
+- **Decision**:
+  - **(4)** `pr-reviewer.md:86` 1줄 `orchestration.md §7 정합` → `handoff-matrix.md §4 정합`.
+  - **(3)** `render_report` 단계별 상세 표 컬럼 13개로 확장 (`tool_uses` 추가). `≥ 100` 시 `**bold**` 강조. 미매칭 invocation 은 `-`. 헤더 코멘트에 DCN-CHG-20260430-39 cross-ref. 테스트 3개 신규 (`ToolUsesColumnTests`).
+  - **(1)** `agents/architect/{system-design,task-decompose,module-plan,tech-epic,light-plan,docs-sync,spec-gap}.md` 7 파일 H1 직후 1 블록 banner. 텍스트 80~95자, sub-mode 별 prose 본문 키워드 (Domain Model 표 / impl 본문 / plan 본문 / patch 본문) 차등 표기. 모두 master 룰 (`agents/architect.md` §자기규율) cross-ref. 7 파일 모두 300줄 cap 미충돌 (최대 254줄).
+- **Follow-Up**:
+  - **자장 plugin 재install + 다음 epic 측정** — `tool_uses` 컬럼 가시성 + sub-mode banner 효과 실측 (THINKING_LOOP 회귀율 ↓ 여부).
+  - **(5) catastrophic-gate DCNESS_INFRA_PATTERNS path 보호** — 별도 PR (사용자 결정). 실 scope = `tool=Edit/Write` PreToolUse 신규 hook 추가 + `harness/hooks.py` path-pattern 핸들러 + `hooks.json` 등록. 1~2일.
+  - **(2) 임계값 30일 누적 tuning** — 보류 (5월 30일 이후).
+
 ### DCN-CHG-20260430-38
 - **Date**: 2026-04-30
 - **Rationale**:

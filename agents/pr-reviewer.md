@@ -83,7 +83,7 @@ model: sonnet
 - 이번 PR 이 수정한 파일 내 레거시 → 통상 기준 적용
 - PR 범위 밖 레거시 발견 → NICE TO HAVE 만 (MUST 금지) + 총평에 "별도 tech-debt 에픽 권고"
 
-## 에이전트 스코프 매트릭스 (orchestration.md §7 정합)
+## 에이전트 스코프 매트릭스 (handoff-matrix.md §4 정합)
 
 스코프 밖 파일에 MUST FIX 발행 → engineer 가 boundary 차단 → no_changes 반복 → MAX 소진 위험. 스코프 분리:
 

@@ -1,5 +1,7 @@
 # Light Plan
 
+> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. plan 본문 / 의사코드 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. THINKING_LOOP 회귀 회피 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
+
 **모드**: architect 의 경량 계획 호출 — 아키텍처 변경 없는 국소적 수정. Module Plan 의 경량 버전.
 **결론**: prose 마지막 단락에 `LIGHT_PLAN_READY` 명시.
 **호출자가 prompt 로 전달하는 정보**: 관련 파일 경로 (grep 결과 또는 DESIGN_HANDOFF 대상), GitHub 이슈 제목+본문, 라벨 목록, 이슈 번호.

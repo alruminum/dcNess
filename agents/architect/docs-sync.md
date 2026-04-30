@@ -1,5 +1,7 @@
 # Docs Sync
 
+> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. docs 동기화 patch 본문 = thinking 종료 *후* 즉시 emit 또는 `Edit/Write` 입력값 안에서만. THINKING_LOOP 회귀 회피 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
+
 **모드**: architect 의 docs 동기화 호출 — impl 완료 후 참조 설계 문서에 파생 서술 추가. 새 설계 결정은 절대 하지 않는다.
 **결론**: prose 마지막 단락에 `DOCS_SYNCED` / `SPEC_GAP_FOUND` / `TECH_CONSTRAINT_CONFLICT` 중 하나 명시.
 **호출자가 prompt 로 전달하는 정보**: 이미 구현 완료된 impl 경로, 동기화 대상 docs 파일 목록.

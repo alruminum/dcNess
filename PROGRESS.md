@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🪶 /run-review 후속 cleanup 3건** (`DCN-CHG-20260430-39`):
+  - DCN-30-38 follow-up — 사용자 우선순위 4-3-1 한 PR 묶음 (5번 catastrophic-gate path 보호는 별도).
+  - **(4) cross-ref sweep** — DCN-30-32 split 잔재 1줄 정정. `agents/pr-reviewer.md:86 "(orchestration.md §7 정합)"` → `"(handoff-matrix.md §4 정합)"`. agent prompt grep 매칭 = 단 1줄.
+  - **(3) `tool_uses` 컬럼** — `harness/run_review.py:render_report` 단계별 상세 표 13 컬럼 확장. `≥ 100` 시 `**bold**` 강조 (TOOL_USE_OVERFLOW 임계 정합). 미매칭은 `-`. TOOL_USE_OVERFLOW 회귀 측정 가시성 ↑.
+  - **(1) sub-mode banner** — `agents/architect/{system-design,task-decompose,module-plan,tech-epic,light-plan,docs-sync,spec-gap}.md` 7 파일 H1 직후 `> ⚠️ CRITICAL — extended thinking 본문 드래프트 금지` 1 블록 추가. master 룰 (`agents/architect.md` §자기규율 lines 98-103) 의 sub-mode 가시화. THINKING_LOOP 회귀 회피 (DCN-30-20 jajang 6분 stall).
+  - 테스트 3 신규 (`ToolUsesColumnTests`). 45 ran / 45 PASS. sub-mode 7 파일 모두 300줄 cap 미충돌 (최대 254줄).
 - **🪶 self-verify echo anchor 자율화 + §12 sed 안티패턴** (`DCN-CHG-20260430-38`):
   - DCN-30-34 self-verify `## 자가 검증` 단일 형식 강제 → first-principle ("출력 형식 자유") 회색 영역. anchor 자율화 (다중 옵션) + substance 만 의무.
   - `agents/engineer.md` 양 섹션 (자가 검증 + IMPL_PARTIAL 남은 작업) anchor 자율 명시.
