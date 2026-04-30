@@ -34,6 +34,8 @@
   - **`scripts/setup_branch_protection.mjs`** 수정 — `required_pull_request_reviews: null`. governance §2.8 표 갱신.
   - **branch protection live 적용** — gh API PUT repos/alruminum/dcNess/branches/main/protection. 4 status checks 강제 (Document Sync gate / unittest discover / validate manifest / Task-ID format gate) + strict + linear history.
   - **`gh pr merge --squash --auto` 의무 룰 추가** (governance §2.8) — CI 통과 후 자동 머지. 11~18초 일찍 머지 회귀 차단.
+  - **workflow paths 필터 폐기** (`python-tests.yml` / `plugin-manifest.yml`) — branch protection required check 가 paths 미스매치로 발화 안 하면 PR BLOCKED 영원 (본 PR 자체에서 발견 — scripts/+docs/ 만 변경 시 python-tests 발화 X). CI 비용 < 안전성. 본 repo small.
+  - Document-Exception: amend 로 commit message Task-ID 형식 정정 (`DCN-30-04` → `DCN-CHG-20260501-04`). 파일 변경 0, message 정정만.
 - **Follow-Up**:
   - **본 PR 부터 적용 검증** — `--auto` flag 사용 + CI 4 checks 통과 후 자동 머지 실측.
   - **CLAUDE.md 커밋 절차 / main-claude-rules.md §2.3** 갱신 후속 — `gh pr merge --squash --auto` flag 의무 명시.

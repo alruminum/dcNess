@@ -8,6 +8,7 @@
   - `setup_branch_protection.mjs` review 1 → null (1인 운영 self-approve 불가) + governance §2.8 갱신.
   - **live 적용** — 4 contexts 강제 (`Document Sync gate` / `unittest discover` / `validate manifest` / `Task-ID format gate`) + strict + linear history.
   - **`gh pr merge --squash --auto` 의무** 룰 추가 — CI 통과 후 자동 머지.
+  - **workflow paths 필터 폐기** (`python-tests.yml` / `plugin-manifest.yml`) — paths 미스매치 시 required check 발화 X → PR BLOCKED 영원 회피.
 - **📕 main-claude-rules.md SSOT — CLAUDE.md 동일 레벨 강제 read** (`DCN-CHG-20260501-02`):
   - DCN-30-40 (SessionStart inject 처음부터 작동 0회 회귀) 후속. inject 깨져도 룰 인지 보장하는 *backup 메커니즘*.
   - `docs/process/main-claude-rules.md` 신규 (204줄, 300 cap 안):

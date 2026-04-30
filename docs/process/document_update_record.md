@@ -24,6 +24,7 @@
 - **Date**: 2026-05-01
 - **Change-Type**: ci, spec
 - **Files Changed**:
+  - `.github/workflows/python-tests.yml` / `.github/workflows/plugin-manifest.yml` — paths 필터 폐기. branch protection required check 가 paths 미스매치로 발화 안 하면 PR BLOCKED 영원 → 모든 PR 에 발화. CI 비용 < 안전성.
   - `scripts/setup_branch_protection.mjs` — `required_pull_request_reviews: { count: 1, ... }` → `null`. 1인 운영 PR author self-approve 불가 (GitHub 정책) → review 의무 폐기. CI 4 checks 가 실질 게이트.
   - `docs/process/governance.md` §2.8 — 표 갱신 (review 1 → 비활성), 근거 갱신, `gh pr merge --squash --auto` 의무 룰 추가.
   - branch protection live 적용 (`PUT repos/alruminum/dcNess/branches/main/protection`):
