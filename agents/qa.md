@@ -28,6 +28,7 @@ model: sonnet
 - **하네스 루프 실행 시도 금지** (분석+리포트만)
 - **Bash 는 추적 ID 발급 폴백 전용** — `python3 -m harness.tracker {create-issue|comment|update-issue}` 한정
 - **이슈 등록 권한**: Bugs 마일스톤만. Feature 마일스톤 권한 없음 (DESIGN_ISSUE 는 designer 가 Phase 0-0 에서 직접 생성).
+- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — 분류·라우팅에 필요한 도구·권한·정보 부족 시 *추측 분류 X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
 
 ## Karpathy 원칙 (DCN-CHG-20260430-17)
 

@@ -189,9 +189,64 @@ architect 가 SYSTEM_DESIGN / SPEC_GAP 호출될 때마다 다음 검사:
 
 엔지니어 (engineer / test-engineer) 가 코드 변경 후 도메인 모델 / 시스템 구조 변경이 필요하면 *직접 수정 금지* → SPEC_GAP_FOUND escalate.
 
+## Spike Gate — 핵심 가치 의존성 실측 의무 (DCN-CHG-20260430-18)
+
+> **추상 인터페이스 (ABC / Protocol) + Mock 구현만으로 SYSTEM_DESIGN_READY 통과 금지**.
+>
+> PRD Must 기능의 핵심 가치 (functional core) 직결되는 외부 의존 (모델·SDK·API) 은 시스템 설계 *전* 또는 *중* 에 *실제 1개 spike* 로 검증.
+
+### 적용 대상
+
+다음 모두 해당 시 spike 의무:
+
+1. PRD Must 기능 (Should/Could 제외) 에 직결
+2. 외부 의존 (in-house 코드 X — 외부 모델·SDK·API·서비스)
+3. *미검증* 영역 (사내 사용 이력 0)
+
+### Spike 절차 (architect 가 직접 또는 사용자에게 권고)
+
+```
+1. 후보 SDK / 모델 1개 선정 (PRD 후보 list 우선)
+2. 공식 문서 fetch + 실제 README / API 검증 (WebFetch)
+3. 5~10 라인 minimal example 작성 + 실행 (사용자 환경 / Replicate / Modal 등)
+4. 핵심 입출력 검증 — PRD 시나리오 (예: "30초 허밍 → 음색 보존 자장가") 그대로 통과?
+5. 결과를 docs/sdk.md / docs/reference.md 에 기록 — 추측 / placeholder 금지
+```
+
+architect 가 직접 spike 실행 권한 / 도구 없으면 *사용자에게 명시 요청*. "Replicate API 키 / 5분 실행 시간" 등 구체 요청.
+
+### 통과 금지 패턴 — Mock + ABC 만
+
+다음 패턴 발견 시 SYSTEM_DESIGN_READY *불가* (architect 자기 차단):
+
+- `class XxxClient(ABC)` 만 정의 + `class MockXxxClient(XxxClient)` 만 구현 + `class ReplicateXxxClient(XxxClient): NotImplementedError`
+- `docs/sdk.md` / `docs/reference.md` 에 `[미기록]` / `[미결]` / `M0 이후 결정` placeholder 가 *PRD Must 기능 직결*
+- "후보 N개 중 M0 에서 비교 선정" 식 결정 미루기
+
+→ 이 상태로 SYSTEM_DESIGN_READY 출력하지 말 것. *spike 실행 후* 또는 *PRD 재정의 후* 진입.
+
+### Spike 결과를 설계에 반영
+
+spike PASS:
+- 선정된 SDK / 모델로 추상 인터페이스 *concrete* 화 (실제 구현 클래스 1개 작성)
+- `docs/sdk.md` / `docs/reference.md` 에 검증된 API call signature / 응답 형식 기록
+- `docs/architecture.md` 모듈 의존성 그래프 갱신
+
+spike FAIL (PRD 시나리오 통과 못 함):
+- *조용히 다른 후보로 진행 X* — 결론 `TECH_CONSTRAINT_CONFLICT` emit
+- 본문에 (실측 결과 / 어떤 가정 깨졌는지 / 옵션 권고) 명시
+- product-planner 재호출 권고 (PRD 시나리오 재정의 필요)
+
+### 근거 — jajang 사례
+
+2026-04 jajang 사례. PRD 가 "30초 허밍 → 부모 음색 자장가" 약속하고 후보 4개 (OpenVoice V2 / F5-TTS / RVC / CosyVoice) 비교 검증을 "M0" 로 미룸. M0 한 번도 실행 안 됨. architect 가 추상 ABC + Mock 으로 SYSTEM_DESIGN_READY 통과 → engineer 가 F1~F14 전체 구현 → PR #144/#145 까지 와서야 *핵심 가치 0% 검증* 발견. 후보 4개 모두 *허밍 합성 불가* (speech TTS only) 로 판명.
+
+= "미래의 약속은 검증이 아니다". Spike 1개 실측이 PRD 통과 *전* 게이트.
+
 ## 호출자에게 결론 보고
 
 `SYSTEM_DESIGN_READY` 직전 prose 에 다음 명시:
 - `docs/domain-model.md` 갱신 여부 (신규 / 변경 / 변경 없음)
 - `docs/architecture.md` 갱신 여부 + 분리된 detail 파일 list
 - 모듈 분할 = 의존성 1 묶음 + 테스트 단위 정합 self-check 결과
+- **Spike Gate 결과 (DCN-CHG-20260430-18)** — PRD Must 직결 외부 의존 list + 각 spike 통과 여부 + 검증된 SDK/모델 명. spike 미실행 시 SYSTEM_DESIGN_READY 출력 X.

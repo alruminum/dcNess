@@ -18,6 +18,49 @@
 
 ## Records
 
+### DCN-CHG-20260430-18
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 jajang 실전 푸딩 사단 사후 분석 보고 (이전 세션 사용자 직접 리서치 결과):
+    - PRD: "30초 녹음 → 부모 음색 자장가 (90초 이내, 60% 부모 인식)"
+    - 후보 4개 모델 (OpenVoice V2 / F5-TTS / RVC / CosyVoice) 비교 검증을 "M0 마일스톤" 으로 미룸
+    - M0 한 번도 실행 안 됨 — `docs/reference.md` §1, §2, §9 전부 `[미기록]`
+    - architect 가 추상 인터페이스 (`VoiceInferenceClient ABC`) + `MockInferenceClient` 만으로 SYSTEM_DESIGN_READY 통과
+    - engineer 가 F1~F14 전체 구현 (PR #143/#144/#145 까지)
+    - 모바일 → API → Mock 추출 → 로컬 저장 → 재생 데이터 플로우 동작
+    - 그러나 *실제 voice cloning 호출 0회* — 어떤 입력이든 5프레임 무음 mp3 base64 하드코딩
+    - 사용자 직접 WebFetch 리서치 결과: 후보 4개 모두 *허밍 합성 불가* (speech TTS only). PRD 시나리오 자체가 2026 기준 불가능.
+  - 진단:
+    - plan-reviewer 가 PRD 단계에서 잡았어야 함 (차원 8 = 기술 실현성). 그런데 도구가 Read/Glob/Grep 만 — *외부 사실 검증 수단 부재* → "M0 에서 검증한다" 조건부 약속을 그대로 통과시킴.
+    - architect SYSTEM_DESIGN 가 "M0 이후 결정" placeholder + 추상 ABC 만으로 통과 → 핵심 가치 0% 검증 상태에서 구현 진입.
+    - validator(Design) 도 placeholder 가 PRD Must 직결인지 검사 안 함 → 추상 인터페이스 통과.
+  - "미래의 약속은 검증이 아니다" — Spike 1개 실측이 PRD/SD 통과 *전* 게이트.
+- **Alternatives**:
+  1. *옵션 1 — plan-reviewer 에 WebFetch 추가만*. 도구는 생기지만 *조건부 약속 탐지 룰* 없으면 같은 함정. 차순위.
+  2. *옵션 2 — architect Spike Gate 만 추가*. PRD 단계 validation 누락 → plan-reviewer 단계에서 같은 사단. 차순위.
+  3. **(채택) 옵션 3 — 3 단 동시 처방** — plan-reviewer (WebFetch + 외부 검증 + 조건부 약속 탐지) + architect (Spike Gate) + validator(Design) (Placeholder Leak). 사용자 직접 권고 정합.
+- **Decision**:
+  - 옵션 3 채택. 3 agent 강화 + 공통 지침 13 agent 동시 박음.
+  - **plan-reviewer**:
+    - tools 에 WebFetch / WebSearch 추가
+    - 차원 8 §8.1 외부 검증 의무 (PRD 명시 외부 의존 1개당 공식 문서 1회 fetch)
+    - 차원 8 §8.2 조건부 약속 자동 탐지 ("M0 에서 검증" / "후보 N개 비교 후 선정" / "X 안 되면 Y fallback" → Must 직결 시 FAIL)
+    - 산출물에 `EXTERNAL_VERIFIED` 섹션 의무
+  - **architect/system-design**:
+    - Spike Gate 신설 — 추상 ABC + Mock 만으로 SYSTEM_DESIGN_READY 통과 금지
+    - PRD Must 직결 외부 의존 spike 1개 실측 의무 (5~10 라인 minimal example + 공식 문서 검증)
+    - Spike PASS 시 concrete 구현 + sdk.md 갱신 / FAIL 시 TECH_CONSTRAINT_CONFLICT
+  - **validator/design-validation**:
+    - Placeholder Leak 룰 (계층 A) — `[미기록]` / `[미결]` / `M0 이후` / `NotImplementedError` placeholder 가 PRD Must 핵심 가치 직결 시 → DESIGN_REVIEW_FAIL
+    - Spike Gate 정합 검증
+  - **공통 지침** — 13 agent 권한 경계 절에 동일 1줄 박음:
+    - "목표 달성에 가용 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 (a) 무엇이 부족 (b) 왜 필요 (c) 어떻게 얻는지 명시 요청 후 진행"
+    - Karpathy 원칙 1 (Think Before — surface assumptions) 의 *권한/툴 측면* 확장
+- **Follow-Up**:
+  - **jajang 후속** — 본 변경 적용 후 jajang PRD 재호출 시 plan-reviewer 가 voice cloning 외부 검증 발화 + "M0 검증" 패턴 잡는지 측정.
+  - **미래 함정 기록** — `docs/process/governance.md` 에 jajang 사례 case study 추가 검토 (별도 Task-ID).
+  - **회귀 측정** — 30일간 다른 프로젝트에서 동일 사단 (placeholder + Mock 통과) 발생 여부 모니터.
+
 ### DCN-CHG-20260430-17
 - **Date**: 2026-04-30
 - **Rationale**:

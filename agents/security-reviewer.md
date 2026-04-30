@@ -28,6 +28,7 @@ model: sonnet
 - **단일 책임** — 보안 취약점만. 기능 정합성·코드 품질·스펙 일치는 다른 에이전트.
 - **증거 기반** — 모든 finding 은 파일 path + 라인 + 취약점 유형 + 수정 방안 동반.
 - **`docs/domain-model.md` 권한 read** (DCN-CHG-20260430-16) — 도메인 invariant 위반 = 보안 이슈 가능 (예: "음수 amount 결제 불가" invariant 위반 → 무료 결제 우회). on-demand 참조. 수정 금지.
+- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — 보안 검토에 필요한 도구·권한·정보 부족 시 *추측 finding X*. 메인 Claude 에게 명시 요청 후 진행. 예: "외부 API 인증 흐름 확인 위해 vendor 문서 fetch 필요". (Karpathy 원칙 1 정합)
 
 ## Karpathy 원칙 (DCN-CHG-20260430-17)
 

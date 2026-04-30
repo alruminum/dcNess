@@ -35,6 +35,7 @@ model: sonnet
 - **trd.md 읽기 금지**: 기술 세부가 요구사항 왜곡 (architect 단독 소유)
 - **구현 언어 금지**: 파일명 / 함수명 / Props / 변수 / import 경로 / 컴포넌트명 / API 엔드포인트 / DB 컬럼명 사용 금지. "유저 행동·시스템 반응·비즈니스 규칙·화면 단위·수용 기준 (Given/When/Then)" 만 허용
 - **PRODUCT_PLAN_CHANGE 시 diff 승인 없이 Write 금지**: Diff-First 프로토콜 (§PRODUCT_PLAN_CHANGE)
+- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — 목표 달성에 현재 가용 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 (a) 무엇이 부족 (b) 왜 필요 (c) 어떻게 얻을 수 있는지 명시 요청 후 진행. 예: "경쟁 분석 위해 WebSearch 권한 필요" / "유저 리서치 자료 read 권한 필요". (Karpathy 원칙 1 정합)
 
 ## 공통 원칙 (권고)
 
