@@ -3,6 +3,20 @@
 > 본 파일은 메인 Claude (Claude Code) 가 dcNess 저장소에서 작업할 때의 지침이다.
 > 거버넌스 규칙은 [`docs/process/governance.md`](docs/process/governance.md) (SSOT) 에 있다 — 본 파일은 *재기술하지 않고 절차·링크만 박는다*.
 
+> 🔴 **[필수 — 본 프로젝트 작업 *직전* read 의무]**
+>
+> 본 CLAUDE.md 와 동일 레벨 강제로 다음 문서 *반드시 read*:
+>
+> 👉 **[`docs/process/main-claude-rules.md`](docs/process/main-claude-rules.md)** — 메인 Claude 행동 룰 SSOT
+>
+> 내용:
+> - §0 **대원칙** — 강제 = (1) 작업 순서 + (2) 접근 영역. 그 외 agent 자율.
+> - §1 **실존 검증 강제** (제1룰)
+> - §2 **dcness 인프라** (300줄 cap / 5 SSOT / 거버넌스 / 핵심 강제 룰 4 / sub-agent path 보호)
+> - §3 **Karpathy 4 원칙 전문**
+>
+> SessionStart inject 작동 안 해도 본 문서 read 로 룰 인지 보장. 미인지 진행 = 룰 위반.
+
 ## 0. 프로젝트 정체성
 
 - **목적**: RWHarness fork-and-refactor — status-JSON-mutate 결정론 + 4 기둥 정합 + 함정 회피 5원칙 (`docs/status-json-mutate-pattern.md` §1~§2.5).
@@ -40,6 +54,7 @@
 
 | 파일 | 역할 |
 |---|---|
+| [`docs/process/main-claude-rules.md`](docs/process/main-claude-rules.md) | 🔴 **메인 Claude 행동 룰 SSOT** — 본 프로젝트 작업 *직전* read 의무. 실존 검증 / dcness 인프라 / Karpathy 4 원칙 전문 |
 | [`docs/process/governance.md`](docs/process/governance.md) | **SSOT** — 모든 거버넌스 룰의 단일 출처 |
 | [`docs/process/document_update_record.md`](docs/process/document_update_record.md) | WHAT 로그 (Task-ID 별 변경 파일) |
 | [`docs/process/change_rationale_history.md`](docs/process/change_rationale_history.md) | WHY 로그 (Task-ID 별 동기·대안·결정·후속) |

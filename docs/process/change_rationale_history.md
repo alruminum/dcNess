@@ -18,6 +18,28 @@
 
 ## Records
 
+### DCN-CHG-20260501-02
+- **Date**: 2026-05-01
+- **Rationale**:
+  - DCN-30-40 발견 — SessionStart inject 처음부터 작동 0회. 후속 PR 5+개 모두 inject 작동 가정 위에 진행 → 가정 거짓 입증. 자기 룰 위반 회귀 패턴 (글로벌 제1룰 + dcness §12 우리가 박은 룰).
+  - 원인: inject 깨져도 룰 인지 보장하는 *backup 메커니즘 부재*. CLAUDE.md = 거버넌스 절차 문서, 행동 룰 (대원칙 / 가정 금지 / Karpathy / 인프라 메타) 은 SSOT 분산 (orchestration §0 / dcness-guidelines / agents/*).
+  - 사용자 요청 — CLAUDE.md 와 동일 레벨 강제 read 단일 문서. 3 항목 + 대원칙: (0) 강제 = 작업 순서 + 접근 영역, (1) 실존 검증 강제, (2) dcness-guide 인프라 메타, (3) Karpathy 4 원칙 전문.
+- **Alternatives**:
+  1. *옵션 A — SessionStart inject 만 의존*. DCN-30-40 회귀 입증. 기각.
+  2. *옵션 B — CLAUDE.md 본체에 룰 직접 추가*. 거버넌스 절차 ↔ 행동 룰 책임 혼재 + 300줄 cap 위반 위험. 기각.
+  3. **(채택) 옵션 C — `docs/process/main-claude-rules.md` 신설 + CLAUDE.md reference**. CC 가 CLAUDE.md 자동 로드 → 본 문서 read 자연 유도. 책임 분리 + cap 충족 (226줄).
+- **Decision**:
+  - 옵션 C 채택. 4 섹션:
+    - **§0 대원칙** — `orchestration.md` §0 / `status-json-mutate-pattern.md` §2.5 직접 인용. 새 룰 도입 시 self-check + 룰 위반 사례 (DCN-30-34 형식 강제) 명시.
+    - **§1 실존 검증 강제** — 글로벌 제1룰 + dcness §12 통합. 안티패턴 7건 실측 사례.
+    - **§2 dcness 인프라** — 300줄 cap / 5 SSOT 표 / 거버넌스 / 핵심 강제 룰 4 / sub-agent path 보호.
+    - **§3 Karpathy 4 원칙 전문** — `forrestchang/andrej-karpathy-skills` (MIT) 인용. agent 별 적용 매핑.
+  - **CLAUDE.md 상단 🔴 reference 박스** — "본 프로젝트 작업 *직전* read 의무". 문서 지도 표 첫 행 추가.
+- **Follow-Up**:
+  - **DCN-CHG-20260501-03 후속** — `tests/test_session_state.py:CleanupStaleRunsTests` time-bomb fix. fixture hardcoded ts 가 시간 흐름 + 24h TTL 으로 stale 판정. CI 7+ 회 fail 누적 (DCN-30-40 작업 중 사용자 GitHub CI 보고로 발견).
+  - **dcness-guidelines.md §12 안티패턴 1줄 추가** — "자기 박은 mechanical 메커니즘도 *실 작동 검증 후* 후속 PR 진행" (DCN-30-40 회고 룰화).
+  - **자장 plugin reinstall + 새 epic 검증** — inject + 본 문서 reference 양측 동시 작동 확인.
+
 ### DCN-CHG-20260501-01
 - **Date**: 2026-05-01
 - **Rationale**:
