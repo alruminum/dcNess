@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+- **🛡️ begin-step 시 stale current_step WARN** (`DCN-CHG-20260430-33`):
+  - jajang impl-loop epic-08 회고 I4 (e08 batch 2 `.steps.jsonl` engineer 누락) 회귀 방지.
+  - `STALE_STEP_TTL_SEC = 30 * 60` (30분) 신설. `update_current_step` 에 stale 검사 — 기존 current_step 의 `last_confirmed_at` 이 30분 초과면 stderr `STALE STEP WARN`.
+  - 자동 보정 X (DCN-30-25 정책 정합 — 안전). end-step 누락 + 다음 begin-step 패턴 (DCN-30-25 미커버) 만 cover.
+  - 테스트 2 케이스 추가 (stale WARN / fresh no-WARN).
 - **✂️ orchestration.md split (handoff-matrix 분리)** (`DCN-CHG-20260430-32`):
   - PR4 의 follow-up — orchestration.md (540줄) 300줄 cap 위반 해소.
   - **`docs/handoff-matrix.md` 신규** (256줄) — agent 측 강제 영역 SSOT. §4 결정표 (12 agent enum) + §5 retry 한도 + §6 escalate 카탈로그 + §7 권한 매트릭스 (호출 / Write / Read / 인프라) 통째 이전.

@@ -470,6 +470,64 @@ class ActiveRunsTests(unittest.TestCase):
                 base_dir=self.base,
             )
 
+    def test_update_step_warn_when_prev_stale(self) -> None:
+        # DCN-30-30: begin-step 호출 시 기존 current_step 의 last_confirmed_at 가
+        # STALE_STEP_TTL_SEC (30min) 초과 → stderr STALE STEP WARN.
+        # I4 사례 — engineer step 후 end-step 누락 시 다음 begin-step 이 잡음.
+        from io import StringIO
+        from contextlib import redirect_stderr
+
+        start_run(self.sid, self.run_id, "impl", base_dir=self.base)
+        # 첫 begin-step (engineer)
+        update_current_step(
+            self.sid, self.run_id, "engineer", "IMPL", base_dir=self.base,
+        )
+
+        # last_confirmed_at 를 31분 전으로 강제 — stale 시뮬레이션
+        # update_live 는 last_confirmed_at 자체를 덮지 않으니 raw json write.
+        from datetime import datetime, timedelta, timezone
+        from harness.session_state import live_path
+        live = read_live(self.sid, base_dir=self.base)
+        slot = live["active_runs"][self.run_id]
+        old_iso = (datetime.now(timezone.utc) - timedelta(minutes=31)).isoformat()
+        slot["last_confirmed_at"] = old_iso
+        live["active_runs"][self.run_id] = slot
+        live_path(self.sid, base_dir=self.base).write_text(
+            json.dumps(live, ensure_ascii=False, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+
+        # 두번째 begin-step (validator) — stale WARN 기대
+        err = StringIO()
+        with redirect_stderr(err):
+            update_current_step(
+                self.sid, self.run_id, "validator", "CODE_VALIDATION",
+                base_dir=self.base,
+            )
+        self.assertIn("STALE STEP WARN", err.getvalue())
+        self.assertIn("engineer", err.getvalue())
+        # 새 current_step 박힘 (동작 정상)
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.run_id]
+        self.assertEqual(slot["current_step"]["agent"], "validator")
+
+    def test_update_step_no_warn_when_prev_fresh(self) -> None:
+        # last_confirmed_at 가 30min 이내면 WARN 없음 (정상 워크플로우 — 빠른 step 전환).
+        from io import StringIO
+        from contextlib import redirect_stderr
+
+        start_run(self.sid, self.run_id, "impl", base_dir=self.base)
+        update_current_step(
+            self.sid, self.run_id, "engineer", "IMPL", base_dir=self.base,
+        )
+        # 즉시 다음 begin-step
+        err = StringIO()
+        with redirect_stderr(err):
+            update_current_step(
+                self.sid, self.run_id, "validator", "CODE_VALIDATION",
+                base_dir=self.base,
+            )
+        self.assertNotIn("STALE STEP WARN", err.getvalue())
+
     def test_complete_run(self) -> None:
         start_run(self.sid, self.run_id, "quick", base_dir=self.base)
         complete_run(self.sid, self.run_id, base_dir=self.base)
