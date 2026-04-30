@@ -46,11 +46,28 @@ yolo 시:
 
 catastrophic 룰 (PreToolUse 훅 §2.3) hard safety 보존.
 
-## 가시성 룰 — 매 Agent 호출 후 메인 text echo (필수)
+## 가시성 룰 — 매 Agent 호출 후 메인 text echo (🚨 CRITICAL — skip = bug)
 
-`commands/quick.md` 와 동일 — Agent 호출 후 메인이 text reply 로 prose 핵심 5~12줄
-echo (DCN-CHG-30-11). MODULE_PLAN / TESTS_WRITTEN / IMPL_DONE / CODE_VALIDATION /
-LGTM 5 step 모두 적용.
+> ⚠️ **DCN-CHG-20260430-15 강화**: 본 룰은 *should* 가 아닌 **MUST**. dcTest manual
+> smoke 에서 메인이 토큰 절약 본능으로 prose echo 압축/생략한 사례 확인됨. 위반 =
+> bug. 본 skill 의 **5 step 모두 (MODULE_PLAN / TESTS_WRITTEN / IMPL_DONE /
+> CODE_VALIDATION / LGTM)** 의무 echo. SSOT = `commands/quick.md` "가시성 룰" — 의무
+> 템플릿 + 자가 점검 4 항 + 안티패턴 + 토큰 비용 인지. 본 skill 진행 중 매 end-step
+> 직후 메인은 SSOT 의 의무 템플릿 그대로 출력 (구조 변경 금지).
+
+요약 — 매 end-step 직후 (TaskUpdate(completed) *전*):
+
+```
+[<task-id>.<agent>] echo
+
+▎ <prose 결론/Summary 섹션 본문 5~12줄 인용>
+▎ ...
+
+결론: <ENUM>
+```
+
+`<task-id>` = standalone 시 `architect` 등, `/impl-loop` inner 시 `b<i>.<agent>`. 자세한
+의무 템플릿 + 자가 점검 + 안티패턴 = `commands/quick.md` "가시성 룰" 절 참조.
 
 ## 절차 (Task tool + helper protocol)
 

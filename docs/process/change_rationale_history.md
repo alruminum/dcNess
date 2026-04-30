@@ -18,6 +18,31 @@
 
 ## Records
 
+### DCN-CHG-20260430-15
+- **Date**: 2026-04-30
+- **Rationale**:
+  - dcTest manual smoke 도중 발견 — 메인 Claude 가 `commands/quick.md` "가시성 룰" (DCN-CHG-30-11) 을 *알면서도* prose echo 를 1~2줄로 압축하거나 생략. 사용자 명시 지적 ("이거 원래 그렇게 룰로 설정되 있는데 왜 빠먹음?") 후 메인 자기 진단 — "토큰 절약 습관이 룰을 덮어쓴 케이스".
+  - prompt 텍스트 자체는 "필수" 라고 박혀있으나 톤이 *should* 수준 (안티패턴 / 자가 점검 부재). LLM 의 일반 압축 본능 > prompt 텍스트.
+  - 위반 누적 효과: /impl-loop multi-batch 환경에서 batch N × 5 step = 5N 회 가시성 누락 → 사용자 ctrl+o 의존 회귀 → conveyor 핵심 가치 (자동 가시성) 붕괴.
+- **Alternatives**:
+  1. *옵션 B — helper end-step `--echo-summary N` 추가* (stdout 으로 prose 12줄 강제). mechanical 강제. 단 토큰 ~3~5% 추가 (input 측). **사용자 거부** ("저거 출력하면 토큰을 더 많이써?" → 추가 부담 인지 후 prompt 강화 선택).
+  2. *옵션 C — 결론 섹션만 stdout (2~4줄)*. 가벼움. 단 본문 발췌 손실 → 가시성 trade-off. 차순위.
+  3. **(채택) 옵션 A 강화 — should → MUST + 의무 템플릿 + 자가 점검 + 안티패턴**. prompt 신뢰성 격상. 토큰 추가 0 (현재 룰 준수 비용 그대로). 사용자 발화 ("강제로좀 잘 말하게 해줘") 정합.
+- **Decision**:
+  - 옵션 A 강화 채택. SSOT = `commands/quick.md` "가시성 룰" 절.
+  - 강화 4축:
+    1. **MUST 톤** — 🚨 CRITICAL banner + "skip = bug" 명시
+    2. **의무 템플릿** — `[<task-id>.<agent>] echo` + `▎` prefix + 결론 enum 줄 (구조 변경 금지)
+    3. **자가 점검 4항** — TaskUpdate(completed) 전 확인 체크리스트 (Agent prose read / 결론 섹션 우선 / 5~12줄 / enum 포함)
+    4. **안티패턴 4종 명시** — 압축 paraphrase / table 생략 / 결론만 echo / 늦은 echo
+  - 5 skill 동일 톤 정합 (quick / impl / impl-loop / qa / product-plan).
+  - 토큰 비용 인지 박음 — 3~5% 부담 사용자 룰 1번 (검증) 으로 수용 명시.
+  - helper-side 강제 (옵션 B/C) 는 미적용 — 사용자 거부 + prompt 강화 우선 시도.
+- **Follow-Up**:
+  - **회귀 측정** — 다음 dcTest /impl-loop 실행 시 5 step 모두 의무 템플릿 echo 발화 여부 확인. 회귀 발견 시 옵션 B (helper stdout) fallback 검토.
+  - **batch 회 측정** — 본 강화 *후* 30일간 echo 룰 위반 사례 모니터. >0 이면 옵션 B 강제 진입 검토.
+  - **prose echo 실측 분량** — dcTest 결과 5~12줄 cap 안에 들어오는지 (cap 위반 = 다른 방향 위반) 측정.
+
 ### DCN-CHG-20260430-14
 - **Date**: 2026-04-30
 - **Rationale**:

@@ -52,23 +52,65 @@ RESOLVE_JSON=$("$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness
 
 매핑 없으면 (`{"action": "unmapped"}`) yolo 도 사용자 위임 fallback (안전 default).
 
-## 가시성 룰 — 매 Agent 호출 후 메인 text echo (필수)
+## 가시성 룰 — 매 Agent 호출 후 메인 text echo (🚨 CRITICAL — skip = bug)
+
+> ⚠️ **DCN-CHG-20260430-15 강화**: 본 룰은 *should* 가 아닌 **MUST**. 메인 Claude 의
+> 토큰 절약 본능이 본 prompt 룰을 덮어쓴 사례 확인됨 (dcTest manual smoke). 위반 시
+> 사용자 가시성 0 → conveyor 의 핵심 가치 (사용자가 ctrl+o 안 눌러도 진행 보임) 붕괴.
+> **위반 = bug 로 간주. 본 룰은 어떤 상황에서도 압축/생략 금지.**
 
 CC 가 Agent / Bash 출력을 collapsed 표시 (ctrl+o expand 필요). 사용자가 매번 ctrl+o
-누르지 않아도 핵심 결과 보이도록, **매 begin-step → Agent → end-step 직후 메인이
-text reply 로 prose 핵심 echo** (DCN-CHG-30-11):
+누르지 않아도 핵심 결과 보이도록, **매 begin-step → Agent → end-step 직후 (즉,
+TaskUpdate(<step>, completed) *전*), 메인이 반드시 text reply 로 prose 핵심 echo**
+(DCN-CHG-30-11):
+
+### 의무 템플릿 — 빈 칸 채우기만 허용 (구조 변경 금지)
 
 ```
-## <step 이름> 결과 — <enum>
+[<task-id>.<agent>] echo
 
-<prose 의 ## 결론 / ## Summary / ## 변경 요약 섹션의 본문 5~12줄 그대로 인용,
-markdown 정합 보존. 결론 헤더 부재 시 prose 첫 5~10줄 fallback>
+▎ <prose 의 ## 결론 / ## Summary / ## 변경 요약 섹션 본문 5~12줄, markdown 정합 보존>
+▎ <섹션 부재 시 prose 첫 5~10줄 fallback>
+▎ <필요 시 추가 본문 인용 — 단 12줄 cap>
 
-<선택: 1줄 다음 step 안내>
+결론: <ENUM>
 ```
+
+- `<task-id>` = standalone 시 step 이름 (`architect`, `engineer`), `/impl-loop` 시 `b<i>.<agent>`
+- `▎` 글자 (U+258E) 그대로 사용 — 사용자 인식 패턴
+- 5줄 미만 echo = 룰 위반. 12줄 초과 = cap 위반. **5~12줄 사이 강제**.
+
+### 자가 점검 — 매 end-step 직후
+
+다음 TaskUpdate 호출 *전* 메인 self-check:
+
+```
+□ Agent prose 종이 (`/tmp/dcness-*.md`) read 했는가?
+□ ## 결론 / ## Summary / ## 변경 요약 섹션 우선 추출했는가?
+□ 위 의무 템플릿대로 5~12줄 echo 했는가?
+□ 결론 enum 포함됐는가?
+```
+
+4개 모두 YES 가 아니면 **TaskUpdate(completed) 호출 금지** — echo 추가 후 진행.
+
+### 안티패턴 (실측 사례 기반 — 절대 금지)
+
+❌ **압축 paraphrase 1~2줄로 끝내기** ("결론: PASS, 다음 진입") — 정보 손실. 룰 위반.
+❌ **table / code block 통째 생략** — 본문 발췌 의무. table 은 행 수 줄여 인용.
+❌ **"토큰 아끼려" 결론만 echo** — 본 룰의 존재 이유 자체를 무력화. 반드시 본문 5줄 이상.
+❌ **다음 Agent 호출 직전 echo** — 늦음. end-step 직후 즉시.
+
+### 토큰 비용 인지
+
+본 echo 는 step 당 ~200~300 output tokens 소비 (5 step × ~5 batch = ~5~7k / impl-loop).
+전체 batch 처리량 (subagent 합산 100~200k) 대비 ~3~5%. **비용 인지 + 그래도 의무**.
+사용자가 룰 1번 (검증) 으로 본 비용 수용했음. 토큰 절약 본능으로 무시 금지.
+
+### 채널 정합
 
 text reply 는 collapsed 안 됨 — 사용자 가시성 ↑. helper stderr 자동 요약 (DCN-CHG-30-2,
-30-11 cap 확장) 과 동시 — 두 channel 가시성 보장.
+30-11 cap 확장) 과 동시 — 두 channel 가시성 보장. text echo 누락 시 helper 채널만
+남음 → 사용자 ctrl+o 의존 회귀.
 
 verbose 회피: 매 step 5~12줄 cap. 그 이상은 사용자가 ctrl+o 또는 prose 종이
 (`.claude/harness-state/.sessions/{sid}/runs/{rid}/<agent>[-<MODE>].md`) 직접 read.

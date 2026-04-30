@@ -24,13 +24,22 @@ description: impl batch list (architect TASK_DECOMPOSE 산출물) 를 순차 자
 
 각 batch 에 대해 `/impl` skill 의 시퀀스 (architect MODULE_PLAN → test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer) 실행. clean 시 자동 commit/PR + 다음 batch 진행. caveat (FAIL / AMBIGUOUS / MUST FIX) 시 멈춤 + 사용자 위임.
 
-## 가시성 룰 — 매 batch 의 inner /impl 진행 시 echo
+## 가시성 룰 — 매 batch 의 inner /impl 진행 시 echo (🚨 CRITICAL)
 
-각 batch 의 inner /impl 은 자기 가시성 룰 적용 (5 step 별 5~12줄 echo). loop level 추가:
+> ⚠️ **DCN-CHG-20260430-15 강화**: dcTest manual smoke 에서 토큰 절약 본능으로 echo
+> 압축/생략 사례 확인. 본 skill (multi-batch) 환경에선 batch N 개 × step 5 = 5N 회
+> echo 누락 가능 → 가시성 cumulative 손실. 위반 = bug. **각 batch 의 5 inner step
+> 모두 의무 echo + loop level batch progress 별도 echo.**
+
+각 batch 의 inner /impl 은 자기 가시성 룰 적용 (5 step 별 의무 템플릿 echo —
+`commands/quick.md` "가시성 룰" SSOT). loop level 추가:
 - 매 batch 시작/종료 시 batch progress 1줄 echo (`[impl-loop] batch i/N — <status>`)
 - caveat 멈춤 시 *전체 진행 요약* echo (몇 batch 처리 / 남은 batch / 멈춤 사유)
 
-자세한 룰은 `commands/quick.md` "가시성 룰" 참조.
+inner echo 는 `b<i>.<agent>` prefix 사용 (예: `[b1.architect] echo`). 5 inner step
+의무 ✓ 안 되면 다음 batch 진입 금지 — caveat 으로 간주.
+
+자세한 의무 템플릿 + 자가 점검 + 안티패턴 = `commands/quick.md` "가시성 룰".
 
 ## 절차
 
