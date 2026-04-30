@@ -20,6 +20,23 @@
 
 ## Records
 
+### DCN-CHG-20260430-23
+- **Date**: 2026-04-30
+- **Change-Type**: harness, spec, test
+- **Files Changed**:
+  - `harness/run_review.py` — `assign_invocations_to_steps()` 알고리즘 timestamp-proximity 기반으로 fix. 이전 (단순 순서 + agent name) 결함: step 0 invocation 부재 시 cascade 매칭 어긋남. jajang run-657d86fc 실측 — 9 step 중 2 만 매칭이었던 게 8 매칭 (step 0 invocation 정당 부재 제외).
+  - `harness/session_state.py` — `_cli_run_dir()` 신규 + argparse subcommand `run-dir` 추가. 현재 active run 의 run_dir 절대 경로 stdout. skill prompt 가 prose-file path 격리에 사용.
+  - `commands/quick.md` — Step 골격에서 prose-file 경로를 `/tmp/dcness-quick-<n>.md` → `<RUN_DIR>/.prose-staging/<step>.md` 로 전환. 자가 점검 4 항의 prose 종이 path 도 갱신.
+  - `commands/product-plan.md` — Step 골격 prose-file 경로 run-dir 격리.
+  - `commands/impl.md` — MODULE_PLAN step 의 prose-file 경로 run-dir 격리.
+  - `commands/qa.md` — qa step 의 prose-file 경로 run-dir 격리.
+  - `tests/test_run_review.py` — `AssignInvocationsTests` 4 케이스 갱신/추가: timestamp-proximity / unmatched / `test_handles_missing_first_invocation` (jajang 사례 regression 보호) / `test_excludes_invocation_after_step_ts`.
+  - `tests/test_session_state.py` — `test_run_dir_cli_outputs_absolute_path` 신규.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: jajang 실측에서 발견된 2 결함 동시 fix. (1) `/run-review` Phase 2 매칭 cascade 결함 — step 0 invocation 부재 → 후속 step 모두 어긋남. timestamp-proximity 매칭 (inv.ts < step.ts AND step.ts - inv.ts ≤ 600s, closest before) 으로 해결. (2) skill prompt 의 `/tmp/dcness-*.md` 고정 path 결함 — 세션 격리 X, stale prose race condition. helper 의 `run-dir` subcommand 신규 + skill prompt 4개 (`quick` / `product-plan` / `impl` / `qa`) 가 `<run_dir>/.prose-staging/<step>.md` 사용. multisession 자동 격리 + 명시 cleanup 의존도 0. 211 tests 중 209 PASS (2 pre-existing flaky 무관).
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-22
 - **Date**: 2026-04-30
 - **Change-Type**: agent

@@ -530,22 +530,52 @@ def extract_agent_invocations(repo_path: Path, run_window: tuple[datetime, datet
 
 
 def assign_invocations_to_steps(steps: list[StepRecord], invocations: list[dict]) -> None:
-    """각 step 에 대응 invocation 매칭 — 순서 + agent name 정합. 미매칭 시 변경 X."""
+    """각 step 에 대응 invocation 매칭 — timestamp proximity 기반 (DCN-30-21 fix).
+
+    이전 algo (단순 순서 + agent name) 결함: step 0 invocation 누락 시 (다른 세션
+    호출 등) cascade 로 후속 step 매칭 모두 어긋남. jajang 실측에서 9 step 중
+    2 만 매칭, 7 미매칭. fix — 각 step 의 ts 와 가장 가까운 invocation 을 매칭
+    window 안에서 선택. 1 invocation = 1 step (used set).
+
+    매칭 룰:
+    - inv.ts < step.ts (sub-agent 가 end-step 직전에 끝남)
+    - step.ts - inv.ts ≤ 600s (10 분 — sub-agent budget 한도)
+    - inv.agent == step.agent
+    - 같은 agent 후보 여럿이면 가장 최근 inv (closest before step.ts)
+    """
     if not steps or not invocations:
         return
-    inv_idx = 0
+    used: set[int] = set()
+
     for step in steps:
-        while inv_idx < len(invocations) and invocations[inv_idx]["agent"] != step.agent:
-            inv_idx += 1
-        if inv_idx >= len(invocations):
-            break
-        inv = invocations[inv_idx]
-        step.duration_ms = inv["duration_ms"]
-        step.output_tokens = inv["output_tokens"]
-        step.total_tokens = inv["total_tokens"]
-        step.cost_usd = inv["cost_usd"]
-        step.matched_invocation = True
-        inv_idx += 1
+        step_ts = _parse_iso(step.ts)
+        if not step_ts:
+            continue
+        step_ts_naive = step_ts.replace(tzinfo=None)
+        best_idx = -1
+        best_diff_s = float("inf")
+        for i, inv in enumerate(invocations):
+            if i in used:
+                continue
+            if inv["agent"] != step.agent:
+                continue
+            inv_ts = inv["ts"]
+            if isinstance(inv_ts, datetime):
+                inv_ts_naive = inv_ts.replace(tzinfo=None) if inv_ts.tzinfo else inv_ts
+            else:
+                continue
+            diff_s = (step_ts_naive - inv_ts_naive).total_seconds()
+            if 0 <= diff_s <= 600 and diff_s < best_diff_s:
+                best_idx = i
+                best_diff_s = diff_s
+        if best_idx >= 0:
+            inv = invocations[best_idx]
+            step.duration_ms = inv["duration_ms"]
+            step.output_tokens = inv["output_tokens"]
+            step.total_tokens = inv["total_tokens"]
+            step.cost_usd = inv["cost_usd"]
+            step.matched_invocation = True
+            used.add(best_idx)
 
 
 # ── Cost cross-correlation (run-level coarse) ────────────────────────

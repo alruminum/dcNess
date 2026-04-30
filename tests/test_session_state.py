@@ -782,6 +782,22 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertEqual(slot["current_step"]["agent"], "validator")
         self.assertEqual(slot["current_step"]["mode"], "PLAN_VALIDATION")
 
+    def test_run_dir_cli_outputs_absolute_path(self) -> None:
+        # DCN-30-21: run-dir subcommand for prose-staging path 격리.
+        from harness.session_state import _cli_run_dir, run_dir
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stdout
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_run_dir(SimpleNamespace())
+        self.assertEqual(rc, 0)
+        printed = out.getvalue().strip()
+        expected = str(run_dir(self.sid, self.rid))
+        self.assertEqual(printed, expected)
+        # path 가 .sessions/{sid}/runs/{rid} 끝남
+        self.assertTrue(printed.endswith(f".sessions/{self.sid}/runs/{self.rid}"))
+
     def test_end_step_writes_prose_and_extracts_enum(self) -> None:
         from harness.session_state import _cli_end_step, session_dir
         from types import SimpleNamespace

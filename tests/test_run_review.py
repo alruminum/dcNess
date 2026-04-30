@@ -224,17 +224,19 @@ class NormalizeAgentTypeTests(unittest.TestCase):
 
 
 class AssignInvocationsTests(unittest.TestCase):
-    def test_assigns_in_order(self):
+    def test_assigns_by_timestamp_proximity(self):
+        # DCN-30-21: timestamp-proximity matching.
+        from datetime import datetime as dt
         steps = [
-            StepRecord(idx=0, ts="t1", agent="architect", mode="MODULE_PLAN",
+            StepRecord(idx=0, ts="2026-04-30T10:05:00+00:00", agent="architect", mode="MODULE_PLAN",
                        enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="x"),
-            StepRecord(idx=1, ts="t2", agent="engineer", mode="IMPL",
+            StepRecord(idx=1, ts="2026-04-30T10:15:00+00:00", agent="engineer", mode="IMPL",
                        enum="IMPL_DONE", must_fix=False, prose_excerpt="x"),
         ]
         invocations = [
-            {"ts": "t1", "agent": "architect", "duration_ms": 60000,
+            {"ts": dt(2026, 4, 30, 10, 4, 30), "agent": "architect", "duration_ms": 60000,
              "total_tokens": 5000, "output_tokens": 1500, "cost_usd": 0.05},
-            {"ts": "t2", "agent": "engineer", "duration_ms": 120000,
+            {"ts": dt(2026, 4, 30, 10, 14, 30), "agent": "engineer", "duration_ms": 120000,
              "total_tokens": 8000, "output_tokens": 2500, "cost_usd": 0.10},
         ]
         assign_invocations_to_steps(steps, invocations)
@@ -245,12 +247,52 @@ class AssignInvocationsTests(unittest.TestCase):
         self.assertEqual(steps[1].cost_usd, 0.10)
 
     def test_skips_unmatched_agents(self):
+        from datetime import datetime as dt
         steps = [
-            StepRecord(idx=0, ts="t1", agent="architect", mode=None,
+            StepRecord(idx=0, ts="2026-04-30T10:05:00+00:00", agent="architect", mode=None,
                        enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="x"),
         ]
         invocations = [
-            {"ts": "t1", "agent": "engineer", "duration_ms": 60000,
+            {"ts": dt(2026, 4, 30, 10, 4, 30), "agent": "engineer", "duration_ms": 60000,
+             "total_tokens": 5000, "output_tokens": 1500, "cost_usd": 0.05},
+        ]
+        assign_invocations_to_steps(steps, invocations)
+        self.assertFalse(steps[0].matched_invocation)
+
+    def test_handles_missing_first_invocation(self):
+        # DCN-30-21 regression — jajang 사례. step 0 invocation 부재 시 후속 step
+        # 매칭 cascade 어긋남 X.
+        from datetime import datetime as dt
+        steps = [
+            StepRecord(idx=0, ts="2026-04-30T10:00:00+00:00", agent="product-planner", mode=None,
+                       enum="PRODUCT_PLAN_UPDATED", must_fix=False, prose_excerpt="x"),
+            StepRecord(idx=1, ts="2026-04-30T10:10:00+00:00", agent="plan-reviewer", mode=None,
+                       enum="PLAN_REVIEW_PASS", must_fix=False, prose_excerpt="x"),
+            StepRecord(idx=2, ts="2026-04-30T10:20:00+00:00", agent="product-planner", mode=None,
+                       enum="PRODUCT_PLAN_UPDATED", must_fix=False, prose_excerpt="x"),
+        ]
+        invocations = [
+            {"ts": dt(2026, 4, 30, 10, 9, 30), "agent": "plan-reviewer", "duration_ms": 60000,
+             "total_tokens": 5000, "output_tokens": 1500, "cost_usd": 0.05},
+            {"ts": dt(2026, 4, 30, 10, 19, 30), "agent": "product-planner", "duration_ms": 120000,
+             "total_tokens": 8000, "output_tokens": 2500, "cost_usd": 0.10},
+        ]
+        assign_invocations_to_steps(steps, invocations)
+        self.assertFalse(steps[0].matched_invocation, "step 0 invocation 없으니 미매칭")
+        self.assertTrue(steps[1].matched_invocation, "step 1 plan-reviewer 정확 매칭")
+        self.assertEqual(steps[1].output_tokens, 1500)
+        self.assertTrue(steps[2].matched_invocation, "step 2 product-planner 정확 매칭")
+        self.assertEqual(steps[2].output_tokens, 2500)
+
+    def test_excludes_invocation_after_step_ts(self):
+        # invocation ts > step ts → 매칭 X (sub-agent 는 end-step 전에 끝남).
+        from datetime import datetime as dt
+        steps = [
+            StepRecord(idx=0, ts="2026-04-30T10:00:00+00:00", agent="architect", mode=None,
+                       enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="x"),
+        ]
+        invocations = [
+            {"ts": dt(2026, 4, 30, 10, 5, 0), "agent": "architect", "duration_ms": 60000,
              "total_tokens": 5000, "output_tokens": 1500, "cost_usd": 0.05},
         ]
         assign_invocations_to_steps(steps, invocations)

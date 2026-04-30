@@ -43,15 +43,19 @@ TaskUpdate("qa: 이슈 분류", in_progress)
 Agent(subagent_type="qa", description="<사용자 발화 + 명확화 컨텍스트>")
 ```
 
-prose 받으면:
+prose 받으면 (DCN-30-21: prose-file 위치를 run-dir 안 격리 dir 로 — `/tmp` 세션 격리 X 결함 fix):
 ```bash
-cat > /tmp/dcness-qa-prose.md << 'PROSE_EOF'
+RUN_DIR=$("$HELPER" run-dir)
+mkdir -p "$RUN_DIR/.prose-staging"
+PROSE_PATH="$RUN_DIR/.prose-staging/qa.md"
+
+cat > "$PROSE_PATH" << 'PROSE_EOF'
 <agent prose 본문>
 PROSE_EOF
 
 ENUM=$("$HELPER" end-step qa \
        --allowed-enums "FUNCTIONAL_BUG,CLEANUP,DESIGN_ISSUE,KNOWN_ISSUE,SCOPE_ESCALATE" \
-       --prose-file /tmp/dcness-qa-prose.md)
+       --prose-file "$PROSE_PATH")
 echo "[qa] classification: $ENUM"
 ```
 

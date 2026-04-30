@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+- **🩹 /run-review 매칭 fix + skill prompt 의 prose-file 격리** (`DCN-CHG-20260430-23`):
+  - jajang 실측 (run-657d86fc, 9 step) 발견 2 결함 동시 fix.
+  - **(1) 매칭 cascade 결함**: step 0 invocation 부재 시 후속 step 모두 어긋남 (9 중 2 매칭). timestamp-proximity 기반 매칭 (inv.ts < step.ts AND step.ts - inv.ts ≤ 600s, closest before) 으로 해결 → 9 중 8 매칭 (step 0 정당 미매칭).
+  - **(2) prose-file 세션 격리 X**: skill prompt 가 `/tmp/dcness-*.md` 고정 path 사용 → 멀티세션 race / stale prose 잔여로 helper 가 옛 enum 추출. `dcness-helper run-dir` subcommand 신규 + skill prompt 4개 (`quick` / `product-plan` / `impl` / `qa`) 가 `<run_dir>/.prose-staging/<step>.md` 사용. multisession 자동 격리.
+  - 신규 5 테스트 (AssignInvocationsTests timestamp / missing-first / unmatched-after-step + run-dir CLI). 209/211 PASS (2 pre-existing flaky 무관).
 - **🌀 /run-review Phase 2 — THINKING_LOOP 검출 + per-Agent metrics** (`DCN-CHG-20260430-20`):
   - 사용자 jajang 실측 사례 (product-planner 6분 elapsed + ↓624 tokens stall) 자동 검출.
   - CC session JSONL `toolUseResult.usage.output_tokens` + `totalDurationMs` per-Agent 매칭 (순서 + agent name).

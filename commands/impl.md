@@ -79,9 +79,14 @@ TaskUpdate("architect: MODULE_PLAN", in_progress)
 "$HELPER" begin-step architect MODULE_PLAN
 Agent(subagent_type="architect", mode="MODULE_PLAN",
       description="impl batch 파일: <batch path>. 모듈 plan — 생성/수정 파일 + 인터페이스 + 의사코드 + 결정 근거. 결론 enum: READY_FOR_IMPL / SPEC_GAP_FOUND / TECH_CONSTRAINT_CONFLICT.")
+# DCN-30-21: prose-file 을 run-dir 안 격리 (멀티세션 안전)
+RUN_DIR=$("$HELPER" run-dir)
+mkdir -p "$RUN_DIR/.prose-staging"
+PROSE_PATH="$RUN_DIR/.prose-staging/architect-MODULE_PLAN.md"
+# (메인이 sub-agent prose 를 위 경로에 Write)
 ENUM=$("$HELPER" end-step architect MODULE_PLAN \
        --allowed-enums "READY_FOR_IMPL,SPEC_GAP_FOUND,TECH_CONSTRAINT_CONFLICT" \
-       --prose-file /tmp/dcness-impl-mp.md)
+       --prose-file "$PROSE_PATH")
 # 가시성 룰 의무 echo
 ```
 
