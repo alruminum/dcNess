@@ -2,6 +2,14 @@
 
 ## 현재 상태
 
+- **🔍 /run-review skill — 메타-하네스 self-improvement Phase 1** (`DCN-CHG-20260430-19`):
+  - RWHarness `harness-review.py` 의 dcness 변환. dcness conveyor run 사후 분석.
+  - `harness/run_review.py` (~370 LOC) — `.steps.jsonl` + per-agent prose 파싱 → 잘한 점 5 패턴 + 잘못한 점 8 패턴 detection + run-level cost (CC session JSONL 합산).
+  - 잘한 점: `ENUM_CLEAN` / `PROSE_ECHO_OK` (DCN-30-15) / `DDD_PHASE_A` (DCN-30-16) / `DEPENDENCY_CAUSAL` / `EXTERNAL_VERIFIED_PRESENT` (DCN-30-18).
+  - 잘못한 점: `RETRY_SAME_FAIL` / `ECHO_VIOLATION` / `PLACEHOLDER_LEAK` / `MUST_FIX_GHOST` / `SPEC_GAP_LOOP` / `INFRA_READ` / `READONLY_BASH` / `EXTERNAL_VERIFIED_MISSING`. 오늘 박은 룰 자동 회귀 검출.
+  - `commands/run-review.md` skill prompt — character-for-character 출력 룰 (RW 패턴 정합).
+  - 신규 15 테스트 PASS. dcness skill 9 개.
+  - Phase 2 후속: per-Agent cost 매칭 (`toolUseResult.totalCost`), finalize-run 자동 트리거, 30일 누적 분석.
 - **🪄 MODULE_PLAN_READY 마커 → state-aware skip** (`DCN-CHG-20260430-13`):
   - 사용자 통찰 — RWHarness plan_loop 의 원래 의도 (산출물 있으면 통과 / 없으면 다시 호출) 복원.
   - `agents/architect/task-decompose.md` — 각 batch 산출 시 ## 생성/수정 파일 / ## 인터페이스 / ## 의사코드 / ## 결정 근거 + `MODULE_PLAN_READY` 마커 박는 컨벤션.

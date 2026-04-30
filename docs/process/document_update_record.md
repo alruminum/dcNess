@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260430-19
+- **Date**: 2026-04-30
+- **Change-Type**: harness, spec, test
+- **Files Changed**:
+  - `harness/run_review.py` (신규, ~370 LOC) — RWHarness `harness-review.py` 의 dcness 변환. `.steps.jsonl` + per-agent prose 파싱 → 잘한 점 (5 패턴) + 잘못한 점 (8 패턴) detection + run-level cost cross-correlation (CC session JSONL `usage` 합산) + markdown 리포트 생성.
+  - `scripts/dcness-review` (신규, 0755) — wrapper (PYTHONPATH 자동 설정 후 `harness.run_review` CLI 실행).
+  - `commands/run-review.md` (신규) — `/run-review` skill prompt. Step 0 (run 식별 — `--latest` / `--run-id` / `--list`) + Step 1 (Bash stdout character-for-character 출력 룰, RWHarness 패턴 정합) + Step 2 (후속 라우팅 권고).
+  - `tests/test_run_review.py` (신규, 15 케이스) — parse_steps / waste detection 6 / good detection 4 / report render / run list.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 메타-하네스 self-improvement 루프 요청 — RWHarness `/harness-review` 분석 후 dcness 측 가능성 확인 + Phase 1 구현. 데이터 소스 확인: (1) `.steps.jsonl` (agent/mode/enum/must_fix/prose_excerpt) (2) `<run_dir>/<agent>[-<MODE>].md` 전체 prose (3) CC session JSONL `usage` 합산. 잘한 점 5 패턴 (ENUM_CLEAN / PROSE_ECHO_OK / DDD_PHASE_A / DEPENDENCY_CAUSAL / EXTERNAL_VERIFIED_PRESENT) + 잘못한 점 8 패턴 (RETRY_SAME_FAIL / ECHO_VIOLATION / PLACEHOLDER_LEAK / MUST_FIX_GHOST / SPEC_GAP_LOOP / INFRA_READ / READONLY_BASH / EXTERNAL_VERIFIED_MISSING). 오늘 박은 룰 (DCN-30-15/16/18) 회귀 자동 검출 가능. dcness skill 9 개 됨. 200 tests 중 198 PASS (2건은 본 변경 무관 pre-existing flaky).
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-18
 - **Date**: 2026-04-30
 - **Change-Type**: agent
