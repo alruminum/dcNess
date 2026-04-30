@@ -18,6 +18,21 @@
 
 ## Records
 
+### DCN-CHG-20260430-21
+- **Date**: 2026-04-30
+- **Rationale**: jajang 도그푸딩 중 `/product-plan` 진입 시 메인 Claude skill prompt (14,660자) 처리에 **3분 46초 thinking** 소요 (캐시 히트·output 1352 토큰임에도). 본 skill 외에도 4개 dcness skill (`/quick` 19,463자 / `/impl` 15,973자 / `/impl-loop` 8,730자 / `/qa` 8,094자) 모두 동일 비대 패턴. 원인 — 매 skill 이 *공통 룰* (가시성 / AMBIGUOUS / yolo / worktree / catastrophic / 의무 echo 템플릿 + 자가 점검 + 안티패턴) 본문을 풀어 재기술. 거버넌스 §2.5 "함정 회피 5원칙" 룰 순감소 위반.
+- **Alternatives**:
+  1. **공통 룰 외부 doc 추출 + skill prompt 한 줄 reference만** — 기각: 메인이 reference doc 안 읽으면 룰 미적용. 의무 템플릿·자가 점검·안티패턴은 skill prompt 안에 직접 박혀야 강제력 보존.
+  2. **5 skill 균등 슬림 + 룰 본문 5번 동일 박기** — 기각: 룰 변경 시 5곳 동기화 비용. SSOT 위배.
+  3. **채택**: `commands/quick.md` 를 공통 룰 SSOT 로 격상 + 다른 4 skill 은 SSOT 참조 + 시퀀스/분기 표만 명세.
+  4. **메인 모델 다운그레이드** — 기각: 모델 선택 권한이 dcness 범위 밖. 비대 자체가 문제.
+- **Decision**: 옵션 3. 5 skill 합계 68,488 → 32,721자 (52% 절감, ~9k 토큰). quick.md 만 본문 보존, 4개 skill (product-plan 68% / impl 52% / impl-loop 45% / qa 46% 절감). 동작 spec 100% 보존 — 모든 enum / 분기 / cycle 한도 / catastrophic §2.3 정합 / Step 4.5 / Step 2.0 SKIP / yolo auto-resolve 그대로. 가시성 룰 (DCN-CHG-30-15) 의무 템플릿·자가 점검 4항·안티패턴·5~12줄 cap 모두 quick.md 보존.
+- **Follow-Up**:
+  - jajang/dcTest 다음 `/product-plan` 진입 시 메인 thinking 시간 측정 — 목표 3분 46초 → 1분대.
+  - `commands/slim/` staging 디렉토리 정리 (별도 follow-up Task).
+  - Antigravity language server file revert 환경 이슈 노트 추가 검토 (별도 Task).
+  - 추후 skill 추가 시 본 패턴 (SSOT = quick.md, 다른 skill 은 표 + 참조) 정착.
+
 ### DCN-CHG-20260430-20
 - **Date**: 2026-04-30
 - **Rationale**:

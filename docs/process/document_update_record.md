@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260430-21
+- **Date**: 2026-04-30
+- **Change-Type**: agent (skill prompt = agent 류 지침)
+- **Files Changed**:
+  - `commands/product-plan.md` — 414줄 → 108줄 (16,228 → 5,113자, **68% 절감**). 시퀀스/분기 표 통합, 가시성·yolo·worktree·AMBIGUOUS·catastrophic 룰을 `commands/quick.md` SSOT 참조로 일원화.
+  - `commands/quick.md` — 516줄 → 291줄 (19,463 → 10,764자, **45% 절감**). 본 skill 을 공통 룰 SSOT 로 격상 (가시성 의무 템플릿·yolo 매트릭스·AMBIGUOUS cascade·worktree 패턴·Step 7 commit-PR 패턴 모두 본 파일에 보존). step 골격 표 1개 + step 별 enum 차이만 명시.
+  - `commands/impl.md` — 426줄 → 194줄 (15,973 → 7,696자, **52% 절감**). step 표 + 분기 표. Step 4.5 (stories sync) / Step 2.0 (마커 검사) 핵심 메커니즘 보존. helper 경로 매번 inline → `HELPER` 변수 1회.
+  - `commands/impl-loop.md` — 193줄 → 127줄 (8,730 → 4,787자, **45% 절감**). inner /impl 참조 + loop level 추가만 명시.
+  - `commands/qa.md` — 204줄 → 123줄 (8,094 → 4,361자, **46% 절감**). 가시성·AMBIGUOUS cascade SSOT 참조.
+  - `commands/slim/{product-plan,quick,impl,impl-loop,qa}.md` — 슬림 staging 사본 (Antigravity language server file revert 회피 우회 경로). 본 commit 후 추후 정리 가능.
+  - `docs/process/document_update_record.md` (본 파일) — 본 항목 추가
+  - `docs/process/change_rationale_history.md` — DCN-CHG-20260430-21 항목 추가
+- **Summary**: 5개 dcness skill prompt 합계 **68,488 → 32,721자 (52% 절감, ~9k 토큰)**. `/product-plan` 진입 시 메인 thinking 시간 ~3분 46초 → 단축 기대. 동작 spec (시퀀스 / enum / 분기 / cycle 한도 / catastrophic 정합) 100% 보존.
+
 ### DCN-CHG-20260430-20
 - **Date**: 2026-04-30
 - **Change-Type**: harness, spec, test
