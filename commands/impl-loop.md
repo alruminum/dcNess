@@ -69,31 +69,63 @@ echo "[impl-loop] run started: $RUN_ID"
 진행할까요?
 ```
 
-### Step 1 — task 등록 (batch 별 1개)
+### Step 1 — outer task 등록 (batch 별 1개)
 
 ```
 for i in 1..N:
   TaskCreate(f"impl-{i}: <batch 파일명 + 짧은 제목>")
 ```
 
-각 batch = 1 외부 task. 각 batch 안의 5 sub-task 는 batch 진행 시 `/impl` 가 만듦 — 외부 시각엔 배 N 개 task progress 보임.
+각 batch = 1 outer task. inner 5 sub-task 는 Step 2 의 batch 진입 시 등록 (`b<i>.` prefix 컨벤션).
 
-### Step 2 — 각 batch 순차 처리 (1 부터 N 까지)
+### Step 2 — 각 batch 순차 처리 (1 부터 N 까지) — inner sub-task 등록 의무
+
+⚠️ **inline skip 금지 (DCN-CHG-30-12)**: 각 batch 진입 시 `/impl` 의 Step 1 (5 sub-task TaskCreate) **반드시 수행**. inline 으로 begin-step → Agent 직행 X. 외부 task 만 보이고 inner 진행 안 보이는 결함 회피.
 
 ```
-for batch in BATCH_LIST:
-  TaskUpdate(f"impl-{i}: ...", in_progress)
-  → /impl skill 의 Step 1~7 시퀀스 호출 (인자 = batch path, 단 begin-run 은 본 outer run 안 별도 inner run 으로):
+for i in 1..N:
+  TaskUpdate(f"impl-{i}: <batch 제목>", in_progress)
 
-      INNER_RUN=$("$HELPER" begin-run "impl-batch-$i")
-      → /impl 의 Step 1~7 (batch 1개 처리)
-      → /impl Step 7 의 finalize-run 으로 status 받음
-      → clean 판정:
-          - clean → 자동 commit/PR (graceful degrade) → INNER_RUN end
-          - caveat → 사용자 위임 → 본 loop 멈춤
+  INNER_RUN=$("$HELPER" begin-run "impl-batch-$i")
+  echo "[impl-loop] batch $i/$N → INNER_RUN=$INNER_RUN"
 
-  TaskUpdate(f"impl-{i}: ...", completed) # clean 만
+  # ── inner sub-task 5개 의무 등록 (skip 금지) ───────────────────
+  TaskCreate(f"b{i}.architect: MODULE_PLAN")
+  TaskCreate(f"b{i}.test-engineer: TDD attempt 0")
+  TaskCreate(f"b{i}.engineer: IMPL")
+  TaskCreate(f"b{i}.validator: CODE_VALIDATION")
+  TaskCreate(f"b{i}.pr-reviewer: 검토")
+  # ──────────────────────────────────────────────────────────────
+
+  → /impl 의 Step 2~7 진행 (batch 1개 처리, /impl Step 1 의 outer 5 sub-task 등록은
+    위 ↑ 에서 이미 수행 — `b{i}.` prefix 컨벤션):
+      - Step 2: TaskUpdate(b{i}.architect, in_progress) → MODULE_PLAN 호출 → 결과 → completed
+      - Step 3: TaskUpdate(b{i}.test-engineer, in_progress) → ...
+      - Step 4: TaskUpdate(b{i}.engineer, in_progress) → ...
+      - Step 5: TaskUpdate(b{i}.validator, in_progress) → ...
+      - Step 6: TaskUpdate(b{i}.pr-reviewer, in_progress) → ...
+      - Step 7: finalize-run + clean 판정
+
+  if clean:
+      자동 commit/PR (graceful degrade) → INNER_RUN end
+      TaskUpdate(f"impl-{i}: ...", completed)
+  else (caveat):
+      사용자 위임 → 본 loop 멈춤 (Step 2.5)
 ```
+
+가시성 목표 (사용자 표시 형식 — DCN-CHG-30-12):
+```
+◼ impl-1: epic-01 greet lang 실 적용
+◻ impl-2: epic-02 calc.multiply
+◻ impl-3: epic-02 calc.divide
+◼ b1.architect: MODULE_PLAN     ← 현재 batch 1 의 inner step 진행
+◻ b1.test-engineer: TDD attempt 0
+◻ b1.engineer: IMPL
+◻ b1.validator: CODE_VALIDATION
+◻ b1.pr-reviewer: 검토
+```
+
+batch 완료 시 `b1.*` 들이 모두 ✓ → 다음 batch 의 `b2.*` 5 sub-task 새로 등록 (또는 batch 완료 시 b1.* 정리 + b2.* 추가). 메인 자유.
 
 ### Step 2.5 — caveat 발생 시 멈춤
 

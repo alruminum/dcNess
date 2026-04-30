@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+- **🧷 /impl-loop inner sub-task 의무 + `b<i>.<agent>` prefix 컨벤션** (`DCN-CHG-20260430-12`):
+  - 사용자 smoke 발견 — 메인이 inner 5 sub-task TaskCreate inline skip → outer 5 batch entry 만 보임.
+  - `commands/impl-loop.md` Step 2 에 ⚠️ "skip 금지" 경고 + `b<i>.<agent>` prefix 컨벤션 박음.
+  - `commands/impl.md` Step 1 도 같은 강도 강조.
+  - 사용자 가시성 기대 형식 (◼ b1.architect: MODULE_PLAN 등) 그대로 default 화.
 - **👀 가시성 보강 — 결론 섹션 우선 + 메인 text echo** (`DCN-CHG-20260430-11`):
   - `_extract_prose_summary` 가 `## 결론` / `## Summary` / `## 변경 요약` 섹션 우선 추출. cap 12줄/1200char.
   - 5 skill (qa / quick / product-plan / impl / impl-loop) 에 "가시성 룰" 신규 — 매 Agent 후 메인 text reply 로 prose 핵심 5~12줄 echo (CC collapsed 회피).

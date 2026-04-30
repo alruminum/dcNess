@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260430-12
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `commands/impl-loop.md` — Step 2 의 inner sub-task 등록 의무화 (skip 금지) + `b<i>.<agent>` prefix 컨벤션 명시 + 가시성 목표 형식 (사용자 지정).
+  - `commands/impl.md` — Step 1 의 sub-task 등록 의무 강조 + `/impl-loop` inner 호출 시 prefix 컨벤션 cross-ref.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 manual smoke (`/impl-loop yolo`) 도중 발견 — 메인이 inner 5 sub-task TaskCreate 를 inline 으로 skip → outer 5 batch entry 만 보이고 inner 진행 미가시. 사용자가 명시 instruction 으로 워크어라운드. skill prompt 결함 fix — Step 2 에 ⚠️ 경고 + `b<i>.<agent>` prefix 컨벤션 박음 (사용자가 본 형식 그대로 default 화).
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-11
 - **Date**: 2026-04-30
 - **Change-Type**: harness, spec, docs-only, test
