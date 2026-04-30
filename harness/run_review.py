@@ -864,16 +864,22 @@ def render_report(report: RunReport) -> str:
     lines.append("```")
     lines.append("")
 
-    # 단계별 표 (DCN-30-20: per-Agent metrics + DCN-30-24: local time 시작 컬럼)
+    # 단계별 표 (DCN-30-20: per-Agent metrics + DCN-30-24: local time 시작 컬럼
+    #            + DCN-CHG-20260430-39: tool_uses 컬럼 — TOOL_USE_OVERFLOW 가시성)
     lines.append("## 단계별 상세")
-    lines.append("| # | 시작(local) | agent | mode | elapsed(s) | duration(s) | out_tok | total_tok | cost($) | enum | must_fix | prose줄 |")
-    lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
+    lines.append("| # | 시작(local) | agent | mode | elapsed(s) | duration(s) | out_tok | total_tok | tool_uses | cost($) | enum | must_fix | prose줄 |")
+    lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for s in report.steps:
         line_count = len([l for l in s.prose_excerpt.splitlines() if l.strip()])
         dur_s = f"{s.duration_ms / 1000:.0f}" if s.matched_invocation else "-"
         out_tok = f"{s.output_tokens:,}" if s.matched_invocation else "-"
         tot_tok = f"{s.total_tokens:,}" if s.matched_invocation else "-"
         cost = f"{s.cost_usd:.4f}" if s.matched_invocation else "-"
+        if s.matched_invocation:
+            # ≥ 100 시 **bold** — TOOL_USE_OVERFLOW 임계와 동일 (run_review.py:465)
+            tu_str = f"**{s.tool_use_count}**" if s.tool_use_count >= 100 else str(s.tool_use_count)
+        else:
+            tu_str = "-"
         ts_local = "-"
         ts_dt = _parse_iso(s.ts)
         if ts_dt:
@@ -881,7 +887,7 @@ def render_report(report: RunReport) -> str:
             ts_local = ts_dt.astimezone().strftime("%H:%M:%S")
         lines.append(
             f"| {s.idx} | {ts_local} | {s.agent} | {s.mode or '-'} | {s.elapsed_s} | "
-            f"{dur_s} | {out_tok} | {tot_tok} | {cost} | "
+            f"{dur_s} | {out_tok} | {tot_tok} | {tu_str} | {cost} | "
             f"`{s.enum}` | {'⚠️' if s.must_fix else ''} | {line_count} |"
         )
     lines.append("")

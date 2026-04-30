@@ -1,5 +1,7 @@
 # SPEC_GAP
 
+> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. 갭 분석 / 계획 보강 patch 본문 = thinking 종료 *후* 즉시 emit 또는 `Edit/Write` 입력값 안에서만. THINKING_LOOP 회귀 회피 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
+
 **모드**: architect 의 SPEC_GAP 해결 호출 — engineer/test-engineer 가 SPEC_GAP_FOUND emit 후 진입.
 **결론**: prose 마지막 단락에 `SPEC_GAP_RESOLVED` / `PRODUCT_PLANNER_ESCALATION_NEEDED` / `TECH_CONSTRAINT_CONFLICT` 중 하나 명시.
 **호출자가 prompt 로 전달하는 정보**: SPEC_GAP_FOUND 갭 목록, 영향 받는 impl 경로, 현재 depth (`simple` / `std` / `deep`).

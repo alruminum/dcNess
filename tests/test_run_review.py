@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from harness.run_review import (  # noqa: E402
-    StepRecord, build_report, detect_goods, detect_wastes,
+    RunReport, StepRecord, build_report, detect_goods, detect_wastes,
     parse_steps, render_report, list_runs, find_run_dir,
     _normalize_agent_type, assign_invocations_to_steps,
     EXPECTED_AGENT_BUDGETS,
@@ -185,6 +185,41 @@ class LocalTimeRenderTests(unittest.TestCase):
             self.assertIn("시작(local)", text)
             # `:46:47` 부분만 확인 — 시스템 timezone 무관 (분/초는 동일)
             self.assertIn(":46:47", text)
+
+
+class ToolUsesColumnTests(unittest.TestCase):
+    """DCN-CHG-20260430-39: render_report tool_uses 컬럼 + ≥ 100 강조."""
+
+    def _make_report(self, steps: list[StepRecord]) -> RunReport:
+        with tempfile.TemporaryDirectory() as td:
+            return RunReport(run_id="rid", session_id="sid", run_dir=Path(td), steps=steps)
+
+    def test_header_has_tool_uses_column(self):
+        step = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                          enum="IMPL_DONE", must_fix=False,
+                          prose_excerpt="a\nb\nc\nd\ne",
+                          matched_invocation=True, tool_use_count=42)
+        text = render_report(self._make_report([step]))
+        self.assertIn("tool_uses", text)
+        self.assertIn("| 42 |", text)
+
+    def test_overflow_threshold_bolded(self):
+        step = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                          enum="IMPL_DONE", must_fix=False,
+                          prose_excerpt="a\nb\nc\nd\ne",
+                          matched_invocation=True, tool_use_count=153)
+        text = render_report(self._make_report([step]))
+        self.assertIn("**153**", text)
+
+    def test_unmatched_invocation_dash(self):
+        step = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                          enum="IMPL_DONE", must_fix=False,
+                          prose_excerpt="a\nb\nc\nd\ne",
+                          matched_invocation=False, tool_use_count=0)
+        text = render_report(self._make_report([step]))
+        # 단계별 표 row 안 tool_uses 자리 = "-" (cost 와 동일 형식)
+        # 검사: "| - | - |" 같은 dash 시퀀스 존재 (out_tok / total_tok / tool_uses / cost 모두 dash)
+        self.assertRegex(text, r"\|\s*-\s*\|\s*-\s*\|\s*-\s*\|\s*-\s*\|")
 
 
 class ReportRenderTests(unittest.TestCase):

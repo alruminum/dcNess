@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260430-39
+- **Date**: 2026-04-30
+- **Change-Type**: agent, harness, test
+- **Files Changed**:
+  - `agents/pr-reviewer.md` §"에이전트 스코프 매트릭스" 헤더 cross-ref `(orchestration.md §7 정합)` → `(handoff-matrix.md §4 정합)`. DCN-30-32 split 잔재 정정.
+  - `agents/architect/system-design.md` `agents/architect/task-decompose.md` `agents/architect/module-plan.md` `agents/architect/tech-epic.md` `agents/architect/light-plan.md` `agents/architect/docs-sync.md` `agents/architect/spec-gap.md` — H1 직후 `> ⚠️ CRITICAL — extended thinking 본문 드래프트 금지` banner 1 블록 추가. master 룰 (`agents/architect.md` §자기규율) 의 sub-mode 가시화. THINKING_LOOP 회귀 회피 (DCN-30-20 jajang 6분 stall).
+  - `harness/run_review.py:render_report` 단계별 상세 표 — `tool_uses` 컬럼 신규. `s.tool_use_count ≥ 100` 시 `**bold**` 강조 (TOOL_USE_OVERFLOW 임계 정합, run_review.py:465). 미매칭 step 은 `-`.
+  - `tests/test_run_review.py:ToolUsesColumnTests` — 3 신규 테스트 (header 컬럼 존재 / ≥ 100 bold / 미매칭 dash). `RunReport` import 추가. 45 ran / 45 PASS.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: /run-review 후속 cleanup 3건 묶음. (1) DCN-30-32 orchestration.md split 잔재 cross-ref 1줄 정정 (pr-reviewer.md). (2) `tool_uses` 단계별 표 컬럼 추가 — TOOL_USE_OVERFLOW 회귀 측정 가시성 ↑ (DCN-30-37 임계 정합). (3) architect sub-mode 7개 prompt 에 THINKING_LOOP banner — master 룰 sub-mode 가시화로 회귀 회피율 ↑.
+
 ### DCN-CHG-20260430-38
 - **Date**: 2026-04-30
 - **Change-Type**: agent, harness, test, docs-only
