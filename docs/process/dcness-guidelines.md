@@ -4,11 +4,45 @@
 > 룰 추가 시 본 파일에만 append — skill 들은 cross-ref 만.
 > Task-ID: DCN-CHG-20260430-26 (SSOT 분리 + hook inject).
 
-## 0. 루프 실행 절차 SSOT — `docs/loop-procedure.md` (DCN-30-27)
+## 0. 루프 SSOT — `loop-procedure.md` + `loop-catalog.md` (DCN-30-27 / -30)
 
-dcness 의 8 loop 공통 실행 절차 (Step 0~8 — worktree / begin-run / TaskCreate / agent 호출 / Step 4.5 stories sync / finalize-run / clean 7a / caveat 7b / auto-review) 는 [`docs/loop-procedure.md`](../loop-procedure.md) 단일 SSOT. **본 가이드라인이 inject 되는 매 세션에서 메인 Claude 는 본 항을 통해 loop-procedure.md 를 의무 read** — skill 트리거 또는 직접 발화 시 동일.
+dcness 의 8 loop 운영은 **2 SSOT** 분담:
+- [`docs/loop-procedure.md`](../loop-procedure.md) — *공통 실행 절차* (Step 0~8 mechanics — worktree / begin-run / TaskCreate / agent 호출 / Step 4.5 stories sync / finalize-run / clean 7a / caveat 7b / auto-review)
+- [`docs/loop-catalog.md`](../loop-catalog.md) — *8 loop 행별 풀스펙* (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles)
 
-skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure.md.
+**본 가이드라인이 inject 되는 매 세션에서 메인 Claude 는 본 항을 통해 loop-procedure.md + loop-catalog.md 를 의무 read** — skill 트리거 또는 직접 발화 시 동일.
+
+skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure.md, loop spec 은 loop-catalog.md.
+
+## 0.1 행동지침 md 작성 룰 — 300줄 cap (DCN-30-30)
+
+dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 *직접 read* 하는 md) 는 **파일당 300줄 cap**. 초과 시 책임 분리 축으로 split.
+
+**대상 파일 (예시)**:
+- `docs/loop-procedure.md` / `docs/loop-catalog.md` (loop SSOT)
+- `docs/process/dcness-guidelines.md` (본 가이드라인)
+- `docs/orchestration.md`
+- `commands/*.md` (skill prompt)
+- `agents/**/*.md` (agent prompt)
+
+**대상 외 (cap 미적용)**:
+- `docs/process/document_update_record.md` / `change_rationale_history.md` (역사 로그 — append-only)
+- `PROGRESS.md` (스냅샷)
+- `docs/spec/**` / `docs/proposals/**` (긴 사양 문서 — 의사결정 직접 read X)
+- `tests/**` / `harness/**` 등 코드
+
+**Why**:
+- 메인 Claude / sub-agent 가 매 결정 시 read → 토큰 누적 + thinking 시간 ↑.
+- 300줄 = 한 read 호출에서 파악 가능한 임계 (RWHarness 경험치 정합).
+- 초과 시 *책임 축* 분리 (mechanics vs catalog / 시퀀스 vs 절차 등) — 복붙 분할 X.
+
+**How to apply**:
+- 새 행동지침 md 작성 시 300줄 목표.
+- 기존 파일 라인 수 모니터링 — 초과 발견 시 split PR (별도 Task-ID).
+- split 시 cross-ref 양방향 + governance §2.2 doc-sync gate 양 파일 동시 update.
+
+**현재 알려진 위반**:
+- `docs/orchestration.md` (540줄) — 시퀀스/결정표/retry/escalate/handoff 동시 보유. split 후속 (책임 축 후보: §2~§4 시퀀스/결정표 ↔ §5~§7 retry/escalate/handoff). 별도 Task-ID 추적.
 
 ## 1. 가시성 룰 (DCN-30-15) — MUST
 

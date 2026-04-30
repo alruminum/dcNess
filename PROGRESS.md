@@ -2,6 +2,13 @@
 
 ## 현재 상태
 
+- **✂️ loop-procedure.md split + 300줄 cap 룰 신설** (`DCN-CHG-20260430-30`):
+  - 사용자 지시 — "loop-procedure.md 쪼개자 가급적 300라인 넘기지 말랬잖아 행동지침 md는 이것도 룰로 적어놔줘". loop-procedure.md (436줄) cap 위반.
+  - **`docs/loop-catalog.md` 신규** (239줄) — 8 loop 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix). loop-procedure.md §7.0 인덱스 + §7.1~§7.10 풀스펙 모두 이전.
+  - **`docs/loop-procedure.md` 슬림** (436 → 242줄) — Step 0~8 mechanics 만 보존. §7 = catalog cross-ref + catastrophic 룰 정합 1 항목.
+  - **`docs/process/dcness-guidelines.md` §0 갱신** — 2 SSOT 분담 (procedure + catalog) 명시. §0.1 신설 — **행동지침 md 300줄 cap 룰** (대상 / 대상 외 / Why / How to apply / 현재 알려진 위반).
+  - **`docs/orchestration.md` §3 헤더** — loop-catalog.md cross-ref 추가.
+  - **알려진 위반**: orchestration.md (540줄). split 후속 별도 Task-ID 예정.
 - **🔌 helper finalize-run --auto-review + qa.md slim pilot** (`DCN-CHG-20260430-29`):
   - 4 PR migration (skill 슬림화 + procedure SSOT) 의 PR3.
   - `harness/session_state.py:_cli_finalize_run` 에 `--auto-review` flag 추가. STATUS JSON 출력 직후 in-process 로 `harness.run_review.main(["--run-id", rid, "--repo", cwd])` 호출. 메인 Claude 가 finalize-run 부르면 review 자동 piggy-back — 의도적 skip 불가.
