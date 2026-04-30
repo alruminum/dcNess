@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **🕐 /run-review 단계별 표에 local time 시각 컬럼** (`DCN-CHG-20260430-24`):
+  - 사용자 디버그 시 UTC `04:xx` 가 헷갈려 보고. `.steps.jsonl` 은 UTC ISO 저장 (시스템 표준), render 측만 `astimezone()` 변환해서 KST 표시.
 - **🩹 /run-review 매칭 fix + skill prompt 의 prose-file 격리** (`DCN-CHG-20260430-23`):
   - jajang 실측 (run-657d86fc, 9 step) 발견 2 결함 동시 fix.
   - **(1) 매칭 cascade 결함**: step 0 invocation 부재 시 후속 step 모두 어긋남 (9 중 2 매칭). timestamp-proximity 기반 매칭 (inv.ts < step.ts AND step.ts - inv.ts ≤ 600s, closest before) 으로 해결 → 9 중 8 매칭 (step 0 정당 미매칭).

@@ -170,6 +170,23 @@ class GoodDetectionTests(unittest.TestCase):
         self.assertTrue(any(g.pattern == "DEPENDENCY_CAUSAL" for g in goods))
 
 
+class LocalTimeRenderTests(unittest.TestCase):
+    def test_step_table_shows_local_time(self):
+        # DCN-30-24: UTC ts → system local time (e.g. KST = UTC+9)
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            rd = _make_run_dir(tmp, "sid1", "rid1", [
+                {"ts": "2026-04-30T02:46:47+00:00", "agent": "architect", "mode": "MODULE_PLAN",
+                 "enum": "READY_FOR_IMPL", "must_fix": False,
+                 "prose_excerpt": "a\nb\nc\nd\ne\nf"},
+            ])
+            report = build_report(rd, repo_path=tmp)
+            text = render_report(report)
+            self.assertIn("시작(local)", text)
+            # `:46:47` 부분만 확인 — 시스템 timezone 무관 (분/초는 동일)
+            self.assertIn(":46:47", text)
+
+
 class ReportRenderTests(unittest.TestCase):
     def test_render_smoke(self):
         with tempfile.TemporaryDirectory() as td:
