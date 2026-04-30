@@ -562,13 +562,16 @@ class CleanupStaleRunsTests(unittest.TestCase):
         self._td.cleanup()
 
     def _set_slot(self, run_id: str, **overrides) -> None:
+        # DCN-30-40 fix: hardcoded ts (2026-04-29) → now() — time bomb 회피.
+        # 24h TTL 기준이라 hardcoded ts 가 시간 흐름에 따라 stale 판정 됨.
+        now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
         live = read_live(self.sid, base_dir=self.base) or {}
         active = live.get("active_runs", {}) or {}
         active[run_id] = {
             "run_id": run_id,
             "entry_point": "quick",
-            "started_at": "2026-04-29T00:00:00+00:00",
-            "last_confirmed_at": "2026-04-29T00:00:00+00:00",
+            "started_at": now_iso,
+            "last_confirmed_at": now_iso,
             "completed_at": None,
             "run_dir": "x",
             "current_step": None,

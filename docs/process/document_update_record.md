@@ -20,6 +20,14 @@
 
 ## Records
 
+### DCN-CHG-20260501-03
+- **Date**: 2026-05-01
+- **Change-Type**: test
+- **Files Changed**:
+  - `tests/test_session_state.py:CleanupStaleRunsTests._set_slot` — fixture `started_at` / `last_confirmed_at` hardcoded `"2026-04-29T00:00:00+00:00"` → `datetime.now(timezone.utc).isoformat(timespec="seconds")`. time-bomb 회피.
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: CleanupStaleRunsTests 2건 (`test_keeps_fresh_slot` / `test_removes_completed_old_slot`) GitHub CI 7+ 회 fail 누적 — DCN-30-40 작업 중 사용자 보고 발견. 원인: fixture hardcoded ts (2026-04-29) 가 작성 시점엔 fresh 였으나 24h TTL + 시간 흐름 (2026-05-01 현재) 으로 stale 판정 → cleanup 대상 됨 → "fresh slot 유지" assertion 깨짐. fix: now() 동적 ts 사용. 281 tests all PASS (이전 240 ran 중 2 fail → 회귀 0).
+
 ### DCN-CHG-20260501-02
 - **Date**: 2026-05-01
 - **Change-Type**: agent, docs-only
