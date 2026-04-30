@@ -18,6 +18,16 @@
 
 ## Records
 
+### DCN-CHG-20260430-22
+- **Date**: 2026-04-30
+- **Rationale**: DCN-CHG-20260430-21 슬림 작업 시 Antigravity language server 의 file revert 우회를 위해 `commands/slim/` 에 staging 사본을 두고 atomic cp + git add 로 race 회피했음. follow-up 으로 staging 디렉토리 정리 약속 (rationale §Follow-Up).
+- **Alternatives**:
+  1. **유지** — 추후 슬림 작업 reference 로 활용. 기각: 본 위치 (`commands/*.md`) 가 SSOT, staging 은 일회성 우회.
+  2. **`docs/` 로 이전** — 기각: skill 본문 변경 이력은 git log 가 SSOT, 별도 doc 불필요.
+  3. **채택: 삭제** — 본 작업 완료 + 본 위치에 commit 됐으므로 불필요. clean state 유지.
+- **Decision**: 옵션 3. `commands/slim/` 디렉토리 통째 삭제.
+- **Follow-Up**: Antigravity revert 우회 패턴은 본 사례로 충분 — 글로벌 CLAUDE.md 등에 노트 추가는 별도 Task (사용자 결정).
+
 ### DCN-CHG-20260430-21
 - **Date**: 2026-04-30
 - **Rationale**: jajang 도그푸딩 중 `/product-plan` 진입 시 메인 Claude skill prompt (14,660자) 처리에 **3분 46초 thinking** 소요 (캐시 히트·output 1352 토큰임에도). 본 skill 외에도 4개 dcness skill (`/quick` 19,463자 / `/impl` 15,973자 / `/impl-loop` 8,730자 / `/qa` 8,094자) 모두 동일 비대 패턴. 원인 — 매 skill 이 *공통 룰* (가시성 / AMBIGUOUS / yolo / worktree / catastrophic / 의무 echo 템플릿 + 자가 점검 + 안티패턴) 본문을 풀어 재기술. 거버넌스 §2.5 "함정 회피 5원칙" 룰 순감소 위반.
