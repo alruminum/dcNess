@@ -20,6 +20,25 @@
 
 ## Records
 
+### DCN-CHG-20260430-37
+- **Date**: 2026-04-30
+- **Change-Type**: harness, test
+- **Files Changed**:
+  - `harness/run_review.py:StepRecord` — `tool_use_count: int = 0` 필드 추가 (DCN-30-36 짝).
+  - `harness/run_review.py:assign_invocations_to_steps` — invocation 의 `tool_use_count` 를 step 에 propagate.
+  - `harness/run_review.py:_scan_main_sed_misdiagnosis` 신규 — CC session JSONL 안 메인 self-correction 패턴 (`정정.*0개` / `잘못 진단` / `misdiagnosis` / `sed.*변경.*0` / `실측 시 0`) 검출. 최대 3개 hits 반환.
+  - `harness/run_review.py:detect_wastes` — signature 확장 (`invocations` / `repo_path` / `window` optional). 4 신규 패턴:
+    - `TOOL_USE_OVERFLOW` (HIGH): step.tool_use_count ≥ 100 (자장 실측 임계). DCN-30-36 hint 사후 측정.
+    - `PARTIAL_LOOP` (HIGH): IMPL_PARTIAL ≥ 3 in run (자장 무한 반복 패턴).
+    - `END_STEP_SKIP` (HIGH): agent invocation count > steps row + 1 margin (메인 distract → end-step 누락 사후 검출).
+    - `MAIN_SED_MISDIAGNOSIS` (HIGH): 메인 self-correction 패턴 발견 (I5 회귀 측정).
+  - `harness/run_review.py:build_report` — invocations + window 을 detect_wastes 로 전달.
+  - `tests/test_run_review.py:RegressionPatternsTests` — 8 신규 테스트 (TOOL_USE_OVERFLOW positive/negative/unmatched, PARTIAL_LOOP 3+/2-, END_STEP_SKIP exceeded/within margin, MAIN_SED_MISDIAGNOSIS detect). 34 ran (이전 26) / all PASS.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: DCN-30-36 prior count hint 의 *사후 측정* 인프라 + 자장 실측 패턴 4종 자동 검출. 자장 실 데이터 검증 — run-c0ef57e0 에서 `tool_use_count=153` TOOL_USE_OVERFLOW 즉시 검출 (오프라인 회귀 측정 ✓). fix 효과 측정 가능 → 다음 epic 회고 시 자동 발화. 자율 침해 0 (사후 분석만).
+
 ### DCN-CHG-20260430-36
 - **Date**: 2026-04-30
 - **Change-Type**: harness, test

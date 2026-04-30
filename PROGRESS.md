@@ -2,6 +2,18 @@
 
 ## 현재 상태
 
+- **📊 /run-review 회귀 4 패턴 자동 검출** (`DCN-CHG-20260430-37`):
+  - DCN-30-36 prior count hint 의 *사후 측정* 인프라 + 자장 실 패턴 4종 자동 검출.
+  - `harness/run_review.py:StepRecord.tool_use_count` 필드 + `assign_invocations_to_steps` propagate.
+  - `_scan_main_sed_misdiagnosis` 신규 — CC JSONL 안 메인 self-correction 패턴 검출.
+  - `detect_wastes` signature 확장 (invocations / repo_path / window). 4 신규 패턴:
+    - `TOOL_USE_OVERFLOW` (≥ 100, 자장 실측 임계)
+    - `PARTIAL_LOOP` (IMPL_PARTIAL ≥ 3 in run)
+    - `END_STEP_SKIP` (invocations > steps + margin 1)
+    - `MAIN_SED_MISDIAGNOSIS` (메인 self-correction 텍스트 패턴)
+  - 자장 실 데이터 검증 — run-c0ef57e0 에서 `tool_use_count=153` 즉시 검출 ✓.
+  - 8 신규 테스트. 34 ran / all PASS.
+  - 자율 침해 0 (사후 분석만). MISSING_SELF_VERIFY 는 PR3 (DCN-30-38) 의 anchor 자율화 후 추가.
 - **🎯 engineer prior tool_use_count hint** (`DCN-CHG-20260430-36`):
   - jajang epic-08/09 회고 추가 분석 — engineer overflow 5회 (102/119/153/170/223 tool uses) 자장 오후 실측. DCN-30-34 IMPL_PARTIAL enum 만으론 LLM self-monitor 불가능 (CC API 미노출 본질 한계) → 실효 부족.
   - `harness/run_review.py:extract_agent_invocations` 에 `tool_use_count` 필드 (`totalToolUseCount`) 추가.
