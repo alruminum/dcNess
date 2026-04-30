@@ -202,6 +202,38 @@ def _parse_iso(ts: str) -> Optional[datetime]:
         return None
 
 
+def _resolve_prose_path(
+    run_dir: Path,
+    agent: str,
+    mode: Optional[str],
+    occurrence: int,
+) -> Path:
+    """Step 의 prose staging 파일 경로 해결 (DCN-CHG-20260501-09).
+
+    skill 컨벤션 (DCN-30-21): `<run_dir>/.prose-staging/<step>.md` 에 prose 작성.
+    `<step>` 명명 규칙:
+      - impl batch loop:        `b<N>.<agent>-<mode>.md`  (mode 있음)
+      - impl batch (no mode):   `b<N>.<agent>.md`
+      - 단발 skill (quick 등):  `<agent>-<mode>.md` 또는 `<agent>.md`
+
+    같은 (agent, mode) 가 여러 번 발생하면 lexical 정렬 후 N번째 occurrence 매칭
+    (b1 < b2 < b3 < bare suffix). DCN-CHG-20260430-23 path 격리 후 parser 가
+    legacy `<run_dir>/<agent>-<mode>.md` 만 읽어 매 step 동일 파일 회귀.
+
+    Fallback: `.prose-staging/` 부재 또는 미매칭 시 legacy `<run_dir>/<agent>-<mode>.md`.
+    """
+    suffix = f"{agent}-{mode}.md" if mode else f"{agent}.md"
+    staging = run_dir / ".prose-staging"
+    if staging.exists():
+        candidates = sorted(
+            p for p in staging.iterdir()
+            if p.is_file() and (p.name == suffix or p.name.endswith(f".{suffix}"))
+        )
+        if 0 <= occurrence < len(candidates):
+            return candidates[occurrence]
+    return run_dir / suffix
+
+
 def parse_steps(run_dir: Path) -> list[StepRecord]:
     steps: list[StepRecord] = []
     jsonl = run_dir / ".steps.jsonl"
@@ -217,10 +249,14 @@ def parse_steps(run_dir: Path) -> list[StepRecord]:
         except json.JSONDecodeError:
             continue
 
+    occurrence_counter: dict = {}
     for idx, rec in enumerate(raw):
         agent = rec.get("agent", "?")
         mode = rec.get("mode")
-        prose_path = run_dir / (f"{agent}-{mode}.md" if mode else f"{agent}.md")
+        key = (agent, mode)
+        occ = occurrence_counter.get(key, 0)
+        occurrence_counter[key] = occ + 1
+        prose_path = _resolve_prose_path(run_dir, agent, mode, occ)
         prose_full = ""
         if prose_path.exists():
             try:

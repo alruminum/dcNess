@@ -20,6 +20,21 @@
 
 ## Records
 
+### DCN-CHG-20260501-09
+- **Date**: 2026-05-01
+- **Change-Type**: harness, agent, test, ci
+- **Files Changed**:
+  - `scripts/check_python_tests.sh` — pre-commit hook 안에서 git env vars (`GIT_INDEX_FILE` / `GIT_DIR` / `GIT_WORK_TREE` / `GIT_PREFIX` / `GIT_EXEC_PATH`) inherited → 자식 `git worktree add` fail 회귀 해소. `env -u <vars>` 로 unset 후 unittest 실행.
+  - `harness/run_review.py` — `_resolve_prose_path()` 신규 (`.prose-staging/<bN.agent-mode>.md` Nth occurrence 매칭). `parse_steps` 가 occurrence_counter 로 같은 (agent, mode) N번째 staging 파일 매칭. fallback = legacy `<run_dir>/<agent>-<mode>.md`.
+  - `harness/session_state.py` — `_MUST_FIX_NEGATION_RE` + `_has_positive_must_fix()` 신규 (라인 단위 negation 컨텍스트 검사). `_append_step_status` 의 must_fix 검출 + `prose_excerpt` cap 4 → 12 (5~12 룰 정합).
+  - `agents/engineer.md` — H1 직후 `> ⚠️ CRITICAL — extended thinking 본문 드래프트 금지` banner 추가 (architect sub-mode 7 + product-planner 패턴 동일 적용).
+  - `tests/test_run_review.py` — `ResolveProsePathTests` 5 신규 (Nth occurrence / fallback / no mode / bare suffix / parse_steps end-to-end).
+  - `tests/test_session_state.py` — `test_must_fix_negation_no_false_positive` (자장 실 케이스 3) + `test_must_fix_positive_still_detected` (positive 3 케이스, mixed 포함).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: 자장 run-ef6c2c00 (40 step, $118.73, 28 waste finding) /run-review 결과 검증 — 4 이슈 한 번에 fix. (1) MISSING_SELF_VERIFY 9건 false positive = parser path mismatch (skill `.prose-staging/` write vs parser legacy `<run_dir>/` read). (2) MUST_FIX_GHOST 6건 false positive = "MUST FIX 0" / "MUST FIX 없음" 부정문 매칭. (3) THINKING_LOOP 4건 (614s/1102s/429s/670s stall) engineer banner 부재. (4) prose_excerpt cap 4 vs 룰 5~12 mismatch. 신규 7 테스트 / 288 ran / all PASS.
+
 ### DCN-CHG-20260501-08
 - **Date**: 2026-05-01
 - **Change-Type**: agent (commands/ 는 미분류이지만 사용자 가시 skill 변경 → governance trail 정책 정합)

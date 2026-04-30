@@ -1206,6 +1206,38 @@ def _cli_end_step(args: Any) -> int:
 
 _MUST_FIX_RE = re.compile(r"\bMUST[\s_-]?FIX\b", re.IGNORECASE)
 
+# DCN-CHG-20260501-09: 부정 컨텍스트 검출 — pr-reviewer 가 prose 안
+# "MUST FIX 0" / "MUST FIX 0, NICE TO HAVE 6" / "MUST FIX 없음" / "no must fix"
+# 처럼 *부정* 의미로 토큰을 쓰는 케이스 false positive 차단.
+# 자장 run-ef6c2c00 실측 — 6 pr-reviewer step 모두 같은 패턴.
+_MUST_FIX_NEGATION_RE = re.compile(
+    r"\bMUST[\s_-]?FIX\b[\s:=]*"  # "MUST FIX" + 구두점/공백
+    r"(?:0(?!\s*\d)|없[음다])"      # 직후 "0" (단일 자릿수만, "10" 같은 다자릿 제외) 또는 "없음/없다"
+    r"|\bno\s+MUST[\s_-]?FIX\b",   # 또는 영어 "no MUST FIX"
+    re.IGNORECASE,
+)
+
+
+def _has_positive_must_fix(prose: str) -> bool:
+    """prose 안 MUST FIX 가 *positive* (실제 fix 요청) 의미로 등장했는지.
+
+    검사 절차:
+      1. `MUST FIX` 매칭 0개 → False (없음)
+      2. 라인 단위 — 매칭 라인 중 *부정 컨텍스트 아닌* 라인 1개 이상 → True
+      3. 모든 매칭 라인이 부정 컨텍스트 → False
+
+    DCN-CHG-20260501-09 규제 — 단순 단어경계 매칭의 false positive 차단.
+    """
+    if not _MUST_FIX_RE.search(prose):
+        return False
+    for line in prose.splitlines():
+        if not _MUST_FIX_RE.search(line):
+            continue
+        if _MUST_FIX_NEGATION_RE.search(line):
+            continue  # 부정 라인 — skip
+        return True
+    return False
+
 
 def _steps_jsonl_path(sid: str, rid: str, *, base_dir: Optional[Path] = None) -> Path:
     return run_dir(sid, rid, base_dir=base_dir) / ".steps.jsonl"
@@ -1225,8 +1257,8 @@ def _append_step_status(
         "agent": agent,
         "mode": mode,
         "enum": enum,
-        "prose_excerpt": _extract_prose_summary(prose, max_lines=4),
-        "must_fix": bool(_MUST_FIX_RE.search(prose)),
+        "prose_excerpt": _extract_prose_summary(prose, max_lines=12),
+        "must_fix": _has_positive_must_fix(prose),
     }
     target = _steps_jsonl_path(sid, rid)
     target.parent.mkdir(parents=True, exist_ok=True)
