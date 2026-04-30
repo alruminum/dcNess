@@ -18,6 +18,31 @@
 
 ## Records
 
+### DCN-CHG-20260430-27
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 아키텍처 지적 (DCN-30-26 직후) — skill 5종 (`commands/{qa,quick,product-plan,impl,impl-loop}.md`) 이 Step 0~7 실행 절차 (begin-run / TaskCreate / begin-step/Agent/end-step/echo / finalize-run / 7a 7b commit-PR / run-review) 를 통째로 중복 보유 (100~215줄). /run-review 자동 호출 같은 새 룰 추가 시 5 skill 모두 손대야 함 = 중복 누적.
+  - 사용자 의도: **skill = 그 루프를 돌기 위해 필요한 정보를 수집하는 정도** (info-collection trigger). 메인 Claude = orchestration SSOT 읽고 동적 Task 구성. 기술 에픽 도입 사례 evidence — 메인이 룰 보고 task 짠 게 잘 동작.
+  - skill 두께가 메인 thinking 시간 + 토큰 부담 + drift 위험 모두 누적 (DCN-30-21/22 슬림 시도 후에도 100+줄).
+- **Alternatives**:
+  1. *옵션 A — skill 마다 `/run-review` 호출 inline*. 5 skill 동시 수정 = 사용자 아키텍처 정신 위반 ("스킬에 왜 범용적인걸 넣어"). 기각.
+  2. *옵션 B — helper `finalize-run` 자체에 review 통합*. 진짜 mechanical. 단 trigger 책임 = 메인이 finalize-run 부르는 시점 의존. skill 절차에 박혀있는 finalize-run 호출이 곧 review trigger 가 되는 구조 — 옵션 A 와 동일 의존.
+  3. *옵션 C — SessionEnd 훅 자동 fire*. cross-session run false positive 우려 + 훅 stdout transcript 미진입 → review 결과 가시성 ↓. 기각.
+  4. **(채택) 옵션 D — 절차 SSOT (`loop-procedure.md`) 신설 + skill 슬림화 + helper `--auto-review` flag**. skill = 트리거, 절차 = SSOT, review = helper in-process piggy-back. 3 PR 분할 마이그레이션.
+- **Decision**:
+  - **옵션 D 채택** + **3 PR 분할** (SSOT → /qa pilot → 4 skill bulk).
+  - 본 PR (PR1) = SSOT 신설 + cross-ref 박음. skill 변경 / harness 변경 X.
+  - **`docs/loop-procedure.md` 신규** — Step 0~8 골격 + §7 매트릭스 (8 loop × 7 컬럼: entry_point / task_list / agent_sequence / advance / clean_enum / branch_prefix / expected_steps).
+  - **`docs/process/dcness-guidelines.md` §0 신설** — SessionStart inject 시 loop-procedure.md 의무 read 명시. drift mitigation: governance §2.2 doc-sync gate + cross-ref 박힘.
+  - **`docs/orchestration.md` §3 헤더 cross-ref** — §3 mini-graph (시퀀스 카탈로그) 와 loop-procedure.md §7 (실행 매트릭스) 1:1 강제. 8 loop name 매핑 명시.
+  - **SSOT 위치 결정** (사용자 컨펌): orchestration.md §11 신설 ❌ — orchestration = WHAT (시퀀스), procedure = HOW (mechanics) 다른 axis. 별도 파일이 책임 분리 명확. guidelines.md (option C) 도 reject — guidelines = cross-cutting 룰 (echo/yolo/worktree), procedure = 시퀀스 mechanics 다른 축. inject 187줄 → 400+줄 비대화 우려.
+- **Follow-Up**:
+  - **PR2 (DCN-CHG-20260430-28 예정)** — `harness/session_state.py:_cli_finalize_run --auto-review` flag 신설 + `tests/test_session_state.py` wiring 케이스 + `commands/qa.md` slim pilot (~25 줄). qa flow E2E 검증 (jajang reinstall 후 1회).
+  - **PR3 (DCN-CHG-20260430-29 예정)** — `commands/{quick,impl,impl-loop,product-plan}.md` bulk slim. 4 skill 1회씩 dry-run 검증.
+  - **drift 위험 모니터링** — §3 mini-graph ↔ §7 매트릭스 sync 가 doc-sync gate 자동 강제. 매 변경 시 양쪽 동시 update 의무.
+  - **PR1 self-test** — 메인 Claude 가 §7 매트릭스 만 보고 8 loop 모두 task 리스트 + advance enum reconstruct 가능한지 (skill 안 보고). 실패 시 §7 보강 후 PR2 진입.
+  - **review 자동 트리거 v2** — `--auto-review` stdout 폭증 시 후속 Task 로 `--brief` mode 옵션 검토.
+
 ### DCN-CHG-20260430-26
 - **Date**: 2026-04-30
 - **Rationale**:
