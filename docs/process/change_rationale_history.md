@@ -18,6 +18,24 @@
 
 ## Records
 
+### DCN-CHG-20260501-05
+- **Date**: 2026-05-01
+- **Rationale**:
+  - 사용자 관찰 — impl 단독 open / grep 시 어느 Story / 이슈인지 H1 만으로 파악 안 됨. frontmatter 메타는 ToC 안 보임. 8 batch ↑ epic 시 검색 비용 ↑.
+  - 별개 관찰 — impl batch PR 에서 src/* 만 commit + impl/NN-*.md 누락 케이스 발생 → spec ↔ 코드 단절. revert 시 sync 깨짐.
+  - 두 룰 모두 "agent self-discipline" 영역 — 메인이 매번 룰 인용 부담. agent prompt SSOT 박음으로 자율 적용.
+- **Alternatives**:
+  1. *옵션 A — `docs/process/dcness-guidelines.md` 에 박음*. 단 agent 가 매번 guidelines 통해 강제 인지하지 못함 (해당 prompt 안 직접 룰이 더 효과).
+  2. *옵션 B — agent prompt 에 사용자 원본 텍스트 그대로 복붙*. 기존 "각 impl 파일 형식 의무" / "커밋 단위 규칙" 과 부분 중복 → 토큰 낭비 + 룰 충돌 위험.
+  3. **(채택) 옵션 C — agent prompt 에 미커버 영역만 추가**. task-decompose 의 기존 섹션 = 내용 (생성/수정 파일 / 인터페이스 / 의사코드 등) 만 다룸 → 제목 룰 추가. engineer 의 기존 "커밋 단위 규칙" = 1 커밋 = 1 논리 변경 / branch 룰만 다룸 → "1 batch = 1 PR 셋트" 하위 섹션 추가.
+- **Decision**:
+  - **task-decompose.md** — `## impl 파일 명명 + H1 제목` 섹션 신규. 파일명 + H1 정규식 + 자가 검증. 기존 `## 각 impl 파일 형식 의무 (DCN-30-13)` *직전* 배치 — 명명 → 형식 자연 순서.
+  - **engineer.md** — 기존 `## 커밋 단위 규칙` 안 `### 1 batch = 1 PR` 하위 섹션. 필수 stage 3 항목 + batch 01 한정 추가 + `git diff --cached --name-only` 자가 검증 + 안티패턴 3.
+  - 사용자 원안 보존 (의도 유지) + 표 → bullet 슬림화 + Why 1줄 압축.
+- **Follow-Up**:
+  - 자장 plugin reinstall 후 첫 epic TASK_DECOMPOSE 시 H1 위반 검출 여부 측정. 미발화 시 prompt 가시성 ↑ 강화.
+  - engineer commit 시 stories.md 누락 검출 → run-review 패턴화 (후속).
+
 ### DCN-CHG-20260501-04
 - **Date**: 2026-05-01
 - **Rationale**:

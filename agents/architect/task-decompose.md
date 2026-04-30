@@ -43,6 +43,32 @@ design-handoff.md 있는 경우 (B 모드 = 디자인 후 구현) 는 스킵.
 - 추가된 태스크 (Story → impl 매핑)
 - 생성된 impl 파일 목록 (경로 + depth + 가드레일 표시 — 듀얼 모드 시 `01-theme-tokens.md`)
 
+## impl 파일 명명 + H1 제목 (DCN-CHG-20260501-05)
+
+### 파일명
+`impl/NN-<slug>.md` — `NN` = 에픽 내 독립 순번 (전역 누적 X). `slug` = kebab-case 1줄 요약.
+
+### H1 형식 (강제)
+`# impl/NN — [Story Xa / #issue] <한 줄 요약>`
+
+- `Story Xa` — Story 번호 + 분할 시 `a/b/c` 접미사 (예: `Story 4a`)
+- `#issue` — GitHub Story 이슈 번호
+- 둘 다 같은 `[ ]` 안 — 한눈 매핑.
+
+**Why**: impl 단독 open / `grep` 시 H1 만으로 어느 Story / 이슈인지 즉시 파악. frontmatter 메타는 ToC 안 보임. 8 batch ↑ epic 검색 시 H1 prefix 가 가장 빠름.
+
+**예**:
+- ✅ `# impl/01 — [Story 1a / #167] S04+S05 컴포넌트 mock __esModule 통일`
+- ❌ `# impl/01 — S04+S05 …` (Story / 이슈 prefix 누락)
+- ❌ `# impl/05 — google-signin (Story 4a)` (괄호 표기 — `[ ]` 강제)
+
+### 자가 검증 (TASK_DECOMPOSE 종료 전)
+모든 `impl/NN-*.md` H1 정규식 매치 확인:
+```
+^# impl/\d{2} — \[Story \d+[a-z]?( / #\d+)?\] 
+```
+위반 1건이라도 발견 시 즉시 정정 후 종료.
+
 ## 각 impl 파일 형식 의무 (DCN-CHG-20260430-13)
 
 각 impl batch 파일 (`docs/milestones/vNN/epics/epic-NN-*/impl/NN-*.md`) 은 다음 섹션 박는다 — `/impl` skill 의 MODULE_PLAN step skip 판정 근거:
