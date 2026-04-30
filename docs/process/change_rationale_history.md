@@ -18,6 +18,28 @@
 
 ## Records
 
+### DCN-CHG-20260430-29
+- **Date**: 2026-04-30
+- **Rationale**:
+  - PR1/PR2 (DCN-30-27/28) 로 loop-procedure.md SSOT + §7 풀스펙 매트릭스 확보. 이제 skill 슬림화 + helper 단 자동 트리거 도입 차례.
+  - **`/run-review` 자동 호출 mechanical 강제 필요** — DCN-30-26 에서 dcness-guidelines.md §3 에 "루프 종료 시 의무" 박았으나 directive 일 뿐. 메인 Claude 가 finalize-run 끝나고 commit/PR 하느라 review 호출 잊는 회귀 (DCN-30-26 직전 사례) 우려.
+  - **skill 슬림화 pilot 필요** — PR4 에서 4 skill bulk slim 전, 가장 단순한 1 skill 로 새 SSOT (loop-procedure.md §7) cross-ref 만으로 동작 가능 입증. /qa = qa-triage 1 step → 가장 단순.
+- **Alternatives**:
+  1. *옵션 A — skill prompt 에 `/run-review` 호출 inline*. PR1 분석에서 사용자 reject ("스킬에 왜 범용적인걸 넣어"). 4 skill 동시 변경 = 중복 누적. 기각.
+  2. *옵션 B — SessionEnd 훅 자동 fire*. cross-session run false positive 우려 + 훅 stdout transcript 미진입. 기각 (PR1 plan 단계 동일 결정).
+  3. **(채택) 옵션 C — helper `finalize-run --auto-review` flag (in-process)**. STATUS JSON + review 리포트 한 stdout 에 chained. 메인이 finalize-run 부르면 자동 piggy-back. 의도적 skip 불가 + Bash collapsed 보호 (메인이 가시성 §4 룰대로 character-for-character echo).
+  4. *옵션 D — `dcness-helper` wrapper 가 finalize-run 호출 후 `dcness-review` subprocess 실행*. process 분리 → import 의존 0. 단 stdout 합치기 시 buffering 이슈 우려 + 추가 wrapper 복잡도. 기각.
+- **Decision**:
+  - **옵션 C 채택**.
+  - `_cli_finalize_run` 안에서 `from harness import run_review as _rv; _rv.main(...)` lazy import. argparse `SystemExit` 안전 처리 (정상 흐름 미지장).
+  - 실패 안전망: 모든 `Exception` (SystemExit 제외) → stderr `AUTO_REVIEW_FAIL` WARN, STATUS JSON 보존, exit 0. review 실패가 finalize 자체를 깨트리지 않음.
+  - **qa.md slim pilot**: 127줄 → 28줄. frontmatter / Loop / Inputs / 후속 라우팅 추천 / 절차 cross-ref 의 5 절. helper 호출 / TaskCreate / begin-step / end-step / prose-staging / finalize-run / 7a / 7b 모든 mechanics 제거 — 절차는 loop-procedure.md §7.5 단일 source.
+- **Follow-Up**:
+  - **PR4 (DCN-CHG-20260430-30 예정)** — 4 skill bulk slim (quick / impl / impl-loop / product-plan).
+  - **--auto-review 가시성 검증** — qa pilot E2E 시 stdout 양 확인. review 리포트 폭증 (수백줄) 시 후속 Task 로 `--brief` mode 옵션.
+  - **finalize-run 호출 자체 mechanical 강제는 별도** — 메인이 finalize-run 부르는 step 7 자체를 skip 하는 회귀는 본 PR 으로 해결 X. SessionEnd 훅 또는 Stop 훅 안전망은 후속 검토 (현재는 메인 신뢰).
+  - **drift 모니터링** — qa pilot 진입 시 메인이 loop-procedure.md §7.5 만 보고 mechanics 모두 reconstruct 가능한지 jajang 재install 후 실측.
+
 ### DCN-CHG-20260430-28
 - **Date**: 2026-04-30
 - **Rationale**:

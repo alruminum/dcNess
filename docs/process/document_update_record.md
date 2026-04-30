@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260430-29
+- **Date**: 2026-04-30
+- **Change-Type**: harness, agent, test
+- **Files Changed**:
+  - `harness/session_state.py:_cli_finalize_run` — `--auto-review` flag 추가. STATUS JSON 출력 직후 in-process 로 `harness.run_review.main(["--run-id", rid, "--repo", str(Path.cwd())])` 호출. 출력 = STATUS JSON + 빈 줄 + `--- /run-review (auto) ---` divider + run-review 리포트 chained. 실패 시 (`SystemExit` 제외 모든 예외) `AUTO_REVIEW_FAIL` stderr WARN + STATUS JSON 정상 출력 + exit 0.
+  - `harness/session_state.py:_build_arg_parser` — `finalize-run` 서브커맨드에 `--auto-review` action="store_true" argparse 추가.
+  - `commands/qa.md` — slim pilot. 127줄 → 28줄 (78% 절감). `qa-triage` loop 매핑 / Inputs (이슈 제목 / 재현 / 화면·기능 / 예상 vs 실제 / 에러) / 후속 라우팅 추천 5 enum. 절차는 [`docs/loop-procedure.md`](../docs/loop-procedure.md) §1~§6 + §7.5 cross-ref.
+  - `tests/test_session_state.py` — 3 신규 케이스 (`test_finalize_run_auto_review_chains_report` / `test_finalize_run_auto_review_skip_on_failure` / `test_finalize_run_auto_review_off_no_chain`). `unittest.mock.patch` 으로 `harness.run_review.main` 가짜화. 219 ran / 217 PASS / 2 pre-existing flaky 무관.
+  - `PROGRESS.md` — 본 항목 + DCN-30-28/27 백 entries 갱신.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 4 PR migration (skill 슬림화 + procedure SSOT) 의 PR3. helper 단에서 review 자동 piggy-back 하도록 `--auto-review` flag 신설 — 메인 Claude 가 finalize-run 부르면 review skip 불가. qa.md = 가장 단순한 loop (`qa-triage` 1 step) pilot 으로 새 SSOT (loop-procedure.md §7.5) 만 cross-ref 해서 동작 가능 입증. PR4 (DCN-30-30) 에서 나머지 4 skill bulk slim 진입.
+
 ### DCN-CHG-20260430-28
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only

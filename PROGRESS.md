@@ -2,6 +2,24 @@
 
 ## 현재 상태
 
+- **🔌 helper finalize-run --auto-review + qa.md slim pilot** (`DCN-CHG-20260430-29`):
+  - 4 PR migration (skill 슬림화 + procedure SSOT) 의 PR3.
+  - `harness/session_state.py:_cli_finalize_run` 에 `--auto-review` flag 추가. STATUS JSON 출력 직후 in-process 로 `harness.run_review.main(["--run-id", rid, "--repo", cwd])` 호출. 메인 Claude 가 finalize-run 부르면 review 자동 piggy-back — 의도적 skip 불가.
+  - 실패 케이스 (review_main 예외) 안전망 — `AUTO_REVIEW_FAIL` stderr WARN + STATUS JSON 자체는 정상 출력 + exit 0.
+  - `commands/qa.md` slim pilot — 127줄 → 28줄 (78% 절감). `qa-triage` loop / Inputs / 후속 라우팅 추천만. 절차는 [`docs/loop-procedure.md`](docs/loop-procedure.md) §1~§6 + §7.5 cross-ref.
+  - `tests/test_session_state.py` 3 신규 (`auto_review_chains_report` / `skip_on_failure` / `off_no_chain`) PASS. 219 ran / 217 PASS / 2 pre-existing flaky 무관.
+  - PR4 후속 — 4 skill (quick / impl / impl-loop / product-plan) bulk slim.
+- **📐 loop-procedure.md §7 매트릭스 행별 풀스펙 보강** (`DCN-CHG-20260430-28`):
+  - PR1 (DCN-30-27) self-test gap 반영. §7.0 한눈 인덱스 + §7.1~§7.8 행별 풀스펙 sub-section. 각 행 = `branch_prefix` decision rule / `Step 4.5 적용` / Step 별 `allowed_enums` 표 / 분기 표 / sub_cycles. 252줄 → 436줄.
+  - feature-build-loop 분기 (PRODUCT_PLAN_UPDATED skip / UX_REFINE_READY / CLARITY_INSUFFICIENT 등) 명시.
+  - impl-ui-design-loop design-critic 별도 step 분리 + DESIGN_LOOP_ESCALATE / VARIANTS_ALL_REJECTED 분기.
+  - ux-design-stage / ux-refine-stage designer mode (THREE_WAY 권장) + 사용자 PICK / Step 2.5 사용자 승인.
+  - sub_cycle agent (architect:SPEC_GAP / engineer:POLISH-<n> / engineer:IMPL-RETRY-<n> / designer:SCREEN-ROUND-<n>) allowed_enums 명시.
+- **📑 loop-procedure.md SSOT 신설 + cross-ref** (`DCN-CHG-20260430-27`):
+  - skill 5종 Step 0~7 *실행 절차* 중복 (100~215줄/skill) 풀어내는 4 PR migration 의 1단계.
+  - `docs/loop-procedure.md` (252줄) — 8 loop 공통 실행 절차 SSOT (Step 0 worktree+begin-run / Step 1 TaskCreate / Step 2~N agent 호출 / Step 4.5 stories sync / Step 7 finalize-run+clean+commit-PR / Step 8 review).
+  - 8 loop name 확정: `feature-build-loop` / `impl-batch-loop` / `impl-ui-design-loop` / `quick-bugfix-loop` / `qa-triage` / `ux-design-stage` / `ux-refine-stage` / `direct-impl-loop`.
+  - `docs/process/dcness-guidelines.md` §0 cross-ref + 의무 read 명시. `docs/orchestration.md` §3 헤더 8 loop name 매핑.
 - **📜 dcness-guidelines.md SSOT + SessionStart 훅 inject** (`DCN-CHG-20260430-26`):
   - 사용자 지적 — quick.md (light path 전용) 에 범용 룰 다 박혀 책임 혼재. + 미래 추가 룰 (Epic/Story 분할, 커스텀 루프) SSOT 필요.
   - `docs/process/dcness-guidelines.md` (신규) — 11 섹션 (가시성 / Step 기록 / **/run-review 의무 (신규)** / **결과 출력 룰 (신규)** / yolo / AMBIGUOUS / worktree / TBD 분할 기준 / TBD 커스텀 루프 / 권한 요청 / Karpathy 참조).
