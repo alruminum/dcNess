@@ -18,6 +18,51 @@
 
 ## Records
 
+### DCN-CHG-20260430-19
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 메타-하네스 self-improvement 루프 요청 — RWHarness 의 `/harness-review` 패턴을 dcness 에 도입.
+  - RWHarness review skill 분석 결과:
+    - JSONL log 파싱 → agent 별 cost/elapsed/tools/files_read 추출
+    - 8 waste 패턴 (INFRA_READ / SUB_AGENT / TIMEOUT / NO_OUTPUT / RETRY / CONTEXT_BLOAT / SLOW / DUPLICATE_READ)
+    - 마크다운 리포트 + 수정 제안
+    - HARNESS_DONE / ESCALATE 후 자동 트리거
+  - dcness 데이터 소스 확인 (실측):
+    - `.steps.jsonl` (DCN-30-2 부터 존재) → step 별 (agent, mode, enum, must_fix, prose_excerpt, ts)
+    - per-agent prose files → 전체 결론 + 본문
+    - CC session JSONL → assistant turn 별 cost/usage (이미 `harness/efficiency/` 가 파싱)
+    - Agent tool `toolUseResult` → `totalCost` / `totalDurationMs` / `totalTokens` (Phase 2 후속용)
+  - 가능성 확인: ✅ 잘한 점/잘못한 점 추출 + ⚠️ 단계별 금액 부분 가능 (Phase 1 = run-level, Phase 2 = per-Agent).
+- **Alternatives**:
+  1. *옵션 1 — RW review.py 통째 fork*. 최소 변경. 단 RW JSONL event format 과 dcness `.steps.jsonl` 형식이 다름 → 무의미. 기각.
+  2. *옵션 2 — Phase 1 + Phase 2 동시 구현*. 한 번에 완성. per-Agent cost 매칭은 timestamp + subagent_type 매핑 복잡 — 본 PR 비대 위험. 차순위.
+  3. **(채택) 옵션 3 — Phase 1 (run-level coarse) 우선 + Phase 2 후속** — 빠른 가치 제공 + 추후 정밀화. 사용자 "확인" (feasibility 우선) 발화 정합.
+- **Decision**:
+  - 옵션 3 채택. Phase 1 = `harness/run_review.py` 신규 (~370 LOC).
+  - 잘한 점 (GOOD findings) 5 패턴:
+    - `ENUM_CLEAN` — step enum 이 expected 매트릭스 정합 + must_fix=False
+    - `PROSE_ECHO_OK` — prose_excerpt 5~12줄 (DCN-30-15 룰 회귀 검출)
+    - `DDD_PHASE_A` — architect SD prose 안 Domain Model / Phase A 섹션 (DCN-30-16)
+    - `DEPENDENCY_CAUSAL` — 의존성 화살표에 인과관계 1줄 (DCN-30-16)
+    - `EXTERNAL_VERIFIED_PRESENT` — plan-reviewer EXTERNAL_VERIFIED 섹션 (DCN-30-18)
+  - 잘못한 점 (WASTE findings) 8 패턴:
+    - `RETRY_SAME_FAIL` (MEDIUM) — 연속 동일 FAIL enum
+    - `ECHO_VIOLATION` (MEDIUM) — prose_excerpt < 3줄 (DCN-30-15 회귀)
+    - `PLACEHOLDER_LEAK` (HIGH/MEDIUM) — `[미기록]` / `M0 이후` / `NotImplementedError` 발견 (DCN-30-18 회귀)
+    - `MUST_FIX_GHOST` (HIGH) — must_fix=true 이후 다음 step 진행
+    - `SPEC_GAP_LOOP` (MEDIUM) — architect SPEC_GAP > 2회
+    - `INFRA_READ` (HIGH) — prose 안 인프라 경로 흔적
+    - `READONLY_BASH` (HIGH) — read-only agent 가 Bash 호출 흔적
+    - `EXTERNAL_VERIFIED_MISSING` (HIGH) — plan-reviewer EXTERNAL_VERIFIED 섹션 부재 (DCN-30-18 회귀)
+  - 출력 룰 — Bash stdout 의 마크다운 리포트를 character-for-character 그대로 (RWHarness review 패턴 정합 + DCN-30-15 echo 룰 정합).
+  - dcness skill 9 개 (efficiency 와 보완 관계: efficiency=세션 단위 / run-review=run 단위).
+- **Follow-Up**:
+  - **Phase 2** — per-Agent cost 매칭 (`toolUseResult.totalCost` 추출, Agent tool 호출 timestamp + subagent_type 으로 step 에 매핑)
+  - **자동 트리거** — finalize-run 직후 자동 review trigger 옵션 (RWHarness 의 HARNESS_DONE post-hook 정합)
+  - **누적 분석** — 30일 N runs 비교 + 에이전트 별 위반 빈도 ranking (별도 skill)
+  - **테스트 flaky fix** — `tests/test_session_state.CleanupStaleRunsTests` 2건 pre-existing 별도 Task-ID 로 fix
+  - **prose 텍스트 분석 강화** — 현재 regex 기반. semantic 분석 (key 단어 다양성) 도입 검토.
+
 ### DCN-CHG-20260430-18
 - **Date**: 2026-04-30
 - **Rationale**:
