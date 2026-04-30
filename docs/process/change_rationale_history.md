@@ -18,6 +18,41 @@
 
 ## Records
 
+### DCN-CHG-20260430-25
+- **Date**: 2026-04-30
+- **Rationale**:
+  - jajang DCN-30-23 사후 분석 (jajang 메인 self-introspection):
+    - batch 2 engineer 끝난 직후 메인 시퀀스: git status check → 별도 commit/push → validator Agent 호출 (end-step engineer skip) → end-step validator + begin-step pr-reviewer
+    - POLISH 사이클 동일 — engineer POLISH Agent 호출 시 begin/end-step 안 둘러쌈
+    - 결과: .steps.jsonl 에 engineer / pr-reviewer 첫 호출 / POLISH 누락 → /run-review 검출 X → 가시성 손실
+  - 본질: 메인 Claude 행동 결함 (skill prompt SSOT 가 명시 안 한 영역 = engineer 자체 PR / POLISH naming / 재호출 시 step 등록).
+  - Karpathy MUST 패턴 정합 — 자율에 맡기면 토큰 절약 본능으로 skip. mechanical 강제 필요.
+- **Alternatives**:
+  1. *옵션 1 — skill prompt 강화만*. 자율 의존. 메인이 또 까먹을 가능성. 차순위.
+  2. *옵션 2 — helper 자동 보정 (drift 시 이전 step 자동 end-step)*. 위험 — 옛 prose + 새 enum 매칭. 기각.
+  3. **(채택) 옵션 3 — helper 측 안전망 (WARN only) + skill prompt SSOT 강화 동시**. WARN 으로 메인 즉시 인지 + 룰 명시로 prompt 신뢰성 격상. 자동 보정 X = 안전.
+- **Decision**:
+  - 옵션 3. 4 fix:
+    1. **drift detector** — `_cli_end_step` 가 호출 시 live.json 의 current_step 과 args.agent 비교. 불일치 또는 부재 시 stderr WARN. 동작은 정상 (자동 cancel X).
+    2. **step count 검증** — `_cli_finalize_run --expected-steps N` 옵션. row count 미달 시 stderr WARN.
+    3. **commands/quick.md SSOT 강화** — `## Step 기록 룰` 신규:
+       - Agent 호출 1회 = begin/end-step 1쌍 의무
+       - POLISH 네이밍 컨벤션 (`engineer:POLISH-1`, `engineer:POLISH-2`)
+       - 재호출 컨벤션 (`engineer:IMPL-RETRY-1`)
+       - 안티패턴 4건 명시 (jajang 실측 기반):
+         - engineer 자체 commit/PR 후 end-step skip
+         - POLISH Agent 호출 시 begin/end-step 안 둘러쌈
+         - 사용자 입력 받느라 end-step 보류 후 망각
+         - multi-batch 보고 작성 후 begin-step 다시 안 부름
+       - helper 안전망 cross-ref (drift WARN / step count WARN)
+    4. **commands/impl.md Step 7** — `--expected-steps 5` 박음.
+  - **PR 권한 룰** (engineer 자체 PR 생성) 은 사용자 "디테일하게 볼게 있어" 발화로 본 PR 에서 보류. 별도 follow-up.
+- **Follow-Up**:
+  - **PR 권한 룰화** — engineer 의 commit/push/PR 권한 매트릭스 명시 (별도 Task-ID)
+  - **POLISH agent prompt** — engineer.md 측 POLISH 네이밍 reminder
+  - **/impl-loop --expected-steps** — multi-batch 환경 step count 검증 룰화
+  - **30일 회귀 측정** — drift WARN 발생 빈도 모니터. 0 이면 룰 안정. >0 이면 추가 강화.
+
 ### DCN-CHG-20260430-24
 - **Date**: 2026-04-30
 - **Rationale**: 사용자 jajang 분석 디버그 도중 ts 가 `04:xx` 로 보여 헷갈림. `.steps.jsonl` UTC 저장 + 사용자 KST 환경 + Mac mtime local 표시의 timezone mix.

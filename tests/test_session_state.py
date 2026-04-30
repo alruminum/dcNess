@@ -798,6 +798,89 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         # path 가 .sessions/{sid}/runs/{rid} 끝남
         self.assertTrue(printed.endswith(f".sessions/{self.sid}/runs/{self.rid}"))
 
+    def test_end_step_drift_warn_on_agent_mismatch(self) -> None:
+        # DCN-30-25: end-step 호출 시 current_step 의 agent 와 args.agent 불일치
+        # → stderr DRIFT WARN. 자동 보정 X (동작은 정상 진행).
+        from harness.session_state import _cli_begin_step, _cli_end_step
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr, redirect_stdout
+
+        # begin-step "validator" 박은 후 end-step "engineer" 호출
+        _cli_begin_step(SimpleNamespace(agent="validator", mode="CODE_VALIDATION"))
+
+        prose_path = self.base / "drift_prose.md"
+        prose_path.write_text("## 결론\nIMPL_DONE\n", encoding="utf-8")
+
+        err = StringIO()
+        out = StringIO()
+        with redirect_stderr(err), redirect_stdout(out):
+            rc = _cli_end_step(SimpleNamespace(
+                agent="engineer", mode="IMPL",
+                allowed_enums="IMPL_DONE,SPEC_GAP_FOUND",
+                prose_file=str(prose_path),
+            ))
+        self.assertEqual(rc, 0)
+        # stdout = enum (정상 동작)
+        self.assertEqual(out.getvalue().strip(), "IMPL_DONE")
+        # stderr 에 DRIFT WARN
+        self.assertIn("DRIFT WARN", err.getvalue())
+        self.assertIn("validator", err.getvalue())
+        self.assertIn("engineer", err.getvalue())
+
+    def test_end_step_drift_warn_when_no_current_step(self) -> None:
+        # DCN-30-25: begin-step 안 부르고 end-step 호출 → stderr WARN.
+        from harness.session_state import _cli_end_step
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr, redirect_stdout
+
+        prose_path = self.base / "no_begin_prose.md"
+        prose_path.write_text("## 결론\nIMPL_DONE\n", encoding="utf-8")
+
+        err = StringIO()
+        out = StringIO()
+        with redirect_stderr(err), redirect_stdout(out):
+            rc = _cli_end_step(SimpleNamespace(
+                agent="engineer", mode="IMPL",
+                allowed_enums="IMPL_DONE",
+                prose_file=str(prose_path),
+            ))
+        self.assertEqual(rc, 0)
+        self.assertIn("DRIFT WARN", err.getvalue())
+        self.assertIn("current_step 부재", err.getvalue())
+
+    def test_finalize_run_step_count_warn(self) -> None:
+        # DCN-30-25: --expected-steps 미달 시 stderr WARN.
+        from harness.session_state import _cli_finalize_run
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr, redirect_stdout
+
+        # .steps.jsonl 비어있음 (0 steps)
+        err = StringIO()
+        out = StringIO()
+        with redirect_stderr(err), redirect_stdout(out):
+            rc = _cli_finalize_run(SimpleNamespace(expected_steps=5))
+        self.assertEqual(rc, 0)
+        self.assertIn("STEP COUNT WARN", err.getvalue())
+        self.assertIn("row=0", err.getvalue())
+        self.assertIn("expected=5", err.getvalue())
+
+    def test_finalize_run_no_warn_when_expected_none(self) -> None:
+        # --expected-steps 미명시 시 WARN 없음 (기존 호출자 backward compat).
+        from harness.session_state import _cli_finalize_run
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr, redirect_stdout
+
+        err = StringIO()
+        out = StringIO()
+        with redirect_stderr(err), redirect_stdout(out):
+            rc = _cli_finalize_run(SimpleNamespace(expected_steps=None))
+        self.assertEqual(rc, 0)
+        self.assertNotIn("STEP COUNT WARN", err.getvalue())
+
     def test_end_step_writes_prose_and_extracts_enum(self) -> None:
         from harness.session_state import _cli_end_step, session_dir
         from types import SimpleNamespace

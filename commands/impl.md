@@ -168,6 +168,12 @@ Edit(BACKLOG_FILE, "- [ ] epic-NN-...", "- [x] epic-NN-...")
 
 `commands/quick.md` Step 7 동일. 차이점:
 
+**finalize-run 호출** (DCN-30-25 step 안전망):
+```bash
+STATUS=$("$HELPER" finalize-run --expected-steps 5)  # architect/test-engineer/engineer/validator/pr-reviewer
+```
+미달 시 stderr WARN — inner step 누락 즉시 인지.
+
 **clean 매트릭스**:
 - `architect:MODULE_PLAN.enum == READY_FOR_IMPL`
 - `test-engineer.enum == TESTS_WRITTEN`

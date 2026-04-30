@@ -1045,6 +1045,42 @@ def _cli_end_step(args: Any) -> int:
         return 1
 
     mode = args.mode if args.mode else None
+
+    # DCN-CHG-20260430-25: drift detector — current_step 와 args.agent 불일치 시 WARN.
+    # 메인 Claude 가 begin-step 안 부르고 end-step 호출하거나, 다른 agent 에 대한
+    # begin-step 이후 다른 agent end-step 부르는 경우 잡음. 자동 보정 X (안전).
+    try:
+        live = read_live(sid)
+        slot = live.get("active_runs", {}).get(rid, {}) if live else {}
+        cur_step = slot.get("current_step") if slot else None
+        if cur_step:
+            cur_agent = cur_step.get("agent")
+            cur_mode = cur_step.get("mode")
+            if cur_agent and cur_agent != args.agent:
+                print(
+                    f"[session_state] DRIFT WARN — current_step={cur_agent}"
+                    f"{':' + cur_mode if cur_mode else ''} but end-step={args.agent}"
+                    f"{':' + mode if mode else ''}. begin-step 누락 의심.",
+                    file=sys.stderr,
+                )
+            elif cur_mode and mode and cur_mode != mode:
+                print(
+                    f"[session_state] DRIFT WARN — current_step mode={cur_mode} "
+                    f"but end-step mode={mode}. begin-step 누락 의심.",
+                    file=sys.stderr,
+                )
+        else:
+            # current_step 자체 부재 — begin-step 안 부른 경우 (engineer auto-PR 후 등).
+            print(
+                f"[session_state] DRIFT WARN — current_step 부재. "
+                f"end-step={args.agent}{':' + mode if mode else ''}. "
+                f"begin-step 안 호출하고 end-step 호출. .steps.jsonl 에 기록은 됨.",
+                file=sys.stderr,
+            )
+    except Exception:
+        # drift detector 자체 실패는 silent — end-step 동작 우선
+        pass
+
     # prose 저장 — base_dir 은 .sessions/{sid}/runs/ (signal_io 가 그 아래 rid 디렉토리 생성)
     base = session_dir(sid) / "runs"
     write_prose(args.agent, rid, prose, mode=mode, base_dir=base)
@@ -1156,6 +1192,18 @@ def _cli_finalize_run(args: Any) -> int:
     steps = _read_steps_jsonl(sid, rid)
     has_ambiguous = any(s.get("enum") == "AMBIGUOUS" for s in steps)
     has_must_fix = any(s.get("must_fix") for s in steps)
+
+    # DCN-CHG-20260430-25: --expected-steps 검증 — skill 이 정상 시퀀스 step 수
+    # 명시 시 .steps.jsonl row count 미만이면 stderr WARN. /impl-loop 자기검증.
+    expected = getattr(args, "expected_steps", None)
+    if expected is not None and len(steps) < expected:
+        print(
+            f"[session_state] STEP COUNT WARN — .steps.jsonl row={len(steps)} < "
+            f"expected={expected}. inner step 누락 의심 — Agent 호출 후 end-step "
+            f"안 부른 케이스 (drift). /run-review 로 진단 권고.",
+            file=sys.stderr,
+        )
+
     payload = {
         "run_id": rid,
         "session_id": sid,
@@ -1312,6 +1360,12 @@ def _build_arg_parser() -> Any:
     p_fr = sub.add_parser(
         "finalize-run",
         help="현재 run 의 step status JSON 출력 (clean 판정용)",
+    )
+    p_fr.add_argument(
+        "--expected-steps",
+        type=int,
+        default=None,
+        help="정상 시퀀스 step 수 (예: /impl 5). 미만이면 stderr WARN (DCN-30-25)",
     )
     p_fr.set_defaults(func=_cli_finalize_run)
 
