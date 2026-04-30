@@ -881,6 +881,83 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertNotIn("STEP COUNT WARN", err.getvalue())
 
+    def test_finalize_run_auto_review_chains_report(self) -> None:
+        # DCN-30-29: --auto-review 시 STATUS JSON 뒤에 run-review 호출 chained.
+        from harness import session_state as ss
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest.mock import patch
+
+        called = {"argv": None}
+
+        def fake_main(argv):
+            called["argv"] = list(argv)
+            print("[fake-review] OK")
+            return 0
+
+        err = StringIO()
+        out = StringIO()
+        with patch("harness.run_review.main", side_effect=fake_main):
+            with redirect_stderr(err), redirect_stdout(out):
+                rc = ss._cli_finalize_run(SimpleNamespace(
+                    expected_steps=None, auto_review=True,
+                ))
+        self.assertEqual(rc, 0)
+        stdout_val = out.getvalue()
+        self.assertIn("\"run_id\"", stdout_val)  # STATUS JSON 정상
+        self.assertIn("--- /run-review (auto) ---", stdout_val)
+        self.assertIn("[fake-review] OK", stdout_val)
+        self.assertEqual(called["argv"][:2], ["--run-id", self.rid])
+
+    def test_finalize_run_auto_review_skip_on_failure(self) -> None:
+        # DCN-30-29: review_main 예외 시 STATUS 정상 + stderr WARN, exit 0.
+        from harness import session_state as ss
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest.mock import patch
+
+        def boom(argv):
+            raise RuntimeError("boom")
+
+        err = StringIO()
+        out = StringIO()
+        with patch("harness.run_review.main", side_effect=boom):
+            with redirect_stderr(err), redirect_stdout(out):
+                rc = ss._cli_finalize_run(SimpleNamespace(
+                    expected_steps=None, auto_review=True,
+                ))
+        self.assertEqual(rc, 0)
+        self.assertIn("\"run_id\"", out.getvalue())  # STATUS JSON 정상
+        self.assertIn("AUTO_REVIEW_FAIL", err.getvalue())
+        self.assertIn("RuntimeError", err.getvalue())
+
+    def test_finalize_run_auto_review_off_no_chain(self) -> None:
+        # --auto-review 미지정 시 review 호출 안 함 (기존 동작 보존).
+        from harness import session_state as ss
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest.mock import patch
+
+        called = {"hit": False}
+
+        def should_not(argv):
+            called["hit"] = True
+            return 0
+
+        err = StringIO()
+        out = StringIO()
+        with patch("harness.run_review.main", side_effect=should_not):
+            with redirect_stderr(err), redirect_stdout(out):
+                rc = ss._cli_finalize_run(SimpleNamespace(
+                    expected_steps=None, auto_review=False,
+                ))
+        self.assertEqual(rc, 0)
+        self.assertFalse(called["hit"])
+        self.assertNotIn("/run-review (auto)", out.getvalue())
+
     def test_end_step_writes_prose_and_extracts_enum(self) -> None:
         from harness.session_state import _cli_end_step, session_dir
         from types import SimpleNamespace

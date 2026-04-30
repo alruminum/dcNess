@@ -1213,6 +1213,26 @@ def _cli_finalize_run(args: Any) -> int:
         "step_count": len(steps),
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+    # DCN-CHG-20260430-29: --auto-review flag — in-process /run-review chained.
+    # 메인 Claude 가 finalize-run 호출만 하면 review 자동 piggy-back. 의도적 skip 불가.
+    # SessionEnd 훅 reject (cross-session run false positive 우려).
+    if getattr(args, "auto_review", False):
+        print()
+        print("--- /run-review (auto) ---")
+        try:
+            from harness import run_review as _rv  # lazy import (test mock 용이)
+            _rv.main(["--run-id", rid, "--repo", str(Path.cwd())])
+        except SystemExit:
+            # argparse sys.exit — 정상 케이스. 무시.
+            pass
+        except Exception as exc:
+            print(
+                f"[session_state] AUTO_REVIEW_FAIL — {type(exc).__name__}: {exc}. "
+                f"수동 `dcness-review --run-id {rid}` 1회 재시도 권장.",
+                file=sys.stderr,
+            )
+
     return 0
 
 
@@ -1366,6 +1386,11 @@ def _build_arg_parser() -> Any:
         type=int,
         default=None,
         help="정상 시퀀스 step 수 (예: /impl 5). 미만이면 stderr WARN (DCN-30-25)",
+    )
+    p_fr.add_argument(
+        "--auto-review",
+        action="store_true",
+        help="finalize 직후 in-process 로 /run-review 호출 — STATUS JSON 뒤에 chained (DCN-30-29)",
     )
     p_fr.set_defaults(func=_cli_finalize_run)
 
