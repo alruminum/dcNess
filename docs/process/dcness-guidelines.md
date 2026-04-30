@@ -41,8 +41,7 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 - 기존 파일 라인 수 모니터링 — 초과 발견 시 split PR (별도 Task-ID).
 - split 시 cross-ref 양방향 + governance §2.2 doc-sync gate 양 파일 동시 update.
 
-**현재 알려진 위반**:
-- `docs/orchestration.md` (540줄) — 시퀀스/결정표/retry/escalate/handoff 동시 보유. split 후속 (책임 축 후보: §2~§4 시퀀스/결정표 ↔ §5~§7 retry/escalate/handoff). 별도 Task-ID 추적.
+**현재 알려진 위반**: 없음. 이전 위반 (orchestration.md 540줄) 은 DCN-30-32 에서 handoff-matrix.md 분리로 해소 (각각 298 / 256 줄).
 
 ## 1. 가시성 룰 (DCN-30-15) — MUST
 

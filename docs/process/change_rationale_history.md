@@ -18,6 +18,32 @@
 
 ## Records
 
+### DCN-CHG-20260430-32
+- **Date**: 2026-04-30
+- **Rationale**:
+  - PR4 (DCN-30-30) 에서 행동지침 md 300줄 cap 룰 SSOT 화 + 알려진 위반으로 `orchestration.md` (540줄) 명시. 본 PR 으로 해소.
+  - 사용자 명령 ("줄이고 검증하고 split하자 죽 해") — PR5 skill bulk slim 직후 orchestration.md split 진행 의무.
+- **Alternatives**:
+  1. *옵션 1 — orchestration.md 그대로 두고 cap 룰 완화*. 사용자 의도 위반. 기각.
+  2. **(채택) 옵션 2 — agent 결정 영역 (§4 결정표 + §5 retry + §6 escalate + §7 권한) 을 별도 파일로**. 책임 축 = 시퀀스 ↔ agent 결정/권한. RWHarness `harness-architecture.md` §3 어휘 정합 (handoff matrix).
+  3. *옵션 3 — §4 결정표만 별도 (decision-table.md)*. 결정표 121줄 + 나머지 (§5/6/7 = 113줄) = 두 sub-axis 인데 같이 두는게 자연 (전부 agent 외부 강제). 분리하면 fragmentation. 기각.
+  4. *옵션 4 — §3 mini-graph 별도*. mini-graph 는 시퀀스 visualisation — orchestration 본질과 직결. 분리 X.
+- **Decision**:
+  - 옵션 2 채택.
+  - **`docs/handoff-matrix.md` 신규** (256줄):
+    - §1 결론 enum → 다음 agent trigger 결정표 (12 agent / 13 mode 펼침)
+    - §2 Retry 한도
+    - §3 Escalate 조건 카탈로그
+    - §4 접근 권한 매트릭스 (호출 / Write / Read / 인프라 패턴 / 인프라 프로젝트 판정)
+    - §5 참조
+  - **orchestration.md 슬림** (540 → 298줄): 시퀀스 SSOT 만. §4 = cross-ref 1 단락. §5/6/7 → handoff-matrix 로 이전. §8/9/10/11 → §5/6/7/8 renumber + sub-section §X.Y 참조 갱신 (구 §6/§7.X → handoff-matrix §1/§2/§3/§4).
+  - **§7 proposal 인용 압축** (21줄 → 1 단락 cross-ref) — 원전이 status-json-mutate-pattern.md §2.5 / §11.4 에 이미 있음.
+  - **`dcness-guidelines.md` §0.1** — "현재 알려진 위반" 갱신 (없음).
+- **Follow-Up**:
+  - **agent prompt 안 §4/§5/§6/§7 참조 sweep** — `agents/*.md` 가 orchestration.md §4 결정표 인용 시 handoff-matrix §1 로 갱신 필요. 각 agent doc 별 적용 검토 (별도 Task-ID 후보).
+  - **catastrophic-gate.sh 등 hook 코드 안 ORCHESTRATION_REF 어휘** — 현재는 path 만 보호 (`docs/orchestration.md`). handoff-matrix.md 도 같은 보호 필요 (DCNESS_INFRA_PATTERNS 갱신 — 본 PR `handoff-matrix §4.4` 에 박힘).
+  - **5 dcness 행동지침 SSOT 연쇄**: orchestration → loop-procedure → loop-catalog → handoff-matrix → dcness-guidelines. 모두 < 300줄. 다음 cap 위반 발견 시 같은 책임 축 split 패턴 적용.
+
 ### DCN-CHG-20260430-31
 - **Date**: 2026-04-30
 - **Rationale**:
