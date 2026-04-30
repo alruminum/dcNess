@@ -2,6 +2,14 @@
 
 ## 현재 상태
 
+- **🌀 /run-review Phase 2 — THINKING_LOOP 검출 + per-Agent metrics** (`DCN-CHG-20260430-20`):
+  - 사용자 jajang 실측 사례 (product-planner 6분 elapsed + ↓624 tokens stall) 자동 검출.
+  - CC session JSONL `toolUseResult.usage.output_tokens` + `totalDurationMs` per-Agent 매칭 (순서 + agent name).
+  - `EXPECTED_AGENT_BUDGETS` 12 agent 표 (elapsed_s + min_output_tokens).
+  - THINKING_LOOP — duration > budget × 1.5 + output < budget × 0.3 (또는 5분 + 1k 절대 한도).
+  - StepRecord 필드 4 추가 (duration_ms / output_tokens / total_tokens / cost_usd / matched_invocation).
+  - 단계별 표 컬럼 5 추가 (duration / out_tok / total_tok / cost / matched).
+  - 신규 8 테스트 (NormalizeAgentTypeTests / AssignInvocationsTests / ThinkingLoopDetectionTests). 23/23 PASS.
 - **🔍 /run-review skill — 메타-하네스 self-improvement Phase 1** (`DCN-CHG-20260430-19`):
   - RWHarness `harness-review.py` 의 dcness 변환. dcness conveyor run 사후 분석.
   - `harness/run_review.py` (~370 LOC) — `.steps.jsonl` + per-agent prose 파싱 → 잘한 점 5 패턴 + 잘못한 점 8 패턴 detection + run-level cost (CC session JSONL 합산).

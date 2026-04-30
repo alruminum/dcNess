@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260430-20
+- **Date**: 2026-04-30
+- **Change-Type**: harness, spec, test
+- **Files Changed**:
+  - `harness/run_review.py` — Phase 2 추가. `EXPECTED_AGENT_BUDGETS` 표 (12 agent 별 elapsed_s + min_output_tokens) + `extract_agent_invocations()` (CC session JSONL `toolUseResult` 파싱) + `assign_invocations_to_steps()` (순서 + agent name 매칭) + StepRecord 에 `duration_ms` / `output_tokens` / `total_tokens` / `cost_usd` / `matched_invocation` 필드 추가. `THINKING_LOOP` waste 패턴 신설 (duration > budget × 1.5 + output_tokens < budget × 0.3, 또는 duration > 5분 + output < 1k). 단계별 표 컬럼에 per-Agent metrics 추가.
+  - `commands/run-review.md` — `THINKING_LOOP` 패턴 + Phase 2 per-Agent metrics 섹션 추가.
+  - `tests/test_run_review.py` — 신규 8 케이스 (NormalizeAgentTypeTests 3 + AssignInvocationsTests 2 + ThinkingLoopDetectionTests 3). 23/23 PASS.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 사용자 jajang 실측 보고 — product-planner sub-agent 가 6분 동안 ↓624 tokens 만 흘리고 stall ("멍때리기"). thinking 무한 loop 또는 stream stall 패턴. `/run-review` 로 자동 검출 가능 여부 요청 → Phase 2 진입. CC session JSONL `toolUseResult.usage.output_tokens` 와 `totalDurationMs` 가 per-Agent 매칭으로 추출 가능 확인. `THINKING_LOOP` 패턴 + 12 agent 별 budget 표 + 자동 매칭 알고리즘 (순서 + agent name). 사용자 사례 (product-planner 6분 + 624 tokens) 그대로 재현하는 테스트 추가.
+- **Document-Exception**: 없음
+
 ### DCN-CHG-20260430-19
 - **Date**: 2026-04-30
 - **Change-Type**: harness, spec, test

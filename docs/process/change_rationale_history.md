@@ -18,6 +18,31 @@
 
 ## Records
 
+### DCN-CHG-20260430-20
+- **Date**: 2026-04-30
+- **Rationale**:
+  - 사용자 jajang 실측 보고 — `/product-plan PRODUCT_PLAN_CHANGE` 진행 중 product-planner sub-agent 가 6분 동안 ↓624 tokens 만 흘리고 stall. user 입력 후 다시 살아남.
+  - 토큰량과 elapsed 의 비율로 *thinking 무한 loop / stream stall* 검출 가능.
+  - 사용자 요청 — `/run-review` Phase 2 진입해서 본 패턴 자동 검출 가능 여부 확인.
+- **Alternatives**:
+  1. *옵션 1 — Phase 2 통째 (per-Agent cost + automatic trigger + 누적 분석)*. 큰 변경. 차순위.
+  2. **(채택) 옵션 2 — Phase 2 부분 (per-Agent metrics + THINKING_LOOP only)** — 사용자 시급한 케이스 먼저. 자동 트리거 / 누적 분석은 별도 후속.
+- **Decision**:
+  - 옵션 2 채택. THINKING_LOOP detection 우선 박음.
+  - 데이터 소스 — CC session JSONL `toolUseResult.usage` 안 `output_tokens` + `totalDurationMs`. `agentType` 으로 sub-agent 식별.
+  - 매칭 알고리즘 — 순서 (timestamp 오름차순) + agent name 정합 (`dcness:architect:system-design` → `architect`).
+  - `EXPECTED_AGENT_BUDGETS` 12 agent 표 (elapsed_s / min_output_tokens):
+    - product-planner / architect / engineer / test-engineer / validator / pr-reviewer / security-reviewer / qa / plan-reviewer / design-critic / designer / ux-architect
+  - THINKING_LOOP threshold:
+    - duration > budget × 1.5 AND output < min × 0.3 (정상 budget 기준)
+    - OR duration > 300s AND output < 1000 (절대 한도)
+  - 사용자 사례 (product-planner 6분 + 624 tokens) 정확히 caught — 1 케이스로 reproduction 테스트.
+- **Follow-Up**:
+  - **STREAM_STALL** — stream_event 별 timestamp gap 분석으로 단일 invocation 내 정체 검출 (Phase 3 후보)
+  - **자동 트리거** — finalize-run 직후 자동 review (RWHarness HARNESS_DONE post-hook)
+  - **누적 ranking** — 30일 N runs 의 agent 별 THINKING_LOOP 빈도 → prompt 강화 자동 권고
+  - **DCN-CHG-20260430-21 후속** — skill prompt 의 `--prose-file /tmp/dcness-*.md` 고정 path 결함 fix (세션 격리 X, 멀티세션 race 가능). run-dir 안 격리 path 또는 mktemp 로 전환.
+
 ### DCN-CHG-20260430-19
 - **Date**: 2026-04-30
 - **Rationale**:
