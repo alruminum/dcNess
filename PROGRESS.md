@@ -2,6 +2,17 @@
 
 ## 현재 상태
 
+- **🛡️ sub-agent path 보호 hook (handoff-matrix §4 코드 SSOT)** (`DCN-CHG-20260501-01`):
+  - DCN-30-39 5번 follow-up — `DCNESS_INFRA_PATTERNS` 가 spec only, 코드 enforcement 0. sub-agent 가 인프라 path Edit/Write/Bash 자유.
+  - **첫 원칙 정합** — "강제 = 작업 순서 + 접근 영역" — 접근 영역 강제는 spec only ↔ 코드 drift 해소.
+  - **`harness/agent_boundary.py`** 신규 — `DCNESS_INFRA_PATTERNS` (9) / `ALLOW_MATRIX` (12 agent) / `READ_DENY_MATRIX` / `is_infra_project()` 4 OR / `is_opt_out()` / `check_write/read_allowed()` / `extract_bash_paths()` heuristic.
+  - **`harness/hooks.py` 핸들러 3개** — `handle_pretooluse_agent` 끝 `update_live(active_agent=...)` 등록 + `handle_pretooluse_file_op()` (Edit/Write/Read/Bash) + `handle_posttooluse_agent()` (clear). CLI 2 subcommand 추가.
+  - **hooks/hooks.json** — PreToolUse `Edit|Write|NotebookEdit|Read|Bash` matcher + PostToolUse `Agent` matcher 추가. `hooks/file-guard.sh` + `hooks/post-agent-clear.sh` 신규.
+  - **메인 vs sub-agent 분기** — live.json.active_agent 공유 상태로 식별. 메인 = 통과 (governance Document Sync 가 보호).
+  - **dcness 자체 = 해제** — `is_infra_project()` True 시 모든 룰 우회. user 프로젝트 (자장 등) 만 enforce.
+  - **opt-out** — `.no-dcness-guard` 마커 + `DCNESS_INFRA=1` env + `CLAUDE_PLUGIN_ROOT` env + cwd 화이트리스트 (4 OR).
+  - 38 신규 테스트 (`test_agent_boundary` 27 + `test_hooks` 11). 281 ran / 279 PASS / 2 pre-existing flaky 무관.
+  - `docs/handoff-matrix.md` §4.4 코드 SSOT cross-ref + INFRA pattern 리스트 코드와 동기.
 - **🚨 SessionStart inject 처음부터 작동 0회 — schema fix + 압축** (`DCN-CHG-20260430-40`):
   - 자장 사용자 보고 — `/product-plan` 진입 시 메인이 dcness 룰 미인지. system-reminder = "OK" 만, 본문 부재. 본 dcness 세션 jsonl `grep` = 0 직접 검증.
   - 2 bug 동시: (1) JSON schema 잘못 (`{continue, additionalContext}` top-level → CC honor X). 정확 = `{hookSpecificOutput: {hookEventName, additionalContext}}` nested wrapper. (2) 12K char (CC 10K cap 초과).

@@ -18,6 +18,35 @@
 
 ## Records
 
+### DCN-CHG-20260501-01
+- **Date**: 2026-05-01
+- **Rationale**:
+  - DCN-30-39 5번 follow-up — `DCNESS_INFRA_PATTERNS` 가 `handoff-matrix.md §4.4` spec 으로만 박힘, 코드 enforcement 0. `hooks/catastrophic-gate.sh` 가 차단하는 건 PreToolUse Agent 만 — sub-agent 내부 Edit/Write/Bash 는 자유.
+  - 사용자 진단 (자장 plugin 활성 환경): "엔지니어가 아무 문서나 수정할수 있다는거지? 어쩐지 시발 경고 한번 안뜨더라" — 실측 갭 확인.
+  - 첫 원칙 정합 — "강제 = (1) 작업 순서 + (2) 접근 영역". 접근 영역은 dcness 가 코드로 미강제 → 첫 원칙 일부 미이행 (자율 침해 X — 자율 영역 = 출력 형식 / handoff 페이로드 등과 직교).
+  - 검증 (claude-code-guide + RWHarness 실 구현 확인): PreToolUse 훅이 sub-agent 내부 tool 호출에도 fire. 부모 CC session_id 가 PreToolUse stdin 에 그대로 — 메인 vs sub-agent 식별 가능 (live.json 공유 상태 lookup).
+- **Alternatives**:
+  1. *옵션 A — payload `agent_id` 직접 필드*. 사용자 초안. 단 RWHarness 실 구현은 live.json 공유 상태 — `agent-gate.py` 가 `live.json.agent` 기록, `agent-boundary.py` 가 PreToolUse Edit 에서 stdin session_id → live.json 조회로 활성 agent 판정. 더 견고 (Claude Code agent_id payload 호환성 의존 X).
+  2. *옵션 B — Bash 정밀 path 추출 (shlex 등)*. 복잡. v1 = 보수적 heuristic (write indicator + path 토큰 휴리스틱). false positive 회피 우선.
+  3. *옵션 C — agent prompt 안 룰 강화만 (agent-side 자율)*. 자장 5 incident 중 일부는 agent self-monitor 부재 — 자율 의존 시 회귀 (DCN-30-20 jajang 6분 stall 정합).
+  4. **(채택) 옵션 D — RWHarness 패턴 그대로 차용**. live.json.active_agent 기록/해제 + agent_boundary.py 분리 + Edit/Write/Read/Bash matcher 4개. 검증된 구현 (RWHarness `~/.claude/plugins/cache/realworld-harness/0.1.0-alpha/hooks/agent-boundary.py`).
+- **Decision**:
+  - **(1) `harness/agent_boundary.py` 신규** — 9 INFRA pattern + 12 agent ALLOW_MATRIX + 4 agent READ_DENY + `is_infra_project()` 4 OR 신호 + `.no-dcness-guard` opt-out + Bash heuristic.
+  - **(2) `harness/hooks.py` 핸들러 3개**:
+    - `handle_pretooluse_agent` 끝에 `update_live(active_agent=subagent, active_mode=mode)` — sub-agent 식별 등록.
+    - `handle_pretooluse_file_op()` — Edit/Write/NotebookEdit/Read/Bash 검사. Bash 는 write indicator (sed -i / cp / mv / rm / >) 있을 때만 path 추출.
+    - `handle_posttooluse_agent()` — `update_live(active_agent=None, active_mode=None)` 으로 clear.
+  - **(3) `hooks/file-guard.sh` + `hooks/post-agent-clear.sh`** — bash wrapper. is-active 게이트로 미활성 프로젝트 즉시 통과.
+  - **(4) `hooks/hooks.json` matcher 확장** — `Edit|Write|NotebookEdit|Read|Bash` (PreToolUse) + `Agent` (PostToolUse).
+  - **(5) opt-out 다중**: ① `.no-dcness-guard` 마커 (RWHarness `.no-harness` 정합) ② `DCNESS_INFRA=1` env (개발자 모드) ③ `CLAUDE_PLUGIN_ROOT` env ④ cwd 화이트리스트 (현 저장소).
+  - **(6) Bash 휴리스틱 v1 보수적** — write indicator 부재 시 빈 list. quoted pattern 도 path 후보 포함 (false negative 회피). 정밀 추출은 후속.
+- **Follow-Up**:
+  - **자장 plugin 재install + 새 epic 검증** — sub-agent 가 인프라 path Edit/Write 시도 → block 메시지 (`[agent-boundary] ...`) 실 발화 확인. 첫 incident 후 임계값 / 패턴 조정.
+  - **(2) Bash 정밀 path 추출 강화** (후속) — `shlex.split` + 알려진 cmd 별 인자 위치 (예: `cp src dst` → dst index). v1 false positive 발생 시 즉시 진행.
+  - **(2) READ_DENY_MATRIX 정밀화** (후속) — test-engineer impl 외 src 차단 등. v1 = 일부 비어있음.
+  - **(2) NotebookEdit 검증** — 환경 외 동작 미실측. CC 환경에서 발화 시 동작 확인.
+  - **DCN-30-39 (2) 30일 누적 임계값 tuning** — 보류 (5월 30일 이후).
+
 ### DCN-CHG-20260430-40
 - **Date**: 2026-04-30
 - **Rationale**:

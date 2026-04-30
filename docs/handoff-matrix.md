@@ -219,19 +219,23 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 ### 4.4 인프라 패턴 (전 에이전트 공통 차단)
 
+> **코드 SSOT** (DCN-CHG-20260501-01): 실제 강제 패턴은 `harness/agent_boundary.py:DCNESS_INFRA_PATTERNS`. 본 §4.4 와 코드는 항상 동기 — 변경 시 양쪽 함께.
+
 ```python
 DCNESS_INFRA_PATTERNS = [
-    r'[./]claude/',
-    r'hooks/',
-    r'harness/(signal_io|interpret_strategy)\.py',
-    r'docs/orchestration\.md',
-    r'docs/handoff-matrix\.md',
-    r'docs/process/governance\.md',
-    r'scripts/(check_document_sync|check_task_id|setup_branch_protection|analyze_metrics)\.mjs',
+    r'(^|/)\.claude/',
+    r'(^|/)hooks/',
+    r'(^|/)harness/(signal_io|interpret_strategy|hooks|session_state|agent_boundary)\.py$',
+    r'(^|/)docs/orchestration\.md$',
+    r'(^|/)docs/handoff-matrix\.md$',
+    r'(^|/)docs/loop-procedure\.md$',
+    r'(^|/)docs/loop-catalog\.md$',
+    r'(^|/)docs/process/(governance|dcness-guidelines)\.md$',
+    r'(^|/)scripts/(check_document_sync|check_task_id|setup_branch_protection|analyze_metrics)\.mjs$',
 ]
 ```
 
-> RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 dcness 가 정정 — 파일명은 `docs/orchestration.md` + `docs/handoff-matrix.md` (split 후 양쪽).
+> RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 dcness 가 정정 — 파일명은 `docs/orchestration.md` + `docs/handoff-matrix.md` (split 후 양쪽). loop-procedure / loop-catalog / dcness-guidelines / hooks·session_state·agent_boundary 도 dcness 가 추가 보호 (DCN-30-30/31/32 split 산출물).
 
 인프라 프로젝트(`is_infra_project()` True) 에선 위 패턴 해제 (dcness 자체 작업 시 본 SSOT 들도 편집 가능해야 함).
 
@@ -244,7 +248,7 @@ RWHarness 4 신호 OR 정합:
 3. `CLAUDE_PLUGIN_ROOT` 환경변수 non-empty
 4. `cwd.resolve() == Path("/Users/<user>/project/dcness")` (또는 화이트리스트 매칭)
 
-본 판정 코드는 후속 Task — 코드 driver 도입 시 함께.
+> **코드 강제** (DCN-CHG-20260501-01): `harness/agent_boundary.py` 가 본 spec 의 SSOT 구현. `hooks/file-guard.sh` (PreToolUse Edit/Write/Read/Bash) + `hooks/post-agent-clear.sh` (PostToolUse Agent) 가 활성화. opt-out 마커 = `.no-dcness-guard` (cwd) — 사용자 임시 우회.
 
 ---
 
