@@ -18,6 +18,40 @@
 
 ## Records
 
+### DCN-CHG-20260501-09
+- **Date**: 2026-05-01
+- **Rationale**:
+  - 자장 run-ef6c2c00 사용자 보고 — 40 step run / 28 waste finding 중 다수 false positive 의심. 사용자 직접 분류 ("MUST FIX 0 negation 미파악 / staging anchor 누락" 등) 후 메인 직접 검증 요청.
+  - 직접 실측 (`/Users/dc.kim/project/jajang/.../run-ef6c2c00/.prose-staging/*` + `_MUST_FIX_RE` 코드) 결과 4 이슈 동시 확인:
+    - **MISSING_SELF_VERIFY 9건 = 100% false positive (결정적 parser bug)**. skill 은 DCN-30-21 부터 `.prose-staging/<bN>.<agent>-<mode>.md` 에 prose 작성, 그러나 `run_review.py:223` 는 legacy `<run_dir>/<agent>-<mode>.md` 만 읽음. 9 engineer step 모두 같은 1 파일 매칭 → 마지막 batch 의 anchor 부재 시 9건 발화. 실측 — staging `b1/b2/b3.engineer-IMPL.md` 모두 `## 자가 검증` 박혀있음.
+    - **MUST_FIX_GHOST 6건 = 100% false positive (regex bug)**. pr-reviewer 6건 모두 prose 안 "MUST FIX 0, NICE TO HAVE 6" 부정문. `_MUST_FIX_RE = r"\bMUST[\s_-]?FIX\b"` 단순 단어경계 → 부정문 매칭.
+    - **THINKING_LOOP 4건 = 진짜 (engineer banner 부재)**. agents/engineer.md grep — `extended thinking` / `드래프트 금지` / `CRITICAL` 0 hit. DCN-CHG-20260430-39 가 architect sub-mode 7 + product-planner 에만 banner 박음. engineer 누락.
+    - **prose_excerpt cap mismatch = MEDIUM 룰 정합**. `_append_step_status(max_lines=4)` vs ECHO_VIOLATION 메시지 "5~12 룰 의무". cap 4 일 때 사실상 ECHO `< 3` 임계 의미 불명확.
+- **Alternatives**:
+  1. *옵션 A — #1 (path) 만 fix*. 가장 큰 노이즈 (9건) 즉시 제거. 6건 + 4건 잔여. 기각 — 사용자 "한방에" PICK.
+  2. *옵션 B — parser 측 substance 검사 강화 (anchor 자율, 실측 명령 패턴 검사)*. anchor 불필요. 단 substance regex 정의 어려움 (jest/pytest/grep/wc 등 도구 자율) + DCN-CHG-20260430-38 정신 (anchor 자율) 이미 정합. path bug 가 진짜 원인이라 fix 만으로 충분.
+  3. **(채택) 옵션 C — 4 이슈 동시 fix (#1+#2+#3+#4)**. 사용자 PICK. 단일 PR 묶음.
+- **Decision**:
+  - **#1 prose_path bug fix** (`harness/run_review.py:_resolve_prose_path`):
+    - `<run_dir>/.prose-staging/` lexical 정렬 → 같은 (agent, mode) Nth occurrence 매칭 (`b1.* < b2.* < ... < bare suffix`).
+    - `parse_steps` 가 occurrence_counter dict 로 step idx 별 N번째 picking.
+    - fallback = legacy `<run_dir>/<agent>-<mode>.md` (DCN-30-21 이전 데이터 호환).
+  - **#2 MUST_FIX_GHOST regex** (`harness/session_state.py`):
+    - `_MUST_FIX_NEGATION_RE` 신규 — `MUST FIX` + `0` (단일 자릿수) / `없[음다]` / `no MUST FIX` 검출.
+    - `_has_positive_must_fix()` 신규 — 라인 단위 매칭. 매칭 라인 중 *부정 컨텍스트 아닌* 라인 1+ → True. 모두 부정 → False. mixed (positive 라인 + 부정 라인) → True (positive 우선).
+    - `_append_step_status` 의 `bool(_MUST_FIX_RE.search(prose))` → `_has_positive_must_fix(prose)`.
+  - **#3 engineer banner** (`agents/engineer.md`):
+    - H1 직후 architect sub-mode 패턴 동일 1 블록 — 자장 4 stall 실측 (614/1102/429/670s) 명시.
+  - **#4 cap mismatch** (`harness/session_state.py`):
+    - `_append_step_status` 의 `_extract_prose_summary(prose, max_lines=4)` → `max_lines=12` (5~12 룰 정합). ECHO 임계 `< 3` 유지 (실 2-liner 케이스 검출).
+  - **신규 7 테스트** — `ResolveProsePathTests` (5) + `test_must_fix_negation_no_false_positive` + `test_must_fix_positive_still_detected`. 281 → 288 ran / all PASS.
+  - **자장 run-ef6c2c00 회귀 직접 검증** — `parse_steps` 후 9 engineer step 중 b1~b3 (= idx 2/7/12) anchor=True 회복 확인. b4~b8 (idx 17/22/27/29/34/37) 은 staging 자체 anchor 부재 → 진짜 위반 6건 (메인 행동 룰).
+- **Follow-Up**:
+  - 진짜 6 MISSING_SELF_VERIFY (b4-b8 staging anchor 부재) 는 메인 행동. dcness-guidelines.md §자가 검증 룰 강도 ↑ 또는 staging template 도입 후속 별 task.
+  - TOOL_USE_OVERFLOW 1건 (batch 06 112 tools) — agent self-discipline. hint 강도 ↑ 또는 IMPL_PARTIAL 임계 자동 trigger 후속.
+  - ECHO_VIOLATION 8 케이스 (실 2-liner) — 메인 가시성 룰 행동 변화. cap 12 정합 후 룰 인식 재교육 후속.
+  - 다른 patterns (PLACEHOLDER_LEAK / INFRA_READ / READONLY_BASH / EXTERNAL_VERIFIED_*) — 본 path fix 로 정확도 자동 회복. 별 검증 후속.
+
 ### DCN-CHG-20260501-08
 - **Date**: 2026-05-01
 - **Rationale**:

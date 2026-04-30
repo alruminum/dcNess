@@ -2,6 +2,14 @@
 
 ## 현재 상태
 
+- **🔧 /run-review 4 false positive 동시 fix (자장 run-ef6c2c00)** (`DCN-CHG-20260501-09`):
+  - 자장 40 step / $118.73 run /run-review 결과 28 waste finding 검증 — 4 이슈 한 번에 fix.
+  - **#1 prose_path bug** (가장 결정적): skill DCN-30-21 부터 `<run_dir>/.prose-staging/<bN.agent-mode>.md` 에 prose 작성, 그러나 parser 가 legacy `<run_dir>/<agent>-<mode>.md` 만 읽음 → 9 engineer step 모두 같은 1 파일 매칭 → MISSING_SELF_VERIFY 9건 false positive. `_resolve_prose_path()` 신규 — Nth occurrence 매칭 + fallback. 자장 실 데이터로 b1~b3 anchor=True 회복 확인.
+  - **#2 MUST_FIX_GHOST regex bug**: `_MUST_FIX_RE` 단순 단어경계 → "MUST FIX 0, NICE TO HAVE 6" 부정문 매칭. `_has_positive_must_fix()` 신규 — 라인 단위 negation 검사. 6 pr-reviewer 케이스 false positive 0.
+  - **#3 engineer banner**: agents/engineer.md H1 직후 `⚠️ CRITICAL — extended thinking 본문 드래프트 금지` 추가. architect sub-mode 7 + product-planner (DCN-30-39) 패턴 동일. 자장 4 stall 실측 (614/1102/429/670s) 명시.
+  - **#4 prose_excerpt cap 4 → 12**: `_append_step_status` cap 5~12 룰 정합. ECHO 임계 `< 3` 유지.
+  - **신규 7 테스트** (ResolveProsePath 5 + must_fix negation/positive 2). 281 → 288 ran / all PASS / 회귀 0.
+  - **다른 patterns** (PLACEHOLDER_LEAK / INFRA_READ / READONLY_BASH / EXTERNAL_VERIFIED_*) — path fix 로 정확도 자동 회복.
 - **🧪 pytest pre-commit 게이트 (paths 분기)** (`DCN-CHG-20260501-07`):
   - 직전 task (`-06`) 로 protection 폐기 → CI `unittest discover` 표시 레벨로 떨어짐. 사용자 — doc-sync 동급 mechanical 차단 원함.
   - **`scripts/check_python_tests.sh`** 신규 — staged `harness/` / `tests/` / `agents/` / `python-tests.yml` 매칭 시만 `python3 -m unittest discover -s tests`. 비매칭 0초, 매칭 ~3초. `GITHUB_ACTIONS` skip.

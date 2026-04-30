@@ -1557,6 +1557,67 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         records = _read_steps_jsonl("sid", "run-aaaa1111")
         self.assertTrue(records[0]["must_fix"])
 
+    def test_must_fix_negation_no_false_positive(self) -> None:
+        """DCN-CHG-20260501-09 — pr-reviewer 의 'MUST FIX 0' / 'MUST FIX 없음' 부정문은 must_fix=False.
+
+        자장 run-ef6c2c00 회귀 — 6 pr-reviewer step 모두 'MUST FIX 0, NICE TO HAVE 6' 패턴 →
+        단순 단어경계 regex 가 매칭 → MUST_FIX_GHOST 6건 false positive.
+        """
+        from harness.session_state import (
+            _append_step_status, _read_steps_jsonl, run_dir,
+            _clear_default_base_cache,
+        )
+        repo = Path(self._tmp.name) / "repo"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+        run_dir("sid", "run-bbbb2222", create=True)
+        # 자장 실 케이스 그대로
+        _append_step_status(
+            "sid", "run-bbbb2222", "pr-reviewer", None, "LGTM",
+            "MUST FIX 0, NICE TO HAVE 6 (let tree: any / dead code).\nLGTM\n",
+        )
+        _append_step_status(
+            "sid", "run-bbbb2222", "pr-reviewer", None, "LGTM",
+            "MUST FIX: 0\n결론: LGTM\n",
+        )
+        _append_step_status(
+            "sid", "run-bbbb2222", "pr-reviewer", None, "LGTM",
+            "검토 결과: MUST FIX 없음. NICE TO HAVE 3.\nLGTM\n",
+        )
+        records = _read_steps_jsonl("sid", "run-bbbb2222")
+        for r in records:
+            self.assertFalse(r["must_fix"], f"false positive: {r['prose_excerpt'][:60]}")
+
+    def test_must_fix_positive_still_detected(self) -> None:
+        """negation regex 가 *진짜* MUST FIX 케이스는 정확히 검출."""
+        from harness.session_state import (
+            _append_step_status, _read_steps_jsonl, run_dir,
+            _clear_default_base_cache,
+        )
+        repo = Path(self._tmp.name) / "repo"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+        run_dir("sid", "run-cccc3333", create=True)
+        _append_step_status(
+            "sid", "run-cccc3333", "pr-reviewer", None, "CHANGES_REQUESTED",
+            "## MUST FIX\n- audio buffer underflow on iOS\n",
+        )
+        _append_step_status(
+            "sid", "run-cccc3333", "pr-reviewer", None, "CHANGES_REQUESTED",
+            "MUST FIX: storage 키 충돌 가능\nLGTM 후보 X\n",
+        )
+        # mixed — 부정 라인 + positive 라인 → True (positive 우선)
+        _append_step_status(
+            "sid", "run-cccc3333", "pr-reviewer", None, "CHANGES_REQUESTED",
+            "MUST FIX 0\nMUST FIX: 실제 이슈 발견\n",
+        )
+        records = _read_steps_jsonl("sid", "run-cccc3333")
+        self.assertEqual(len(records), 3)
+        for r in records:
+            self.assertTrue(r["must_fix"], f"missed positive: {r['prose_excerpt'][:60]}")
+
     def test_finalize_run_outputs_status_json(self) -> None:
         from harness.session_state import (
             _cli_finalize_run, _append_step_status,
