@@ -20,6 +20,15 @@
 
 ## Records
 
+### DCN-CHG-20260430-33
+- **Date**: 2026-04-30
+- **Change-Type**: harness, test
+- **Files Changed**:
+  - `harness/session_state.py` — `update_current_step` 에 stale current_step WARN 추가. begin-step 호출 시 *기존* current_step 의 `last_confirmed_at` 이 `STALE_STEP_TTL_SEC` (30분) 초과면 stderr `STALE STEP WARN`. `STALE_STEP_TTL_SEC = 30 * 60` 상수 신설.
+  - `tests/test_session_state.py` — 2 케이스 추가 (`test_update_step_warn_when_prev_stale` / `test_update_step_no_warn_when_prev_fresh`).
+  - `docs/process/document_update_record.md` (본 항목) / `docs/process/change_rationale_history.md`
+- **Summary**: I4 (e08 batch 2 `.steps.jsonl` engineer 누락) 회귀 방지. 메인 distract → end-step skip → 다음 begin-step 호출 시 즉시 WARN. 자동 보정 X (DCN-30-25 정책 정합 — 안전).
+
 ### DCN-CHG-20260430-32
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only

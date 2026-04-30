@@ -86,6 +86,7 @@ RUN_ID_RE = re.compile(r"^run-[a-z0-9]{8}$")
 
 DEFAULT_RUN_TTL_SEC = 24 * 60 * 60        # 24h — completed slot 보관 후 cleanup
 DEFAULT_PID_TTL_SEC = 24 * 60 * 60        # 24h — by-pid 파일 stale 기준 (PID 재사용 보호)
+STALE_STEP_TTL_SEC = 30 * 60              # 30min — current_step heartbeat stale 기준 (DCN-30-30)
 LIVE_JSON_VERSION = 1                      # 스키마 진화 추적
 STDIN_TIMEOUT_SEC = 2.0                    # 훅 stdin 읽기 hang 방지
 _ATOMIC_FILE_MODE = 0o600
@@ -498,6 +499,33 @@ def update_current_step(
     if not isinstance(active, dict) or run_id not in active:
         raise ValueError(f"run_id not active: {run_id}")
     slot = dict(active[run_id])
+
+    # DCN-CHG-20260430-30: stale current_step WARN — begin-step 호출 시 *기존*
+    # current_step 의 last_confirmed_at 가 STALE_STEP_TTL_SEC 초과면 stderr WARN.
+    # I4 사례 — engineer step 후 end-step 누락 → 다음 begin-step 시 .steps.jsonl
+    # 의 직전 step 누락 신호. 자동 보정 X (안전).
+    prev_step = slot.get("current_step")
+    prev_confirmed = slot.get("last_confirmed_at")
+    if prev_step and isinstance(prev_step, dict) and prev_confirmed:
+        try:
+            from datetime import datetime, timezone
+            prev_dt = datetime.fromisoformat(prev_confirmed.replace("Z", "+00:00"))
+            now_dt = datetime.now(timezone.utc)
+            stale_sec = (now_dt - prev_dt).total_seconds()
+            if stale_sec > STALE_STEP_TTL_SEC:
+                prev_agent = prev_step.get("agent", "?")
+                prev_mode = prev_step.get("mode")
+                label = f"{prev_agent}{':' + prev_mode if prev_mode else ''}"
+                print(
+                    f"[session_state] STALE STEP WARN — previous current_step={label} "
+                    f"stale {int(stale_sec)}s (> {STALE_STEP_TTL_SEC}s). "
+                    f"end-step 누락 의심 — .steps.jsonl 에 직전 step 기록 안 됨.",
+                    file=sys.stderr,
+                )
+        except Exception:
+            # 시간 파싱 등 실패 silent — begin-step 동작 우선
+            pass
+
     now = _now_iso()
     slot["current_step"] = {
         "agent": agent,

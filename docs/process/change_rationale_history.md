@@ -18,6 +18,20 @@
 
 ## Records
 
+### DCN-CHG-20260430-33
+- **Date**: 2026-04-30
+- **Rationale**: jajang impl-loop epic-08 회고에서 발견된 I4 — e08 batch 2 의 `.steps.jsonl` 에 engineer step 통째 누락. 메인 Claude 가 git 작업으로 distract → engineer end-step 호출 skip → 다음 step 의 begin-step 이 current_step 덮어쓰면서 직전 step 기록 휘발. DCN-30-25 의 end-step drift detector / `--expected-steps` 검증은 *end-step 호출 자체가 발생한 케이스* 만 cover. *end-step 누락 + 다음 begin-step* 패턴은 미커버.
+- **Alternatives**:
+  1. **end-step 자동 보정 (begin-step 시 이전 step 자동 end-step 박음)** — 기각: DCN-30-25 가 명시적 reject ("자동 보정 X — 안전. WARN 으로 메인 사후 인지"). 자동 보정은 잘못된 enum/prose 박을 위험 있음.
+  2. **현 detector (end-step drift) 만 의지 + WARN 출력 강화** — 기각: I4 패턴은 end-step 자체가 미호출 → drift detector 미발동. 새 trigger 필요.
+  3. **채택: begin-step 시 *기존* current_step 의 last_confirmed_at 이 30분 초과 시 stderr WARN** — DCN-30-25 의 정책 (자동 보정 X) 정합. WARN 만 출력, 동작 정상 진행. trigger = next begin-step 호출 시점.
+  4. **timeout-based daemon 으로 polling** — 기각: helper 는 daemon 아님. 추가 인프라 비용 ↑.
+- **Decision**: 옵션 3. `STALE_STEP_TTL_SEC = 30 * 60` (30분) 상수 + `update_current_step` 안에 stale 검사. WARN 메시지 — `[session_state] STALE STEP WARN — previous current_step={agent:mode} stale {N}s. end-step 누락 의심 — .steps.jsonl 에 직전 step 기록 안 됨.`
+- **Follow-Up**:
+  - 효과 측정 — 다음 impl-loop 운용 시 STALE STEP WARN 발생률 측정. 0이면 운영자 행동 변화로 해결됨, 빈발이면 추가 가드 검토.
+  - 30분 cap 자체는 hard-coded — 큰 batch (mobile dense) 작업에서 정상 30분+ 가능. 오탐 잦으면 환경변수로 cap 조정 옵션 검토 (별도 Task).
+  - jajang Epic 09 진행 시 .steps.jsonl 누락 0 검증 — 본 detector 가 미연 차단.
+
 ### DCN-CHG-20260430-32
 - **Date**: 2026-04-30
 - **Rationale**:
