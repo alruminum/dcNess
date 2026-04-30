@@ -18,6 +18,20 @@
 
 ## Records
 
+### DCN-CHG-20260430-35
+- **Date**: 2026-04-30
+- **Rationale**: jajang impl-loop epic-08 회고 I5 — 메인이 "130개 즉시 fix" 진단 사용자에 전달 → 실측 시 0개 → 15분 추가 cycle. 메인 추측 진단 패턴. 글로벌 `~/.claude/CLAUDE.md` "제1 룰 — 실존 검증 강제" 가 *이미 박혀있음* — but dcness skill 진행 중 메인이 해당 룰을 잊는 경향 발견. SessionStart 훅이 dcness-guidelines.md 자동 inject — 본 룰을 §12 로 박아두면 skill 진행 컨텍스트에서 항시 가시.
+- **Alternatives**:
+  1. **commands/quick.md SSOT 1곳 + 4 skill 1줄 참조** (이전 plan) — 기각: SessionStart 훅 자동 inject (DCN-30-26 이후) 가 이미 dcness-guidelines.md 광역 inject. 4 skill 참조 redundant. 검토자 피드백 정합.
+  2. **글로벌 `~/.claude/CLAUDE.md` 제1룰 강화** — 기각: 글로벌 룰 변경은 dcness 범위 밖 (사용자 결정). 본 PR 은 dcness 컨텍스트 보강만.
+  3. **별도 룰 신설 (글로벌과 충돌 없는 새 룰)** — 기각: 룰 순감소 (§2.5) 위반 가능성. 글로벌 룰 재인용 + dcness 컨텍스트 추가가 적합.
+  4. **채택**: dcness-guidelines.md §12 신설 — 글로벌 제1룰 재인용 + dcness skill 진행 컨텍스트에 맞춘 안티패턴 예시 (DCN-30-34 실측 사례). 검증 방법은 자율 (grep / ls / Read / Bash / WebFetch 자기 판단), 형식 X.
+- **Decision**: 옵션 4. dcness-guidelines.md §12 — 룰 (MUST) + 자율 보존 + 안티패턴 (실측 사례) + 효과 (I5 회귀 방지 + agent self-verify echo 와 짝).
+- **Follow-Up**:
+  - 다음 dcness skill 진행 시 메인 추측 진단 발생률 측정 (목표: I5 같은 실측 0건 대비 추측 0).
+  - I5 잔여 — 글로벌 `~/.claude/CLAUDE.md` 제1룰 강화는 사용자 결정 (별도 검토).
+  - dcness-guidelines.md 가 ~256줄 — 300 cap 근접. 다음 룰 추가 시 분리 axis 결정 (`행동 룰` vs `참조 룰` 등).
+
 ### DCN-CHG-20260430-34
 - **Date**: 2026-04-30
 - **Rationale**: jajang impl-loop epic-08 회고 — 5 incident 중 I1 (mobile pivot batch 4 engineer overflow 119 tool uses) / I2 (e08 batch 2 overflow 119) / I3 (e08 batch 3 overflow 170 + sed 보다 Edit 선호) / I5 (메인 sed misdiagnosis "130개 fix" → 실제 0개) 회귀 방지. 부수 발견: architect/validator 가 `setupFilesAfterFramework` (jest 에 없는 키) 출력 — LLM 학습 데이터 노이즈.

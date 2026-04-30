@@ -225,3 +225,32 @@ agent 별 적용:
 - **원칙 4** — Goal-Driven Execution (검증 가능 success criteria) — test-engineer / validator
 
 각 agent prompt 에 적합한 원칙 박혀있음 (`agents/*.md` 참조).
+
+## 12. 진단/제안 self-verify 원칙 (DCN-30-35, 글로벌 제1룰 정합)
+
+> 출처: `~/.claude/CLAUDE.md` "제1 룰 — 제안 전 *실존 검증* 절대 강제". 글로벌 룰을 dcness skill 진행 컨텍스트에 SessionStart 훅 자동 inject 로 재인용.
+> 적용 incident: jajang impl-loop epic-08 의 I5 — 메인이 "130개 즉시 fix" 진단 → 실측 시 0개 → 잘못된 진단 + 15분 추가 cycle.
+
+### 룰 (MUST)
+
+모든 사용자-facing 진단 / 제안 *제출 전*:
+- 등장하는 파일 경로 / 함수명 / CLI 옵션 → `grep` / `ls` / `Read` 실측 후 단언
+- 등장하는 테스트 결과 / 숫자 / 변경 규모 → 명령 실행 후 인용
+- 추측 표현 (`아마`, `보통`, `대략`, `~ 정도`) 금지
+
+위반 패턴 발견 시 (예: "30+ 파일 vitest import 잔존" 추측 → 실제 0개) 즉시 검증 단계로 되돌아가 사실 확인 후 재구성.
+
+### 자율 보존
+
+*검증 방법은 자율* — grep / ls / Read / Bash / 외부 docs WebFetch 중 자기 판단. 형식 강제 X. 추측 금지 + 실측 후 단언만 강제.
+
+### 안티패턴 (실측 사례 — DCN-30-34 회고)
+
+❌ "벌써 30개 파일 변환됐을 것" — 실측 안 함 → 잘못된 숫자
+❌ "보통 jest config 는 X 키 쓰니까" — 학습 데이터 의존 → hallucination (예: `setupFilesAfterFramework`)
+❌ "이 함수 (대략) 어디 있을 것" — grep 안 함 → 잘못된 경로
+❌ engineer 보고 즉시 신뢰 → 실측 안 함 (`agents/engineer.md` § 자가 검증 echo 의무 와 짝)
+
+### 효과
+
+I5 (메인 sed misdiagnosis) 회귀 방지. agent 측 self-verify echo (engineer.md `## 자가 검증`) 와 짝 — agent 가 인용 + 메인이 그 명령 직접 실행해 verify.
