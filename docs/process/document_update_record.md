@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260501-02
+- **Date**: 2026-05-01
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `docs/process/main-claude-rules.md` (신규, 204줄) — 메인 Claude 행동 룰 SSOT. SessionStart inject (DCN-30-26 / -40) backup 메커니즘. 글로벌 `~/.claude/CLAUDE.md` 와 동일 레벨 강제.
+    - §1 실존 검증 강제 — 글로벌 제1룰 + dcness §12 self-verify 통합. 안티패턴 7건 (DCN-30-37 sed misdiagnosis / DCN-30-40 inject 가정 / CI 미확인 등).
+    - §2 dcness 인프라 — 300줄 cap (DCN-30-30) / 5 SSOT 표 / 거버넌스 / 핵심 강제 룰 4 / sub-agent path 보호 (DCN-CHG-20260501-01).
+    - §3 Karpathy 4 원칙 전문 — `forrestchang/andrej-karpathy-skills` (MIT) 인용. dcness agent 별 적용 매핑.
+  - `CLAUDE.md` 상단 🔴 reference 박스 + 문서 지도 표에 main-claude-rules.md 추가. 98 → 109줄.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `PROGRESS.md`
+- **Summary**: DCN-30-40 (SessionStart inject 처음부터 작동 0회 회귀) 후속. inject 깨져도 룰 인지 보장하는 backup 으로 main-claude-rules.md 신설. CLAUDE.md 가 reference 강제 — CC 가 CLAUDE.md 자동 로드 → 메인이 본 문서 read 자연 유도. 사용자 요청 3 항목 (실존 검증 강제 / dcness-guide 인프라 / Karpathy 전문) 정확 정합.
+
 ### DCN-CHG-20260501-01
 - **Date**: 2026-05-01
 - **Change-Type**: harness, hooks, spec, test

@@ -2,6 +2,14 @@
 
 ## 현재 상태
 
+- **📕 main-claude-rules.md SSOT — CLAUDE.md 동일 레벨 강제 read** (`DCN-CHG-20260501-02`):
+  - DCN-30-40 (SessionStart inject 처음부터 작동 0회 회귀) 후속. inject 깨져도 룰 인지 보장하는 *backup 메커니즘*.
+  - `docs/process/main-claude-rules.md` 신규 (204줄, 300 cap 안):
+    - §1 **실존 검증 강제** — 글로벌 `~/.claude/CLAUDE.md` 제1룰 + dcness §12 self-verify 통합. 안티패턴 7건 (DCN-30-37 sed / DCN-30-40 inject / CI 미확인 등).
+    - §2 **dcness 인프라** — 300줄 cap (DCN-30-30) / 5 SSOT 표 / 거버넌스 / 핵심 강제 룰 4 / sub-agent path 보호 (DCN-CHG-20260501-01).
+    - §3 **Karpathy 4 원칙 전문** — `forrestchang/andrej-karpathy-skills/skills/karpathy-guidelines/SKILL.md` (MIT) 인용. dcness agent 별 적용 매핑.
+  - `CLAUDE.md` 상단 🔴 reference 박스 + 문서 지도 추가 — CC 가 CLAUDE.md 자동 로드 → 본 문서 read 자연 유도.
+  - 사용자 요청 3 항목 (실존 검증 강제 / dcness-guide 인프라 / Karpathy 전문) 정확 정합.
 - **🛡️ sub-agent path 보호 hook (handoff-matrix §4 코드 SSOT)** (`DCN-CHG-20260501-01`):
   - DCN-30-39 5번 follow-up — `DCNESS_INFRA_PATTERNS` 가 spec only, 코드 enforcement 0. sub-agent 가 인프라 path Edit/Write/Bash 자유.
   - **첫 원칙 정합** — "강제 = 작업 순서 + 접근 영역" — 접근 영역 강제는 spec only ↔ 코드 drift 해소.
