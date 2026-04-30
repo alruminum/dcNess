@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+- **🛡️ 진단/제안 self-verify 원칙 SSOT** (`DCN-CHG-20260430-35`):
+  - jajang impl-loop epic-08 회고 I5 (메인 sed misdiagnosis "130개 fix" → 실제 0개) 회귀 방지.
+  - `docs/process/dcness-guidelines.md` §12 신설 — 글로벌 `~/.claude/CLAUDE.md` "제1 룰" (실존 검증 강제) 을 dcness skill 진행 컨텍스트에 SessionStart 훅 자동 inject 로 재인용.
+  - 룰 (MUST): 추측 금지 + 실측 후 단언. 검증 방법은 자율 (grep / ls / Read / Bash / WebFetch).
+  - engineer.md §자가 검증 echo (DCN-30-34) 와 짝 — agent 인용 + 메인 실행 verify 양방향.
 - **🛡️ engineer IMPL_PARTIAL + self-verify echo + hallucination catalog** (`DCN-CHG-20260430-34`):
   - jajang impl-loop epic-08 회고 I1/I2/I3 (engineer context overflow 3회) + I5 (메인 sed misdiagnosis) 회귀 방지.
   - **`IMPL_PARTIAL` enum 신설** — 단일 호출 무리 인지 시 자율 분할. handoff-matrix.md §1.5 + §2 (split ≤ 3) / loop-catalog.md §3 §5 (allowed_enums) / dcness-guidelines.md §5 (yolo 매트릭스) 박힘.

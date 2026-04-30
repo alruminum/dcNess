@@ -20,6 +20,14 @@
 
 ## Records
 
+### DCN-CHG-20260430-35
+- **Date**: 2026-04-30
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/process/dcness-guidelines.md` — §12 신설: 진단/제안 self-verify 원칙. 글로벌 `~/.claude/CLAUDE.md` "제1 룰" (실존 검증 강제) 을 dcness skill 진행 컨텍스트에 SessionStart 훅 자동 inject 로 재인용. 추측 금지 + 실측 후 단언 (검증 방법은 자율). 256줄 (300 cap 안).
+  - `docs/process/document_update_record.md` (본 항목) / `docs/process/change_rationale_history.md`
+- **Summary**: jajang impl-loop epic-08 의 I5 (메인 sed misdiagnosis "130개 fix" → 실제 0개) 회귀 방지. dcness-guidelines.md SSOT 단일 — skill 광역 1줄 참조 X (SessionStart 훅 자동 inject). engineer.md §자가 검증 echo (DCN-30-34) 와 짝 — agent 인용 + 메인 실행 verify 양방향 hygiene.
+
 ### DCN-CHG-20260430-34
 - **Date**: 2026-04-30
 - **Change-Type**: agent, spec
