@@ -13,6 +13,8 @@ sys.path.insert(0, str(REPO_ROOT))
 from harness.run_review import (  # noqa: E402
     StepRecord, build_report, detect_goods, detect_wastes,
     parse_steps, render_report, list_runs, find_run_dir,
+    _normalize_agent_type, assign_invocations_to_steps,
+    EXPECTED_AGENT_BUDGETS,
 )
 
 
@@ -204,6 +206,94 @@ class RunListTests(unittest.TestCase):
             self.assertEqual(len(runs), 2)
             self.assertEqual(find_run_dir(sessions_root, "rid_a", False).name, "rid_a")
             self.assertEqual(find_run_dir(sessions_root, None, True).name, runs[0].name)
+
+
+class NormalizeAgentTypeTests(unittest.TestCase):
+    def test_dcness_namespaced_strips_prefix(self):
+        self.assertEqual(_normalize_agent_type("dcness:architect"), "architect")
+        self.assertEqual(_normalize_agent_type("dcness:architect:system-design"), "architect")
+        self.assertEqual(_normalize_agent_type("dcness:engineer"), "engineer")
+
+    def test_non_namespaced_returns_as_is(self):
+        self.assertEqual(_normalize_agent_type("architect"), "architect")
+        self.assertEqual(_normalize_agent_type("Explore"), "Explore")
+
+    def test_none_or_empty(self):
+        self.assertIsNone(_normalize_agent_type(None))
+        self.assertIsNone(_normalize_agent_type(""))
+
+
+class AssignInvocationsTests(unittest.TestCase):
+    def test_assigns_in_order(self):
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="architect", mode="MODULE_PLAN",
+                       enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="x"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="IMPL",
+                       enum="IMPL_DONE", must_fix=False, prose_excerpt="x"),
+        ]
+        invocations = [
+            {"ts": "t1", "agent": "architect", "duration_ms": 60000,
+             "total_tokens": 5000, "output_tokens": 1500, "cost_usd": 0.05},
+            {"ts": "t2", "agent": "engineer", "duration_ms": 120000,
+             "total_tokens": 8000, "output_tokens": 2500, "cost_usd": 0.10},
+        ]
+        assign_invocations_to_steps(steps, invocations)
+        self.assertTrue(steps[0].matched_invocation)
+        self.assertEqual(steps[0].duration_ms, 60000)
+        self.assertEqual(steps[0].output_tokens, 1500)
+        self.assertTrue(steps[1].matched_invocation)
+        self.assertEqual(steps[1].cost_usd, 0.10)
+
+    def test_skips_unmatched_agents(self):
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="architect", mode=None,
+                       enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="x"),
+        ]
+        invocations = [
+            {"ts": "t1", "agent": "engineer", "duration_ms": 60000,
+             "total_tokens": 5000, "output_tokens": 1500, "cost_usd": 0.05},
+        ]
+        assign_invocations_to_steps(steps, invocations)
+        self.assertFalse(steps[0].matched_invocation)
+
+
+class ThinkingLoopDetectionTests(unittest.TestCase):
+    def test_thinking_loop_high_duration_low_output(self):
+        # 사용자 jajang 사례 시뮬레이션 — product-planner 6분 + 624 tokens
+        budget = EXPECTED_AGENT_BUDGETS["product-planner"]
+        s = StepRecord(idx=0, ts="t", agent="product-planner", mode=None,
+                        enum="PRODUCT_PLAN_CHANGE_DIFF", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6")
+        s.matched_invocation = True
+        s.duration_ms = 360000  # 6분
+        s.output_tokens = 624
+        s.total_tokens = 1000
+        wastes = detect_wastes([s])
+        kinds = {w.pattern for w in wastes}
+        self.assertIn("THINKING_LOOP", kinds)
+
+    def test_no_thinking_loop_when_healthy(self):
+        # 정상 — 60s + 5000 tokens
+        s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
+                        enum="READY_FOR_IMPL", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6")
+        s.matched_invocation = True
+        s.duration_ms = 60000
+        s.output_tokens = 5000
+        s.total_tokens = 30000
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "THINKING_LOOP" for w in wastes))
+
+    def test_no_thinking_loop_when_unmatched(self):
+        # matched_invocation=False 면 detection skip
+        s = StepRecord(idx=0, ts="t", agent="product-planner", mode=None,
+                        enum="PRODUCT_PLAN_READY", must_fix=False,
+                        prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6")
+        s.matched_invocation = False
+        s.duration_ms = 0
+        s.output_tokens = 0
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "THINKING_LOOP" for w in wastes))
 
 
 if __name__ == "__main__":

@@ -67,6 +67,26 @@ INFRA_PATH_PATTERNS = [
 READONLY_AGENTS = {"qa", "validator", "pr-reviewer", "security-reviewer",
                     "plan-reviewer", "design-critic"}
 
+# DCN-CHG-20260430-20: Phase 2 — per-Agent budget for THINKING_LOOP detection.
+# elapsed_s: 정상 sub-agent 한 번 호출 한도 (초).
+# min_output_tokens: 정상 sub-agent 가 emit 할 최소 output token (이하 = stall 의심).
+EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
+    "product-planner": {"elapsed_s": 600, "min_output_tokens": 2000},
+    "architect":       {"elapsed_s": 600, "min_output_tokens": 1500},
+    "engineer":        {"elapsed_s": 900, "min_output_tokens": 2000},
+    "test-engineer":   {"elapsed_s": 600, "min_output_tokens": 1500},
+    "validator":       {"elapsed_s": 300, "min_output_tokens": 800},
+    "pr-reviewer":     {"elapsed_s": 180, "min_output_tokens": 600},
+    "security-reviewer": {"elapsed_s": 180, "min_output_tokens": 600},
+    "qa":              {"elapsed_s": 300, "min_output_tokens": 600},
+    "plan-reviewer":   {"elapsed_s": 300, "min_output_tokens": 1000},
+    "design-critic":   {"elapsed_s": 300, "min_output_tokens": 600},
+    "designer":        {"elapsed_s": 600, "min_output_tokens": 1000},
+    "ux-architect":    {"elapsed_s": 600, "min_output_tokens": 1000},
+}
+
+DCNESS_AGENT_NAMES = set(EXPECTED_AGENT_BUDGETS.keys())
+
 
 # ── 데이터 모델 ────────────────────────────────────────────────────────
 
@@ -81,6 +101,12 @@ class StepRecord:
     prose_excerpt: str
     prose_full: str = ""
     elapsed_s: int = 0  # ts diff to next step
+    # DCN-CHG-20260430-20: per-Agent metrics from CC session JSONL toolUseResult.
+    duration_ms: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    cost_usd: float = 0.0
+    matched_invocation: bool = False
 
 
 @dataclass
@@ -312,6 +338,38 @@ def detect_wastes(steps: list[StepRecord]) -> list[WasteFinding]:
                 fix="agents/plan-reviewer.md §산출물 EXTERNAL_VERIFIED 섹션 의무 재강조",
             ))
 
+    # THINKING_LOOP (DCN-30-20) — sub-agent 가 오래 돌았는데 output token 적음 = stall / thinking 무한 loop
+    # 사용자 사례 (jajang product-planner): 6분 elapsed + ↓624 tokens.
+    for s in steps:
+        if not s.matched_invocation:
+            continue
+        budget = EXPECTED_AGENT_BUDGETS.get(s.agent)
+        if not budget:
+            continue
+        duration_s = s.duration_ms / 1000 if s.duration_ms else 0
+        out_tok = s.output_tokens
+        # 조건 — duration 이 expected × 1.5 초과 AND output token 이 기대치 30% 미만
+        # OR duration > 5분 + output < 1k (절대 한도)
+        thinking_loop = False
+        reason = ""
+        if duration_s > budget["elapsed_s"] * 1.5 and out_tok < budget["min_output_tokens"] * 0.3:
+            thinking_loop = True
+            reason = (f"duration {duration_s:.0f}s > budget {budget['elapsed_s']}s × 1.5 + "
+                      f"output {out_tok} < min {budget['min_output_tokens']} × 0.3")
+        elif duration_s > 300 and out_tok < 1000:
+            thinking_loop = True
+            reason = f"duration {duration_s:.0f}s > 300s + output {out_tok} < 1000"
+        if thinking_loop:
+            findings.append(WasteFinding(
+                pattern="THINKING_LOOP",
+                severity="HIGH",
+                step_idx=s.idx,
+                agent=s.agent,
+                detail=f"{s.agent} stall 의심 — {reason}",
+                fix=(f"agents/{s.agent}.md 'thinking 본문 드래프트 금지' 룰 ⚠️ CRITICAL banner 격상 + "
+                      "Agent description 에 'extended thinking 의사결정 분기만, prose 즉시 emit' 추가"),
+            ))
+
     return findings
 
 
@@ -376,6 +434,118 @@ def detect_goods(steps: list[StepRecord]) -> list[GoodFinding]:
             ))
 
     return goods
+
+
+# ── Per-Agent invocation extraction (DCN-CHG-20260430-20, Phase 2) ────
+
+
+def _normalize_agent_type(agent_type: Optional[str]) -> Optional[str]:
+    """`dcness:architect:system-design` → `architect`. None / 비-dcness → 원형 그대로."""
+    if not agent_type:
+        return None
+    if agent_type.startswith("dcness:"):
+        parts = agent_type.split(":")
+        return parts[1] if len(parts) > 1 else agent_type
+    return agent_type
+
+
+def _compute_invocation_cost(model: str, usage: dict) -> float:
+    """toolUseResult.usage 의 token breakdown 으로 USD 계산. price_for util 재사용."""
+    if not usage:
+        return 0.0
+    price = price_for(model)
+    inp = usage.get("input_tokens", 0)
+    out = usage.get("output_tokens", 0)
+    cw = usage.get("cache_creation_input_tokens", 0)
+    cr = usage.get("cache_read_input_tokens", 0)
+    cw_detail = usage.get("cache_creation", {}) or {}
+    cw5 = cw_detail.get("ephemeral_5m_input_tokens", 0)
+    cw1h = cw_detail.get("ephemeral_1h_input_tokens", 0)
+    if cw5 + cw1h == 0 and cw > 0:
+        cw5 = cw
+    return (
+        inp * price["in"] / 1e6
+        + out * price["out"] / 1e6
+        + cw5 * price["cw5"] / 1e6
+        + cw1h * price["cw1h"] / 1e6
+        + cr * price["cr"] / 1e6
+    )
+
+
+def extract_agent_invocations(repo_path: Path, run_window: tuple[datetime, datetime]) -> list[dict]:
+    """CC session JSONL 의 toolUseResult 에서 dcness sub-agent 호출만 추출.
+
+    return: [{ts, agent, duration_ms, output_tokens, total_tokens, cost_usd, ...}, ...] (ts 오름차순).
+    """
+    first_ts, last_ts = run_window
+    invocations: list[dict] = []
+
+    for jsonl in find_session_jsonls(repo_path):
+        try:
+            for line in jsonl.read_text(encoding="utf-8").splitlines():
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                tur = rec.get("toolUseResult")
+                if not isinstance(tur, dict):
+                    continue
+                # totalTokens 또는 totalDurationMs 가 있어야 sub-agent result.
+                if "totalTokens" not in tur and "totalDurationMs" not in tur:
+                    continue
+                rec_ts = _parse_iso(rec.get("timestamp", ""))
+                if not rec_ts:
+                    continue
+                # 날짜 비교를 위해 timezone 통일 — naive 만 비교.
+                rec_ts_naive = rec_ts.replace(tzinfo=None)
+                if rec_ts_naive < first_ts.replace(tzinfo=None) or rec_ts_naive > last_ts.replace(tzinfo=None):
+                    continue
+                agent_type = tur.get("agentType") or ""
+                normalized = _normalize_agent_type(agent_type)
+                if normalized not in DCNESS_AGENT_NAMES:
+                    continue
+                usage = tur.get("usage", {}) or {}
+                # iterations[].* 의 model 정보가 있으면 우선. 없으면 default opus.
+                model = ""
+                iters = usage.get("iterations") or []
+                if iters and isinstance(iters[0], dict):
+                    model = iters[0].get("model", "") or ""
+                cost = _compute_invocation_cost(model, usage)
+                invocations.append({
+                    "ts": rec_ts_naive,
+                    "agent": normalized,
+                    "agent_type_raw": agent_type,
+                    "duration_ms": tur.get("totalDurationMs", 0),
+                    "total_tokens": tur.get("totalTokens", 0),
+                    "output_tokens": usage.get("output_tokens", 0),
+                    "input_tokens": usage.get("input_tokens", 0),
+                    "cache_read": usage.get("cache_read_input_tokens", 0),
+                    "cost_usd": cost,
+                })
+        except OSError:
+            continue
+
+    invocations.sort(key=lambda r: r["ts"])
+    return invocations
+
+
+def assign_invocations_to_steps(steps: list[StepRecord], invocations: list[dict]) -> None:
+    """각 step 에 대응 invocation 매칭 — 순서 + agent name 정합. 미매칭 시 변경 X."""
+    if not steps or not invocations:
+        return
+    inv_idx = 0
+    for step in steps:
+        while inv_idx < len(invocations) and invocations[inv_idx]["agent"] != step.agent:
+            inv_idx += 1
+        if inv_idx >= len(invocations):
+            break
+        inv = invocations[inv_idx]
+        step.duration_ms = inv["duration_ms"]
+        step.output_tokens = inv["output_tokens"]
+        step.total_tokens = inv["total_tokens"]
+        step.cost_usd = inv["cost_usd"]
+        step.matched_invocation = True
+        inv_idx += 1
 
 
 # ── Cost cross-correlation (run-level coarse) ────────────────────────
@@ -483,14 +653,19 @@ def render_report(report: RunReport) -> str:
     lines.append("```")
     lines.append("")
 
-    # 단계별 표
+    # 단계별 표 (DCN-30-20: per-Agent metrics 컬럼)
     lines.append("## 단계별 상세")
-    lines.append("| # | agent | mode | elapsed(s) | enum | must_fix | prose 줄 |")
-    lines.append("|---|---|---|---|---|---|---|")
+    lines.append("| # | agent | mode | elapsed(s) | duration(s) | out_tok | total_tok | cost($) | enum | must_fix | prose줄 |")
+    lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
     for s in report.steps:
         line_count = len([l for l in s.prose_excerpt.splitlines() if l.strip()])
+        dur_s = f"{s.duration_ms / 1000:.0f}" if s.matched_invocation else "-"
+        out_tok = f"{s.output_tokens:,}" if s.matched_invocation else "-"
+        tot_tok = f"{s.total_tokens:,}" if s.matched_invocation else "-"
+        cost = f"{s.cost_usd:.4f}" if s.matched_invocation else "-"
         lines.append(
             f"| {s.idx} | {s.agent} | {s.mode or '-'} | {s.elapsed_s} | "
+            f"{dur_s} | {out_tok} | {tot_tok} | {cost} | "
             f"`{s.enum}` | {'⚠️' if s.must_fix else ''} | {line_count} |"
         )
     lines.append("")
@@ -530,6 +705,15 @@ def render_report(report: RunReport) -> str:
 
 def build_report(run_dir: Path, repo_path: Path) -> RunReport:
     steps = parse_steps(run_dir)
+
+    # DCN-CHG-20260430-20: per-Agent invocation 매칭 — wastes 탐지 *전*에 enrichment.
+    if steps:
+        first_ts = _parse_iso(steps[0].ts)
+        last_ts = _parse_iso(steps[-1].ts)
+        if first_ts and last_ts:
+            invocations = extract_agent_invocations(repo_path, (first_ts, last_ts))
+            assign_invocations_to_steps(steps, invocations)
+
     wastes = detect_wastes(steps)
     goods = detect_goods(steps)
     cost, in_tok, out_tok = compute_run_cost(run_dir, repo_path)
