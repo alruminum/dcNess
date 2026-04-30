@@ -100,15 +100,14 @@ Document-Exception-Task: DCN-CHG-YYYYMMDD-NN
 
 CI 레벨(`.github/workflows/document-sync.yml`)은 별도 Task-ID 로 추가.
 
-### 2.8 Branch Protection (LGTM 게이트 외부화)
+### 2.8 Branch Protection (CI 게이트 강제)
 
-`main` 브랜치는 GitHub Repository Settings 의 branch protection 으로 다음을 강제한다 (proposal §5 Phase 3 — `Gate 5 (LGTM flag) → branch protection required reviewers`):
+`main` 브랜치는 GitHub Repository Settings 의 branch protection 으로 다음을 강제한다:
 
 | 항목 | 설정 |
 |---|---|
-| Required pull request reviews | `1` approving review (LGTM 게이트 외부화) |
-| Dismiss stale reviews | ✅ — 신규 commit push 시 기존 approval 자동 무효화 |
-| Required status checks | `Document Sync gate`, `unittest discover`, `validate manifest`, `Task-ID format gate` (4 게이트 모두 PASS) |
+| Required pull request reviews | ❌ 비활성 (1인 운영 — PR author self-approve GitHub 정책 차단. DCN-30-04) |
+| Required status checks | `Document Sync gate`, `unittest discover`, `validate manifest`, `Task-ID format gate` (4 게이트 모두 PASS 의무) |
 | Strict (up-to-date) | ✅ — base 와 sync 안 된 PR 머지 차단 |
 | Required conversation resolution | ✅ |
 | Required linear history | ✅ — squash merge 전제 |
@@ -117,7 +116,9 @@ CI 레벨(`.github/workflows/document-sync.yml`)은 별도 Task-ID 로 추가.
 
 **적용**: [`branch-protection-setup.md`](branch-protection-setup.md) §1 자동 적용 (`scripts/setup_branch_protection.mjs`) 또는 §2 GitHub UI 수동.
 
-**근거**: dcNess 는 RWHarness 의 `class Flag` 기반 in-process LGTM flag 를 *자연 폐기* (migration-decisions §2.2 DISCARD). LGTM 의 의미적 강제는 GitHub branch protection 으로 *외부* 에서 동일 기능 제공 → proposal §11 4-pillar #2 (CI/CD 게이트) 정합.
+**근거**: dcNess 는 RWHarness 의 `class Flag` 기반 in-process LGTM flag 를 *자연 폐기* (migration-decisions §2.2 DISCARD). LGTM 의 의미적 강제는 GitHub CI 4 checks 로 *외부* 에서 제공 → proposal §11 4-pillar #2 (CI/CD 게이트) 정합. 1인 운영이라 review approve 의무는 self-approve 불가 (GitHub 정책) 로 비활성화 — CI 4 checks 가 실질 게이트.
+
+**`gh pr merge --squash --auto` 의무**: protection 적용 후 모든 PR merge 명령에 `--auto` flag 의무. CI 통과 *후* 자동 머지. CI 진행 중 머지 시도 시 차단됨 (DCN-30-04 도입 직접 동기 — DCN-30-37 ~ DCN-30-40 7+ PR 동안 CI 결과 안 보고 즉시 머지하던 회귀 패턴 차단).
 
 **CI 게이트 추가/제거 시**: `setup_branch_protection.mjs` 의 `REQUIRED_CHECKS` 와 본 §2.8 표 동시 갱신. 워크플로우 `jobs.<id>.name` 과 protection rule status check 이름이 *문자열 일치* 필수.
 

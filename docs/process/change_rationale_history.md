@@ -18,6 +18,27 @@
 
 ## Records
 
+### DCN-CHG-20260501-04
+- **Date**: 2026-05-01
+- **Rationale**:
+  - DCN-30-37 ~ DCN-30-40 7+ PR 동안 GitHub Python tests CI fail 누적 — 매번 `gh pr merge --squash` 즉시 머지 (CI 결과 wait X). 사용자가 알아챈 후에야 발견.
+  - 실측 — PR #84 머지 시각 15:28:21 / CI 완료 15:28:32~39 → **11~18초 일찍 머지**. 단순 우연으로 나중 success.
+  - `branch protection` 미설정 (404 "Branch not protected") + `gh pr merge` 가 wait 안 함 = CI fail 코드도 머지 가능 = 거버넌스 부재.
+  - 사용자 명령 ("CI 로 강제해서 앞으로는 실패 못하게") — branch protection 적용 + `--auto` flag 의무.
+- **Alternatives**:
+  1. *옵션 A — 그대로 유지 (review 1 approve)*. 1인 운영 self-approve 불가 (GitHub 정책) → 매 PR 머지 자체 불가. 기각.
+  2. *옵션 B — review 0 + CI 4 강제 (채택)*. 사용자 명령 정확 정합. CI 가 실질 게이트.
+  3. *옵션 C — review 1 + admin enforce_admins=false 우회*. 매 PR 우회 = 거버넌스 약화. 기각.
+- **Decision**:
+  - 옵션 B 채택.
+  - **`scripts/setup_branch_protection.mjs`** 수정 — `required_pull_request_reviews: null`. governance §2.8 표 갱신.
+  - **branch protection live 적용** — gh API PUT repos/alruminum/dcNess/branches/main/protection. 4 status checks 강제 (Document Sync gate / unittest discover / validate manifest / Task-ID format gate) + strict + linear history.
+  - **`gh pr merge --squash --auto` 의무 룰 추가** (governance §2.8) — CI 통과 후 자동 머지. 11~18초 일찍 머지 회귀 차단.
+- **Follow-Up**:
+  - **본 PR 부터 적용 검증** — `--auto` flag 사용 + CI 4 checks 통과 후 자동 머지 실측.
+  - **CLAUDE.md 커밋 절차 / main-claude-rules.md §2.3** 갱신 후속 — `gh pr merge --squash --auto` flag 의무 명시.
+  - **회귀 안전망** — `/run-review` 에 `CI_NOT_VERIFIED` 패턴 추가 후속 (PR merge 시각 vs CI 완료 시각 비교 휴리스틱).
+
 ### DCN-CHG-20260501-02
 - **Date**: 2026-05-01
 - **Rationale**:
