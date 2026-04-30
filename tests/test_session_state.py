@@ -1016,6 +1016,77 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertFalse(called["hit"])
         self.assertNotIn("/run-review (auto)", out.getvalue())
 
+    def _setup_fake_cc_jsonl(self, sid: str, engineer_counts: list) -> Path:
+        """CC session JSONL fake — engineer toolUseResult 행 N개 박음. ts 오름차순."""
+        from harness.run_review import encode_repo_path_dcness
+        encoded = encode_repo_path_dcness(str(Path.cwd()))
+        proj_dir = Path.home() / ".claude" / "projects" / encoded
+        proj_dir.mkdir(parents=True, exist_ok=True)
+        jsonl = proj_dir / f"{sid}.jsonl"
+        lines = []
+        for i, cnt in enumerate(engineer_counts):
+            lines.append(json.dumps({
+                "timestamp": f"2026-04-30T0{i}:00:00.000Z",
+                "toolUseResult": {
+                    "agentType": "dcness:engineer",
+                    "totalToolUseCount": cnt,
+                    "totalDurationMs": 1000,
+                    "totalTokens": 100,
+                },
+            }))
+        jsonl.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return jsonl
+
+    def test_begin_step_engineer_emits_tool_use_hint(self) -> None:
+        """DCN-30-36: agent='engineer' 시 직전 invocation count stderr hint."""
+        from harness.session_state import _cli_begin_step
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr
+
+        jsonl = self._setup_fake_cc_jsonl(self.sid, [50, 87])  # 직전 = 87
+        try:
+            err = StringIO()
+            with redirect_stderr(err):
+                rc = _cli_begin_step(SimpleNamespace(agent="engineer", mode="IMPL"))
+            self.assertEqual(rc, 0)
+            stderr = err.getvalue()
+            self.assertIn("[hint]", stderr)
+            self.assertIn("tool_use_count=87", stderr)
+            self.assertIn("IMPL_PARTIAL", stderr)
+        finally:
+            jsonl.unlink(missing_ok=True)
+
+    def test_begin_step_engineer_no_hint_when_no_prior(self) -> None:
+        """JSONL 없거나 engineer invocation 없으면 silent."""
+        from harness.session_state import _cli_begin_step
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr
+
+        err = StringIO()
+        with redirect_stderr(err):
+            rc = _cli_begin_step(SimpleNamespace(agent="engineer", mode="IMPL"))
+        self.assertEqual(rc, 0)
+        self.assertNotIn("[hint]", err.getvalue())
+
+    def test_begin_step_non_engineer_no_hint(self) -> None:
+        """agent != 'engineer' 면 hint 없음 (다른 agent 도 jsonl 있어도 무관)."""
+        from harness.session_state import _cli_begin_step
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stderr
+
+        jsonl = self._setup_fake_cc_jsonl(self.sid, [200])  # 큰 값 박혀도
+        try:
+            err = StringIO()
+            with redirect_stderr(err):
+                rc = _cli_begin_step(SimpleNamespace(agent="validator", mode="CODE_VALIDATION"))
+            self.assertEqual(rc, 0)
+            self.assertNotIn("[hint]", err.getvalue())
+        finally:
+            jsonl.unlink(missing_ok=True)
+
     def test_end_step_writes_prose_and_extracts_enum(self) -> None:
         from harness.session_state import _cli_end_step, session_dir
         from types import SimpleNamespace

@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260430-36
+- **Date**: 2026-04-30
+- **Change-Type**: harness, test
+- **Files Changed**:
+  - `harness/run_review.py:extract_agent_invocations` — `tool_use_count` 필드 추가 (`tur.get("totalToolUseCount", 0)`). 기존 사용처 영향 0 (추가 필드).
+  - `harness/session_state.py:_prior_engineer_tool_use_count(sid)` 신규 — 현재 sid 의 CC session JSONL 에서 직전 `dcness:engineer` invocation 의 `totalToolUseCount` 추출. 측정 실패 silent (None).
+  - `harness/session_state.py:_cli_begin_step` — `agent="engineer"` 시 직전 count > 0 이면 stderr hint (`[hint] prior engineer tool_use_count=N — 단일 호출 capacity 압박 인지 시 IMPL_PARTIAL 분할 자율 판단 권고. 강제 X (정보만).`).
+  - `tests/test_session_state.py` — 3 신규 (`test_begin_step_engineer_emits_tool_use_hint` / `_no_hint_when_no_prior` / `_non_engineer_no_hint`). `_setup_fake_cc_jsonl` helper. 224 ran / 222 PASS / 2 pre-existing flaky 무관.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: jajang impl-loop epic-08/09 회고 — engineer context overflow 5회 (102/119/153/170/223 tool uses) 자장 실측. DCN-30-34 IMPL_PARTIAL enum 만으론 실효 부족 — LLM 이 자기 tool_use_count self-monitor 불가 (CC API 미노출 본질 한계). helper 가 직전 count 측정 → stderr hint 로 흘려 메인이 다음 호출 prompt 에 명시 가능 ("이전 호출 87 tool uses 였음, 이번엔 분할 고려"). 자율 침해 X — 정보 보강만, 판단은 자율. 측정 source = `toolUseResult.totalToolUseCount` (CC session JSONL).
+
 ### DCN-CHG-20260430-35
 - **Date**: 2026-04-30
 - **Change-Type**: docs-only
