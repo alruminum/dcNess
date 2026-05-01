@@ -18,7 +18,7 @@ SYSTEM_DESIGN_READY → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md`
 
 > **모듈 분할의 *가장 중요한* 기준은 "test-engineer 가 명확한 PASS/FAIL 짤 수 있는 범위"**.
 
-각 impl batch 의 모듈 plan 작성 시 self-check:
+각 impl task 의 모듈 plan 작성 시 self-check:
 
 1. **테스트 단위 정합**:
    - 본 모듈을 단위 테스트로 검증 가능한가? (입력 → 출력 또는 상태 → 행위 명확)

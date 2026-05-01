@@ -23,7 +23,7 @@ description: 새 기능 / PRD 변경 / 큰 기획을 받아 product-planner → 
 - 디자인만 → `/ux` (`ux-design-stage`)
 
 ## 후속 라우팅
-- `READY_FOR_IMPL` → `/impl-loop` (multi-batch) 또는 `/impl` (per-batch) 또는 architect MODULE_PLAN 직접
+- `READY_FOR_IMPL` → `/impl-loop` (multi-task) 또는 `/impl` (per-task) 또는 architect MODULE_PLAN 직접
 - `PRODUCT_PLAN_UPDATED` → plan-reviewer skip + ux-architect 직행 (catalog §2 분기)
 - `UX_REFINE_READY` → `ux-refine-stage` 진입 (`/ux`)
 - escalate enum → 사용자 위임 (catalog §2 분기 표 참조)

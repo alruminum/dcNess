@@ -93,12 +93,12 @@ cycle 한도 = orchestration.md §5. yolo 매핑 = guidelines §5 + helper `auto
 
 ## 4. Step 4.5 — stories.md / backlog.md sync (impl 계열 한정)
 
-`impl-batch-loop` / `impl-ui-design-loop` / `direct-impl-loop` / `impl-loop` 의 inner batch 에 한정. engineer `IMPL_DONE` 직후, validator 진입 *전*. 메인 직접 mechanical edit (agent 위임 X — 도메인 외).
+`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` / `impl-loop` 의 inner task 에 한정. engineer `IMPL_DONE` 직후, validator 진입 *전*. 메인 직접 mechanical edit (agent 위임 X — 도메인 외).
 
 ### 4.5.1 epic 경로 추출
 
 ```bash
-EPIC_DIR=$(dirname $(dirname "<batch path>"))
+EPIC_DIR=$(dirname $(dirname "<task path>"))
 STORIES_FILE="$EPIC_DIR/stories.md"
 BACKLOG_FILE="$(dirname $(dirname $EPIC_DIR))/../backlog.md"
 ```
@@ -107,7 +107,7 @@ BACKLOG_FILE="$(dirname $(dirname $EPIC_DIR))/../backlog.md"
 
 ### 4.5.2 갱신 룰
 
-- batch 가 다룬 Story 의 task `[ ]` → `[x]`. batch ## 관련 Story / ## 적용 범위 메타로 식별.
+- task 가 다룬 Story 의 task `[ ]` → `[x]`. task ## 관련 Story / ## 적용 범위 메타로 식별.
 - Story 하위 모두 `[x]` 면 Story 자체 `[x]`.
 - stories.md 의 모든 Story `[x]` 면 backlog.md 의 epic 라인 `[x]`. 부분 진행 시 backlog 손대지 않음.
 

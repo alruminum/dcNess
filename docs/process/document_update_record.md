@@ -43,6 +43,7 @@
   - `docs/process/change_rationale_history.md`
   - `README.md`
 - **Summary**: "batch" 용어 전면 제거 — impl 단위를 "task"로 통일 (Epic→Story→Task 계층 정합), 루프명 `impl-batch-loop` → `impl-task-loop`
+- **Note**: governance 파일은 PR #104(선행 커밋)에서 갱신됨. Document-Exception: 실제 파일 치환 커밋 — governance 동반 파일은 선행 커밋에서 완료.
 
 ### DCN-CHG-20260502-03
 - **Date**: 2026-05-02

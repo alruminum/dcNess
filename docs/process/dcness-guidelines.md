@@ -104,7 +104,7 @@ ENUM=$("$HELPER" end-step <agent> [<MODE>] ...)  ← 의무 (skip 금지)
 - ❌ engineer 자체 commit/PR 만든 후 git status 확인 → end-step engineer 호출 *skip*
 - ❌ pr-reviewer CHANGES_REQUESTED 받고 engineer POLISH Agent 호출 시 begin/end-step 안 둘러쌈
 - ❌ Agent 호출 후 사용자 입력 받느라 end-step 보류 → 다음 step 진입 시 망각
-- ❌ multi-batch 진행 중 batch 간 보고 작성 후 begin-step 다시 안 부름
+- ❌ multi-task 진행 중 task 간 보고 작성 후 begin-step 다시 안 부름
 
 ### helper 안전망 (자동 검출)
 
@@ -197,7 +197,7 @@ fi
 - 마일스톤 bump 임계 (PRD 변경량 / 외부 release 단위 등)
 - 에픽 분할 단위 (사용자 플로우 / 기술 영역 / 사이즈)
 - 스토리 분할 단위 (1 화면 / 1 기능 / 사이즈)
-- 마일스톤 ↔ 에픽 ↔ 스토리 ↔ impl batch 계층 정의
+- 마일스톤 ↔ 에픽 ↔ 스토리 ↔ impl task 계층 정의
 
 현재 `~/.claude/CLAUDE.md` §4-6 의 *디렉토리 구조 + 명명 컨벤션* 만 박혀있음. 분할 *기준* 은 product-planner / architect 자율.
 

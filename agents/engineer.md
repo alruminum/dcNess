@@ -174,9 +174,9 @@ attempt 1+ 재시도 시 특히 강제: validator FAIL 한 부분만 수정 — 
 - `git add .` / `git add -A` 금지 → 파일 명시적 지정. `git diff --stat` 10+ 파일이면 분리 가능성 재검토.
 - feature branch 전제. main 직접 커밋 금지. 재시도 시 추가 수정을 새 커밋으로 (stash/reset/amend 금지).
 
-### 1 batch = 1 PR (코드 + 관련 docs 셋트, DCN-CHG-20260501-05)
+### 1 task = 1 PR (코드 + 관련 docs 셋트, DCN-CHG-20260501-05)
 
-impl batch 의 commit/PR 은 코드 + 관련 docs 를 1 셋트로 묶는다 — spec ↔ 코드 단절 / revert sync 깨짐 회피.
+impl task 의 commit/PR 은 코드 + 관련 docs 를 1 셋트로 묶는다 — spec ↔ 코드 단절 / revert sync 깨짐 회피.
 
 **필수 stage**:
 - `src/*` (impl/NN-*.md `## 생성/수정 파일` 명시 코드)

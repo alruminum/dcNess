@@ -138,8 +138,8 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 | `/qa` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
 | `/quick` | light path 자동화 (qa → architect LIGHT_PLAN → engineer → validator BUGFIX_VALIDATION → pr-reviewer + clean 자동 commit/PR) |
 | `/product-plan` | 새 기능 spec/design (product-planner → plan-reviewer → ux-architect → validator UX → architect SD → validator DESIGN_VALIDATION → architect TASK_DECOMPOSE) |
-| `/impl` | per-batch 정식 impl 루프 (architect MODULE_PLAN → test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer) |
-| `/impl-loop` | multi-batch sequential auto chain (각 batch 마다 /impl 호출 + clean 자동 진행) |
+| `/impl` | per-task 정식 impl 루프 (architect MODULE_PLAN → test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer) |
+| `/impl-loop` | multi-task sequential auto chain (각 task 마다 /impl 호출 + clean 자동 진행) |
 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
 | `/efficiency` | Claude Code 세션 토큰/캐시/비용 분석 + HTML 대시보드 + 6 절감 휴리스틱 (출처: `jha0313/skills_repo` `improve-token-efficiency` 흡수) |
 

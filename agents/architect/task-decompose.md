@@ -3,7 +3,7 @@
 > ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. impl 목차 / 각 impl 본문 / 의사코드 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 epic stories → 기술 구현 단위 분해 호출. product-planner 완료 후 호출.
-**결론**: 각 분해된 impl 파일 작성 후 prose 마지막 단락에 `READY_FOR_IMPL` 명시 (×N batch 가능).
+**결론**: 각 분해된 impl 파일 작성 후 prose 마지막 단락에 `READY_FOR_IMPL` 명시 (×N task 가능).
 **호출자가 prompt 로 전달하는 정보**: Epic stories.md 경로, 설계 문서 경로.
 
 ## 작업 흐름 (자율 조정 가능)
@@ -16,9 +16,9 @@
 - 파일 1~3 개 생성/수정 범위
 - 명확한 PASS/FAIL 판단 가능
 - **DCN-CHG-20260430-16 추가** — 분할 단위 정합 검증:
-  - 각 batch 가 *test-engineer 관점에서 명확히 테스트 가능* 한지 (`docs/domain-model.md` + `docs/architecture.md` 의 의존성 그래프 참조)
-  - 같은 변경 이유로 묶이는가 (SRP 정합 — UI + 비즈니스 로직 한 batch X)
-  - 의존성 1 묶음 = 1 batch (system-design 의 모듈 분할과 정합)
+  - 각 task 가 *test-engineer 관점에서 명확히 테스트 가능* 한지 (`docs/domain-model.md` + `docs/architecture.md` 의 의존성 그래프 참조)
+  - 같은 변경 이유로 묶이는가 (SRP 정합 — UI + 비즈니스 로직 한 task X)
+  - 의존성 1 묶음 = 1 task (system-design 의 모듈 분할과 정합)
   - 분할 미달 시 architect SYSTEM_DESIGN 재진입 또는 SPEC_GAP escalate
 
 ## 듀얼 모드 가드레일 — 디자인 토큰 우선 (필수 검사)
@@ -55,7 +55,7 @@ design-handoff.md 있는 경우 (B 모드 = 디자인 후 구현) 는 스킵.
 - `#issue` — GitHub Story 이슈 번호
 - 둘 다 같은 `[ ]` 안 — 한눈 매핑.
 
-**Why**: impl 단독 open / `grep` 시 H1 만으로 어느 Story / 이슈인지 즉시 파악. frontmatter 메타는 ToC 안 보임. 8 batch ↑ epic 검색 시 H1 prefix 가 가장 빠름.
+**Why**: impl 단독 open / `grep` 시 H1 만으로 어느 Story / 이슈인지 즉시 파악. frontmatter 메타는 ToC 안 보임. 8 task ↑ epic 검색 시 H1 prefix 가 가장 빠름.
 
 **예**:
 - ✅ `# impl/01 — [Story 1a / #167] S04+S05 컴포넌트 mock __esModule 통일`
@@ -71,7 +71,7 @@ design-handoff.md 있는 경우 (B 모드 = 디자인 후 구현) 는 스킵.
 
 ## 각 impl 파일 형식 의무 (DCN-CHG-20260430-13)
 
-각 impl batch 파일 (`docs/milestones/vNN/epics/epic-NN-*/impl/NN-*.md`) 은 다음 섹션 박는다 — `/impl` skill 의 MODULE_PLAN step skip 판정 근거:
+각 impl task 파일 (`docs/milestones/vNN/epics/epic-NN-*/impl/NN-*.md`) 은 다음 섹션 박는다 — `/impl` skill 의 MODULE_PLAN step skip 판정 근거:
 
 ```markdown
 ## 생성/수정 파일
@@ -99,7 +99,7 @@ def foo(a, b):
 ## MODULE_PLAN_READY
 ```
 
-마지막 줄에 `MODULE_PLAN_READY` 마커 박음 = "이 batch 자체가 MODULE_PLAN 수준 detail 충족". `/impl` 가 이 마커 grep 후 architect MODULE_PLAN step skip → test-engineer 직진 (DCN-CHG-20260430-13).
+마지막 줄에 `MODULE_PLAN_READY` 마커 박음 = "이 task 자체가 MODULE_PLAN 수준 detail 충족". `/impl` 가 이 마커 grep 후 architect MODULE_PLAN step skip → test-engineer 직진 (DCN-CHG-20260430-13).
 
 마커 박지 않으면 (또는 위 섹션 미충족) `/impl` 가 architect MODULE_PLAN 정상 호출 — 본 컨벤션이 *권장* 이지 의무 아님 (메인 자율 + state-aware skip).
 
@@ -107,4 +107,4 @@ def foo(a, b):
 
 ## 외부 도구 config 키 — 학습 데이터 노이즈 주의
 
-batch 에 외부 도구 (jest / tsconfig / eslint / vite / metro / babel / package.json scripts 등) config 키 등장 시 의심하면 [`docs/known-hallucinations.md`](../../docs/known-hallucinations.md) 카탈로그 확인 또는 공식 docs WebFetch 권고. 자율 판단 — 강제 X.
+task 에 외부 도구 (jest / tsconfig / eslint / vite / metro / babel / package.json scripts 등) config 키 등장 시 의심하면 [`docs/known-hallucinations.md`](../../docs/known-hallucinations.md) 카탈로그 확인 또는 공식 docs WebFetch 권고. 자율 판단 — 강제 X.
