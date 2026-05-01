@@ -18,6 +18,13 @@
 
 ## Records
 
+### DCN-CHG-20260502-03
+- **Date**: 2026-05-02
+- **Rationale**: DCN-01에서 BLOCKING 게이트를 넣었으나 inject 내 Read 경로가 상대 경로("docs/process/dcness-guidelines.md")였음. Read 도구는 절대 경로만 허용하므로 Claude가 Read를 시도해도 즉시 실패 → "파일이 없어 로드는 스킵됐습니다" 오류.
+- **Alternatives**: (1) 파일 내용을 inject에 직접 포함 — 13KB, 10K cap 초과 위험. (2) 절대 경로 하드코딩 — 이식성 없음. (3) CLAUDE_PROJECT_DIR 환경변수로 동적 절대 경로 구성 — 실행 시점에 정확한 경로 확보.
+- **Decision**: (3) 채택. `PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"` → `GUIDELINES_PATH="${PROJ}/docs/process/dcness-guidelines.md"` → Python에 sys.argv[1]로 전달.
+- **Follow-Up**: 다음 세션에서 Read 성공 + 토큰 출력 확인.
+
 ### DCN-CHG-20260502-02
 - **Date**: 2026-05-02
 - **Rationale**: 루프가 끝날 때 redo-log + WASTE/GOOD findings를 agent별로 누적하고 다음 루프에서 begin-step stdout으로 주입. sentinel/gate 없이 AI 신뢰 원칙 적용.

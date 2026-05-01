@@ -38,8 +38,13 @@ python3 -m harness.hooks session-start --cc-pid "$CC_PID"
 #
 # JSON schema:
 #   {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}
+# Read 도구는 절대 경로만 허용 — CLAUDE_PROJECT_DIR 로 절대 경로 구성.
+PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+GUIDELINES_PATH="${PROJ}/docs/process/dcness-guidelines.md"
+
 python3 -c "
-import json
+import json, sys
+guidelines_path = sys.argv[1]
 msg = '''## [BLOCKING GATE] dcness 세션 시작 강제
 
 **유저의 첫 메시지 종류에 관계없이 — 인사·잡담·질문·작업 요청 전부 포함 —**
@@ -49,8 +54,8 @@ msg = '''## [BLOCKING GATE] dcness 세션 시작 강제
 
 ### STEP 1: 파일 읽기 [스킵 불가 / 예외 없음]
 
-Read 도구로 다음 파일을 *지금 바로* 호출한다:
-  Read(\"docs/process/dcness-guidelines.md\")
+Read 도구로 다음 파일을 *지금 바로* 호출한다 (절대 경로):
+  Read(\"''' + guidelines_path + '''\")
 
 - 이 도구 호출 완료 전까지 텍스트 출력 금지.
 - \"이미 알고 있다\" → 예외 아님. 항상 다시 읽는다.
@@ -66,7 +71,7 @@ Read 도구로 다음 파일을 *지금 바로* 호출한다:
 ---
 
 **나머지 loop 실행 docs (loop-procedure / loop-catalog / orchestration / handoff-matrix) 는 지금 읽지 말 것.**
-각 skill 의 `## 사전 read` 섹션이 진입 시 직접 경로를 안내한다.
+각 skill 의 ## 사전 read 섹션이 진입 시 직접 경로를 안내한다.
 '''
 print(json.dumps({
     'hookSpecificOutput': {
@@ -74,7 +79,7 @@ print(json.dumps({
         'additionalContext': msg,
     }
 }))
-" 2>/dev/null
+" "$GUIDELINES_PATH" 2>/dev/null
 
 # 모든 실패는 silent
 exit 0
