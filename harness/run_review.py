@@ -212,38 +212,6 @@ def _parse_iso(ts: str) -> Optional[datetime]:
         return None
 
 
-def _resolve_prose_path(
-    run_dir: Path,
-    agent: str,
-    mode: Optional[str],
-    occurrence: int,
-) -> Path:
-    """Step 의 prose staging 파일 경로 해결 (DCN-CHG-20260501-09).
-
-    skill 컨벤션 (DCN-30-21): `<run_dir>/.prose-staging/<step>.md` 에 prose 작성.
-    `<step>` 명명 규칙:
-      - impl batch loop:        `b<N>.<agent>-<mode>.md`  (mode 있음)
-      - impl batch (no mode):   `b<N>.<agent>.md`
-      - 단발 skill (quick 등):  `<agent>-<mode>.md` 또는 `<agent>.md`
-
-    같은 (agent, mode) 가 여러 번 발생하면 lexical 정렬 후 N번째 occurrence 매칭
-    (b1 < b2 < b3 < bare suffix). DCN-CHG-20260430-23 path 격리 후 parser 가
-    legacy `<run_dir>/<agent>-<mode>.md` 만 읽어 매 step 동일 파일 회귀.
-
-    Fallback: `.prose-staging/` 부재 또는 미매칭 시 legacy `<run_dir>/<agent>-<mode>.md`.
-    """
-    suffix = f"{agent}-{mode}.md" if mode else f"{agent}.md"
-    staging = run_dir / ".prose-staging"
-    if staging.exists():
-        candidates = sorted(
-            p for p in staging.iterdir()
-            if p.is_file() and (p.name == suffix or p.name.endswith(f".{suffix}"))
-        )
-        if 0 <= occurrence < len(candidates):
-            return candidates[occurrence]
-    return run_dir / suffix
-
-
 def parse_steps(run_dir: Path) -> list[StepRecord]:
     steps: list[StepRecord] = []
     jsonl = run_dir / ".steps.jsonl"
@@ -259,26 +227,36 @@ def parse_steps(run_dir: Path) -> list[StepRecord]:
         except json.JSONDecodeError:
             continue
 
-    occurrence_counter: dict = {}
     for idx, rec in enumerate(raw):
         agent = rec.get("agent", "?")
         mode = rec.get("mode")
-        key = (agent, mode)
-        occ = occurrence_counter.get(key, 0)
-        occurrence_counter[key] = occ + 1
-        prose_path = _resolve_prose_path(run_dir, agent, mode, occ)
         prose_full = ""
-        if prose_path.exists():
-            try:
-                prose_full = prose_path.read_text(encoding="utf-8")
-            except OSError:
-                prose_full = ""
-        # DCN-CHG-20260501-10: prose_full 보유 시 must_fix 재계산 (negation-aware).
-        # 부재 시 jsonl `must_fix` fallback (legacy / staging missing).
+
+        # prose_file: end-step 이 기록한 절대 경로 → 직접 읽기
+        prose_file = rec.get("prose_file")
+        if prose_file:
+            p = Path(prose_file)
+            if p.exists():
+                try:
+                    prose_full = p.read_text(encoding="utf-8")
+                except OSError:
+                    pass
+
+        # legacy fallback: prose_file 없는 옛 records → outer <agent>[-mode].md
+        if not prose_full:
+            suffix = f"{agent}-{mode}.md" if mode else f"{agent}.md"
+            legacy = run_dir / suffix
+            if legacy.exists():
+                try:
+                    prose_full = legacy.read_text(encoding="utf-8")
+                except OSError:
+                    pass
+
         if prose_full:
             must_fix = _has_positive_must_fix(prose_full)
         else:
             must_fix = bool(rec.get("must_fix"))
+
         steps.append(StepRecord(
             idx=idx,
             ts=rec.get("ts", ""),

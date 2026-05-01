@@ -139,13 +139,14 @@ def signal_path(
     run_id: str,
     mode: Optional[str] = None,
     base_dir: Optional[Path] = None,
+    *,
+    occurrence: int = 0,
 ) -> Path:
     """prose 파일의 절대 경로 반환.
 
-    경로 규칙: <base_dir>/<run_id>/<agent>[-<mode>].md
-
-    예) base/run_001/validator-CODE_VALIDATION.md
-        base/run_001/architect.md   (mode None)
+    경로 규칙: <base_dir>/<run_id>/<agent>[-<mode>][-<N>].md
+      N=0 (기본): <agent>[-<mode>].md
+      N>0       : <agent>[-<mode>]-<N>.md  (같은 step 반복 시 충돌 방지)
 
     화이트리스트 + path traversal 자기검증.
     """
@@ -154,7 +155,8 @@ def signal_path(
     _validate_run_id(run_id)
 
     base = _resolve_base(base_dir)
-    name = f"{agent}-{mode}.md" if mode else f"{agent}.md"
+    stem = f"{agent}-{mode}" if mode else agent
+    name = f"{stem}-{occurrence}.md" if occurrence > 0 else f"{stem}.md"
     target = (base / run_id / name).resolve()
 
     try:
@@ -173,8 +175,11 @@ def write_prose(
     *,
     mode: Optional[str] = None,
     base_dir: Optional[Path] = None,
+    occurrence: int = 0,
 ) -> Path:
     """prose 작성. 형식 강제 없음. atomic rename 으로 race 회피.
+
+    occurrence > 0 이면 <agent>[-mode]-<N>.md 로 저장 (같은 step 반복 충돌 방지).
 
     Returns: 작성된 파일의 절대 경로.
 
@@ -186,7 +191,7 @@ def write_prose(
     if not isinstance(prose, str):
         raise TypeError(f"prose must be str, got {type(prose).__name__}")
 
-    target = signal_path(agent, run_id, mode, base_dir)
+    target = signal_path(agent, run_id, mode, base_dir, occurrence=occurrence)
     target.parent.mkdir(parents=True, exist_ok=True)
 
     tmp = target.with_suffix(target.suffix + ".tmp")

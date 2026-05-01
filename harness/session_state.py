@@ -1167,9 +1167,10 @@ def _cli_end_step(args: Any) -> int:
         # drift detector 자체 실패는 silent — end-step 동작 우선
         pass
 
-    # prose 저장 — base_dir 은 .sessions/{sid}/runs/ (signal_io 가 그 아래 rid 디렉토리 생성)
+    # prose 저장 — occurrence 계산으로 같은 (agent, mode) 반복 시 파일 충돌 방지
     base = session_dir(sid) / "runs"
-    write_prose(args.agent, rid, prose, mode=mode, base_dir=base)
+    occ = _count_step_occurrences(sid, rid, args.agent, mode)
+    prose_path = write_prose(args.agent, rid, prose, mode=mode, base_dir=base, occurrence=occ)
 
     allowed = [s.strip() for s in args.allowed_enums.split(",") if s.strip()]
     if not allowed:
@@ -1197,7 +1198,7 @@ def _cli_end_step(args: Any) -> int:
     if summary:
         print(summary, file=sys.stderr)
     # step status append — finalize-run / 회고용
-    _append_step_status(sid, rid, args.agent, mode, enum, prose)
+    _append_step_status(sid, rid, args.agent, mode, enum, prose, prose_path)
     return 0
 
 
@@ -1243,6 +1244,22 @@ def _steps_jsonl_path(sid: str, rid: str, *, base_dir: Optional[Path] = None) ->
     return run_dir(sid, rid, base_dir=base_dir) / ".steps.jsonl"
 
 
+def _count_step_occurrences(sid: str, rid: str, agent: str, mode: Optional[str]) -> int:
+    """`.steps.jsonl` 에 기록된 (agent, mode) 쌍의 수 반환 (write_prose occurrence 계산용)."""
+    target = _steps_jsonl_path(sid, rid)
+    if not target.exists():
+        return 0
+    count = 0
+    for line in target.read_text(encoding="utf-8").splitlines():
+        try:
+            r = json.loads(line)
+            if r.get("agent") == agent and r.get("mode") == mode:
+                count += 1
+        except json.JSONDecodeError:
+            pass
+    return count
+
+
 def _append_step_status(
     sid: str,
     rid: str,
@@ -1250,6 +1267,7 @@ def _append_step_status(
     mode: Optional[str],
     enum: str,
     prose: str,
+    prose_path: "Path",
 ) -> None:
     """end-step 호출마다 jsonl 에 한 줄 append. atomic 보장 X (append-only)."""
     record = {
@@ -1259,6 +1277,7 @@ def _append_step_status(
         "enum": enum,
         "prose_excerpt": _extract_prose_summary(prose, max_lines=12),
         "must_fix": _has_positive_must_fix(prose),
+        "prose_file": str(prose_path),
     }
     target = _steps_jsonl_path(sid, rid)
     target.parent.mkdir(parents=True, exist_ok=True)

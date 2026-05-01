@@ -1528,10 +1528,11 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         sid = "test-sid"
         rid = "run-deadbeef"
         run_dir(sid, rid, create=True)
-        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "qa prose body")
+        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "qa prose body", Path("/dev/null"))
         _append_step_status(
             sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY",
             "## 결론\nLIGHT_PLAN_READY\n## 변경\n무언가",
+            Path("/dev/null"),
         )
         records = _read_steps_jsonl(sid, rid)
         self.assertEqual(len(records), 2)
@@ -1553,6 +1554,7 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         _append_step_status(
             "sid", "run-aaaa1111", "pr-reviewer", None, "CHANGES_REQUESTED",
             "## 결론\nCHANGES_REQUESTED\n## MUST FIX\n- src/foo.py:10 race condition\n",
+            Path("/dev/null"),
         )
         records = _read_steps_jsonl("sid", "run-aaaa1111")
         self.assertTrue(records[0]["must_fix"])
@@ -1576,14 +1578,17 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         _append_step_status(
             "sid", "run-bbbb2222", "pr-reviewer", None, "LGTM",
             "MUST FIX 0, NICE TO HAVE 6 (let tree: any / dead code).\nLGTM\n",
+            Path("/dev/null"),
         )
         _append_step_status(
             "sid", "run-bbbb2222", "pr-reviewer", None, "LGTM",
             "MUST FIX: 0\n결론: LGTM\n",
+            Path("/dev/null"),
         )
         _append_step_status(
             "sid", "run-bbbb2222", "pr-reviewer", None, "LGTM",
             "검토 결과: MUST FIX 없음. NICE TO HAVE 3.\nLGTM\n",
+            Path("/dev/null"),
         )
         records = _read_steps_jsonl("sid", "run-bbbb2222")
         for r in records:
@@ -1603,15 +1608,18 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         _append_step_status(
             "sid", "run-cccc3333", "pr-reviewer", None, "CHANGES_REQUESTED",
             "## MUST FIX\n- audio buffer underflow on iOS\n",
+            Path("/dev/null"),
         )
         _append_step_status(
             "sid", "run-cccc3333", "pr-reviewer", None, "CHANGES_REQUESTED",
             "MUST FIX: storage 키 충돌 가능\nLGTM 후보 X\n",
+            Path("/dev/null"),
         )
         # mixed — 부정 라인 + positive 라인 → True (positive 우선)
         _append_step_status(
             "sid", "run-cccc3333", "pr-reviewer", None, "CHANGES_REQUESTED",
             "MUST FIX 0\nMUST FIX: 실제 이슈 발견\n",
+            Path("/dev/null"),
         )
         records = _read_steps_jsonl("sid", "run-cccc3333")
         self.assertEqual(len(records), 3)
@@ -1643,15 +1651,15 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         run_dir(sid, rid, create=True)
         write_pid_current_run(cc_pid, rid)
 
-        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok")
+        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok", Path("/dev/null"))
         _append_step_status(
-            sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY", "ok"
+            sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY", "ok", Path("/dev/null")
         )
-        _append_step_status(sid, rid, "engineer", "IMPL", "IMPL_DONE", "fix done")
+        _append_step_status(sid, rid, "engineer", "IMPL", "IMPL_DONE", "fix done", Path("/dev/null"))
         _append_step_status(
-            sid, rid, "validator", "BUGFIX_VALIDATION", "PASS", "verified"
+            sid, rid, "validator", "BUGFIX_VALIDATION", "PASS", "verified", Path("/dev/null")
         )
-        _append_step_status(sid, rid, "pr-reviewer", None, "LGTM", "looks good")
+        _append_step_status(sid, rid, "pr-reviewer", None, "LGTM", "looks good", Path("/dev/null"))
 
         out = StringIO()
         with redirect_stdout(out):
