@@ -117,7 +117,7 @@ flowchart TD
 2. **pr-reviewer LGTM 없이 merge 금지**
 3. **engineer 가 architect.module-plan 통과 (READY_FOR_IMPL) 없이 src/ 작성 금지**
 4. **PRD 변경 후 plan-reviewer + ux-architect 검토 없이 architect 진입 금지**
-5. **architect TASK_DECOMPOSE 직전 validator DESIGN_VALIDATION (DESIGN_REVIEW_PASS) 없이 진입 금지** (DCN-CHG-20260430-05) — 시스템 설계가 구현 가능성 검증 통과 안 했으면 impl batch 분해 무의미.
+5. **architect TASK_DECOMPOSE 직전 validator DESIGN_VALIDATION (DESIGN_REVIEW_PASS) 없이 진입 금지** (DCN-CHG-20260430-05) — 시스템 설계가 구현 가능성 검증 통과 안 했으면 impl task 분해 무의미.
 
 이는 proposal §2.5 원칙 4 ("흐름 강제는 catastrophic 시퀀스만") 의 catastrophic 백본. 코드 driver 도입 시 hook 으로 강제.
 
@@ -128,7 +128,7 @@ flowchart TD
 > RWHarness `harness-spec.md` §4.3 의 dcNess 변환.
 > **실행 절차** (Step 0~8 mechanics — begin-run / TaskCreate / agent 호출 / finalize-run / 7a 7b / auto-review) 는 [`loop-procedure.md`](loop-procedure.md) SSOT.
 > **8 loop 행별 풀스펙** (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles) = [`loop-catalog.md`](loop-catalog.md). 본 §3 = *시퀀스 mini-graph* (what), loop-catalog = *행별 풀스펙* (how) 1:1.
-> 8 loop name (`feature-build-loop` §3.1, `impl-batch-loop` §2.1, `impl-ui-design-loop` §2.2, `quick-bugfix-loop` §3.5, `qa-triage` §3.6, `ux-design-stage` §3.2, `ux-refine-stage` §3.3, `direct-impl-loop` §3.4) — loop-catalog 행 ID.
+> 8 loop name (`feature-build-loop` §3.1, `impl-task-loop` §2.1, `impl-ui-design-loop` §2.2, `quick-bugfix-loop` §3.5, `qa-triage` §3.6, `ux-design-stage` §3.2, `ux-refine-stage` §3.3, `direct-impl-loop` §3.4) — loop-catalog 행 ID.
 
 ### 3.1 신규 기능 / PRD 변경
 

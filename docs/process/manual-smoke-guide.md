@@ -163,7 +163,7 @@ remote 부재라 PR 생성은 skip — dcness 의 graceful degrade (`/quick` Ste
 5. validator UX_VALIDATION → PASS
 6. architect SYSTEM_DESIGN → SYSTEM_DESIGN_READY
 7. **validator DESIGN_VALIDATION → DESIGN_REVIEW_PASS (신규 step, DCN-CHG-20260430-05)** — PreToolUse 훅 §2.3.5 가 다음 step 직전 검사 발동
-8. architect TASK_DECOMPOSE → READY_FOR_IMPL + impl batch 산출
+8. architect TASK_DECOMPOSE → READY_FOR_IMPL + impl task 산출
 
 **검증 포인트**:
 - Step 6.5 (DESIGN_VALIDATION) 가 명시적으로 등장 (이전 smoke 엔 누락)
@@ -181,9 +181,9 @@ remote 부재라 PR 생성은 skip — dcness 의 graceful degrade (`/quick` Ste
 
 ---
 
-### Skill 5 — `/impl` (per-batch 정식 루프)
+### Skill 5 — `/impl` (per-task 정식 루프)
 
-전제: `/product-plan` 후 산출된 impl batch 1개 선택.
+전제: `/product-plan` 후 산출된 impl task 1개 선택.
 
 **발화**:
 ```
@@ -205,24 +205,24 @@ remote 부재라 PR 생성은 skip — dcness 의 graceful degrade (`/quick` Ste
 - 5 sub-task 가 외부 task 와 별개로 진행 (이전 smoke 의 "단계가 task 화 안 됨" 지적 정합)
 - test-engineer 가 src/ 읽기 X (impl 의 ## 생성/수정 파일 경로만 사용 — catastrophic-prevention)
 
-### Skill 5b — `/impl-loop` (multi-batch chain)
+### Skill 5b — `/impl-loop` (multi-task chain)
 
 **발화**:
 ```
 /impl-loop yolo
 ```
 
-(또는 batch list 명시)
+(또는 task list 명시)
 
 **기대 동작**:
-1. `BATCH_LIST=$(ls docs/milestones/v*/epics/epic-*/impl/*.md | sort)` 으로 자동 추출
-2. 각 batch 마다 inner /impl run 진행
-3. clean → 자동 commit/PR + 다음 batch
+1. `TASK_LIST=$(ls docs/milestones/v*/epics/epic-*/impl/*.md | sort)` 으로 자동 추출
+2. 각 task 마다 inner /impl run 진행
+3. clean → 자동 commit/PR + 다음 task
 4. caveat → 멈춤 + 사용자 위임
 
 **검증 포인트**:
-- 외부 task = N batch entry, 각 batch 의 inner 5 sub-task 도 visible
-- caveat 발생 시 정확한 멈춤 메시지 + 처리한/남은 batch 명시
+- 외부 task = N task entry, 각 task 의 inner 5 sub-task 도 visible
+- caveat 발생 시 정확한 멈춤 메시지 + 처리한/남은 task 명시
 
 ---
 
