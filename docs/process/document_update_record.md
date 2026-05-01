@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260502-03
+- **Date**: 2026-05-02
+- **Change-Type**: hooks
+- **Files Changed**:
+  - `hooks/session-start.sh`
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: session-start inject 절대 경로 버그 수정 — Read 도구는 절대 경로만 허용, CLAUDE_PROJECT_DIR로 동적 절대 경로 구성.
+
 ### DCN-CHG-20260502-02
 - **Date**: 2026-05-02
 - **Change-Type**: harness + docs-only

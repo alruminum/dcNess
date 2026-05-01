@@ -9,6 +9,10 @@
   - `loop-procedure.md` §3.1 강제 문구 추가.
   - 게이트(sentinel 체크) 없음 — AI 신뢰 원칙 적용.
 
+- **🐛 session-start 절대 경로 버그 수정** (`DCN-CHG-20260502-03`):
+  - DCN-01 inject에서 상대 경로 사용 → Read 도구 실패 버그.
+  - `CLAUDE_PROJECT_DIR`로 동적 절대 경로 구성, Python에 `sys.argv[1]`로 전달.
+
 - **🔒 session-start BLOCKING 게이트 강화** (`DCN-CHG-20260502-01`):
   - inject 3원칙 적용: (1) 출력 금지 조건 — Read 완료 전 텍스트 출력 금지. (2) 검증 토큰 — 첫 응답 첫 줄에 `[dcness-guidelines 로드 완료 — §13 감시자 Hat 장착]` 의무. (3) 예외 없음 명시 — "안녕"/"hi"/"hello"/짧은 질문 전부 포함.
   - 배경: 단순 인사에서 inject 무시 확인. "인사 → 짧은 응답" 패턴 매칭이 system-reminder를 후순위로 밀어냄.
