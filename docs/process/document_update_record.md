@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260501-12
+- **Date**: 2026-05-01
+- **Change-Type**: hooks, agent
+- **Files Changed**:
+  - `hooks/session-start.sh` (additionalContext 에 "감시자 Hat" 섹션 추가 — 권고 어휘, 형식 강제 X)
+  - `commands/audit-redo.md` (신규 skill — redo-log + agent-trace 결합 분석, Layer 1/2 후보 제안)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: PR-2 — PR-1 인프라 위에 운영 layer 얹기. SessionStart 메시지에 "builder + 감시자 hat 우선 / sub completion 결과 깐깐 평가 / redo-log 1줄 append 권고 / 루프 재구성 자유" 안내. `/audit-redo` skill 신규 — `(sub, mode)` 별 redo 분포 + REDO 사유 클러스터 + trace 공통 패턴 → Layer 1 (현 프로젝트 1차 prompt 첨가) + Layer 2 (`agents/*.md` 영구 patch) 후보 제안. 룰 추가 X, prompt 풍부화 ✅.
+
 ### DCN-CHG-20260501-11
 - **Date**: 2026-05-01
 - **Change-Type**: harness, hooks, test
