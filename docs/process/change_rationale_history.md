@@ -18,6 +18,43 @@
 
 ## Records
 
+### DCN-CHG-20260501-13
+- **Date**: 2026-05-01
+- **Rationale**:
+  - PR-2 (`-12`) 머지 후 jajang 운영 데이터 1 cycle: trace 178 호출 정상 캡처 ✅, 메인이 trace read + 정확한 sub 평가 ✅, 단 **redo-log 0 entry** ❌. 권고 어휘로는 메인 능동 retrieval 행동 강제 불가 (메인 자기 진단 — "능동 retrieval 의무 응답률 ~20%").
+  - jajang 메인 자기 진단 (사용자가 인용) ROI 표:
+    | 변경 | ROI | 메인 인지 비용 |
+    |---|---|---|
+    | `<usage>` 옆 tool-histogram | 🔥🔥🔥 | 0 (수동 인지) |
+    | finalize-run 자동 redo_log | 🔥🔥 | 0 |
+    | anomaly 조건부 reminder | 🔥🔥 | 낮음 |
+    | blanket 룰 의무화 | 🟡 | 높음 (theater) |
+  - 핵심 진단 — "**룰 추가 < surface 개선**". 메인이 *자연스럽게 보는 surface* 를 신호 풍부하게 만드는 게 룰 박는 것보다 압도적 효과. retrieval 의무는 *룰 강화로 안 풀림, push 로 바꿔야 풀림*.
+  - PostToolUse hook 의 `hookSpecificOutput.additionalContext` 가 *tool result 옆에* system reminder 로 inject 됨 — 공식 docs 확정 ([code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks)). 즉 SessionStart 가 세션 시작 1회 inject 라면 PostToolUse Agent 는 매 sub 완료마다 inject — *정확히 우리가 원하는 push 채널*.
+- **Alternatives**:
+  1. **권고 어휘 강화 (의무 / 필수 escalation)** — 대원칙 §0 self-check 위반 가능 + theater 위험 (메인이 rote PASS 박기). *기각*.
+  2. **블랭킷 매 sub reminder** — 정상 cycle 에서도 의미 없는 reminder 누적 → 신호 가치 dilution. *기각*.
+  3. **`<usage>` 자체 수정 (tool histogram 박힘)** — Claude Code 플랫폼이 박는 메타라 우리가 직접 못 함. *기각*.
+  4. **(채택)** **PostToolUse Agent hook 가 `additionalContext` 로 histogram + anomaly inject + redo_log 자동 append**.
+- **Decision**:
+  - `harness/sub_eval.py` 신규 — anomaly 룰 (tool_uses<2 / 같은 tool 5회+ / Write 약속+0건 prose-only). 보수적 임계 (`MIN_TOOL_USES=2`, `REPEAT_TOOL_THRESHOLD=5`). 운영 데이터 보고 조정.
+  - `agent_trace.histogram(sid, rid, agent_id)` + `last_agent_id` helper — pre phase 만 카운트 (post 짝 중복 회피).
+  - `handle_posttooluse_agent` 확장:
+    - sub agent_id 식별 — payload `agent_id` 우선, fallback `last_agent_id(trace)`
+    - histogram 계산 + anomaly 검출
+    - **stdout JSON** — `{"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "..."}}`
+    - 정상: `[감시자 hook] sub=engineer tool histogram: Bash:2 Read:4 Write:1 (PASS)` (한 줄)
+    - anomaly: `⚠️ anomaly 감지: ... + REDO 권고` (강조 다중 줄)
+    - redo_log 자동 append (`auto:true` 마커)
+  - 모든 실패 silent (`try/except Exception`) — hook 본 흐름 (active_agent clear) 방해 0.
+  - **트레이드오프 §0 self-check**: histogram + anomaly 메시지 = *정보 inject* 으로 작업 순서 / 접근 영역 강제 X. 메인 자율 침해 0. 메인은 inject 메시지 보고 *자기 판단* 으로 REDO 결정 (강제 X). agent 자율 정합.
+- **Follow-Up**:
+  - **(P5 운영 1-2 주)** redo_log 자동 entry 100+ 누적 → anomaly false positive / negative 비율 측정 → 임계값 조정 PR.
+  - **(측정)** 메인이 anomaly 메시지 받고 *실제 redo 결정 비율* — surface push 효과 정량.
+  - **(P6 환류)** anomaly 패턴 검증된 것 → `agents/*.md` system prompt 에 사전 경고 박기.
+  - **(P7 미래)** sub_prompt_hint 확장 — 한국어 키워드 ("작성", "생성") 외 더 정확한 약속 검출.
+  - **(별도 PR)** `/audit-redo` skill 이 `auto:true` entry 와 메인 manual entry 구분 분석 — auto 만으로 패턴 추출 가능한지.
+
 ### DCN-CHG-20260501-12
 - **Date**: 2026-05-01
 - **Rationale**:

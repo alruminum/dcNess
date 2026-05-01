@@ -2,6 +2,15 @@
 
 ## 현재 상태
 
+- **📡 PostToolUse Agent surface push (PR-3)** (`DCN-CHG-20260501-13`):
+  - jajang 운영 1 cycle 발견 — 권고 어휘로 메인 능동 retrieval 행동 강제 불가. trace 는 read 함, redo-log 0 entry. jajang 메인 자기 진단 ROI 표 ("룰 추가 < surface 개선") 그대로 반영.
+  - **PostToolUse Agent hook 가 push 채널로** — sub 종료 후 `additionalContext` 로 메인 다음 turn Agent tool result 옆에 system reminder 자동 inject. 공식 docs 확정 메커니즘.
+  - **`harness/sub_eval.py`** 신규 — 보수적 anomaly 룰 (tool_uses<2 / 같은 tool 5회+ / Write 약속+0건 prose-only). 자동 결정 PASS / REDO_SUSPECT.
+  - **`agent_trace.histogram` + `last_agent_id`** helper 추가.
+  - **`handle_posttooluse_agent`** 확장 — sub trace 집계 → histogram 계산 → anomaly 검출 → stdout JSON inject + redo_log 자동 append (`auto:true` 마커).
+  - 정상 메시지 1줄: `[감시자 hook] sub=engineer tool histogram: Bash:2 Read:4 (PASS)`. anomaly 강조: `⚠️ anomaly 감지: prompt 에 Write/Edit 약속, 실제 0건 (prose-only 의심) + REDO 권고`.
+  - **트레이드오프 §0 정합** — 정보 inject 만, 강제 X. 메인 자율 판단 보존 (룰 침해 0).
+  - 회귀 0 — 신규 21 case (sub_eval 10 + agent_trace 6 + hooks 5), 전체 345 tests OK.
 - **🎩 감시자 Hat + audit-redo skill (PR-2)** (`DCN-CHG-20260501-12`):
   - PR-1 인프라 위에 운영 layer. 사용자 비전 4축 중 (1) 결과 평가 + (4) 학습 진화 (2-layer) 가동.
   - **`hooks/session-start.sh`** additionalContext 에 "감시자 Hat (권고)" 섹션 추가 — builder + 감시자 두 hat / sub completion 깐깐 평가 / `redo-log` 1줄 append / 루프 재구성 자유. 대원칙 §0 정합 — 권고 어휘만, 형식 강제 X.

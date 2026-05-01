@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from harness.agent_trace import TRACE_NAME, append, read_all, tail
+from harness.agent_trace import TRACE_NAME, append, histogram, last_agent_id, read_all, tail
 from harness.session_state import generate_run_id, run_dir
 
 
@@ -111,6 +111,62 @@ class AgentTraceTailTests(unittest.TestCase):
     def test_tail_n_larger(self):
         result = tail(SID, self.rid, 100, base_dir=self.base)
         self.assertEqual(len(result), 4)
+
+
+class HistogramTests(unittest.TestCase):
+    def test_empty_run(self):
+        with TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            rid = generate_run_id()
+            self.assertEqual(histogram(SID, rid, base_dir=base), {})
+
+    def test_pre_only_counted(self):
+        with TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            rid = generate_run_id()
+            # 같은 도구 호출은 pre + post 짝 — 1회로 셈
+            append(SID, rid, {"phase": "pre", "tool": "Read", "agent_id": "a"}, base_dir=base)
+            append(SID, rid, {"phase": "post", "tool": "Read", "agent_id": "a"}, base_dir=base)
+            append(SID, rid, {"phase": "pre", "tool": "Bash", "agent_id": "a"}, base_dir=base)
+            append(SID, rid, {"phase": "post", "tool": "Bash", "agent_id": "a"}, base_dir=base)
+            hist = histogram(SID, rid, base_dir=base)
+            self.assertEqual(hist, {"Read": 1, "Bash": 1})
+
+    def test_filter_by_agent_id(self):
+        with TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            rid = generate_run_id()
+            append(SID, rid, {"phase": "pre", "tool": "Read", "agent_id": "a"}, base_dir=base)
+            append(SID, rid, {"phase": "pre", "tool": "Read", "agent_id": "a"}, base_dir=base)
+            append(SID, rid, {"phase": "pre", "tool": "Bash", "agent_id": "b"}, base_dir=base)
+            self.assertEqual(histogram(SID, rid, agent_id="a", base_dir=base), {"Read": 2})
+            self.assertEqual(histogram(SID, rid, agent_id="b", base_dir=base), {"Bash": 1})
+            self.assertEqual(histogram(SID, rid, base_dir=base), {"Read": 2, "Bash": 1})
+
+
+class LastAgentIdTests(unittest.TestCase):
+    def test_empty_returns_blank(self):
+        with TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            rid = generate_run_id()
+            self.assertEqual(last_agent_id(SID, rid, base_dir=base), "")
+
+    def test_returns_last_non_empty(self):
+        with TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            rid = generate_run_id()
+            append(SID, rid, {"phase": "pre", "agent_id": "first"}, base_dir=base)
+            append(SID, rid, {"phase": "post", "agent_id": "first"}, base_dir=base)
+            append(SID, rid, {"phase": "pre", "agent_id": "last"}, base_dir=base)
+            self.assertEqual(last_agent_id(SID, rid, base_dir=base), "last")
+
+    def test_skips_empty_agent_id(self):
+        with TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            rid = generate_run_id()
+            append(SID, rid, {"phase": "pre", "agent_id": "real"}, base_dir=base)
+            append(SID, rid, {"phase": "post", "agent_id": ""}, base_dir=base)
+            self.assertEqual(last_agent_id(SID, rid, base_dir=base), "real")
 
 
 if __name__ == "__main__":

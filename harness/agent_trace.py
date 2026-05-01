@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional
 from harness.session_state import run_dir
 
 
-__all__ = ["append", "read_all", "tail", "TRACE_NAME"]
+__all__ = ["append", "read_all", "tail", "histogram", "last_agent_id", "TRACE_NAME"]
 
 
 TRACE_NAME = "agent-trace.jsonl"
@@ -106,3 +106,50 @@ def tail(
     if n <= 0:
         return []
     return read_all(session_id, run_id, base_dir=base_dir)[-n:]
+
+
+def histogram(
+    session_id: str,
+    run_id: str,
+    *,
+    agent_id: Optional[str] = None,
+    base_dir: Optional[Path] = None,
+) -> Dict[str, int]:
+    """tool 호출 종류별 카운트 (DCN-CHG-20260501-13).
+
+    pre phase 만 카운트 (post 와 짝이라 중복 회피). agent_id 명시 시 해당 sub 만,
+    None 이면 run 전체.
+
+    Args:
+        agent_id: 특정 sub 의 trace 만 집계. None = run 전체.
+
+    Returns:
+        {"Read": 4, "Bash": 2, "Write": 0, "Edit": 0} 등.
+    """
+    counts: Dict[str, int] = {}
+    for entry in read_all(session_id, run_id, base_dir=base_dir):
+        if entry.get("phase") != "pre":
+            continue
+        if agent_id is not None and entry.get("agent_id") != agent_id:
+            continue
+        tool = entry.get("tool", "") or "?"
+        counts[tool] = counts.get(tool, 0) + 1
+    return counts
+
+
+def last_agent_id(
+    session_id: str,
+    run_id: str,
+    *,
+    base_dir: Optional[Path] = None,
+) -> str:
+    """가장 마지막 entry 의 agent_id (DCN-CHG-20260501-13).
+
+    PostToolUse Agent hook 발화 시점에 직전 sub 식별용. 빈 trace → "".
+    """
+    entries = read_all(session_id, run_id, base_dir=base_dir)
+    for entry in reversed(entries):
+        aid = entry.get("agent_id", "") or ""
+        if aid:
+            return aid
+    return ""

@@ -45,7 +45,9 @@ from harness.hooks import (
     handle_pretooluse_file_op,
     handle_session_start,
 )
+from harness.agent_trace import append as trace_append
 from harness.agent_trace import read_all as read_trace
+from harness.redo_log import read_all as read_redos
 from harness.session_state import (
     read_live,
     read_pid_session,
@@ -883,6 +885,104 @@ class PostToolUseFileOpTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
+
+
+# ---------------------------------------------------------------------------
+# DCN-CHG-20260501-13 — PostToolUse Agent histogram inject + auto redo_log
+# ---------------------------------------------------------------------------
+
+
+class PostToolUseAgentHistogramTests(_PreToolBase):
+    """sub 종료 후 trace 집계 → redo_log 자동 append + stdout 메시지."""
+
+    def _seed_trace(self, agent_id: str, tools: list) -> None:
+        for tool in tools:
+            trace_append(self.sid, self.rid, {
+                "phase": "pre", "agent_id": agent_id, "tool": tool,
+            }, base_dir=self.base)
+            trace_append(self.sid, self.rid, {
+                "phase": "post", "agent_id": agent_id, "tool": tool,
+            }, base_dir=self.base)
+
+    def _post_payload(self, sub_type: str, agent_id: str, prompt: str = "") -> dict:
+        return {
+            "sessionId": self.sid,
+            "agent_id": agent_id,
+            "tool_name": "Agent",
+            "tool_input": {
+                "subagent_type": sub_type,
+                "prompt": prompt,
+            },
+        }
+
+    def test_pass_auto_redo_log(self):
+        self._seed_trace("aid-engineer", ["Read", "Read", "Write", "Bash"])
+        rc = handle_posttooluse_agent(
+            stdin_data=self._post_payload("engineer", "aid-engineer"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        redos = read_redos(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(len(redos), 1)
+        self.assertEqual(redos[0]["decision"], "PASS")
+        self.assertTrue(redos[0]["auto"])
+        self.assertEqual(redos[0]["sub"], "engineer")
+        self.assertEqual(redos[0]["tool_uses"], 4)
+
+    def test_redo_suspect_on_low_calls(self):
+        self._seed_trace("aid-x", ["Read"])
+        rc = handle_posttooluse_agent(
+            stdin_data=self._post_payload("architect", "aid-x"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        redos = read_redos(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(redos[0]["decision"], "REDO_SUSPECT")
+        self.assertTrue(redos[0]["anomalies"])
+
+    def test_redo_suspect_on_prose_only(self):
+        # Read 만 4번 + Write 0건. prompt 에 "create file" 약속.
+        self._seed_trace("aid-arch", ["Read", "Read", "Read", "Read"])
+        rc = handle_posttooluse_agent(
+            stdin_data=self._post_payload(
+                "architect", "aid-arch",
+                prompt="create the impl plan file at docs/foo.md"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        redos = read_redos(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(redos[0]["decision"], "REDO_SUSPECT")
+        self.assertTrue(any("prose-only" in a for a in redos[0]["anomalies"]))
+
+    def test_clears_active_agent_still_works(self):
+        update_live(
+            self.sid, base_dir=self.base,
+            active_agent="engineer", active_mode="IMPL",
+        )
+        self._seed_trace("aid-engineer", ["Read", "Bash"])
+        rc = handle_posttooluse_agent(
+            stdin_data=self._post_payload("engineer", "aid-engineer"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+        self.assertNotIn("active_mode", live)
+
+    def test_no_trace_no_redo_log(self):
+        # trace 비어있으면 자동 redo_log 미추가, hook 본 흐름만.
+        rc = handle_posttooluse_agent(
+            stdin_data=self._post_payload("engineer", "aid-empty"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        self.assertEqual(read_redos(self.sid, self.rid, base_dir=self.base), [])
 
 
 if __name__ == "__main__":
