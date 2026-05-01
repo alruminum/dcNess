@@ -35,6 +35,16 @@ except Exception:
     def price_for(_model: str) -> dict:  # type: ignore
         return {"in": 15.0, "out": 75.0, "cw5": 18.75, "cw1h": 30.0, "cr": 1.50}
 
+# DCN-CHG-20260501-10: must_fix retroactive recompute.
+# .steps.jsonl 의 must_fix 는 *기록 시점* helper regex 산출물 — DCN-CHG-20260501-09
+# 이전 데이터는 단순 단어경계 매칭의 false positive 포함. parser 가 prose_full 보유 시
+# 신규 negation-aware regex 로 재계산. prose_full 부재 시 jsonl fallback.
+try:
+    from harness.session_state import _has_positive_must_fix
+except Exception:
+    def _has_positive_must_fix(_prose: str) -> bool:  # type: ignore
+        return False
+
 # ── 상수 ───────────────────────────────────────────────────────────────
 
 EXPECTED_FINAL_ENUMS = {
@@ -263,13 +273,19 @@ def parse_steps(run_dir: Path) -> list[StepRecord]:
                 prose_full = prose_path.read_text(encoding="utf-8")
             except OSError:
                 prose_full = ""
+        # DCN-CHG-20260501-10: prose_full 보유 시 must_fix 재계산 (negation-aware).
+        # 부재 시 jsonl `must_fix` fallback (legacy / staging missing).
+        if prose_full:
+            must_fix = _has_positive_must_fix(prose_full)
+        else:
+            must_fix = bool(rec.get("must_fix"))
         steps.append(StepRecord(
             idx=idx,
             ts=rec.get("ts", ""),
             agent=agent,
             mode=mode,
             enum=rec.get("enum", ""),
-            must_fix=bool(rec.get("must_fix")),
+            must_fix=must_fix,
             prose_excerpt=rec.get("prose_excerpt", ""),
             prose_full=prose_full,
         ))

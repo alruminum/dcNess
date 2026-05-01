@@ -115,6 +115,41 @@ class ResolveProsePathTests(unittest.TestCase):
             (rd / ".prose-staging" / "architect-LIGHT_PLAN.md").write_text("bare")
             self.assertEqual(_resolve_prose_path(rd, "architect", "LIGHT_PLAN", 0).read_text(), "bare")
 
+    def test_parse_steps_recomputes_must_fix_from_prose(self):
+        """DCN-CHG-20260501-10 — prose_full 있을 때 must_fix 재계산 (retro accuracy).
+
+        legacy `.steps.jsonl` 에 must_fix=True 기록됐어도 prose 가 "MUST FIX 0" 부정문이면
+        parser 가 must_fix=False 로 정정. 자장 run-ef6c2c00 6 false positive retro 회복 시나리오.
+        """
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            rd = _make_run_dir(tmp, "sid1", "rid1", [
+                # legacy regex stale data — must_fix=True 기록됐지만 prose 는 negation
+                {"ts": "2026-04-30T10:00:00", "agent": "pr-reviewer", "mode": None,
+                 "enum": "LGTM", "must_fix": True,
+                 "prose_excerpt": "MUST FIX 0, NICE TO HAVE 6\nLGTM"},
+            ])
+            (rd / ".prose-staging").mkdir()
+            (rd / ".prose-staging" / "pr-reviewer.md").write_text(
+                "MUST FIX 0, NICE TO HAVE 6 (let tree: any / dead code).\nLGTM\n"
+            )
+            steps = parse_steps(rd)
+            self.assertEqual(len(steps), 1)
+            self.assertFalse(steps[0].must_fix, "negation 부정문 → False 재계산")
+
+    def test_parse_steps_must_fix_falls_back_to_jsonl(self):
+        """prose_full 부재 시 jsonl `must_fix` fallback (legacy 데이터 보존)."""
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            rd = _make_run_dir(tmp, "sid1", "rid1", [
+                {"ts": "2026-04-30T10:00:00", "agent": "validator", "mode": "CODE_VALIDATION",
+                 "enum": "FAIL", "must_fix": True, "prose_excerpt": "x"},
+            ])
+            # staging 자체 없음 — fallback 시나리오
+            steps = parse_steps(rd)
+            self.assertEqual(len(steps), 1)
+            self.assertTrue(steps[0].must_fix, "prose 부재 → jsonl fallback")
+
     def test_parse_steps_resolves_per_occurrence(self):
         # End-to-end — parse_steps 가 같은 (agent, mode) 의 N번째 staging 매칭하는지
         with tempfile.TemporaryDirectory() as td:

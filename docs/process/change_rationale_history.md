@@ -18,6 +18,23 @@
 
 ## Records
 
+### DCN-CHG-20260501-10
+- **Date**: 2026-05-01
+- **Rationale**:
+  - DCN-CHG-20260501-09 forward-only 한계 — `_append_step_status` 신규 negation-aware regex 가 *기록 시점* 만 적용. 이전 run 의 `.steps.jsonl` 은 stale must_fix 보유 → retro `/run-review` 시 MUST_FIX_GHOST 동일 false positive 잔재. 사용자 지적 — "회고 정확도".
+  - 본질 — `.steps.jsonl` 의 must_fix 는 helper 시점 산출물 (snapshot). parser 는 prose 직접 보유 (이미 prose_full read). prose 가 진짜 source of truth → parser 측에서 재계산 가능.
+- **Alternatives**:
+  1. *옵션 A — parser parse_steps 재계산* (prose_full 있을 때 `_has_positive_must_fix`, 없으면 jsonl fallback). 5줄 + 테스트 2. **(채택)**.
+  2. *옵션 B — 일회성 migration script* (모든 `.steps.jsonl` walk + 재계산 + atomic rewrite). 큰 blast radius. version data. 단발 효용 < 옵션 A.
+  3. *옵션 C — 현 상태 유지 (forward-only)*. 신규 run 은 깨끗하지만 retro 폴루션. 사용자 명시 거부.
+- **Decision**:
+  - 옵션 A 채택. `harness/run_review.py` 에 `_has_positive_must_fix` import (session_state) + `parse_steps()` 안 prose_full 보유 시 재계산.
+  - **Source 분리 자각** — `finalize-run` (session_state) 은 여전히 jsonl `must_fix` 사용. 단 finalize-run 은 *run 중* 호출 (실시간 fresh, DCN-CHG-20260501-09 신규 regex 적용) → 신규 run 은 정확. retro 분석은 parser 만 → 두 측 의도적 분리.
+  - **자장 run-ef6c2c00 retro 검증** — `parse_steps` + `detect_wastes` → MUST_FIX_GHOST 6 → 0 직접 확인.
+  - **신규 2 테스트** — recompute (legacy stale → False 정정) + fallback (prose 부재 → jsonl 신뢰).
+- **Follow-Up**:
+  - 옵션 B (jsonl migration) 도입 검토 — 사용자 다른 retro analysis 도구가 jsonl 직접 읽으면 source 분리 혼란. 본 task 범위 외, 후속 측정.
+
 ### DCN-CHG-20260501-09
 - **Date**: 2026-05-01
 - **Rationale**:

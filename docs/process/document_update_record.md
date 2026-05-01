@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260501-10
+- **Date**: 2026-05-01
+- **Change-Type**: harness, test
+- **Files Changed**:
+  - `harness/run_review.py` — `_has_positive_must_fix` import (session_state). `parse_steps()` 가 `prose_full` 보유 시 `_has_positive_must_fix(prose_full)` 로 must_fix 재계산. 부재 시 jsonl `must_fix` fallback. retro 분석 정확도 회복.
+  - `tests/test_run_review.py` — `test_parse_steps_recomputes_must_fix_from_prose` (legacy stale jsonl + 신규 prose negation → False 정정) + `test_parse_steps_must_fix_falls_back_to_jsonl` (prose 부재 fallback).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: DCN-CHG-20260501-09 forward-only 한계 보강. 자장 run-ef6c2c00 (이전 PR 머지 *전* 작성된 stale jsonl) 재 review 시 MUST_FIX_GHOST 6 → 0 retro 회복 직접 검증. 290 ran / all PASS.
+
 ### DCN-CHG-20260501-09
 - **Date**: 2026-05-01
 - **Change-Type**: harness, agent, test, ci

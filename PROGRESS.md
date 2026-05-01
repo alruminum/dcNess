@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+- **♻️ /run-review must_fix retro 재계산** (`DCN-CHG-20260501-10`):
+  - DCN-CHG-20260501-09 forward-only 보강 — 이전 run 의 `.steps.jsonl` stale `must_fix` 무력화. parser `parse_steps()` 가 prose_full 보유 시 `_has_positive_must_fix` 재계산, 부재 시 jsonl fallback.
+  - 자장 run-ef6c2c00 (이전 PR 머지 *전* 작성된 stale jsonl) retro 검증 — MUST_FIX_GHOST 6 → 0.
+  - source 분리 자각: finalize-run (session_state) 은 jsonl 사용 (실시간 fresh, 정확). parser (run_review) 는 prose 재계산 (retro 정확). 의도적 분리.
+  - 신규 2 테스트 (recompute / fallback). 288 → 290 ran / all PASS.
 - **🔧 /run-review 4 false positive 동시 fix (자장 run-ef6c2c00)** (`DCN-CHG-20260501-09`):
   - 자장 40 step / $118.73 run /run-review 결과 28 waste finding 검증 — 4 이슈 한 번에 fix.
   - **#1 prose_path bug** (가장 결정적): skill DCN-30-21 부터 `<run_dir>/.prose-staging/<bN.agent-mode>.md` 에 prose 작성, 그러나 parser 가 legacy `<run_dir>/<agent>-<mode>.md` 만 읽음 → 9 engineer step 모두 같은 1 파일 매칭 → MISSING_SELF_VERIFY 9건 false positive. `_resolve_prose_path()` 신규 — Nth occurrence 매칭 + fallback. 자장 실 데이터로 b1~b3 anchor=True 회복 확인.
