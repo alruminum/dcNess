@@ -1007,6 +1007,18 @@ def _cli_begin_step(args: Any) -> int:
             )
 
     print("ok")
+
+    # DCN-CHG-20260502-02: 해당 agent/mode 의 loop insights 있으면 stdout 주입.
+    # 메인 Claude 가 Bash 결과로 읽고 Agent prompt 에 포함시킨다.
+    try:
+        from harness.loop_insights import read as _li_read
+        _insights = _li_read(args.agent, mode or None)
+        if _insights:
+            label = f"{args.agent}/{mode}" if mode else args.agent
+            print(f"\n[INSIGHTS: {label}]\n{_insights}")
+    except Exception:
+        pass  # insights 주입 실패는 silent — 본 step 차단 X
+
     return 0
 
 
@@ -1397,6 +1409,25 @@ def _cli_finalize_run(args: Any) -> int:
                 file=sys.stderr,
             )
 
+    # DCN-CHG-20260502-02: --accumulate — redo-log + WASTE/GOOD findings →
+    # .claude/loop-insights/<agent>[-<mode>].md 에 누적 (프로젝트 레벨 학습).
+    if getattr(args, "accumulate", False):
+        print()
+        print("--- loop-insights accumulate ---")
+        try:
+            from harness.loop_insights import append_from_run as _li_accumulate
+            modified = _li_accumulate(sid, rid, cwd=Path.cwd())
+            if modified:
+                for p in modified:
+                    print(f"[loop-insights] updated: {p}")
+            else:
+                print("[loop-insights] 누적 항목 없음 (redo 0건 + WASTE 0건)")
+        except Exception as exc:
+            print(
+                f"[session_state] ACCUMULATE_FAIL — {type(exc).__name__}: {exc}.",
+                file=sys.stderr,
+            )
+
     return 0
 
 
@@ -1558,6 +1589,11 @@ def _build_arg_parser() -> Any:
         "--auto-review",
         action="store_true",
         help="finalize 직후 in-process 로 /run-review 호출 — STATUS JSON 뒤에 chained (DCN-30-29)",
+    )
+    p_fr.add_argument(
+        "--accumulate",
+        action="store_true",
+        help="redo-log + WASTE/GOOD → .claude/loop-insights/<agent>.md 누적 (DCN-CHG-20260502-02)",
     )
     p_fr.set_defaults(func=_cli_finalize_run)
 

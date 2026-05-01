@@ -59,6 +59,8 @@ ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>")
 TaskUpdate("<task>", completed)
 ```
 
+begin-step stdout 에 `[INSIGHTS: <agent>/<mode>]` 섹션이 있으면 Agent prompt 끝에 그대로 포함시킨다 (DCN-CHG-20260502-02). 해당 agent 의 과거 루프 학습 내용 — "하지 말 것" / "잘 됐던 것" — 이 프로젝트 레벨로 누적된 것.
+
 메인이 prose를 직접 Write 할 필요 없음 — PostToolUse Agent hook 이 sub 종료 시 `tool_response.text` 에서 prose 를 자동으로 `<run_dir>/<agent>[-<MODE>].md` 에 저장하고 `live.json.current_step.prose_file` 에 경로 기록 (DCN-CHG-20260501-15). `end-step` 이 이 경로를 자동 읽는다.
 
 ### 3.2 prose 파일 자동 명명 규칙 (DCN-CHG-20260501-15)

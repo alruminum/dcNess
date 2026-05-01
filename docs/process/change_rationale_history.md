@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260502-02
+- **Date**: 2026-05-02
+- **Rationale**: 루프가 끝날 때 redo-log + WASTE/GOOD findings를 agent별로 누적하고 다음 루프에서 begin-step stdout으로 주입. sentinel/gate 없이 AI 신뢰 원칙 적용.
+- **Alternatives considered**:
+  - sentinel 게이트 (catastrophic-gate 확장) — "자연어끼리 비교라 의미 없음" 기각. 형식 검증은 메인이 문자열만 박고 내용은 생략 가능.
+  - 단일 파일 누적 — agent별 파일 분리로 begin-step 에서 해당 agent 것만 추출 가능.
+- **Decision**: 누적(finalize-run --accumulate) + begin-step stdout 주입 2군데만. 게이트 없음.
+- **Follow-Up**: Layer 2 — agent definition 파일이 스스로 insights 읽는 방향 (별도 Task).
+
 ### DCN-CHG-20260502-01
 - **Date**: 2026-05-02
 - **Rationale**: 기존 inject("지금 즉시 read")가 단순 인사("안녕") 에 대해 무시됨. LLM이 "인사 → 짧은 응답" 패턴으로 즉시 분류, system-reminder를 "나중에 작업할 때 적용" 대상으로 후순위 처리. inject가 읽혔는지 검증할 방법도 없음.
