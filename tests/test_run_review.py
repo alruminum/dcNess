@@ -14,7 +14,6 @@ from harness.run_review import (  # noqa: E402
     RunReport, StepRecord, build_report, detect_goods, detect_wastes,
     parse_steps, render_report, list_runs, find_run_dir,
     _normalize_agent_type, assign_invocations_to_steps,
-    _resolve_prose_path,
     EXPECTED_AGENT_BUDGETS,
 )
 
@@ -62,113 +61,80 @@ class ParseStepsTests(unittest.TestCase):
     def test_loads_full_prose(self):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
+            prose_path = tmp / "architect-SYSTEM_DESIGN.md"
+            prose_path.write_text("## Domain Model\nEntity X\n")
             rd = _make_run_dir(tmp, "sid1", "rid1", [
                 {"ts": "2026-04-30T10:00:00", "agent": "architect", "mode": "SYSTEM_DESIGN",
-                 "enum": "SYSTEM_DESIGN_READY", "must_fix": False, "prose_excerpt": "x"},
-            ], prose_files={"architect-SYSTEM_DESIGN.md": "## Domain Model\nEntity X\n"})
+                 "enum": "SYSTEM_DESIGN_READY", "must_fix": False, "prose_excerpt": "x",
+                 "prose_file": str(prose_path)},
+            ])
             steps = parse_steps(rd)
             self.assertIn("Domain Model", steps[0].prose_full)
 
 
-class ResolveProsePathTests(unittest.TestCase):
-    """DCN-CHG-20260501-09 — staging path resolution (.prose-staging Nth occurrence).
-
-    자장 run-ef6c2c00 회귀 — parser 가 legacy `<run_dir>/<agent>-<mode>.md` 만
-    읽어 9 engineer step 모두 같은 1 파일 매칭 → MISSING_SELF_VERIFY 9건
-    false positive.
-    """
-
-    def _setup(self, tmp: Path) -> Path:
-        rd = tmp / "run"
-        (rd / ".prose-staging").mkdir(parents=True)
-        return rd
-
-    def test_picks_nth_occurrence_in_staging(self):
-        with tempfile.TemporaryDirectory() as td:
-            rd = self._setup(Path(td))
-            (rd / ".prose-staging" / "b1.engineer-IMPL.md").write_text("b1 content")
-            (rd / ".prose-staging" / "b2.engineer-IMPL.md").write_text("b2 content")
-            (rd / ".prose-staging" / "b3.engineer-IMPL.md").write_text("b3 content")
-            self.assertEqual(_resolve_prose_path(rd, "engineer", "IMPL", 0).read_text(), "b1 content")
-            self.assertEqual(_resolve_prose_path(rd, "engineer", "IMPL", 1).read_text(), "b2 content")
-            self.assertEqual(_resolve_prose_path(rd, "engineer", "IMPL", 2).read_text(), "b3 content")
-
-    def test_falls_back_to_legacy_run_dir(self):
-        with tempfile.TemporaryDirectory() as td:
-            rd = self._setup(Path(td))
-            (rd / "engineer-IMPL.md").write_text("legacy content")
-            # staging 빈 → fallback
-            self.assertEqual(_resolve_prose_path(rd, "engineer", "IMPL", 0).read_text(), "legacy content")
-
-    def test_no_mode_uses_agent_only(self):
-        with tempfile.TemporaryDirectory() as td:
-            rd = self._setup(Path(td))
-            (rd / ".prose-staging" / "b1.pr-reviewer.md").write_text("pr1")
-            (rd / ".prose-staging" / "b2.pr-reviewer.md").write_text("pr2")
-            self.assertEqual(_resolve_prose_path(rd, "pr-reviewer", None, 0).read_text(), "pr1")
-            self.assertEqual(_resolve_prose_path(rd, "pr-reviewer", None, 1).read_text(), "pr2")
-
-    def test_bare_suffix_also_matches(self):
-        # 단발 skill 컨벤션 — bN prefix 없는 `<agent>-<mode>.md`
-        with tempfile.TemporaryDirectory() as td:
-            rd = self._setup(Path(td))
-            (rd / ".prose-staging" / "architect-LIGHT_PLAN.md").write_text("bare")
-            self.assertEqual(_resolve_prose_path(rd, "architect", "LIGHT_PLAN", 0).read_text(), "bare")
+class ProseFileTests(unittest.TestCase):
+    """prose_file 필드 기반 prose 로딩 테스트."""
 
     def test_parse_steps_recomputes_must_fix_from_prose(self):
-        """DCN-CHG-20260501-10 — prose_full 있을 때 must_fix 재계산 (retro accuracy).
-
-        legacy `.steps.jsonl` 에 must_fix=True 기록됐어도 prose 가 "MUST FIX 0" 부정문이면
-        parser 가 must_fix=False 로 정정. 자장 run-ef6c2c00 6 false positive retro 회복 시나리오.
-        """
+        """prose_file 있을 때 must_fix 재계산 (negation-aware retro accuracy)."""
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
+            prose_path = tmp / "pr-reviewer.md"
+            prose_path.write_text("MUST FIX 0, NICE TO HAVE 6 (let tree: any / dead code).\nLGTM\n")
             rd = _make_run_dir(tmp, "sid1", "rid1", [
-                # legacy regex stale data — must_fix=True 기록됐지만 prose 는 negation
                 {"ts": "2026-04-30T10:00:00", "agent": "pr-reviewer", "mode": None,
                  "enum": "LGTM", "must_fix": True,
-                 "prose_excerpt": "MUST FIX 0, NICE TO HAVE 6\nLGTM"},
+                 "prose_excerpt": "MUST FIX 0, NICE TO HAVE 6\nLGTM",
+                 "prose_file": str(prose_path)},
             ])
-            (rd / ".prose-staging").mkdir()
-            (rd / ".prose-staging" / "pr-reviewer.md").write_text(
-                "MUST FIX 0, NICE TO HAVE 6 (let tree: any / dead code).\nLGTM\n"
-            )
             steps = parse_steps(rd)
             self.assertEqual(len(steps), 1)
             self.assertFalse(steps[0].must_fix, "negation 부정문 → False 재계산")
 
     def test_parse_steps_must_fix_falls_back_to_jsonl(self):
-        """prose_full 부재 시 jsonl `must_fix` fallback (legacy 데이터 보존)."""
+        """prose_file 없을 때 jsonl must_fix fallback."""
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
             rd = _make_run_dir(tmp, "sid1", "rid1", [
                 {"ts": "2026-04-30T10:00:00", "agent": "validator", "mode": "CODE_VALIDATION",
                  "enum": "FAIL", "must_fix": True, "prose_excerpt": "x"},
             ])
-            # staging 자체 없음 — fallback 시나리오
             steps = parse_steps(rd)
             self.assertEqual(len(steps), 1)
             self.assertTrue(steps[0].must_fix, "prose 부재 → jsonl fallback")
 
-    def test_parse_steps_resolves_per_occurrence(self):
-        # End-to-end — parse_steps 가 같은 (agent, mode) 의 N번째 staging 매칭하는지
+    def test_parse_steps_resolves_per_occurrence_via_prose_file(self):
+        """같은 (agent, mode) 반복 시 prose_file 로 각 step 독립 파일 읽기."""
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
+            p1 = tmp / "engineer-IMPL.md"
+            p2 = tmp / "engineer-IMPL-1.md"
+            p1.write_text("first batch\n## 자가 검증\n- jest PASS")
+            p2.write_text("second batch\nno anchor")
             rd = _make_run_dir(tmp, "sid1", "rid1", [
                 {"ts": "2026-04-30T10:00:00", "agent": "engineer", "mode": "IMPL",
-                 "enum": "IMPL_DONE", "must_fix": False, "prose_excerpt": "x"},
+                 "enum": "IMPL_DONE", "must_fix": False, "prose_excerpt": "x",
+                 "prose_file": str(p1)},
                 {"ts": "2026-04-30T10:05:00", "agent": "engineer", "mode": "IMPL",
-                 "enum": "IMPL_DONE", "must_fix": False, "prose_excerpt": "x"},
+                 "enum": "IMPL_DONE", "must_fix": False, "prose_excerpt": "x",
+                 "prose_file": str(p2)},
             ])
-            (rd / ".prose-staging").mkdir()
-            (rd / ".prose-staging" / "b1.engineer-IMPL.md").write_text("first batch\n## 자가 검증\n- jest PASS")
-            (rd / ".prose-staging" / "b2.engineer-IMPL.md").write_text("second batch\nno anchor")
             steps = parse_steps(rd)
             self.assertEqual(len(steps), 2)
             self.assertIn("first batch", steps[0].prose_full)
             self.assertIn("second batch", steps[1].prose_full)
-            # 회귀 검증 — 두 step 이 *다른* 파일을 보는지
             self.assertNotEqual(steps[0].prose_full, steps[1].prose_full)
+
+    def test_parse_steps_legacy_fallback_outer_file(self):
+        """prose_file 없는 레거시 record → outer <agent>[-mode].md fallback."""
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            rd = _make_run_dir(tmp, "sid1", "rid1", [
+                {"ts": "2026-04-30T10:00:00", "agent": "architect", "mode": "SYSTEM_DESIGN",
+                 "enum": "SYSTEM_DESIGN_READY", "must_fix": False, "prose_excerpt": "x"},
+            ], prose_files={"architect-SYSTEM_DESIGN.md": "## Domain Model\nlegacy\n"})
+            steps = parse_steps(rd)
+            self.assertIn("legacy", steps[0].prose_full)
 
 
 class WasteDetectionTests(unittest.TestCase):

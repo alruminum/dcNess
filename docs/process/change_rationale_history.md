@@ -18,6 +18,13 @@
 
 ## Records
 
+### DCN-CHG-20260501-14
+- **Date**: 2026-05-01
+- **Rationale**: `.prose-staging/` 파일명 컨벤션 불일치로 `_resolve_prose_path()` 패턴 매칭이 실제 파일명과 안 맞음 → 같은 (agent, mode) 반복 시 두번째 end-step이 outer prose를 덮어씌워 `run-review`가 첫번째 결과를 영구 분실.
+- **Alternatives**: (1) `_resolve_prose_path()` 파일명 패턴 수정 — 컨벤션이 skill마다 달라서 유지보수 지속 필요, 근본 해결 아님. (2) `.steps.jsonl`에 `prose_file` 절대 경로 저장 — `end-step`이 쓴 경로를 그대로 기록하므로 패턴 매칭 불필요.
+- **Decision**: (2) 채택. `signal_io.write_prose(occurrence=N)` — 같은 (agent, mode) N번째 호출 시 `<agent>[-mode]-N.md`로 충돌 방지. `_append_step_status()`가 `prose_file` 필드 추가. `parse_steps()`는 `prose_file` 직접 read, legacy fallback 보존. `_resolve_prose_path()` 삭제.
+- **Follow-Up**: `.prose-staging/` 디렉토리는 skill 임시 수집용으로만 남음 (parse_steps가 직접 읽지 않음). 향후 `.prose-staging/` 생성 자체 제거 가능하나 현재 skill 변경 없이 방치해도 무해.
+
 ### DCN-CHG-20260501-13
 - **Date**: 2026-05-01
 - **Rationale**:

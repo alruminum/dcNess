@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260501-14
+- **Date**: 2026-05-01
+- **Change-Type**: harness, test
+- **Files Changed**:
+  - `harness/signal_io.py`
+  - `harness/session_state.py`
+  - `harness/run_review.py`
+  - `tests/test_run_review.py`
+  - `tests/test_session_state.py`
+- **Summary**: prose_file 필드로 `.steps.jsonl` ↔ prose 직접 연결 — `_resolve_prose_path()` 삭제
+
 ### DCN-CHG-20260501-13
 - **Date**: 2026-05-01
 - **Change-Type**: harness, hooks, test

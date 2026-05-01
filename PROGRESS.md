@@ -2,6 +2,13 @@
 
 ## 현재 상태
 
+- **🔗 prose_file 직결 + `_resolve_prose_path()` 삭제** (`DCN-CHG-20260501-14`):
+  - `.prose-staging/` 파일명 패턴 불일치로 같은 (agent, mode) 반복 시 두번째가 outer prose 덮어씌워 run-review 분실 버그 수정.
+  - `write_prose(occurrence=N)` 추가 — N>0 시 `<agent>[-mode]-N.md` 고유 파일명.
+  - `_append_step_status(prose_path)` → `.steps.jsonl`에 `prose_file` 절대 경로 저장.
+  - `parse_steps()`: `prose_file` 직접 read, legacy fallback 보존. `_resolve_prose_path()` 삭제.
+  - 342 tests OK.
+
 - **📡 PostToolUse Agent surface push (PR-3)** (`DCN-CHG-20260501-13`):
   - jajang 운영 1 cycle 발견 — 권고 어휘로 메인 능동 retrieval 행동 강제 불가. trace 는 read 함, redo-log 0 entry. jajang 메인 자기 진단 ROI 표 ("룰 추가 < surface 개선") 그대로 반영.
   - **PostToolUse Agent hook 가 push 채널로** — sub 종료 후 `additionalContext` 로 메인 다음 turn Agent tool result 옆에 system reminder 자동 inject. 공식 docs 확정 메커니즘.
