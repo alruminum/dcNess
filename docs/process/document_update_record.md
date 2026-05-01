@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260501-15
+- **Date**: 2026-05-01
+- **Change-Type**: harness, test
+- **Files Changed**:
+  - `harness/hooks.py`
+  - `harness/session_state.py`
+  - `tests/test_hooks.py`
+  - `tests/test_session_state.py`
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: PostToolUse hook prose auto-staging — tool_response.text → run_dir 자동 저장, end-step --prose-file optional
+
 ### DCN-CHG-20260501-14
 - **Date**: 2026-05-01
 - **Change-Type**: harness, test

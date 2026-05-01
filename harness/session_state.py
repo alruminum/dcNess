@@ -1125,11 +1125,6 @@ def _cli_end_step(args: Any) -> int:
         print("[session_state] sid/rid 미해결", file=sys.stderr)
         return 1
 
-    prose = Path(args.prose_file).read_text(encoding="utf-8")
-    if not prose.strip():
-        print("[session_state] empty prose", file=sys.stderr)
-        return 1
-
     mode = args.mode if args.mode else None
 
     # DCN-CHG-20260430-25: drift detector — current_step 와 args.agent 불일치 시 WARN.
@@ -1167,10 +1162,35 @@ def _cli_end_step(args: Any) -> int:
         # drift detector 자체 실패는 silent — end-step 동작 우선
         pass
 
-    # prose 저장 — occurrence 계산으로 같은 (agent, mode) 반복 시 파일 충돌 방지
-    base = session_dir(sid) / "runs"
-    occ = _count_step_occurrences(sid, rid, args.agent, mode)
-    prose_path = write_prose(args.agent, rid, prose, mode=mode, base_dir=base, occurrence=occ)
+    # DCN-CHG-20260501-15: prose 로딩 — --prose-file 제공 시 legacy 경로, 없으면 hook auto-stage.
+    if args.prose_file:
+        prose = Path(args.prose_file).read_text(encoding="utf-8")
+        if not prose.strip():
+            print("[session_state] empty prose", file=sys.stderr)
+            return 1
+        base = session_dir(sid) / "runs"
+        occ = _count_step_occurrences(sid, rid, args.agent, mode)
+        prose_path = write_prose(args.agent, rid, prose, mode=mode, base_dir=base, occurrence=occ)
+    else:
+        # hook auto-staged prose — live.json.current_step.prose_file 에서 경로 읽기
+        try:
+            _live = read_live(sid)
+            _slot = _live.get("active_runs", {}).get(rid, {}) if _live else {}
+            _cur = _slot.get("current_step") if isinstance(_slot, dict) else None
+            _staged = _cur.get("prose_file") if isinstance(_cur, dict) else None
+        except Exception:
+            _staged = None
+        if not _staged:
+            print("[session_state] --prose-file 미제공 + hook staging 없음", file=sys.stderr)
+            return 1
+        prose_path = Path(_staged)
+        if not prose_path.exists():
+            print(f"[session_state] hook staged prose_file 없음: {prose_path}", file=sys.stderr)
+            return 1
+        prose = prose_path.read_text(encoding="utf-8")
+        if not prose.strip():
+            print("[session_state] empty prose (hook staged)", file=sys.stderr)
+            return 1
 
     allowed = [s.strip() for s in args.allowed_enums.split(",") if s.strip()]
     if not allowed:
@@ -1244,9 +1264,16 @@ def _steps_jsonl_path(sid: str, rid: str, *, base_dir: Optional[Path] = None) ->
     return run_dir(sid, rid, base_dir=base_dir) / ".steps.jsonl"
 
 
-def _count_step_occurrences(sid: str, rid: str, agent: str, mode: Optional[str]) -> int:
+def _count_step_occurrences(
+    sid: str,
+    rid: str,
+    agent: str,
+    mode: Optional[str],
+    *,
+    base_dir: Optional[Path] = None,
+) -> int:
     """`.steps.jsonl` 에 기록된 (agent, mode) 쌍의 수 반환 (write_prose occurrence 계산용)."""
-    target = _steps_jsonl_path(sid, rid)
+    target = _steps_jsonl_path(sid, rid, base_dir=base_dir)
     if not target.exists():
         return 0
     count = 0
@@ -1496,7 +1523,10 @@ def _build_arg_parser() -> Any:
     p_es.add_argument("agent")
     p_es.add_argument("mode", nargs="?", default="")
     p_es.add_argument("--allowed-enums", required=True, help="comma-separated")
-    p_es.add_argument("--prose-file", required=True, help="prose 본문 파일 경로")
+    p_es.add_argument(
+        "--prose-file", required=False, default=None,
+        help="prose 본문 파일 경로 (미제공 시 hook auto-stage 경로 사용)",
+    )
     p_es.set_defaults(func=_cli_end_step)
 
     p_rd = sub.add_parser("run-dir", help="현재 active run 의 run_dir 절대 경로 (DCN-30-21)")

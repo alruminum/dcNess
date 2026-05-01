@@ -27,6 +27,7 @@ from harness.session_state import (
     read_live,
     read_pid_current_run,
     run_dir,
+    session_dir,
     update_live,
     valid_cc_pid,
     valid_session_id,
@@ -475,6 +476,46 @@ def handle_posttooluse_agent(
         sub_type = str(tool_input.get("subagent_type", "") or "")
 
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
+
+    # prose auto-staging — tool_response.text → run_dir 에 저장, current_step.prose_file 기록
+    if rid:
+        try:
+            raw_response = stdin_data.get("tool_response") or {}
+            prose_text = ""
+            if isinstance(raw_response, dict):
+                prose_text = str(raw_response.get("text", "") or "")
+            elif isinstance(raw_response, str):
+                prose_text = raw_response
+
+            if prose_text.strip():
+                live_data = read_live(sid, base_dir=base_dir) or {}
+                active = live_data.get("active_runs", {}) or {}
+                slot = active.get(rid, {}) if isinstance(active, dict) else {}
+                cur_step = slot.get("current_step") if isinstance(slot, dict) else None
+
+                if isinstance(cur_step, dict):
+                    step_agent = cur_step.get("agent")
+                    step_mode = cur_step.get("mode") or None
+
+                    if step_agent:
+                        from harness.signal_io import write_prose as _write_prose
+                        from harness.session_state import _count_step_occurrences as _count_occ
+
+                        base = session_dir(sid, base_dir=base_dir) / "runs"
+                        occ = _count_occ(sid, rid, step_agent, step_mode, base_dir=base_dir)
+                        prose_path = _write_prose(
+                            step_agent, rid, prose_text,
+                            mode=step_mode, base_dir=base, occurrence=occ,
+                        )
+                        cur_step = dict(cur_step)
+                        cur_step["prose_file"] = str(prose_path)
+                        slot = dict(slot)
+                        slot["current_step"] = cur_step
+                        active = dict(active)
+                        active[rid] = slot
+                        update_live(sid, base_dir=base_dir, active_runs=active)
+        except Exception:  # noqa: BLE001 — silent, hook 본 흐름 방해 X
+            pass
 
     # rid 활성 시만 histogram + redo_log
     eval_result = None
