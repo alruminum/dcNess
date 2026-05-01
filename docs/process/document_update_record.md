@@ -20,6 +20,14 @@
 
 ## Records
 
+### DCN-CHG-20260501-16
+- **Date**: 2026-05-01
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/loop-procedure.md`
+  - `docs/process/document_update_record.md`
+- **Summary**: loop-procedure §3.1~§3.2 — prose auto-staging 반영, 메인 Write 지시 제거
+
 ### DCN-CHG-20260501-15
 - **Date**: 2026-05-01
 - **Change-Type**: harness, test

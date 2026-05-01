@@ -1,7 +1,7 @@
 # Loop Execution Procedure (메인 Claude 컨베이어 mechanics)
 
 > **Status**: ACTIVE
-> **Origin**: `DCN-CHG-20260430-27` (신설), `DCN-CHG-20260430-30` (loop-catalog.md split)
+> **Origin**: `DCN-CHG-20260430-27` (신설), `DCN-CHG-20260430-30` (loop-catalog.md split), `DCN-CHG-20260501-16` (prose auto-staging 반영)
 > **Scope**: dcness 8 loop 의 *공통 실행 절차* SSOT — Step 0~8 mechanics. 메인 Claude 가 skill 트리거 또는 직접 발화로 루프 시작 시 본 문서를 컨베이어 매뉴얼처럼 따른다.
 > **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) = [`loop-catalog.md`](loop-catalog.md). 시퀀스 mini-graph + 결정표 = [`orchestration.md`](orchestration.md) §2~§7. cross-cutting 룰 (echo / yolo / worktree / AMBIGUOUS) = [`process/dcness-guidelines.md`](process/dcness-guidelines.md).
 
@@ -54,26 +54,21 @@ TaskCreate("<agent>: <mode 또는 짧은 설명>")
 TaskUpdate("<task>", in_progress)
 "$HELPER" begin-step <agent> [<MODE>]
 Agent(subagent_type="<agent>", mode="<MODE>", description="...")
-RUN_DIR=$("$HELPER" run-dir)
-mkdir -p "$RUN_DIR/.prose-staging"
-PROSE_PATH="$RUN_DIR/.prose-staging/<step>.md"
-# 메인이 sub-agent prose 본문을 위 경로에 Write
-ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>" --prose-file "$PROSE_PATH")
+ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>")
 # guidelines §1 의무 echo (5~12 줄)
 TaskUpdate("<task>", completed)
 ```
 
-### 3.2 prose-staging 컨벤션 (DCN-30-21)
+메인이 prose를 직접 Write 할 필요 없음 — PostToolUse Agent hook 이 sub 종료 시 `tool_response.text` 에서 prose 를 자동으로 `<run_dir>/<agent>[-<MODE>].md` 에 저장하고 `live.json.current_step.prose_file` 에 경로 기록 (DCN-CHG-20260501-15). `end-step` 이 이 경로를 자동 읽는다.
 
-`/tmp/dcness-*.md` 절대 사용 금지 (멀티세션 race). `<RUN_DIR>/.prose-staging/<step>.md` 만 유효.
+### 3.2 prose 파일 자동 명명 규칙 (DCN-CHG-20260501-15)
 
-`<step>` 명명:
-- 단순: `<agent>` (예: `qa.md`)
-- mode 보유: `<agent>-<MODE>` (예: `architect-MODULE_PLAN.md`)
-- POLISH 사이클 (cycle ≤ 2): `engineer-POLISH-1`, `engineer-POLISH-2`
-- 재호출 (TESTS_FAIL → engineer attempt 1+): `engineer-IMPL-RETRY-1`, `engineer-IMPL-RETRY-2`
+PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
+- 단순: `<run_dir>/<agent>.md`
+- mode 보유: `<run_dir>/<agent>-<MODE>.md`
+- 같은 (agent, mode) N번째 반복: `<run_dir>/<agent>[-<MODE>]-N.md`
 
-각각 별도 begin/end-step 1쌍 (DCN-30-25 안전망).
+각각 별도 begin/end-step 1쌍 필수 (DCN-30-25 안전망). `--prose-file` 명시적 전달은 legacy/override 용도로 여전히 허용.
 
 ### 3.3 ENUM 분기
 
