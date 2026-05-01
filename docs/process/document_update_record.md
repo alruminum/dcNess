@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260502-01
+- **Date**: 2026-05-02
+- **Change-Type**: hooks
+- **Files Changed**:
+  - `hooks/session-start.sh`
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: session-start inject BLOCKING 게이트 강화 — 단순 지시 → 출력 금지 조건 + 검증 토큰 + 예외 없음 명시 3원칙.
+
 ### DCN-CHG-20260501-18
 - **Date**: 2026-05-01
 - **Change-Type**: hooks + docs-only
