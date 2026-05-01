@@ -20,6 +20,22 @@
 
 ## Records
 
+### DCN-CHG-20260501-17
+- **Date**: 2026-05-01
+- **Change-Type**: hooks + docs-only
+- **Files Changed**:
+  - `hooks/session-start.sh`
+  - `docs/process/dcness-guidelines.md`
+  - `commands/impl.md`
+  - `commands/quick.md`
+  - `commands/product-plan.md`
+  - `commands/impl-loop.md`
+  - `commands/qa.md`
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: session-start inject lazy-load 최적화 — 5 docs 즉시 read → dcness-guidelines.md 만 즉시, 나머지 4개 skill 진입 시 lazy. 감시자 Hat dcness-guidelines.md §13으로 이전.
+
 ### DCN-CHG-20260501-16
 - **Date**: 2026-05-01
 - **Change-Type**: docs-only

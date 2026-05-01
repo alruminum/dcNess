@@ -28,5 +28,8 @@ description: 작은 버그픽스·코드 정리를 한 줄로 받아 light path 
 - `KNOWN_ISSUE` → 종료
 - `SCOPE_ESCALATE` → 사용자 위임 (큰 변경 / 다중 모듈)
 
+## 사전 read (skill 진입 즉시)
+`docs/loop-procedure.md` + `docs/loop-catalog.md` §5 + `docs/handoff-matrix.md` read 후 진행.
+
 ## 절차
 [`docs/loop-procedure.md`](../docs/loop-procedure.md) §1~§6 + [`docs/loop-catalog.md`](../docs/loop-catalog.md) §5 (`quick-bugfix-loop` 풀스펙) 따름. 본 파일은 input 명세 + 라우팅만.

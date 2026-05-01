@@ -18,6 +18,13 @@
 
 ## Records
 
+### DCN-CHG-20260501-17
+- **Date**: 2026-05-01
+- **Rationale**: dcness 활성 프로젝트 세션 시작 시 5개 SSOT 문서(61KB, ~15K 토큰)가 즉시 read 강제됨. session-start inject 가 "5개 전부 즉시 read 의무"를 선언하고, dcness-guidelines.md §0이 loop-procedure + loop-catalog 추가 즉시 read 강제. 결과: skill 미호출 세션에서도 61KB 전부 컨텍스트 적재 → Messages 32.5k tokens의 주요 원인.
+- **Alternatives**: (1) inject 제거 — 강제력 소실, 메인이 규칙 미인지 상태로 작업 시작. (2) 5개 doc 내용을 inject에 직접 포함 — additionalContext 10K cap 초과, 더 악화. (3) 문서 내용 압축 — doc 품질 하락, 실제 필요 정보 소실. (4) 현재 채택안: 1개(dcness-guidelines.md)만 즉시, 나머지 4개는 skill 파일의 `## 사전 read` 섹션으로 lazy.
+- **Decision**: (4) 채택. dcness-guidelines.md는 항상 필요(행동 규칙 SSOT). loop-procedure/loop-catalog/orchestration/handoff-matrix는 루프 실행 시에만 필요 — skill 파일에 명시적 사전 read 지시 추가. 감시자 Hat(inject 15줄)은 dcness-guidelines.md §13으로 이전, inject에 1줄 포인터만.
+- **Follow-Up**: skill 미호출 세션 ~13K 토큰 절감, skill 호출 세션 ~5-8K 토큰 절감. doc-sync gate 통과 확인. 실제 운영에서 "사전 read 누락" 패턴 발생 시 skill 파일 강화 검토.
+
 ### DCN-CHG-20260501-15
 - **Date**: 2026-05-01
 - **Rationale**: 메인 Claude 가 sub-agent 완료 후 prose 를 `Write/Bash heredoc` 으로 staging 하는 작업은 kabuki — PostToolUse hook stdin 에 `tool_response.text` 로 이미 prose 전체가 있는데 같은 바이트를 메인이 다시 disk 에 옮기는 구조. 매 step 마다 Write/Bash 1~2 회 + Write hook block 회피용 heredoc 사용이 반복.

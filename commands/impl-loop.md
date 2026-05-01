@@ -28,6 +28,9 @@ inner = `impl-batch-loop` (catalog §3) per batch.
 - caveat → 멈춤 + 사용자 위임 (재호출 또는 수동 처리)
 - 전체 완료 → 보고 (처리 N/N + 각 PR URL)
 
+## 사전 read (skill 진입 즉시)
+`docs/loop-procedure.md` + `docs/loop-catalog.md` §3 + §10 + `docs/handoff-matrix.md` read 후 진행.
+
 ## 절차
 [`docs/loop-procedure.md`](../docs/loop-procedure.md) §1~§6 + [`docs/loop-catalog.md`](../docs/loop-catalog.md) §3 (inner) + §10 (chain 정책) 따름.
 

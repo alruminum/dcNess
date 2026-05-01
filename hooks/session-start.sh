@@ -26,62 +26,39 @@ CC_PID=$PPID
 # Python 으로 stdin 처리 + 핸들러 호출 (silent — stdout 안 씀)
 python3 -m harness.hooks session-start --cc-pid "$CC_PID"
 
-# DCN-CHG-20260430-26 (신설), DCN-CHG-20260430-40 (schema fix + 압축):
+# DCN-CHG-20260430-26 (신설), DCN-CHG-20260430-40 (schema fix + 압축),
+# DCN-CHG-20260501-17 (lazy-load 최적화):
 # dcness 활성 프로젝트 매 세션 SessionStart 시 SSOT read 의무 directive 를
 # system-reminder 로 inject.
 #
-# 본문 inject 가 아닌 *지시* 만 (~1K) — CC additionalContext 10K cap 회피 +
-# CLAUDE.md 와 동일 강제력 ("지금 즉시 read 의무"). 메인 Claude 가 read 후
-# 컨텍스트 안에 SSOT 본문 자체 적재.
+# 본문 inject 가 아닌 *지시* 만 — CC additionalContext 10K cap 회피 +
+# CLAUDE.md 와 동일 강제력. dcness-guidelines.md 만 즉시 read 의무.
+# 나머지 4개 doc 은 skill 진입 시 각 skill 파일 "사전 read" 섹션이 안내 (lazy).
 #
-# JSON schema (정확한 CC 형식):
+# JSON schema:
 #   {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}
-# top-level 의 {continue, additionalContext} 는 CC 가 honor X (DCN-30-26 bug,
-# DCN-30-40 fix). 자장 jajang 세션에서 inject 0회 검증 후 발견.
 python3 -c "
 import json
-msg = '''## dcness Guidelines (DCN-30-40 자동 로드)
+msg = '''## dcness Guidelines (DCN-CHG-20260501-17 lazy-load)
 
-**[필수 — 지금 즉시 read 의무]**
+**[필수 — 지금 즉시 read]**
+\`docs/process/dcness-guidelines.md\` — 가시성 / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy / §12 self-verify / 300줄 cap / §13 감시자 Hat
 
-본 프로젝트는 dcness plugin 활성. 글로벌 \`~/.claude/CLAUDE.md\` 와 *동일 레벨 강제*. 다음 SSOT 본 메시지 수신 *직후* read:
+**[lazy — 각 skill 파일 \`## 사전 read\` 섹션이 skill 진입 시 안내]**
+- \`docs/loop-procedure.md\` — Step 0~8 mechanics
+- \`docs/loop-catalog.md\` — 8 loop × 풀스펙
+- \`docs/orchestration.md\` §2~§3 — 시퀀스 + 진입 경로
+- \`docs/handoff-matrix.md\` — agent 결정표 / Retry / Escalate
 
-1. **\`docs/process/dcness-guidelines.md\`** — 가시성 / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy / **§12 self-verify 원칙** / 행동지침 md 300줄 cap
-2. **\`docs/loop-procedure.md\`** — Step 0~8 mechanics (worktree → begin-run → TaskCreate → begin-step → Agent → end-step → finalize-run --auto-review)
-3. **\`docs/loop-catalog.md\`** — 8 loop × 풀스펙 (entry / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles)
-4. **\`docs/orchestration.md\`** §2~§3 — 시퀀스 + 진입 경로 mini-graph
-5. **\`docs/handoff-matrix.md\`** — agent 결정표 / Retry / Escalate / 접근 권한
-
-**룰 의무 적용 범위**: 모든 dcness skill 진행 (\`/qa\`, \`/quick\`, \`/product-plan\`, \`/impl\`, \`/impl-loop\`, \`/run-review\`) + skill 외 직접 발화 (orchestration §3 보고 동적 구성).
-
-**핵심 강제 룰 — read 전이라도 즉시 적용**:
+**핵심 강제 룰 — dcness-guidelines.md read 전이라도 즉시 적용**:
 - 매 Agent 호출 후 prose 5~12줄 의무 echo (가시성 §1)
 - begin-step / end-step 1:1 의무 (§2 Step 기록)
 - 추측 금지 + 실측 후 단언 (§12 self-verify, 글로벌 제1룰 정합)
 - finalize-run 시 \`--auto-review\` flag 의무 (loop-procedure §5.1)
 
-**미인지 진행 = 룰 위반**. read 없이 작업 금지.
+**감시자 Hat** → dcness-guidelines.md §13 (builder+감시자 두 hat, 감시자 우선, PASS/REDO_SAME/REDO_BACK/REDO_DIFF, dcness-guidelines.md read 직후 적용)
 
----
-
-## 감시자 Hat (DCN-CHG-20260501-12, 권고)
-
-builder + 감시자 두 hat. **감시자 우선**.
-
-매 sub completion notification 받으면 1줄 평가 + 결정 권고:
-\`PASS\` / \`REDO_SAME\` / \`REDO_BACK\` / \`REDO_DIFF\` + 사유.
-
-평가 입력: \`<result>\` 응답 텍스트 + \`<usage>\` (tool 횟수 / 시간) + 필요 시 \`agent-trace.jsonl\` tail.
-
-REDO 신호: result 부실 / tool_uses 비정상 (1 미만 or 같은 tool 5회) / boundary 위반 stderr / trace 의 exit≠0 무시.
-
-**미진한 결과 통과 = 가장 비싼 실수** (다음 step 더 큰 redo 부름). 토큰 절약 본능 이기게.
-
-매 cycle 종료 시 \`harness.redo_log.append(sid, rid, {...})\` 1줄 권고. \`agent-trace.jsonl\` 은 hook 자동 — 메인 평가 시 \`harness.agent_trace.tail()\` 참조.
-
-루프 재구성 자유 — 정적 시퀀스 강제 X. architect MODULE_PLAN 재실행, 다른 sub 호출 등 적극.
-
-학습 진화: 같은 (sub, mode) 의 redo 빈도 누적 시 \`/audit-redo\` skill 로 1차 prompt 풍부화 검토 (Layer 1 즉시 + Layer 2 인프라 환류).
+**미인지 진행 = 룰 위반**. dcness-guidelines.md read 없이 작업 금지.
 '''
 print(json.dumps({
     'hookSpecificOutput': {
