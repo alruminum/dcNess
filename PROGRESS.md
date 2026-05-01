@@ -2,6 +2,15 @@
 
 ## 현재 상태
 
+- **🪝 sub 행동 사후 추적 인프라 (PR-1)** (`DCN-CHG-20260501-11`):
+  - 사용자 비전 — 정적 룰 추가 게임 → 추론 기반 judgment 로 패러다임 전환. 4축: 결과 평가 / 행동 추적 / audit log / 학습 진화 (2-layer). PR-1 은 (2)+(3) 코드 인프라만.
+  - **`harness/redo_log.py`** 신규 — `redo-log.jsonl` append/read/tail. 메인이 sub completion 평가 후 PASS/REDO_SAME/REDO_BACK/REDO_DIFF 1줄 기록. POSIX O_APPEND atomic, 4096 bytes 이내 entry. 15 tests.
+  - **`harness/agent_trace.py`** 신규 — `agent-trace.jsonl` append/read/tail. PreToolUse/PostToolUse hook 가 sub 내부 도구 호출마다 1줄 기록. 11 tests.
+  - **`harness/hooks.py` 확장** — `handle_pretooluse_file_op` boundary 통과 시 trace pre append + 신규 `handle_posttooluse_file_op` (PostToolUse Edit/Write/Read/Bash) + CLI subcommand. tool_input 200 bytes truncate (POSIX atomic 보장).
+  - **`hooks/post-file-op-trace.sh`** 신규 wrapper + `hooks/hooks.json` PostToolUse `Edit|Write|Read|Bash` matcher 등록.
+  - **한계 명시**: hook trace = sub *행동* 만. thinking / 중간 message X (`.output` 가공은 P7 미래). 도구 0번 쓰는 sub turn = trace 텅 빔.
+  - **PR-2 (DCN-CHG-20260501-12)** 후속 — SessionStart 감시자 hat 메시지 + `commands/audit-redo.md` skill (Layer 1+2 학습 진화).
+  - 회귀 0 — 신규 35 case (15+11+9), 전체 324 tests OK. 토큰 비용 0 (hook LLM context 외부).
 - **♻️ /run-review must_fix retro 재계산** (`DCN-CHG-20260501-10`):
   - DCN-CHG-20260501-09 forward-only 보강 — 이전 run 의 `.steps.jsonl` stale `must_fix` 무력화. parser `parse_steps()` 가 prose_full 보유 시 `_has_positive_must_fix` 재계산, 부재 시 jsonl fallback.
   - 자장 run-ef6c2c00 (이전 PR 머지 *전* 작성된 stale jsonl) retro 검증 — MUST_FIX_GHOST 6 → 0.

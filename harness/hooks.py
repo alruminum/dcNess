@@ -40,7 +40,46 @@ __all__ = [
     "handle_pretooluse_agent",
     "handle_pretooluse_file_op",
     "handle_posttooluse_agent",
+    "handle_posttooluse_file_op",
 ]
+
+
+# ── DCN-CHG-20260501-11 — agent-trace.jsonl 헬퍼 ──────────────────────
+
+
+_TRACE_INPUT_MAX = 200  # entry size cap (POSIX append atomic = 4096 bytes 이내)
+
+
+def _summarize_input(tool_name: str, tool_input: Dict[str, Any]) -> str:
+    """tool_input 핵심을 _TRACE_INPUT_MAX bytes 이하로 요약."""
+    if not isinstance(tool_input, dict):
+        return ""
+    if tool_name == "Bash":
+        s = str(tool_input.get("command", ""))
+    elif tool_name in ("Edit", "Write", "NotebookEdit", "Read"):
+        s = str(tool_input.get("file_path", "") or tool_input.get("path", ""))
+    elif tool_name in ("Glob", "Grep"):
+        s = str(tool_input.get("pattern", ""))
+    else:
+        s = ""
+    if len(s) > _TRACE_INPUT_MAX:
+        s = s[:_TRACE_INPUT_MAX] + "..."
+    return s
+
+
+def _append_trace_safe(
+    sid: str,
+    rid: str,
+    entry: Dict[str, Any],
+    *,
+    base_dir: Optional[Path] = None,
+) -> None:
+    """trace append — 어떤 실패도 hook 본 흐름 방해 X."""
+    try:
+        from harness.agent_trace import append as _trace_append
+        _trace_append(sid, rid, entry, base_dir=base_dir)
+    except Exception:  # noqa: BLE001 — silent
+        pass
 
 
 # orchestration.md §7.1 — 컨베이어 경유 필수 agent
@@ -295,7 +334,7 @@ def handle_pretooluse_file_op(
 
     cwd = Path.cwd()
 
-    # Read — `file_path` 직접.
+    # boundary 검사 — 차단 시 즉시 return (trace 미기록 — 차단된 행동은 file-guard 가 stderr 에 별도 기록)
     if tool_name == "Read":
         fp = tool_input.get("file_path", "") or ""
         if fp:
@@ -303,28 +342,99 @@ def handle_pretooluse_file_op(
             if reason:
                 print(f"[agent-boundary] {reason}", file=sys.stderr)
                 return 1
-        return 0
-
-    # Edit / Write / NotebookEdit — `file_path` 직접 = write op.
-    if tool_name in ("Edit", "Write", "NotebookEdit"):
+    elif tool_name in ("Edit", "Write", "NotebookEdit"):
         fp = tool_input.get("file_path", "") or ""
         if fp:
             reason = check_write_allowed(active_agent, fp, cwd=cwd)
             if reason:
                 print(f"[agent-boundary] {reason}", file=sys.stderr)
                 return 1
-        return 0
-
-    # Bash — heuristic. write indicator (sed -i / cp / mv / rm / >) 시만 path 추출.
-    if tool_name == "Bash":
+    elif tool_name == "Bash":
         cmd = tool_input.get("command", "") or ""
         for fp in extract_bash_paths(cmd):
             reason = check_write_allowed(active_agent, fp, cwd=cwd)
             if reason:
                 print(f"[agent-boundary][Bash] {reason}", file=sys.stderr)
                 return 1
+
+    # DCN-CHG-20260501-11 — sub 행동 trace append (rid 활성 시만)
+    rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
+    if rid:
+        _append_trace_safe(
+            sid,
+            rid,
+            {
+                "phase": "pre",
+                "agent": active_agent,
+                "agent_id": stdin_data.get("agent_id", "") or "",
+                "tool": tool_name,
+                "input": _summarize_input(tool_name, tool_input),
+            },
+            base_dir=base_dir,
+        )
+    return 0
+
+
+def handle_posttooluse_file_op(
+    stdin_data: Optional[Dict[str, Any]] = None,
+    cc_pid: Optional[int] = None,
+    *,
+    base_dir: Optional[Path] = None,
+) -> int:
+    """PostToolUse Edit/Write/Read/Bash — sub 행동 trace post append (DCN-CHG-20260501-11).
+
+    활성 sub-agent 가 있을 때만 기록. 메인 Claude turn 은 noop.
+    PostToolUse 는 차단 권한 X — 항상 exit 0.
+    """
+    if stdin_data is None:
+        try:
+            raw = sys.stdin.read()
+            stdin_data = json.loads(raw) if raw.strip() else {}
+        except (json.JSONDecodeError, OSError):
+            return 0
+
+    if not isinstance(stdin_data, dict):
         return 0
 
+    sid = _extract_sid(stdin_data)
+    if not valid_session_id(sid):
+        return 0
+
+    live = read_live(sid, base_dir=base_dir) or {}
+    active_agent = live.get("active_agent") or ""
+    if not active_agent:
+        return 0
+
+    rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
+    if not rid:
+        return 0
+
+    tool_name = stdin_data.get("tool_name", "") or ""
+    tool_response = stdin_data.get("tool_response") or {}
+    if not isinstance(tool_response, dict):
+        tool_response = {}
+
+    entry: Dict[str, Any] = {
+        "phase": "post",
+        "agent": active_agent,
+        "agent_id": stdin_data.get("agent_id", "") or "",
+        "tool": tool_name,
+    }
+
+    # Bash — exit code + stdout size
+    exit_code = tool_response.get("exit_code")
+    if isinstance(exit_code, int):
+        entry["exit"] = exit_code
+    stdout = tool_response.get("stdout")
+    if isinstance(stdout, str):
+        entry["stdout_size"] = len(stdout)
+
+    # 모든 도구 — error flag
+    is_error = tool_response.get("is_error") or stdin_data.get("is_error")
+    if is_error is True:
+        entry["is_error"] = True
+
+    _append_trace_safe(sid, rid, entry, base_dir=base_dir)
     return 0
 
 
@@ -424,6 +534,10 @@ def _main(argv: Optional[list] = None) -> int:
                           help="PostToolUse Agent — live.json.active_agent 해제")
     p_pa.add_argument("--cc-pid", type=int, default=None)
 
+    p_pf = sub.add_parser("posttooluse-file-op",
+                          help="PostToolUse Edit/Write/Read/Bash — agent-trace post append")
+    p_pf.add_argument("--cc-pid", type=int, default=None)
+
     args = parser.parse_args(argv)
 
     # cc_pid 미명시 시 PPID 사용 (bash 훅 의 PPID = CC main)
@@ -437,6 +551,8 @@ def _main(argv: Optional[list] = None) -> int:
         return handle_pretooluse_file_op(cc_pid=cc_pid)
     elif args.cmd == "posttooluse-agent":
         return handle_posttooluse_agent(cc_pid=cc_pid)
+    elif args.cmd == "posttooluse-file-op":
+        return handle_posttooluse_file_op(cc_pid=cc_pid)
     return 0
 
 

@@ -18,6 +18,35 @@
 
 ## Records
 
+### DCN-CHG-20260501-11
+- **Date**: 2026-05-01
+- **Rationale**:
+  - 사용자 비전 (장 토론 산출물): "정적 룰 (path matrix / 도구 화이트리스트) 추가 게임은 끝 없다. 프로젝트 변형마다 화이트리스트 폭발". 룰 5개 cap + 추론 기반 judgment 로 패러다임 전환.
+  - 비전 핵심 4축 (`/Users/dc.kim/.claude/plans/vast-singing-donut.md`): (1) 메인이 sub completion 결과 *깐깐히* 평가 + redo 권한 적극 행사, (2) sub 행동 hook 로 사후 추적, (3) audit log 누적, (4) 학습 진화 (Layer 1 즉시 prompt 첨가, Layer 2 dcness 인프라 환류).
+  - **본 PR (PR-1)** 은 (2) 와 (3) 의 *코드 인프라* 만 — `redo_log.py` + `agent_trace.py` + hook 확장. (1) 과 (4) 는 PR-2 (DCN-CHG-20260501-12) 에서 SessionStart 메시지 + audit-redo skill.
+  - **실시간 polling 폐기** — auto-wakeup 인프라 1일+ + 토큰 비용 30k/sub. 사용자 결정 — "결과 후 평가 + 학습" 으로 충분. 폴링은 P8 미래.
+  - **`.output` 직접 read 폐기** — 시스템 명시 금지 (context 폭발). hook trace + completion notification `<result>` + `<usage>` 만으로 redo 결정 80%+ cover. thinking / 중간 message 추적은 P7 미래.
+- **Alternatives**:
+  1. **외부 supervisor sub-agent** — fresh context 매 호출 → 시계열 누적 판단 X. *기각*.
+  2. **메인 self-review** — 같은 머리 + 같은 맥락 → cognitive lock-in 심화 위험. *기각*.
+  3. **Hook 차단 → sensor 강등** — 현 catastrophic-gate / file-guard 매일 작동 중. 강등 = 안전 후퇴. *기각*.
+  4. **agent-trace + redo-log 분리 vs 단일 파일** — 두 용도 schema 다름 (행동 stream vs 평가 결정). 분리 유지. *채택*.
+  5. **(채택)** **PreToolUse 끝 + PostToolUse 신규** — boundary 통과 행동만 trace, 차단된 행동은 file-guard stderr 로 별도 기록. 단순함 우선 (Karpathy 2). 향후 *모든 시도* 기록 보강 가능.
+- **Decision**:
+  - `harness/redo_log.py` + `harness/agent_trace.py` 분리. 동일 패턴 (append/read_all/tail) 단일 함수 추출 보류 — 단일 사용처 추상화 회피 (Karpathy 2).
+  - 기존 `handle_pretooluse_file_op` 끝 (return 0 직전) 에 trace pre append. 차단 시 (return 1 직전) 미기록.
+  - 신규 `handle_posttooluse_file_op` + `hooks/post-file-op-trace.sh` wrapper + `hooks.json` PostToolUse `Edit|Write|Read|Bash` matcher 등록.
+  - **트레이드오프 명시 (대원칙 §0 self-check)**: 본 변경은 *관측 인프라* — 작업 순서 / 접근 영역 강제 X. agent 자율 침해 0.
+  - tool_input 핵심을 200 bytes 로 truncate (`_summarize_input`) — POSIX append atomic 4096 bytes 이내 보장.
+  - trace append 모든 실패 silent (`_append_trace_safe`) — hook 본 흐름 (boundary 검사) 방해 X.
+- **Follow-Up**:
+  - **(PR-2 / DCN-CHG-20260501-12)** SessionStart 감시자 hat 메시지 + `commands/audit-redo.md` skill (Layer 1 즉시 첨가 + Layer 2 환류 patch 제안).
+  - **(P5 운영)** 1-2 주 redo-log + trace 수집 → 패턴 추출 정확도 측정.
+  - **(P6 환류 / 주기)** N 프로젝트 검증된 패턴 → `agents/*.md` system prompt 영구 patch → plugin release.
+  - **(P7 미래)** `.output` JSONL 가공 helper — sub thinking + 중간 message 추적이 redo 결정에 *현저히 가치* 있다고 측정 시.
+  - **(P8 미래)** Auto-wakeup polling skill — sub 헛수고 토큰 손실이 결정적이라 측정 시.
+  - **(측정)** 1-2 주 후: sub spawn 평균 `tool_uses` / completion 평균 `duration_ms` / redo-log 카테고리 분포.
+
 ### DCN-CHG-20260501-10
 - **Date**: 2026-05-01
 - **Rationale**:
