@@ -18,6 +18,13 @@
 
 ## Records
 
+### DCN-CHG-20260501-18
+- **Date**: 2026-05-01
+- **Rationale**: DCN-17에서 [lazy] 레이블 아래 파일 경로를 나열했더니 Claude가 레이블을 무시하고 경로를 보는 즉시 read. 경로 존재 자체가 read 트리거. dcness-guidelines.md §0의 마크다운 링크도 동일하게 트리거됨.
+- **Alternatives**: (1) "지금 읽지 말 것" 강조 텍스트 추가 — 텍스트 지시로 행동을 막는 것은 불안정. (2) 파일 경로/링크 자체를 inject와 §0에서 제거 — 경로가 없으면 read 트리거 없음.
+- **Decision**: (2) 채택. inject lazy 섹션에서 파일경로 완전 제거, §0 마크다운 링크를 비활성 텍스트로 교체. 경로는 skill 파일 `## 사전 read` 섹션에만 존재.
+- **Follow-Up**: 다음 세션에서 session-start 시 loop-procedure 등 4개 doc read 여부 재확인.
+
 ### DCN-CHG-20260501-17
 - **Date**: 2026-05-01
 - **Rationale**: dcness 활성 프로젝트 세션 시작 시 5개 SSOT 문서(61KB, ~15K 토큰)가 즉시 read 강제됨. session-start inject 가 "5개 전부 즉시 read 의무"를 선언하고, dcness-guidelines.md §0이 loop-procedure + loop-catalog 추가 즉시 read 강제. 결과: skill 미호출 세션에서도 61KB 전부 컨텍스트 적재 → Messages 32.5k tokens의 주요 원인.

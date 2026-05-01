@@ -4,15 +4,15 @@
 > 룰 추가 시 본 파일에만 append — skill 들은 cross-ref 만.
 > Task-ID: DCN-CHG-20260430-26 (SSOT 분리 + hook inject).
 
-## 0. 루프 SSOT — `loop-procedure.md` + `loop-catalog.md` (DCN-30-27 / -30)
+## 0. 루프 SSOT (DCN-30-27 / -30)
 
-dcness 의 8 loop 운영은 **2 SSOT** 분담:
-- [`docs/loop-procedure.md`](../loop-procedure.md) — *공통 실행 절차* (Step 0~8 mechanics — worktree / begin-run / TaskCreate / agent 호출 / Step 4.5 stories sync / finalize-run / clean 7a / caveat 7b / auto-review)
-- [`docs/loop-catalog.md`](../loop-catalog.md) — *8 loop 행별 풀스펙* (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles)
+dcness 의 8 loop 운영은 **2 SSOT** 분담 (지금 읽지 말 것 — skill 진입 시 사전 read 안내):
+- loop-procedure doc — *공통 실행 절차* (Step 0~8 mechanics — worktree / begin-run / TaskCreate / agent 호출 / Step 4.5 stories sync / finalize-run / clean 7a / caveat 7b / auto-review)
+- loop-catalog doc — *8 loop 행별 풀스펙* (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles)
 
-**loop 시작 전 (skill 트리거 또는 직접 발화 시) loop-procedure.md + loop-catalog.md read** — 세션 시작 시에는 읽지 않음. 각 skill 파일 `## 사전 read` 섹션이 진입 시 안내 (DCN-CHG-20260501-17 lazy-load).
+**세션 시작 시 이 두 doc 을 읽지 말 것.** skill 트리거 시 해당 skill 파일의 `## 사전 read` 섹션이 정확한 경로와 섹션 번호를 안내한다 (DCN-CHG-20260501-17 lazy-load).
 
-skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure.md, loop spec 은 loop-catalog.md.
+skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure doc, loop spec 은 loop-catalog doc.
 
 ## 0.1 행동지침 md 작성 룰 — 300줄 cap (DCN-30-30)
 

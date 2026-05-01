@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+- **🦥 session-start lazy-load v2** (`DCN-CHG-20260501-18`):
+  - inject lazy 섹션 파일경로 완전 제거 — 경로 나열 자체가 read 트리거였음.
+  - dcness-guidelines.md §0 마크다운 링크 비활성 텍스트로 교체.
+  - 경로는 skill 파일 `## 사전 read` 섹션에만 존재하여 skill 진입 시에만 노출.
+
 - **🦥 session-start lazy-load 최적화** (`DCN-CHG-20260501-17`):
   - session-start inject: 5 docs 즉시 read → `dcness-guidelines.md` 1개만 즉시, 나머지 4개 lazy.
   - `dcness-guidelines.md` §0: "매 세션 의무 read" → "loop 시작 전 read" 변경.
