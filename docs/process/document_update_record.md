@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260502-02
+- **Date**: 2026-05-02
+- **Change-Type**: harness + docs-only
+- **Files Changed**:
+  - `harness/loop_insights.py` (신규)
+  - `harness/session_state.py` (begin-step 주입 + finalize-run --accumulate)
+  - `docs/loop-procedure.md` (§3.1 강제 문구)
+  - `tests/test_loop_insights.py` (신규)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: loop-insights 누적·주입 — 루프 종료 시 redo-log + WASTE/GOOD → agent별 .claude/loop-insights/<agent>.md 누적, begin-step 에서 stdout 주입.
+
 ### DCN-CHG-20260502-01
 - **Date**: 2026-05-02
 - **Change-Type**: hooks
