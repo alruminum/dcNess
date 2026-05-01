@@ -28,5 +28,8 @@ description: 새 기능 / PRD 변경 / 큰 기획을 받아 product-planner → 
 - `UX_REFINE_READY` → `ux-refine-stage` 진입 (`/ux`)
 - escalate enum → 사용자 위임 (catalog §2 분기 표 참조)
 
+## 사전 read (skill 진입 즉시)
+`docs/loop-procedure.md` + `docs/loop-catalog.md` §2 + `docs/orchestration.md` §2~§3 + `docs/handoff-matrix.md` read 후 진행.
+
 ## 절차
 [`docs/loop-procedure.md`](../docs/loop-procedure.md) §1~§6 + [`docs/loop-catalog.md`](../docs/loop-catalog.md) §2 (`feature-build-loop` 풀스펙) 따름. 본 파일은 input 명세 + 라우팅만.

@@ -10,7 +10,7 @@ dcness 의 8 loop 운영은 **2 SSOT** 분담:
 - [`docs/loop-procedure.md`](../loop-procedure.md) — *공통 실행 절차* (Step 0~8 mechanics — worktree / begin-run / TaskCreate / agent 호출 / Step 4.5 stories sync / finalize-run / clean 7a / caveat 7b / auto-review)
 - [`docs/loop-catalog.md`](../loop-catalog.md) — *8 loop 행별 풀스펙* (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles)
 
-**본 가이드라인이 inject 되는 매 세션에서 메인 Claude 는 본 항을 통해 loop-procedure.md + loop-catalog.md 를 의무 read** — skill 트리거 또는 직접 발화 시 동일.
+**loop 시작 전 (skill 트리거 또는 직접 발화 시) loop-procedure.md + loop-catalog.md read** — 세션 시작 시에는 읽지 않음. 각 skill 파일 `## 사전 read` 섹션이 진입 시 안내 (DCN-CHG-20260501-17 lazy-load).
 
 skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure.md, loop spec 은 loop-catalog.md.
 
@@ -255,3 +255,24 @@ agent 별 적용:
 ### 효과
 
 I5 (메인 sed misdiagnosis) 회귀 방지. agent 측 self-verify echo (engineer.md *자가 검증* 섹션, anchor 자율) 와 짝 — agent 가 인용 + 메인이 그 명령 직접 실행해 verify.
+
+## 13. 감시자 Hat (DCN-CHG-20260501-12, 권고)
+
+> SessionStart inject 에서 이전 (DCN-CHG-20260501-17). inject 는 1줄 포인터만, 본 섹션이 SSOT.
+
+builder + 감시자 두 hat. **감시자 우선**.
+
+매 sub completion notification 받으면 1줄 평가 + 결정 권고:
+`PASS` / `REDO_SAME` / `REDO_BACK` / `REDO_DIFF` + 사유.
+
+평가 입력: `<result>` 응답 텍스트 + `<usage>` (tool 횟수 / 시간) + 필요 시 `agent-trace.jsonl` tail.
+
+REDO 신호: result 부실 / tool_uses 비정상 (1 미만 or 같은 tool 5회) / boundary 위반 stderr / trace 의 exit≠0 무시.
+
+**미진한 결과 통과 = 가장 비싼 실수** (다음 step 더 큰 redo 부름). 토큰 절약 본능 이기게.
+
+매 cycle 종료 시 `harness.redo_log.append(sid, rid, {...})` 1줄 권고. `agent-trace.jsonl` 은 hook 자동 — 메인 평가 시 `harness.agent_trace.tail()` 참조.
+
+루프 재구성 자유 — 정적 시퀀스 강제 X. architect MODULE_PLAN 재실행, 다른 sub 호출 등 적극.
+
+학습 진화: 같은 (sub, mode) 의 redo 빈도 누적 시 `/audit-redo` skill 로 1차 prompt 풍부화 검토 (Layer 1 즉시 + Layer 2 인프라 환류).

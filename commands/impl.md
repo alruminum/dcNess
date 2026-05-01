@@ -28,5 +28,8 @@ batch 파일 끝에 `MODULE_PLAN_READY` 마커 박혀있으면 Step 2 (architect
 - caveat → 사용자 결정 (수동 7b)
 - multi-batch chain 필요 → `/impl-loop`
 
+## 사전 read (skill 진입 즉시)
+`docs/loop-procedure.md` + `docs/loop-catalog.md` §3 + `docs/handoff-matrix.md` read 후 진행.
+
 ## 절차
 [`docs/loop-procedure.md`](../docs/loop-procedure.md) §1~§6 + [`docs/loop-catalog.md`](../docs/loop-catalog.md) §3 (`impl-batch-loop` 풀스펙, Step 4.5 stories sync 포함) 따름. UI 감지 시 §4 (`impl-ui-design-loop`).

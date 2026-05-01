@@ -2,6 +2,13 @@
 
 ## 현재 상태
 
+- **🦥 session-start lazy-load 최적화** (`DCN-CHG-20260501-17`):
+  - session-start inject: 5 docs 즉시 read → `dcness-guidelines.md` 1개만 즉시, 나머지 4개 lazy.
+  - `dcness-guidelines.md` §0: "매 세션 의무 read" → "loop 시작 전 read" 변경.
+  - `dcness-guidelines.md` §13 신규: 감시자 Hat 전문 이전 (inject에서 제거).
+  - skill 파일 5개(`impl`/`quick`/`product-plan`/`impl-loop`/`qa`): `## 사전 read` 섹션 추가.
+  - 예상 절감: skill 미호출 세션 ~13K 토큰, skill 호출 세션 ~5-8K 토큰.
+
 - **🪄 PostToolUse prose auto-staging** (`DCN-CHG-20260501-15`):
   - `handle_posttooluse_agent` — `tool_response.text` 추출 → `write_prose` → `live.json.current_step.prose_file` 기록.
   - `end-step --prose-file` optional로 변경 — 미제공 시 `current_step.prose_file` 자동 읽기.
