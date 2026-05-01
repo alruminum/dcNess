@@ -27,34 +27,46 @@ CC_PID=$PPID
 python3 -m harness.hooks session-start --cc-pid "$CC_PID"
 
 # DCN-CHG-20260430-26 (신설), DCN-CHG-20260430-40 (schema fix + 압축),
-# DCN-CHG-20260501-17 (lazy-load 최적화):
+# DCN-CHG-20260501-17 (lazy-load 최적화), DCN-CHG-20260502-01 (blocking gate 강화):
 # dcness 활성 프로젝트 매 세션 SessionStart 시 SSOT read 의무 directive 를
 # system-reminder 로 inject.
 #
-# 본문 inject 가 아닌 *지시* 만 — CC additionalContext 10K cap 회피 +
-# CLAUDE.md 와 동일 강제력. dcness-guidelines.md 만 즉시 read 의무.
-# 나머지 4개 doc 은 skill 진입 시 각 skill 파일 "사전 read" 섹션이 안내 (lazy).
+# DCN-CHG-20260502-01 변경: 단순 "지금 읽어라" 지시 → BLOCKING 게이트 3원칙 적용.
+#   1. "텍스트 출력 금지" 조건 — 읽기 전 출력 자체를 막는 언어
+#   2. 검증 토큰 — 첫 응답 첫 줄에 토큰 의무 출력 (유저 즉시 확인 가능)
+#   3. 예외 없음 명시 — "인사도 예외 없음" 패턴 매칭 차단
 #
 # JSON schema:
 #   {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}
 python3 -c "
 import json
-msg = '''## dcness Guidelines (DCN-CHG-20260501-17 lazy-load)
+msg = '''## [BLOCKING GATE] dcness 세션 시작 강제
 
-**[필수 — 지금 즉시 read]**
-\`docs/process/dcness-guidelines.md\` — 가시성 / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy / §12 self-verify / 300줄 cap / §13 감시자 Hat
+**유저의 첫 메시지 종류에 관계없이 — 인사·잡담·질문·작업 요청 전부 포함 —**
+**첫 텍스트를 출력하기 전에 아래 두 단계를 반드시 완료한다.**
 
-**나머지 loop 실행 docs (loop-procedure / loop-catalog / orchestration / handoff-matrix) 는 지금 읽지 말 것.** 각 skill 파일 `## 사전 read` 섹션이 진입 시 직접 경로를 안내한다.
+---
 
-**핵심 강제 룰 — dcness-guidelines.md read 전이라도 즉시 적용**:
-- 매 Agent 호출 후 prose 5~12줄 의무 echo (가시성 §1)
-- begin-step / end-step 1:1 의무 (§2 Step 기록)
-- 추측 금지 + 실측 후 단언 (§12 self-verify, 글로벌 제1룰 정합)
-- finalize-run 시 \`--auto-review\` flag 의무 (loop-procedure §5.1)
+### STEP 1: 파일 읽기 [스킵 불가 / 예외 없음]
 
-**감시자 Hat** → dcness-guidelines.md §13 (builder+감시자 두 hat, 감시자 우선, PASS/REDO_SAME/REDO_BACK/REDO_DIFF, dcness-guidelines.md read 직후 적용)
+Read 도구로 다음 파일을 *지금 바로* 호출한다:
+  Read(\"docs/process/dcness-guidelines.md\")
 
-**미인지 진행 = 룰 위반**. dcness-guidelines.md read 없이 작업 금지.
+- 이 도구 호출 완료 전까지 텍스트 출력 금지.
+- \"이미 알고 있다\" → 예외 아님. 항상 다시 읽는다.
+- 유저가 \"안녕\" / \"hi\" / \"hello\" / 짧은 질문 → 예외 아님. 읽고 나서 응답.
+
+### STEP 2: 확인 토큰 출력 [스킵 불가]
+
+읽은 후 첫 응답의 **첫 줄**에 반드시 다음 토큰을 출력한다:
+  [dcness-guidelines 로드 완료 — §13 감시자 Hat 장착]
+
+이 토큰 없이 응답 = 즉시 룰 위반 (유저가 즉시 확인 가능).
+
+---
+
+**나머지 loop 실행 docs (loop-procedure / loop-catalog / orchestration / handoff-matrix) 는 지금 읽지 말 것.**
+각 skill 의 `## 사전 read` 섹션이 진입 시 직접 경로를 안내한다.
 '''
 print(json.dumps({
     'hookSpecificOutput': {

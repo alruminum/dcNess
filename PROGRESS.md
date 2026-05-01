@@ -2,6 +2,10 @@
 
 ## 현재 상태
 
+- **🔒 session-start BLOCKING 게이트 강화** (`DCN-CHG-20260502-01`):
+  - inject 3원칙 적용: (1) 출력 금지 조건 — Read 완료 전 텍스트 출력 금지. (2) 검증 토큰 — 첫 응답 첫 줄에 `[dcness-guidelines 로드 완료 — §13 감시자 Hat 장착]` 의무. (3) 예외 없음 명시 — "안녕"/"hi"/"hello"/짧은 질문 전부 포함.
+  - 배경: 단순 인사에서 inject 무시 확인. "인사 → 짧은 응답" 패턴 매칭이 system-reminder를 후순위로 밀어냄.
+
 - **🦥 session-start lazy-load v2** (`DCN-CHG-20260501-18`):
   - inject lazy 섹션 파일경로 완전 제거 — 경로 나열 자체가 read 트리거였음.
   - dcness-guidelines.md §0 마크다운 링크 비활성 텍스트로 교체.
