@@ -61,6 +61,27 @@ msg = '''## dcness Guidelines (DCN-30-40 자동 로드)
 - finalize-run 시 \`--auto-review\` flag 의무 (loop-procedure §5.1)
 
 **미인지 진행 = 룰 위반**. read 없이 작업 금지.
+
+---
+
+## 감시자 Hat (DCN-CHG-20260501-12, 권고)
+
+builder + 감시자 두 hat. **감시자 우선**.
+
+매 sub completion notification 받으면 1줄 평가 + 결정 권고:
+\`PASS\` / \`REDO_SAME\` / \`REDO_BACK\` / \`REDO_DIFF\` + 사유.
+
+평가 입력: \`<result>\` 응답 텍스트 + \`<usage>\` (tool 횟수 / 시간) + 필요 시 \`agent-trace.jsonl\` tail.
+
+REDO 신호: result 부실 / tool_uses 비정상 (1 미만 or 같은 tool 5회) / boundary 위반 stderr / trace 의 exit≠0 무시.
+
+**미진한 결과 통과 = 가장 비싼 실수** (다음 step 더 큰 redo 부름). 토큰 절약 본능 이기게.
+
+매 cycle 종료 시 \`harness.redo_log.append(sid, rid, {...})\` 1줄 권고. \`agent-trace.jsonl\` 은 hook 자동 — 메인 평가 시 \`harness.agent_trace.tail()\` 참조.
+
+루프 재구성 자유 — 정적 시퀀스 강제 X. architect MODULE_PLAN 재실행, 다른 sub 호출 등 적극.
+
+학습 진화: 같은 (sub, mode) 의 redo 빈도 누적 시 \`/audit-redo\` skill 로 1차 prompt 풍부화 검토 (Layer 1 즉시 + Layer 2 인프라 환류).
 '''
 print(json.dumps({
     'hookSpecificOutput': {

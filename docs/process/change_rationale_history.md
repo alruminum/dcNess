@@ -18,6 +18,29 @@
 
 ## Records
 
+### DCN-CHG-20260501-12
+- **Date**: 2026-05-01
+- **Rationale**:
+  - DCN-CHG-20260501-11 (PR-1) 가 인프라만 — `redo_log.py` + `agent_trace.py` + Pre/PostToolUse hook 확장. 단 메인이 *언제 어떻게* 활용할지 가이드 부재 → 인프라가 잠자게 됨.
+  - 본 PR-2 가 비전 4축 중 (1) 결과 평가 + (4) 학습 진화 운영 layer.
+  - **SessionStart 메시지 — 권고 어휘 사용**: 대원칙 §0 "harness 가 강제하는 건 작업 순서 + 접근 영역만, 그 외 agent 자율" 정합. "의무" / "필수" 같은 강제 어휘 자제, "권고" / "권장" / "X = 가장 비싼 실수" 같은 *명시 + 자율 판단* 어휘. 메인 자율 침해 0.
+  - **`/audit-redo` skill 분리**: `/run-review` 와 직교. /run-review = waste/good findings (RWHarness 변환), /audit-redo = redo 패턴 학습. 같은 데이터 (.steps.jsonl + redo-log + trace) 다른 분석축. 단일 skill 통합 X (Karpathy 2 — 단일 책임 분리).
+- **Alternatives**:
+  1. **SessionStart 메시지 의무 어휘** — 대원칙 §0 위반. *기각*.
+  2. **`/audit-redo` 를 `/run-review` 안에 통합** — 분석축 충돌, 사용자 발화 (사후 분석 vs 학습 환류) 다름. *기각*.
+  3. **메인 매 sub spawn 시 자동 prompt 첨가 — 기능 박힘** — 메인이 *판단 없이 기계 첨가* 하면 자율 침해. 첨가 자체는 메인이 `/audit-redo` 결과 보고 결정. *기각*.
+  4. **(채택)** **권고 메시지 + skill 분리 + Layer 1/2 명시** — 메인 자율 + cheap 실험 + 점진 환류.
+- **Decision**:
+  - SessionStart 메시지에 "감시자 Hat (DCN-CHG-20260501-12, 권고)" 섹션 추가. 권고 어휘만 사용. 본문 ~700 byte (CC additionalContext 10K cap 충분 여유).
+  - `commands/audit-redo.md` 신규 skill — Step 0~5 절차. `/run-review` 와 동일한 "stdout 리포트 그대로 복사" 룰 (압축 본능 차단).
+  - **Layer 1 / Layer 2 명시 분리**: 즉시 적용 (Layer 1) vs 인프라 환류 (Layer 2). 후자는 `agents/*.md` patch + governance §2.2 `agent` Change-Type 새 PR.
+- **Follow-Up**:
+  - **(P5 운영 — 1-2 주)** redo-log + trace 누적 → `/audit-redo` 첫 패턴 발견 → Layer 1 첨가 → 효과 측정.
+  - **(P6 환류 — 주기)** Layer 1 적용 N 회 검증된 패턴 → Layer 2 patch PR (별도 Task-ID).
+  - **(측정)** 메인이 SessionStart 권고를 실제 *따르는지* — redo-log entry 수 / cycle 수 비율. 0 이면 권고 효과 0 → 강제 어휘로 escalation 검토 (단 §0 정합 다시 self-check).
+  - **(P7 미래)** `.output` 가공 helper — 본 skill 이 trace 만으로 분석한 redo 패턴이 부족하면 thinking 까지 cover.
+  - **(P8 미래)** Auto-wakeup polling — 본 PR 운영 데이터에서 "결과 후 redo 만으론 헛수고 토큰 큰 손실" 측정 시.
+
 ### DCN-CHG-20260501-11
 - **Date**: 2026-05-01
 - **Rationale**:

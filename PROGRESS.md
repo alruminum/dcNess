@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🎩 감시자 Hat + audit-redo skill (PR-2)** (`DCN-CHG-20260501-12`):
+  - PR-1 인프라 위에 운영 layer. 사용자 비전 4축 중 (1) 결과 평가 + (4) 학습 진화 (2-layer) 가동.
+  - **`hooks/session-start.sh`** additionalContext 에 "감시자 Hat (권고)" 섹션 추가 — builder + 감시자 두 hat / sub completion 깐깐 평가 / `redo-log` 1줄 append / 루프 재구성 자유. 대원칙 §0 정합 — 권고 어휘만, 형식 강제 X.
+  - **`commands/audit-redo.md`** 신규 skill — `(sub, mode)` 별 redo 분포 + REDO 사유 클러스터 + trace 공통 패턴 → Layer 1 (현 프로젝트 1차 prompt 첨가) + Layer 2 (`agents/*.md` 영구 patch) 후보 제안. `/run-review` 와 직교 (waste vs redo 학습).
+  - **운영 시나리오** — 메인이 매 sub completion 시 권고에 따라 `redo-log.append()` → 1-2 주 누적 후 `/audit-redo` 호출 → 패턴 발견 → Layer 1 즉시 첨가 → N 회 검증 → Layer 2 PR (별도 Task-ID).
+  - **한계** — hook trace = 행동만 (thinking X, P7 미래). 권고 어휘라 메인이 *안 따르면* 효과 0 → 운영 데이터로 강제 escalation 검토.
 - **🪝 sub 행동 사후 추적 인프라 (PR-1)** (`DCN-CHG-20260501-11`):
   - 사용자 비전 — 정적 룰 추가 게임 → 추론 기반 judgment 로 패러다임 전환. 4축: 결과 평가 / 행동 추적 / audit log / 학습 진화 (2-layer). PR-1 은 (2)+(3) 코드 인프라만.
   - **`harness/redo_log.py`** 신규 — `redo-log.jsonl` append/read/tail. 메인이 sub completion 평가 후 PASS/REDO_SAME/REDO_BACK/REDO_DIFF 1줄 기록. POSIX O_APPEND atomic, 4096 bytes 이내 entry. 15 tests.
