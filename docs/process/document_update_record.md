@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260501-18
+- **Date**: 2026-05-01
+- **Change-Type**: hooks + docs-only
+- **Files Changed**:
+  - `hooks/session-start.sh`
+  - `docs/process/dcness-guidelines.md`
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+- **Summary**: lazy-load v2 — inject의 lazy 섹션 파일경로 제거, dcness-guidelines.md §0 링크 비활성화. 경로 나열 자체가 read 트리거였음.
+
 ### DCN-CHG-20260501-17
 - **Date**: 2026-05-01
 - **Change-Type**: hooks + docs-only

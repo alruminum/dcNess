@@ -44,11 +44,7 @@ msg = '''## dcness Guidelines (DCN-CHG-20260501-17 lazy-load)
 **[필수 — 지금 즉시 read]**
 \`docs/process/dcness-guidelines.md\` — 가시성 / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy / §12 self-verify / 300줄 cap / §13 감시자 Hat
 
-**[lazy — 각 skill 파일 \`## 사전 read\` 섹션이 skill 진입 시 안내]**
-- \`docs/loop-procedure.md\` — Step 0~8 mechanics
-- \`docs/loop-catalog.md\` — 8 loop × 풀스펙
-- \`docs/orchestration.md\` §2~§3 — 시퀀스 + 진입 경로
-- \`docs/handoff-matrix.md\` — agent 결정표 / Retry / Escalate
+**나머지 loop 실행 docs (loop-procedure / loop-catalog / orchestration / handoff-matrix) 는 지금 읽지 말 것.** 각 skill 파일 `## 사전 read` 섹션이 진입 시 직접 경로를 안내한다.
 
 **핵심 강제 룰 — dcness-guidelines.md read 전이라도 즉시 적용**:
 - 매 Agent 호출 후 prose 5~12줄 의무 echo (가시성 §1)
