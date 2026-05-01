@@ -20,6 +20,22 @@
 
 ## Records
 
+### DCN-CHG-20260501-13
+- **Date**: 2026-05-01
+- **Change-Type**: harness, hooks, test
+- **Files Changed**:
+  - `harness/agent_trace.py` (`histogram` + `last_agent_id` helper 추가)
+  - `harness/sub_eval.py` (신규 — anomaly 룰 + auto decision)
+  - `harness/hooks.py` (`handle_posttooluse_agent` 확장 — histogram inject + auto redo_log)
+  - `hooks/post-agent-clear.sh` (stdout JSON 통과 — 코멘트 갱신)
+  - `tests/test_sub_eval.py` (신규 — 10 case)
+  - `tests/test_agent_trace.py` (HistogramTests + LastAgentIdTests — 6 case)
+  - `tests/test_hooks.py` (PostToolUseAgentHistogramTests — 5 case)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: PR-3 — surface 개선 (jajang 메인 자기 진단 반영). 권고 어휘 한계 인지 → push 형태로 전환. PostToolUse Agent hook 가 sub 종료 후 (1) `agent-trace` 집계 → tool histogram 계산 → `additionalContext` 로 메인 다음 turn 의 Agent tool result 옆에 시스템 reminder 자동 inject (2) anomaly 룰 (tool_uses<2 / 같은 tool 5+회 / Write 약속+Write 0건 = prose-only) 검출 → ⚠️ 강조 메시지 + REDO 권고 (3) `redo_log` 1줄 자동 append (auto:true 마커). 메인은 자연스럽게 보고 + 필요 시 별도 1줄로 결정 덮어쓰기. 룰 추가 X, surface 풍부화 ✅. 회귀 0 — 324 → 345 tests OK.
+
 ### DCN-CHG-20260501-12
 - **Date**: 2026-05-01
 - **Change-Type**: hooks, agent

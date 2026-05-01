@@ -444,7 +444,15 @@ def handle_posttooluse_agent(
     *,
     base_dir: Optional[Path] = None,
 ) -> int:
-    """PostToolUse Agent — live.json.active_agent / active_mode 해제."""
+    """PostToolUse Agent — live.json clear + tool histogram inject + redo_log 자동.
+
+    DCN-CHG-20260501-13 — sub 종료 후 agent-trace 집계 → result 옆에 histogram +
+    anomaly 메시지 inject (additionalContext) + redo_log 1줄 자동 append.
+
+    stdout JSON output:
+        {"hookSpecificOutput": {"hookEventName": "PostToolUse",
+                                 "additionalContext": "..."}}
+    """
     if stdin_data is None:
         try:
             raw = sys.stdin.read()
@@ -459,10 +467,79 @@ def handle_posttooluse_agent(
     if not valid_session_id(sid):
         return 0
 
+    # 직전 sub 식별 — payload agent_id 우선, fallback trace 마지막 entry
+    sub_agent_id = stdin_data.get("agent_id", "") or ""
+    sub_type = ""
+    tool_input = stdin_data.get("tool_input") or {}
+    if isinstance(tool_input, dict):
+        sub_type = str(tool_input.get("subagent_type", "") or "")
+
+    rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
+
+    # rid 활성 시만 histogram + redo_log
+    eval_result = None
+    histogram_str = ""
+    if rid:
+        try:
+            from harness.agent_trace import histogram as _trace_hist
+            from harness.agent_trace import last_agent_id as _trace_last
+            from harness.sub_eval import evaluate_sub, format_histogram
+
+            target_aid = sub_agent_id or _trace_last(sid, rid, base_dir=base_dir)
+            hist = _trace_hist(sid, rid, agent_id=target_aid or None, base_dir=base_dir)
+            if hist:
+                histogram_str = format_histogram(hist)
+                # prompt hint — sub 호출 prompt 일부 (Write/Edit 약속 검출용)
+                prompt_hint = ""
+                if isinstance(tool_input, dict):
+                    prompt_hint = str(tool_input.get("prompt", "") or "")[:500]
+                eval_result = evaluate_sub(hist, sub_prompt_hint=prompt_hint)
+
+                # redo_log 자동 append — 보수적 자동 결정. 메인이 별도 1줄로 덮어쓰기 가능.
+                try:
+                    from harness.redo_log import append as _redo_append
+                    _redo_append(sid, rid, {
+                        "auto": True,
+                        "agent_id": target_aid,
+                        "sub": sub_type,
+                        "decision": eval_result["decision"],
+                        "tool_uses": eval_result["tool_uses"],
+                        "histogram": hist,
+                        "anomalies": eval_result["anomalies"],
+                    }, base_dir=base_dir)
+                except Exception:  # noqa: BLE001 — silent, hook 본 흐름 방해 X
+                    pass
+        except Exception:  # noqa: BLE001 — silent
+            pass
+
+    # active_agent 해제 (기존 동작)
     try:
         update_live(sid, base_dir=base_dir, active_agent=None, active_mode=None)
     except (OSError, ValueError):
-        return 0
+        pass
+
+    # additionalContext 작성 — 정상이면 짧은 줄, anomaly 시 강조
+    if histogram_str:
+        if eval_result and eval_result["decision"] == "REDO_SUSPECT":
+            ctx = (
+                f"[감시자 hook] sub={sub_type or '?'} tool histogram: {histogram_str}\n"
+                f"⚠️ anomaly 감지: {'; '.join(eval_result['anomalies'])}\n"
+                f"메인 판단 권고 — REDO_SAME / REDO_BACK / REDO_DIFF 검토 (auto-redo-log 기록됨)"
+            )
+        else:
+            ctx = f"[감시자 hook] sub={sub_type or '?'} tool histogram: {histogram_str} (PASS)"
+
+        try:
+            output = {
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": ctx,
+                }
+            }
+            print(json.dumps(output, ensure_ascii=False))
+        except Exception:  # noqa: BLE001 — silent
+            pass
+
     return 0
 
 
