@@ -1137,6 +1137,65 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "AMBIGUOUS")
 
+    def test_end_step_no_prose_file_uses_hook_staged(self) -> None:
+        # DCN-CHG-20260501-15: --prose-file 미제공 시 live.json.current_step.prose_file 사용
+        from harness.session_state import (
+            _cli_end_step, _cli_begin_step, session_dir, read_live, update_live,
+        )
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stdout, redirect_stderr
+
+        # begin-step 으로 current_step 설정
+        _cli_begin_step(SimpleNamespace(agent="qa", mode=""))
+
+        # hook 이 staged 한 것처럼 prose_file 을 live.json.current_step 에 삽입
+        prose_text = "## 결론\nFUNCTIONAL_BUG\n"
+        staged_path = session_dir(self.sid) / "runs" / self.rid / "qa.md"
+        staged_path.parent.mkdir(parents=True, exist_ok=True)
+        staged_path.write_text(prose_text, encoding="utf-8")
+
+        live = read_live(self.sid) or {}
+        active = live.get("active_runs", {}) or {}
+        slot = dict(active.get(self.rid, {}))
+        cur_step = dict(slot.get("current_step") or {})
+        cur_step["prose_file"] = str(staged_path)
+        slot["current_step"] = cur_step
+        active[self.rid] = slot
+        update_live(self.sid, active_runs=active)
+
+        out = StringIO()
+        err = StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = _cli_end_step(SimpleNamespace(
+                agent="qa",
+                mode="",
+                allowed_enums="FUNCTIONAL_BUG,CONFIG_BUG,CANNOT_REPRODUCE",
+                prose_file=None,
+            ))
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue().strip(), "FUNCTIONAL_BUG")
+
+    def test_end_step_no_prose_file_no_staging_returns_1(self) -> None:
+        # DCN-CHG-20260501-15: --prose-file 없고 hook staging 도 없으면 rc=1
+        from harness.session_state import _cli_end_step, _cli_begin_step
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stdout, redirect_stderr
+
+        _cli_begin_step(SimpleNamespace(agent="qa", mode=""))
+        out = StringIO()
+        err = StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = _cli_end_step(SimpleNamespace(
+                agent="qa",
+                mode="",
+                allowed_enums="FUNCTIONAL_BUG,CONFIG_BUG",
+                prose_file=None,
+            ))
+        self.assertEqual(rc, 1)
+        self.assertIn("hook staging 없음", err.getvalue())
+
 
 class DefaultBaseWorktreeTests(unittest.TestCase):
     """`_default_base()` γ 설계 — main repo `.claude/harness-state/` 단일 source 검증.

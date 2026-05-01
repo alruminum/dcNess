@@ -36,6 +36,7 @@ import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Optional
 
 from harness.hooks import (
     HARNESS_ONLY_AGENTS,
@@ -983,6 +984,129 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
         self.assertEqual(read_redos(self.sid, self.rid, base_dir=self.base), [])
+
+
+# ---------------------------------------------------------------------------
+# DCN-CHG-20260501-15 — PostToolUse Agent prose auto-staging
+# ---------------------------------------------------------------------------
+
+
+class PostToolUseAgentProseAutoStageTests(_PreToolBase):
+    """handle_posttooluse_agent — tool_response.text → run_dir prose 자동 저장."""
+
+    def _payload_with_prose(
+        self, sub_type: str, agent: str, mode: Optional[str], prose: str
+    ) -> dict:
+        return {
+            "sessionId": self.sid,
+            "tool_name": "Agent",
+            "tool_input": {
+                "subagent_type": sub_type,
+            },
+            "tool_response": {"type": "text", "text": prose},
+        }
+
+    def _set_current_step(self, agent: str, mode: Optional[str]) -> None:
+        from harness.session_state import update_current_step
+        update_current_step(self.sid, self.rid, agent, mode, base_dir=self.base)
+
+    def test_prose_staged_to_run_dir(self) -> None:
+        self._set_current_step("qa", None)
+        prose = "## 결과\nFUNCTIONAL_BUG\n"
+        rc = handle_posttooluse_agent(
+            stdin_data=self._payload_with_prose("qa", "qa", None, prose),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertTrue(expected.exists())
+        self.assertEqual(expected.read_text(encoding="utf-8"), prose)
+
+    def test_prose_staged_with_mode(self) -> None:
+        self._set_current_step("validator", "PLAN_VALIDATION")
+        prose = "## 결론\nPASS\n"
+        rc = handle_posttooluse_agent(
+            stdin_data=self._payload_with_prose("validator", "validator", "PLAN_VALIDATION", prose),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = (
+            session_dir(self.sid, base_dir=self.base) / "runs" / self.rid
+            / "validator-PLAN_VALIDATION.md"
+        )
+        self.assertTrue(expected.exists())
+
+    def test_prose_file_stored_in_current_step(self) -> None:
+        self._set_current_step("architect", "MODULE_PLAN")
+        prose = "## 결론\nREADY_FOR_IMPL\n"
+        handle_posttooluse_agent(
+            stdin_data=self._payload_with_prose("architect", "architect", "MODULE_PLAN", prose),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        live = read_live(self.sid, base_dir=self.base) or {}
+        slot = live.get("active_runs", {}).get(self.rid, {})
+        cur_step = slot.get("current_step") or {}
+        self.assertIn("prose_file", cur_step)
+        self.assertTrue(cur_step["prose_file"].endswith("architect-MODULE_PLAN.md"))
+
+    def test_empty_prose_no_staging(self) -> None:
+        self._set_current_step("qa", None)
+        rc = handle_posttooluse_agent(
+            stdin_data=self._payload_with_prose("qa", "qa", None, "   "),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertFalse(expected.exists())
+
+    def test_no_tool_response_no_staging(self) -> None:
+        self._set_current_step("qa", None)
+        rc = handle_posttooluse_agent(
+            stdin_data={"sessionId": self.sid, "tool_name": "Agent"},
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertFalse(expected.exists())
+
+    def test_no_current_step_no_staging(self) -> None:
+        prose = "## 결론\nPASS\n"
+        rc = handle_posttooluse_agent(
+            stdin_data=self._payload_with_prose("qa", "qa", None, prose),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertFalse(expected.exists())
+
+    def test_occurrence_increments_on_repeat(self) -> None:
+        import json
+
+        self._set_current_step("engineer", None)
+        # 첫 번째 end-step 기록을 .steps.jsonl 에 직접 박기 (base_dir 정합)
+        steps_path = run_dir(self.sid, self.rid, base_dir=self.base) / ".steps.jsonl"
+        steps_path.parent.mkdir(parents=True, exist_ok=True)
+        steps_path.write_text(
+            json.dumps({"agent": "engineer", "mode": None, "enum": "PASS"}) + "\n",
+            encoding="utf-8",
+        )
+        # 두 번째 sub 호출 → occurrence=1 → engineer-1.md
+        prose = "## 결론\nPASS\n"
+        handle_posttooluse_agent(
+            stdin_data=self._payload_with_prose("engineer", "engineer", None, prose),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        expected = (
+            session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "engineer-1.md"
+        )
+        self.assertTrue(expected.exists())
 
 
 if __name__ == "__main__":

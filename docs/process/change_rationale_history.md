@@ -18,6 +18,13 @@
 
 ## Records
 
+### DCN-CHG-20260501-15
+- **Date**: 2026-05-01
+- **Rationale**: 메인 Claude 가 sub-agent 완료 후 prose 를 `Write/Bash heredoc` 으로 staging 하는 작업은 kabuki — PostToolUse hook stdin 에 `tool_response.text` 로 이미 prose 전체가 있는데 같은 바이트를 메인이 다시 disk 에 옮기는 구조. 매 step 마다 Write/Bash 1~2 회 + Write hook block 회피용 heredoc 사용이 반복.
+- **Alternatives**: (1) `--prose-stdin` pipe — argparse 1줄 추가, 메인은 `echo "$PROSE" | end-step` 호출. 메인에서 prose string 처리 부담이 여전히 남음. (2) `--prose "$PROSE"` inline arg — arg escape 부담 있음. (3) PostToolUse hook 자동 staging + `--prose-file` optional — 메인 Write/Bash 0회, end-step 만 호출.
+- **Decision**: (3) 채택. `handle_posttooluse_agent` 가 `tool_response.text` 추출 → `write_prose` → `live.json.current_step.prose_file` 기록. `_cli_end_step` 이 `args.prose_file=None` 시 `current_step.prose_file` 자동 읽기. `_count_step_occurrences` 에 `base_dir` 추가 (hook test 정합). legacy `--prose-file` 경로 보존.
+- **Follow-Up**: 운영 skill 에서 `Write/Bash heredoc` 제거 가능 (별도 Task-ID). hook 실패 시 (disk 오류 등) end-step 이 `--prose-file 미제공 + hook staging 없음` 으로 rc=1 명시 → 메인에게 가시.
+
 ### DCN-CHG-20260501-14
 - **Date**: 2026-05-01
 - **Rationale**: `.prose-staging/` 파일명 컨벤션 불일치로 `_resolve_prose_path()` 패턴 매칭이 실제 파일명과 안 맞음 → 같은 (agent, mode) 반복 시 두번째 end-step이 outer prose를 덮어씌워 `run-review`가 첫번째 결과를 영구 분실.

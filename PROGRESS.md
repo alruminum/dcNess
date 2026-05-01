@@ -2,6 +2,13 @@
 
 ## 현재 상태
 
+- **🪄 PostToolUse prose auto-staging** (`DCN-CHG-20260501-15`):
+  - `handle_posttooluse_agent` — `tool_response.text` 추출 → `write_prose` → `live.json.current_step.prose_file` 기록.
+  - `end-step --prose-file` optional로 변경 — 미제공 시 `current_step.prose_file` 자동 읽기.
+  - 메인 Claude 의 Write/Bash heredoc prose-staging 작업 제거 가능 (매 step 1~2회 절감).
+  - `_count_step_occurrences` `base_dir` 파라미터 추가 (hook test 정합).
+  - 351 tests OK.
+
 - **🔗 prose_file 직결 + `_resolve_prose_path()` 삭제** (`DCN-CHG-20260501-14`):
   - `.prose-staging/` 파일명 패턴 불일치로 같은 (agent, mode) 반복 시 두번째가 outer prose 덮어씌워 run-review 분실 버그 수정.
   - `write_prose(occurrence=N)` 추가 — N>0 시 `<agent>[-mode]-N.md` 고유 파일명.
