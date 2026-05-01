@@ -40,10 +40,12 @@ from tempfile import TemporaryDirectory
 from harness.hooks import (
     HARNESS_ONLY_AGENTS,
     handle_posttooluse_agent,
+    handle_posttooluse_file_op,
     handle_pretooluse_agent,
     handle_pretooluse_file_op,
     handle_session_start,
 )
+from harness.agent_trace import read_all as read_trace
 from harness.session_state import (
     read_live,
     read_pid_session,
@@ -713,6 +715,169 @@ class PostToolUseAgentClearTests(_PreToolBase):
 
     def test_invalid_sid_silent(self) -> None:
         rc = handle_posttooluse_agent(
+            stdin_data={"sessionId": "!"},
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+
+# ---------------------------------------------------------------------------
+# DCN-CHG-20260501-11 — sub 행동 trace append (Pre + Post)
+# ---------------------------------------------------------------------------
+
+
+class FileOpTraceTests(_PreToolBase):
+    """handle_pretooluse_file_op 통과 시 agent-trace.jsonl pre append."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._old_env = {}
+        for k in ("DCNESS_INFRA", "CLAUDE_PLUGIN_ROOT"):
+            self._old_env[k] = os.environ.get(k)
+            os.environ.pop(k, None)
+        self._old_cwd = os.getcwd()
+        os.chdir(str(self.base))
+
+    def tearDown(self) -> None:
+        os.chdir(self._old_cwd)
+        for k, v in self._old_env.items():
+            if v is not None:
+                os.environ[k] = v
+        super().tearDown()
+
+    def _payload_file(self, tool_name: str, **tool_input) -> dict:
+        return {
+            "sessionId": self.sid,
+            "tool_name": tool_name,
+            "tool_input": tool_input,
+        }
+
+    def test_pre_trace_appended_on_pass(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_file("Edit", file_path="src/foo.py"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["phase"], "pre")
+        self.assertEqual(entries[0]["agent"], "engineer")
+        self.assertEqual(entries[0]["tool"], "Edit")
+        self.assertEqual(entries[0]["input"], "src/foo.py")
+
+    def test_no_trace_on_block(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_file("Edit", file_path="hooks/foo.sh"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(entries, [])
+
+    def test_no_trace_when_main_claude(self) -> None:
+        # active_agent 미설정 → trace 미기록.
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_file("Edit", file_path="src/foo.py"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(entries, [])
+
+    def test_bash_input_in_trace(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_file("Bash", command="ls -la docs/"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["input"], "ls -la docs/")
+
+    def test_long_input_truncated(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        long_cmd = "echo " + "x" * 500
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_file("Bash", command=long_cmd),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        # 200 cap + "..." suffix
+        self.assertTrue(entries[0]["input"].endswith("..."))
+        self.assertLessEqual(len(entries[0]["input"]), 210)
+
+
+class PostToolUseFileOpTests(_PreToolBase):
+    """handle_posttooluse_file_op — sub 행동 post trace append."""
+
+    def _post_payload(
+        self, tool_name: str, tool_response: dict, **tool_input
+    ) -> dict:
+        return {
+            "sessionId": self.sid,
+            "tool_name": tool_name,
+            "tool_input": tool_input,
+            "tool_response": tool_response,
+        }
+
+    def test_post_trace_appended(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_posttooluse_file_op(
+            stdin_data=self._post_payload(
+                "Bash",
+                {"exit_code": 0, "stdout": "hello"},
+                command="echo hello",
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["phase"], "post")
+        self.assertEqual(entries[0]["tool"], "Bash")
+        self.assertEqual(entries[0]["exit"], 0)
+        self.assertEqual(entries[0]["stdout_size"], 5)
+
+    def test_post_noop_when_main(self) -> None:
+        # active_agent 미설정 → noop.
+        rc = handle_posttooluse_file_op(
+            stdin_data=self._post_payload("Edit", {}, file_path="src/x.py"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(entries, [])
+
+    def test_post_records_is_error(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_posttooluse_file_op(
+            stdin_data=self._post_payload(
+                "Bash",
+                {"exit_code": 1, "is_error": True},
+                command="false",
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(entries[0]["exit"], 1)
+        self.assertTrue(entries[0]["is_error"])
+
+    def test_post_invalid_sid_silent(self) -> None:
+        rc = handle_posttooluse_file_op(
             stdin_data={"sessionId": "!"},
             cc_pid=self.cc_pid,
             base_dir=self.base,

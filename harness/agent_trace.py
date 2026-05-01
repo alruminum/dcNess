@@ -1,0 +1,108 @@
+"""agent_trace — sub-agent 행동 사후 추적 trace (DCN-CHG-20260501-11).
+
+PreToolUse / PostToolUse hook 에서 sub 내부 도구 호출마다 1줄 append.
+저장 위치: `.sessions/{sid}/runs/{rid}/agent-trace.jsonl`.
+
+cover (행동만):
+    - 도구 호출 + 입력 (Pre)
+    - 도구 결과 metadata (Post — exit code 등)
+
+cover 안 함 (한계):
+    - sub 의 thinking / 중간 assistant message (`.output` 가공 helper 별도)
+    - 도구 0번 쓰는 sub turn (trace 텅 빔)
+
+Schema (강제 X — 권장 필드):
+    ts          (auto)  ISO8601 UTC, 미지정 시 자동 추가
+    phase               "pre" | "post"
+    agent_id            sub task id (메인 hook 발화 시 비어있을 수 있음)
+    agent               subagent type (engineer / architect / ...)
+    tool                Edit / Write / Read / Bash / NotebookEdit
+    input               (pre)  tool_input 의 핵심 (file_path / command 앞부분)
+    exit                (post) exit code (Bash) 또는 0/1 (Edit/Write)
+    stdout_size         (post) 결과 크기 (Bash)
+
+규약:
+    - jsonl, POSIX O_APPEND atomic (4096 bytes 이내)
+    - read 시 malformed line skip
+"""
+from __future__ import annotations
+
+import json
+import os
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from harness.session_state import run_dir
+
+
+__all__ = ["append", "read_all", "tail", "TRACE_NAME"]
+
+
+TRACE_NAME = "agent-trace.jsonl"
+
+
+def _trace_path(
+    session_id: str, run_id: str, *, base_dir: Optional[Path] = None
+) -> Path:
+    return run_dir(session_id, run_id, base_dir=base_dir, create=True) / TRACE_NAME
+
+
+def append(
+    session_id: str,
+    run_id: str,
+    entry: Dict[str, Any],
+    *,
+    base_dir: Optional[Path] = None,
+) -> None:
+    """agent-trace.jsonl 에 1줄 append. ts 미지정 시 자동.
+
+    POSIX O_APPEND atomic — 4096 bytes 이내 entry 동시 write 안전.
+    """
+    if not isinstance(entry, dict):
+        raise TypeError(f"entry must be dict, got {type(entry).__name__}")
+    if "ts" not in entry:
+        entry = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **entry}
+    line = json.dumps(entry, ensure_ascii=False, separators=(",", ":")) + "\n"
+    target = _trace_path(session_id, run_id, base_dir=base_dir)
+    fd = os.open(str(target), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    try:
+        os.write(fd, line.encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
+def read_all(
+    session_id: str,
+    run_id: str,
+    *,
+    base_dir: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """모든 entry 반환. 비존재 / 빈 → []. malformed skip."""
+    target = _trace_path(session_id, run_id, base_dir=base_dir)
+    if not target.exists():
+        return []
+    entries: List[Dict[str, Any]] = []
+    with open(target, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return entries
+
+
+def tail(
+    session_id: str,
+    run_id: str,
+    n: int = 10,
+    *,
+    base_dir: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """마지막 n entry."""
+    if n <= 0:
+        return []
+    return read_all(session_id, run_id, base_dir=base_dir)[-n:]

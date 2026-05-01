@@ -20,6 +20,23 @@
 
 ## Records
 
+### DCN-CHG-20260501-11
+- **Date**: 2026-05-01
+- **Change-Type**: harness, hooks, test
+- **Files Changed**:
+  - `harness/redo_log.py` (신규 — sub cycle 평가 audit log append/read/tail)
+  - `harness/agent_trace.py` (신규 — sub 행동 trace append/read/tail)
+  - `harness/hooks.py` (`handle_pretooluse_file_op` boundary 통과 시 trace pre append + `handle_posttooluse_file_op` 신규 + CLI subcommand 추가)
+  - `hooks/post-file-op-trace.sh` (신규 — PostToolUse Edit/Write/Read/Bash wrapper)
+  - `hooks/hooks.json` (PostToolUse Edit/Write/Read/Bash matcher 등록)
+  - `tests/test_redo_log.py` (신규 — 15 case)
+  - `tests/test_agent_trace.py` (신규 — 11 case)
+  - `tests/test_hooks.py` (`FileOpTraceTests` + `PostToolUseFileOpTests` 신규 — 9 case)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: PR-1 — sub 행동 사후 추적 인프라. PreToolUse/PostToolUse hook 가 sub 내부 `Edit/Write/Read/Bash` 호출마다 `agent-trace.jsonl` 1줄 append (boundary 통과 시만). 메인이 sub completion notification 평가 후 `redo-log.jsonl` 에 PASS/REDO 결정 1줄 기록 (PR-2 에서 SessionStart 메시지 + skill 추가). *행동* 만 cover — thinking / 중간 message 추적은 미래 P7 (`.output` 가공 helper). 토큰 비용 0 (hook LLM context 외부). 신규 35 case + 전체 324 tests OK / 회귀 0.
+
 ### DCN-CHG-20260501-10
 - **Date**: 2026-05-01
 - **Change-Type**: harness, test
