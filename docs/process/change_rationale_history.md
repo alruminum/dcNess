@@ -18,6 +18,13 @@
 
 ## Records
 
+### DCN-CHG-20260502-04
+- **Date**: 2026-05-02
+- **Rationale**: impl 구현 단위를 "batch"로 불렀으나 직관성이 낮음. 사용자가 보편적으로 쓰는 Jira-style Epic→Story→Task 계층과 불일치 — "batch 다 돌려", "per-batch" 등이 신규 기여자에게 낯설었음.
+- **Alternatives**: (1) "unit" — 너무 추상적, 계층 관계 불명확. (2) "item" — 동일 문제. (3) "task" — `architect TASK_DECOMPOSE`가 이미 task라는 단어를 사용 + Epic→Story→**Task** 계층과 완벽 정합.
+- **Decision**: "task" 채택. 루프명 `impl-batch-loop` → `impl-task-loop`. 행동 변경 없음 — 순수 용어 통일.
+- **Follow-Up**: 과거 change_rationale_history.md / document_update_record.md / PROGRESS.md 의 히스토리 기록은 정확성 보존을 위해 변경하지 않음.
+
 ### DCN-CHG-20260502-03
 - **Date**: 2026-05-02
 - **Rationale**: DCN-01에서 BLOCKING 게이트를 넣었으나 inject 내 Read 경로가 상대 경로("docs/process/dcness-guidelines.md")였음. Read 도구는 절대 경로만 허용하므로 Claude가 Read를 시도해도 즉시 실패 → "파일이 없어 로드는 스킵됐습니다" 오류.

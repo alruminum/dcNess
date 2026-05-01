@@ -20,6 +20,30 @@
 
 ## Records
 
+### DCN-CHG-20260502-04
+- **Date**: 2026-05-02
+- **Change-Type**: agent | docs-only
+- **Files Changed**:
+  - `commands/impl.md`
+  - `commands/impl-loop.md`
+  - `commands/product-plan.md`
+  - `commands/qa.md`
+  - `commands/run-review.md`
+  - `agents/architect/task-decompose.md`
+  - `agents/architect/module-plan.md`
+  - `agents/architect/spec-gap.md`
+  - `agents/engineer.md`
+  - `agents/validator/design-validation.md`
+  - `docs/loop-catalog.md`
+  - `docs/loop-procedure.md`
+  - `docs/orchestration.md`
+  - `docs/process/dcness-guidelines.md`
+  - `docs/process/manual-smoke-guide.md`
+  - `docs/process/document_update_record.md`
+  - `docs/process/change_rationale_history.md`
+  - `README.md`
+- **Summary**: "batch" 용어 전면 제거 — impl 단위를 "task"로 통일 (Epic→Story→Task 계층 정합), 루프명 `impl-batch-loop` → `impl-task-loop`
+
 ### DCN-CHG-20260502-03
 - **Date**: 2026-05-02
 - **Change-Type**: hooks
