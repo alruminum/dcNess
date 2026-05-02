@@ -2,6 +2,16 @@
 
 ## 현재 상태
 
+- **📦 PR/Commit/Issue 구조화 강제** (`DCN-CHG-20260502-05`):
+  - **3-commit 구조** (impl-task-loop 계열): docs(MODULE_PLAN 후) → tests(TESTS_WRITTEN 후) → src+PR(CODE_VALIDATION 후). `loop-procedure.md §3.4` 신설.
+  - **catastrophic gate 3개**: §2.3.6(test-engineer=docs commit), §2.3.7(engineer IMPL=tests commit), §2.3.8(pr-reviewer=src commit). impl loop(entry_point=impl) 계열에만 적용.
+  - **record-stage-commit** 서브커맨드 신규 — `$HELPER record-stage-commit <docs|tests|src>` → live.json.stage_commits 기록.
+  - **이슈 레이블 체계**: 정적(BugFix/UI/Docs, `scripts/setup_labels.sh`) + 동적(V0N/EPIC0N/Story0N, agent 자동 생성).
+  - **docs/epic-index.md** 신규 — EPIC번호 ↔ GitHub이슈번호 매핑 SSOT.
+  - **PR merge**: squash → regular merge (3 commit 히스토리 보존). `§5.4` 주석 추가.
+  - **agent 갱신**: product-planner(epic 이슈 의무), task-decompose(story 이슈 의무), qa(BugFix 레이블), designer(UI 레이블).
+  - **374 tests OK** (신규 10 case: StageCommit*GateTests 3클래스).
+
 - **📚 loop-insights 누적·주입** (`DCN-CHG-20260502-02`):
   - `harness/loop_insights.py` 신규 — agent별 insights 파일 read/write (`.claude/loop-insights/<agent>[-<mode>].md`).
   - `finalize-run --accumulate` — redo-log REDO_* + WASTE/GOOD findings → agent별 파일 append.

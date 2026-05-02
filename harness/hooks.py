@@ -226,6 +226,16 @@ def handle_pretooluse_agent(
 
     rd = run_dir(sid, rid, base_dir=base_dir)
 
+    # §2.3.6 (DCN-CHG-20260502-05) — test-engineer 호출 전 commit1(docs) 필수 (impl loop 계열)
+    if subagent == "test-engineer" and _is_impl_loop(sid, rid, base_dir=base_dir):
+        if not _has_stage_commit(sid, rid, "docs", base_dir=base_dir):
+            print(
+                "[catastrophic §2.3.6] test-engineer 호출은 commit1(docs) 후만 "
+                "(`$HELPER record-stage-commit docs` 누락 — loop-procedure §3.4)",
+                file=sys.stderr,
+            )
+            return 1
+
     # 2. §2.3.3 — engineer 직전 architect plan READY 필수 (mode != POLISH)
     if subagent == "engineer" and mode != "POLISH":
         if not _has_plan_ready(rd):
@@ -236,12 +246,32 @@ def handle_pretooluse_agent(
             )
             return 1
 
+    # §2.3.7 (DCN-CHG-20260502-05) — engineer IMPL 호출 전 commit2(tests) 필수 (impl loop 계열)
+    if subagent == "engineer" and mode == "IMPL" and _is_impl_loop(sid, rid, base_dir=base_dir):
+        if not _has_stage_commit(sid, rid, "tests", base_dir=base_dir):
+            print(
+                "[catastrophic §2.3.7] engineer IMPL 호출은 commit2(tests) 후만 "
+                "(`$HELPER record-stage-commit tests` 누락 — loop-procedure §3.4)",
+                file=sys.stderr,
+            )
+            return 1
+
     # 3. §2.3.1 — pr-reviewer 직전 validator (CODE/BUGFIX) PASS 필수
     if subagent == "pr-reviewer":
         if _has_engineer_write(rd) and not _has_validator_pass(rd):
             print(
                 "[catastrophic §2.3.1] pr-reviewer 호출은 validator "
                 "CODE_VALIDATION 또는 BUGFIX_VALIDATION PASS 후만",
+                file=sys.stderr,
+            )
+            return 1
+
+    # §2.3.8 (DCN-CHG-20260502-05) — pr-reviewer 호출 전 commit3(src) 필수 (impl loop 계열)
+    if subagent == "pr-reviewer" and _is_impl_loop(sid, rid, base_dir=base_dir):
+        if not _has_stage_commit(sid, rid, "src", base_dir=base_dir):
+            print(
+                "[catastrophic §2.3.8] pr-reviewer 호출은 commit3(src) 후만 "
+                "(`$HELPER record-stage-commit src` 누락 — loop-procedure §3.4)",
                 file=sys.stderr,
             )
             return 1
@@ -623,6 +653,50 @@ def _has_ux_flow_ready(rd: Path) -> bool:
 def _has_design_review_pass(rd: Path) -> bool:
     """validator-DESIGN_VALIDATION.md 안 DESIGN_REVIEW_PASS 확인 (DCN-CHG-20260430-05)."""
     return "DESIGN_REVIEW_PASS" in _read_or_empty(rd / "validator-DESIGN_VALIDATION.md")
+
+
+def _is_impl_loop(sid: str, rid: str, *, base_dir: Optional[Path] = None) -> bool:
+    """현재 run 이 impl-task-loop 계열인지 확인 (entry_point 기준, DCN-CHG-20260502-05).
+
+    3-commit 구조 gate 는 impl-task-loop / impl-ui-design-loop / direct-impl-loop 에만 적용.
+    quick-bugfix / feature-build / qa 등 다른 loop 는 적용 X.
+    """
+    try:
+        live = read_live(sid, base_dir=base_dir) or {}
+        active = live.get("active_runs", {})
+        if not isinstance(active, dict):
+            return False
+        slot = active.get(rid, {})
+        entry = slot.get("entry_point", "") if isinstance(slot, dict) else ""
+        return entry in ("impl", "impl_driver")
+    except Exception:  # noqa: BLE001 — safe default
+        return False
+
+
+def _has_stage_commit(
+    sid: str,
+    rid: str,
+    stage: str,
+    *,
+    base_dir: Optional[Path] = None,
+) -> bool:
+    """live.json.active_runs[rid].stage_commits[stage] 존재 확인 (DCN-CHG-20260502-05).
+
+    impl-task-loop 3-commit catastrophic gate 용.
+    stage: 'docs' | 'tests' | 'src'
+    """
+    try:
+        live = read_live(sid, base_dir=base_dir) or {}
+        active = live.get("active_runs", {})
+        if not isinstance(active, dict):
+            return False
+        slot = active.get(rid, {})
+        if not isinstance(slot, dict):
+            return False
+        sc = slot.get("stage_commits")
+        return isinstance(sc, dict) and bool(sc.get(stage))
+    except Exception:  # noqa: BLE001 — gate failure → allow (안전 우선)
+        return False
 
 
 # ── CLI 진입점 (bash 훅 → python -m harness.hooks <subcommand>) ─────

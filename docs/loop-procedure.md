@@ -91,6 +91,60 @@ cycle 한도 = orchestration.md §5. yolo 매핑 = guidelines §5 + helper `auto
 
 ---
 
+## 3.4 impl-task-loop 3-commit 구조 (loop-catalog §3 한정)
+
+`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` 에서 루프 종료 전 3 단계 commit + PR create 를 강제 (catastrophic gate §2.3.6~§2.3.8, `hooks.py`).
+
+| 시점 | stage | 포함 파일 | 커밋 메시지 예 |
+|---|---|---|---|
+| MODULE_PLAN READY_FOR_IMPL 직후 | docs | `docs/impl/NN.md` 등 | `docs: impl plan <task-slug>` |
+| TESTS_WRITTEN 직후 | tests | `src/tests/**`, `*.test.*` | `test: tests for <task-slug>` |
+| CODE_VALIDATION PASS 직후 | src | `src/**`, stories.md 등 | `feat/fix/chore: <task-slug>` |
+| LGTM 직후 | — (merge) | 새 커밋 없음 | — |
+
+### commit 골격
+
+```bash
+# commit1 (MODULE_PLAN 직후) — 브랜치 최초 생성
+BRANCH="<prefix>/<task-slug>"
+git checkout -b "$BRANCH" main
+git add docs/impl/NN-*.md          # 플랜 문서
+git commit -m "docs: impl plan <task-slug>"
+"$HELPER" record-stage-commit docs  # stage_commits.docs 기록
+
+# commit2 (TESTS_WRITTEN 직후)
+git add src/tests/**  # test 파일
+git commit -m "test: tests for <task-slug>"
+"$HELPER" record-stage-commit tests
+
+# commit3 (CODE_VALIDATION PASS 직후) — push + PR create
+git add src/**  # src 변경 + stories.md/backlog.md (Step 4.5 결과)
+git commit -m "<type>: <task-slug>"
+"$HELPER" record-stage-commit src
+git push -u origin "$BRANCH"
+
+# PR body: Part of vs Closes 자동 판단
+REMAINING=$(grep -c '\[ \]' "$STORIES_FILE" 2>/dev/null || echo 0)
+if [ "$REMAINING" = "0" ]; then
+  PR_BODY="Closes #<story_issue>"
+  # 에픽 마지막 story 이면 "Closes #<epic_issue>" 도 추가
+else
+  PR_BODY="Part of #<story_issue>"
+fi
+gh pr create --title "<type>: <task-slug> (#<story_issue>)" --body "$PR_BODY"
+```
+
+### Step 7a (impl-task-loop)
+
+PR 이미 생성된 상태 — merge only, **NO --squash** (3 commit 히스토리 보존):
+
+```bash
+gh pr merge || echo "[impl] merge 대기 — CI / reviewers"
+git checkout main && git pull --ff-only 2>/dev/null || true
+```
+
+---
+
 ## 4. Step 4.5 — stories.md / backlog.md sync (impl 계열 한정)
 
 `impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` / `impl-loop` 의 inner task 에 한정. engineer `IMPL_DONE` 직후, validator 진입 *전*. 메인 직접 mechanical edit (agent 위임 X — 도메인 외).
@@ -159,7 +213,9 @@ clean 아니면 **7b (caveat)**.
 
 ### 5.4 7a — Clean 자동 commit/PR
 
-자동 진행 (사용자 확인 X):
+> **impl-task-loop 제외**: 3-commit 구조 (§3.4) 에서 branch/commit3/push/PR 이미 완료. Step 7a = merge only (`gh pr merge` — NO --squash).
+
+자동 진행 (사용자 확인 X, **impl-task-loop 외** 루프 적용):
 
 ```bash
 CHANGED=$(git diff --name-only HEAD)

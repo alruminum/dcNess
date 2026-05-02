@@ -479,6 +479,7 @@ def start_run(
         "run_dir": _resolve_run_dir_str(session_id, run_id, base_dir),
         "current_step": None,
         "issue_num": issue_num,
+        "stage_commits": {},  # docs/tests/src commit hashes (impl-task-loop 3-commit)
     }
     update_live(session_id, base_dir=base_dir, active_runs=active)
     # run 디렉토리 생성
@@ -1464,6 +1465,44 @@ _YOLO_FALLBACKS: Dict[str, Dict[str, str]] = {
 }
 
 
+def _cli_record_stage_commit(args: Any) -> int:
+    """impl-task-loop 3-commit 구조 — 현재 HEAD hash → stage_commits[stage] 기록 (DCN-CHG-20260502-05).
+
+    hooks.py catastrophic gate 가 이 값으로 test-engineer/engineer/pr-reviewer 진입 순서 강제.
+    """
+    import subprocess as _sp
+
+    sid = auto_detect_session_id()
+    rid = auto_detect_run_id()
+    if not sid or not rid:
+        print("[session_state] sid/rid 미해결", file=sys.stderr)
+        return 1
+    try:
+        result = _sp.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True, timeout=5.0,
+        )
+        head_hash = result.stdout.strip()
+    except Exception as exc:
+        print(f"[session_state] git rev-parse HEAD 실패: {exc}", file=sys.stderr)
+        return 1
+
+    live = read_live(sid) or {}
+    active = live.get("active_runs", {})
+    if not isinstance(active, dict) or rid not in active:
+        print(f"[session_state] run_id not active: {rid}", file=sys.stderr)
+        return 1
+    slot = dict(active[rid])
+    stage_commits = dict(slot.get("stage_commits") or {})
+    stage_commits[args.stage] = head_hash
+    slot["stage_commits"] = stage_commits
+    active = dict(active)
+    active[rid] = slot
+    update_live(sid, active_runs=active)
+    print(f"[stage-commit] {args.stage} = {head_hash[:8]}")
+    return 0
+
+
 def _cli_auto_resolve(args: Any) -> int:
     """yolo 모드 — enum + agent[:mode] 받아 권장 액션 JSON 반환.
 
@@ -1596,6 +1635,17 @@ def _build_arg_parser() -> Any:
         help="redo-log + WASTE/GOOD → .claude/loop-insights/<agent>.md 누적 (DCN-CHG-20260502-02)",
     )
     p_fr.set_defaults(func=_cli_finalize_run)
+
+    p_rsc = sub.add_parser(
+        "record-stage-commit",
+        help="impl-task-loop 3-commit — HEAD hash → stage_commits[stage] (DCN-CHG-20260502-05)",
+    )
+    p_rsc.add_argument(
+        "stage",
+        choices=["docs", "tests", "src"],
+        help="커밋 단계 (docs=MODULE_PLAN 후 / tests=TESTS_WRITTEN 후 / src=CODE_VALIDATION 후)",
+    )
+    p_rsc.set_defaults(func=_cli_record_stage_commit)
 
     p_ar = sub.add_parser(
         "auto-resolve",
