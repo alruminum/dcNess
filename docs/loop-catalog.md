@@ -64,6 +64,14 @@
 - 버그픽스 (의도 vs 실제 격차 수정) → `fix/<task-slug>`
 - 메인 Claude 가 task 의 ## 변경 요약 / engineer prose 보고 결정.
 
+**3-commit 구조** (`loop-procedure.md §3.4` 참조 — catastrophic gate §2.3.6~§2.3.8):
+| stage | 시점 | 내용 |
+|---|---|---|
+| commit1 (docs) | MODULE_PLAN READY_FOR_IMPL 직후 | docs/impl/NN.md 등 + `record-stage-commit docs` |
+| commit2 (tests) | TESTS_WRITTEN 직후 | test 파일 + `record-stage-commit tests` |
+| commit3 (src) + PR | CODE_VALIDATION PASS 직후 | src 파일 + push + `gh pr create` + `record-stage-commit src` |
+| merge | LGTM 직후 | `gh pr merge` (NO --squash — 3 commit 히스토리 보존) |
+
 **Step 4.5 적용**: ✓ (engineer `IMPL_DONE` 직후, validator 진입 *전* — `loop-procedure.md` §4 참조).
 
 **Step 별 allowed_enums**:

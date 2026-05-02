@@ -61,7 +61,7 @@ model: sonnet
 
 ### Phase 0 — 이슈 생성 + 컨텍스트 + 캔버스 (모든 모드)
 
-- **추적 이슈** (`skip_issue_creation` 없으면): `python3 -m harness.tracker create-issue --title "[design] {target} {ux_goal}" --label design-fix --milestone {…}`. 백엔드 자동 선택 (gh / Local 폴백). 결과 ID (`#N` 또는 `LOCAL-N`) 를 DESIGN_HANDOFF 에 포함.
+- **추적 이슈** (`skip_issue_creation` 없으면): `python3 -m harness.tracker create-issue --title "[design] {target} {ux_goal}" --label UI --milestone {…}`. 백엔드 자동 선택 (gh / Local 폴백). 결과 ID (`#N` 또는 `LOCAL-N`) 를 DESIGN_HANDOFF 에 포함. (`UI` 는 `scripts/setup_labels.sh` 로 사전 생성 — 정적 레이블. 에픽/버전 레이블 있으면 추가).
 - **Pencil 읽기**: `get_editor_state` → `batch_get` (디자인시스템 노드 + 대상 화면 노드) → `get_screenshot` 베이스라인.
 - **디자인 가이드 읽기**: `docs/ux-flow.md` 의 `## 0. 디자인 가이드` 섹션 우선. `docs/ui-spec.md` 있으면 Read.
 - **외부 레퍼런스**: 유저 명시 요청 또는 SCREEN_THREE_WAY 심층 모드에서만 WebSearch/WebFetch.

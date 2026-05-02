@@ -18,6 +18,16 @@
 
 ## Records
 
+### DCN-CHG-20260502-05
+- **Date**: 2026-05-02
+- **Rationale**: jajang PR #179처럼 architect TECH_EPIC → DESIGN_VALIDATION → TASK_DECOMPOSE 전체가 commit 1개 + PR 1개에 묶이는 문제. 이슈/PR 간 관계 미정립, squash merge로 브랜치 히스토리 소실. (1) docs/tests/src 단계별 히스토리 보존 필요. (2) epic/story/bug 이슈 자동 연결 필요. (3) PR body에 Closes/Part of 자동화 필요.
+- **Alternatives**:
+  - (1) 단일 commit 유지 — 히스토리 소실 문제 미해결. impl 흔적 추적 불가.
+  - (2) 수동 3-commit — 메인 Claude 가 잊으면 무의미. catastrophic gate 없이는 강제 불가.
+  - (3) 이슈 레이블 수동 — agent마다 제각각. setup_labels.sh + agent 명문화로 통일.
+- **Decision**: 3-commit(docs→tests→src) + record-stage-commit + catastrophic gate 3개(§2.3.6~§2.3.8) 채택. impl loop 계열(entry_point=impl)에만 적용 — quick/qa 등은 해당 없음. 이슈 레이블 체계: 정적(BugFix/UI/Docs) + 동적(V0N/EPIC0N/Story0N). epic-index.md로 EPIC↔이슈 번호 매핑 관리. squash merge → regular merge(3 commit 히스토리 보존).
+- **Follow-Up**: (1) ISSUE_SYNC 모드 통합 검토 (product-planner ISSUE_SYNC와 epic-index.md 연동). (2) record-stage-commit 서브커맨드 단위 테스트 추가 (별도 Task-ID). (3) PR title/body 자동 생성 helper 구현 (별도 Task-ID).
+
 ### DCN-CHG-20260502-04
 - **Date**: 2026-05-02
 - **Rationale**: impl 구현 단위를 "batch"로 불렀으나 직관성이 낮음. 사용자가 보편적으로 쓰는 Jira-style Epic→Story→Task 계층과 불일치 — "batch 다 돌려", "per-batch" 등이 신규 기여자에게 낯설었음.

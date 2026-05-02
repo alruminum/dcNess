@@ -20,6 +20,27 @@
 
 ## Records
 
+### DCN-CHG-20260502-05
+- **Date**: 2026-05-02
+- **Change-Type**: agent | harness | hooks | ci
+- **Files Changed**:
+  - `docs/epic-index.md` (신규)
+  - `scripts/setup_labels.sh` (신규)
+  - `scripts/check_document_sync.mjs` (epic-index.md agent 카테고리 추가)
+  - `agents/product-planner.md` (Epic 이슈 생성 의무화)
+  - `agents/architect/task-decompose.md` (Story 이슈 생성 의무화 + 레이블)
+  - `agents/qa.md` (BugFix 레이블 명시)
+  - `agents/designer.md` (UI 레이블 명시)
+  - `harness/session_state.py` (stage_commits 필드 + record-stage-commit 서브커맨드)
+  - `harness/hooks.py` (_is_impl_loop + _has_stage_commit + §2.3.6~§2.3.8 gate 3개)
+  - `docs/loop-procedure.md` (§3.4 3-commit 구조 신설, §5.4 impl-task-loop 예외 주석)
+  - `docs/loop-catalog.md` (impl-task-loop §3 3-commit 테이블 추가)
+  - `tests/test_hooks.py` (StageCommit*GateTests 3 클래스 추가)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: PR/Commit/Issue 구조화 강제 — impl-task-loop 3-commit(docs/tests/src) 구조 + catastrophic gate 3개 + 이슈 레이블 체계(BugFix/UI/동적 V0N/EPIC0N/Story0N) + epic-index.md + regular merge(NO squash)
+
 ### DCN-CHG-20260502-04
 - **Date**: 2026-05-02
 - **Change-Type**: agent | docs-only

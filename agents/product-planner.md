@@ -95,6 +95,16 @@ Option D — Reduction:   가장 빠르게 검증 가능한 핵심만
 
 PRD 작성 중 유저 답변 필요 시 — **유저에게 질문 던지는 출력은 반드시 결론 enum `CLARITY_INSUFFICIENT`**. 작성 가능한 부분은 `prd-draft.md` 에 모두 작성, 부족한 부분만 `[TBD]`. 질문 제안은 메인 Claude 가 유저에게 그대로 전달 가능한 자연어. **에스컬레이션 최대 2회**, 3회+ 면 메인 Claude 가 현재 상태로 강제 진행.
 
+### Epic 이슈 생성 의무 (PRODUCT_PLAN_READY 직후)
+
+`prd.md` Write 완료 후 각 epic 에 대해 GitHub 이슈 생성 + `docs/epic-index.md` 갱신:
+
+1. `mcp__github__create_issue` — 제목 `[epic] <epic명>`, 레이블 `V0N` + `EPIC0N`, body = epic 개요 1~3줄.
+2. 생성된 이슈 번호를 `docs/epic-index.md` 매핑 테이블에 추가 (Read 후 Write).
+3. 이슈 생성 실패 시 `docs/epic-index.md` 에 `GitHub 이슈 # = (미생성)` 로 기록 후 계속.
+
+**레이블 형식**: 버전 레이블 `V01` (zero-pad 2자리), 에픽 레이블 `EPIC01` (zero-pad 2자리). 존재하지 않으면 GitHub 이 자동 생성 (동적 레이블).
+
 ### PRODUCT_PLAN_READY 산출물 (정보 의무, 형식 자유)
 
 `prd.md` 에 다음 정보 포함:
