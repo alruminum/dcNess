@@ -18,6 +18,14 @@
 
 ## Records
 
+### DCN-CHG-20260503-03
+- **Date**: 2026-05-03
+- **Rationale**: (1) CLAUDE.md 문서 지도가 즉시읽기/lazy 구분 없이 나열되어 세션 시작 시 무엇을 읽어야 하는지 불명확. (2) §5 커밋 절차에 squash merge가 남아 있어 git-naming-spec(regular merge 강제)과 직접 충돌. (3) 브랜치 타입에 chore·feat 잔존으로 새 네이밍 규칙과 불일치.
+- **Alternatives**:
+  - 문서 지도에 주석만 추가 — 즉시읽기/lazy 의도가 모호하게 남음. 실제 행동 변화 없음.
+- **Decision**: 문서 지도 테이블을 즉시읽기/lazy 두 섹션으로 분리. §5를 git-naming-spec 위임 + regular merge로 일원화.
+- **Follow-Up**: PR 제목·브랜치명 포맷 CI/hook 강제 (DCN-CHG-20260503-04).
+
 ### DCN-CHG-20260503-02
 - **Date**: 2026-05-03
 - **Rationale**: dcNess 자체 작업이 epic 분류 없이 Task-ID만으로 관리되어 이슈 추적 구조 부재. git-naming-spec 도입으로 epic/story 기반 브랜치·이슈 규칙이 생겼으므로 dcNess 자신도 동일 구조 적용.
