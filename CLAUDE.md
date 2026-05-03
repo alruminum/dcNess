@@ -89,6 +89,7 @@ node scripts/check_document_sync.mjs
 
 # git hook 설치 (clone 후 1회)
 cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+cp scripts/hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
 
 # 하네스 단위 테스트 실행
 python3 -m unittest discover -s tests -v

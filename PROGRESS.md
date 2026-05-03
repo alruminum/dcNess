@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🏷️ git-naming-spec CI/hook 강제** (`DCN-CHG-20260503-04`):
+  - `scripts/check_git_naming.mjs` 신규 — 브랜치명·커밋/PR 제목 형식 검증 스크립트.
+  - `scripts/hooks/commit-msg` 신규 — 로컬 commit-msg hook (커밋 제목 즉시 차단).
+  - `.github/workflows/git-naming-validation.yml` 신규 — CI 브랜치명·PR 제목 게이트.
+  - `CLAUDE.md` §3 문서 지도 즉시읽기/lazy 분리. §5 squash→regular merge 수정.
+
 - **📦 PR/Commit/Issue 구조화 강제** (`DCN-CHG-20260502-05`):
   - **3-commit 구조** (impl-task-loop 계열): docs(MODULE_PLAN 후) → tests(TESTS_WRITTEN 후) → src+PR(CODE_VALIDATION 후). `loop-procedure.md §3.4` 신설.
   - **catastrophic gate 3개**: §2.3.6(test-engineer=docs commit), §2.3.7(engineer IMPL=tests commit), §2.3.8(pr-reviewer=src commit). impl loop(entry_point=impl) 계열에만 적용.

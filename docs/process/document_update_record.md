@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260503-04
+- **Date**: 2026-05-03
+- **Change-Type**: ci
+- **Files Changed**:
+  - `scripts/check_git_naming.mjs` (신규) — branch/title 형식 검증 스크립트
+  - `scripts/hooks/commit-msg` (신규) — 로컬 commit-msg hook
+  - `.github/workflows/git-naming-validation.yml` (신규) — CI 브랜치명·PR 제목 게이트
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: git-naming-spec CI/hook 강제 — 브랜치명·PR 제목·커밋 제목 자동 차단
+
 ### DCN-CHG-20260503-03
 - **Date**: 2026-05-03
 - **Change-Type**: agent
