@@ -20,6 +20,15 @@
 
 ## Records
 
+### DCN-CHG-20260503-02
+- **Date**: 2026-05-03
+- **Change-Type**: agent
+- **Files Changed**:
+  - `docs/epic-index.md` (EPIC01~EPIC03 매핑 추가, 마일스톤 v0.1.0)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: dcNess 자체 epic 3개 정의 + GitHub 이슈 생성 + epic-index.md 매핑
+
 ### DCN-CHG-20260503-01
 - **Date**: 2026-05-03
 - **Change-Type**: docs-only
