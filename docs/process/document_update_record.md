@@ -20,6 +20,15 @@
 
 ## Records
 
+### DCN-CHG-20260503-01
+- **Date**: 2026-05-03
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/process/git-naming-spec.md` (신규) — 브랜치/커밋/PR 네이밍 규칙 SSOT
+  - `~/.claude/CLAUDE.md` (전역, 레포 외) — 커밋 절차 섹션 git-naming-spec 참조로 대체
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: Git 네이밍 규칙 문서 분리 — 일반 프로젝트 기준 브랜치/커밋/PR 규칙 SSOT 신설
+
 ### DCN-CHG-20260502-05
 - **Date**: 2026-05-02
 - **Change-Type**: agent | harness | hooks | ci
