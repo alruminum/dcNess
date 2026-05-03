@@ -18,6 +18,14 @@
 
 ## Records
 
+### DCN-CHG-20260503-02
+- **Date**: 2026-05-03
+- **Rationale**: dcNess 자체 작업이 epic 분류 없이 Task-ID만으로 관리되어 이슈 추적 구조 부재. git-naming-spec 도입으로 epic/story 기반 브랜치·이슈 규칙이 생겼으므로 dcNess 자신도 동일 구조 적용.
+- **Alternatives**:
+  - Task-ID 체계만 유지 — 브랜치/이슈 네이밍 규칙과 정합 안 됨. epic 없이는 Story 레이블도 붙일 수 없음.
+- **Decision**: epic 3개(하네스/에이전트/인프라) + 마일스톤 v0.1.0 정의. 배포 시마다 마일스톤 버전 증가.
+- **Follow-Up**: 앞으로 작업 생성 시 3 epic 중 하나에 귀속된 story 이슈 발행.
+
 ### DCN-CHG-20260502-05
 - **Date**: 2026-05-02
 - **Rationale**: jajang PR #179처럼 architect TECH_EPIC → DESIGN_VALIDATION → TASK_DECOMPOSE 전체가 commit 1개 + PR 1개에 묶이는 문제. 이슈/PR 간 관계 미정립, squash merge로 브랜치 히스토리 소실. (1) docs/tests/src 단계별 히스토리 보존 필요. (2) epic/story/bug 이슈 자동 연결 필요. (3) PR body에 Closes/Part of 자동화 필요.
