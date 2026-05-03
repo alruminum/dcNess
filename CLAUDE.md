@@ -54,26 +54,32 @@
 
 ## 3. 문서 지도
 
+### 즉시 읽기 (세션 시작 시 항상)
+
 | 파일 | 역할 |
 |---|---|
-| [`docs/process/main-claude-rules.md`](docs/process/main-claude-rules.md) | 🔴 **메인 Claude 행동 룰 SSOT** — 본 프로젝트 작업 *직전* read 의무. 실존 검증 / dcness 인프라 / Karpathy 4 원칙 전문 |
-| [`docs/process/governance.md`](docs/process/governance.md) | **SSOT** — 모든 거버넌스 룰의 단일 출처 |
-| [`docs/process/document_update_record.md`](docs/process/document_update_record.md) | WHAT 로그 (Task-ID 별 변경 파일) |
-| [`docs/process/change_rationale_history.md`](docs/process/change_rationale_history.md) | WHY 로그 (Task-ID 별 동기·대안·결정·후속) |
-| [`docs/process/document_impact_matrix.md`](docs/process/document_impact_matrix.md) | 변경 → 검토 문서 빠른 참조 |
-| [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | RWHarness fork-and-refactor proposal (정체성·Phase·원칙) |
-| [`docs/orchestration.md`](docs/orchestration.md) | 오케스트레이션 SSOT — 시퀀스 + 진입 경로 + 결정표 + retry + escalate + 핸드오프 매트릭스 (RWHarness §4.2/§4.3/§3 통합, 형식 어휘 dcNess 변환) |
-| [`PROGRESS.md`](PROGRESS.md) | 현재 상태 / TODO / Blockers |
-| [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 |
-| [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) | PR 체크리스트 |
-| [`scripts/check_document_sync.mjs`](scripts/check_document_sync.mjs) | Document Sync 게이트 구현 |
-| [`scripts/check_task_id.mjs`](scripts/check_task_id.mjs) | Task-ID 형식 검증 게이트 (governance §2.1) |
-| [`scripts/setup_branch_protection.mjs`](scripts/setup_branch_protection.mjs) | main 브랜치 보호 적용 스크립트 (governance §2.8) |
-| [`docs/process/branch-protection-setup.md`](docs/process/branch-protection-setup.md) | branch protection 적용/검증 가이드 |
-| [`docs/process/plugin-dryrun-guide.md`](docs/process/plugin-dryrun-guide.md) | RWHarness 와 공존 plugin 배포 dry-run 절차 (proposal §12 풀어쓴 운영 가이드) |
-| [`scripts/check_python_tests.sh`](scripts/check_python_tests.sh) | pytest pre-commit 게이트 (paths 분기) |
-| [`scripts/hooks/pre-commit`](scripts/hooks/pre-commit) | git pre-commit hook (doc-sync + pytest 체인) |
-| [`scripts/hooks/cc-pre-commit.sh`](scripts/hooks/cc-pre-commit.sh) | Claude Code PreToolUse hook (doc-sync + pytest 체인) |
+| [`docs/process/main-claude-rules.md`](docs/process/main-claude-rules.md) | 🔴 **메인 Claude 행동 룰 SSOT** — 실존 검증 / dcness 인프라 / Karpathy 4 원칙 |
+| [`docs/process/governance.md`](docs/process/governance.md) | 거버넌스 SSOT — Task-ID / Change-Type / 게이트 전체 룰 |
+| [`docs/process/git-naming-spec.md`](docs/process/git-naming-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
+
+### 작업 시 읽기 (lazy — 해당 작업 직전에만)
+
+| 파일 | 언제 읽나 |
+|---|---|
+| [`docs/process/document_update_record.md`](docs/process/document_update_record.md) | 모든 변경 기록 시 (WHAT 로그) |
+| [`docs/process/change_rationale_history.md`](docs/process/change_rationale_history.md) | spec / agent / harness / hooks / ci 변경 시 (WHY 로그) |
+| [`docs/process/document_impact_matrix.md`](docs/process/document_impact_matrix.md) | 변경 영향 범위 검토 시 |
+| [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | 하네스 설계·Phase 수정 시 |
+| [`docs/orchestration.md`](docs/orchestration.md) | 오케스트레이션 로직(시퀀스·retry·escalate) 수정 시 |
+| [`PROGRESS.md`](PROGRESS.md) | 현재 상태·TODO·Blockers 확인 시 |
+| [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 수정 시 |
+| [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) | PR 체크리스트 확인 시 |
+| [`docs/process/branch-protection-setup.md`](docs/process/branch-protection-setup.md) | 브랜치 보호 설정 변경 시 |
+| [`docs/process/plugin-dryrun-guide.md`](docs/process/plugin-dryrun-guide.md) | 플러그인 배포 dry-run 시 |
+| [`scripts/check_document_sync.mjs`](scripts/check_document_sync.mjs) | Document Sync 게이트 구현 참조 시 |
+| [`scripts/check_python_tests.sh`](scripts/check_python_tests.sh) | pytest 게이트 구현 참조 시 |
+| [`scripts/hooks/pre-commit`](scripts/hooks/pre-commit) | git pre-commit hook 수정 시 |
+| [`scripts/hooks/cc-pre-commit.sh`](scripts/hooks/cc-pre-commit.sh) | Claude Code PreToolUse hook 수정 시 |
 
 ## 4. 개발 명령어
 
@@ -83,6 +89,7 @@ node scripts/check_document_sync.mjs
 
 # git hook 설치 (clone 후 1회)
 cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+cp scripts/hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
 
 # 하네스 단위 테스트 실행
 python3 -m unittest discover -s tests -v
@@ -93,23 +100,23 @@ python3 -m unittest tests.test_signal_io -v   # 단일 모듈
 
 ## 5. 커밋 / PR 절차
 
-> 상세: 글로벌 `~/.claude/CLAUDE.md` "커밋 절차" 섹션 + 본 프로젝트 거버넌스 추가 강제.
+> 네이밍·메시지·PR 템플릿 상세: **[`docs/process/git-naming-spec.md`](docs/process/git-naming-spec.md)** (즉시 읽기 문서).
 
 ```
-1. git checkout -b {type}/{설명} main      # type: chore | feat | fix | docs
+1. git checkout -b {브랜치명} main         # git-naming-spec §1 패턴
 2. (변경 + 거버넌스 동반 파일 갱신)
 3. git add {파일}
 4. node scripts/check_document_sync.mjs    # 게이트 수동 확인 (선택)
 5. git commit -m "..."                      # hook 자동 게이트
-6. git push -u origin {branch}
-7. gh pr create --title "..." --body "..."  # PULL_REQUEST_TEMPLATE 채움
-8. gh pr merge --squash
+6. git push -u origin {브랜치명}
+7. gh pr create --title "..." --body "..."  # git-naming-spec §4~§5 템플릿
+8. gh pr merge                              # regular merge (squash 금지)
 9. git checkout main && git pull
 ```
 
-- **main 직접 commit/push 금지**. 항상 branch → PR → squash merge.
-- **branch 는 merge 후에도 삭제하지 않는다** (글로벌 룰 정합).
-- PR title = commit message subject. PR body = 거버넌스 체크리스트 + 변경 요약.
+- **main 직접 commit/push 금지**. 항상 branch → PR → regular merge.
+- **squash merge 금지** — 커밋별 히스토리 보존 목적.
+- **branch 는 merge 후에도 삭제하지 않는다**.
 
 ## 6. 환경변수
 

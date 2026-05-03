@@ -20,6 +20,27 @@
 
 ## Records
 
+### DCN-CHG-20260503-04
+- **Date**: 2026-05-03
+- **Change-Type**: ci
+- **Files Changed**:
+  - `scripts/check_git_naming.mjs` (신규) — branch/title 형식 검증 스크립트
+  - `scripts/hooks/commit-msg` (신규) — 로컬 commit-msg hook
+  - `.github/workflows/git-naming-validation.yml` (신규) — CI 브랜치명·PR 제목 게이트
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: git-naming-spec CI/hook 강제 — 브랜치명·PR 제목·커밋 제목 자동 차단
+
+### DCN-CHG-20260503-03
+- **Date**: 2026-05-03
+- **Change-Type**: agent
+- **Files Changed**:
+  - `CLAUDE.md` §3 문서 지도 → 즉시읽기/lazy 분리, git-naming-spec.md 추가
+  - `CLAUDE.md` §5 커밋/PR 절차 → squash→regular merge, 브랜치 타입 수정, git-naming-spec 참조
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: CLAUDE.md 문서 로딩 전략 정비 + squash merge 충돌 해소
+
 ### DCN-CHG-20260503-02
 - **Date**: 2026-05-03
 - **Change-Type**: agent
