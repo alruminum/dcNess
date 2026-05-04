@@ -19,6 +19,54 @@
 
 ## 0. 프로젝트 정체성
 
+> 🔴 **메인 Claude 가 자주 까먹는 핵심 — 매번 작업 전 반드시 인지**
+
+### 0.1 본 프로젝트 = 하네스 인프라 (plug-in 배포물)
+
+- 본 프로젝트(dcness)는 **Claude Code 용 plug-in 으로 배포**된다.
+- 사용자(외부 프로젝트)는 **`/init-dcness` 스킬을 통해 활성화**한다.
+- 본 프로젝트에 추가하는 모든 기능은 **dcness 자체를 위한 것이 아니라**, **활성화한 외부 프로젝트에 적용되기 위한 것**이다.
+- 따라서 "이 프로젝트에서 잘 작동하는가" 가 아니라 **"활성화한 외부 프로젝트에서 잘 작동하는가"** 가 기준.
+
+### 0.2 dcness 자체는 init-dcness 미적용 — 자기 규격 미얽매임
+
+- 본 dcness 저장소는 자기 자신에 `/init-dcness` 를 실행하지 **않는다**.
+- 따라서 dcness plug-in 의 규격(`stories.md` 강제 / `issue-lifecycle.md §1.1` 흐름 / `product-planner` 시퀀스 등) 에 **얽매이지 않는다**.
+- dcness 자체의 작업은 다음 4개만 따른다:
+  - `docs/process/governance.md` (Task-ID + Change-Type + 동반 갱신)
+  - `docs/process/git-naming-spec.md` (브랜치·커밋·PR 네이밍)
+  - GitHub 이슈 (필요 시 자유 형식, 메타-스토리·stories.md 불필요)
+  - 본 CLAUDE.md
+- **헷갈리지 마라**: plug-in 규격은 *외부 활성화 프로젝트* 용이지, dcness 자기 자신용이 아니다.
+
+### 0.3 내부 ID 를 외부 배포물에 박지 마라
+
+- `DCN-CHG-YYYYMMDD-NN` 같은 **내부 변경 추적 ID** 는 dcness 내부 거버넌스(`docs/process/document_update_record.md` / `change_rationale_history.md` / commit message) 용이다.
+- **외부에 배포되는 파일** (= plug-in 사용자가 보게 되는 파일: `agents/**`, `commands/**`, `skills/**`, `hooks/**`, 그리고 plug-in 사용자가 따라야 하는 SSOT 인 `docs/issue-lifecycle.md` 등) 안에는 **내부 ID 를 본문으로 박지 않는다**.
+- 외부 사용자에게 "DCN-CHG-20260504-01 에서 ..." 같은 표현은 **잡음**이다. 그 변경 이유 / 작동 룰만 자연어로 설명하면 충분.
+- 단 dcness 자체 거버넌스 로그(`document_update_record.md` / `change_rationale_history.md` / commit message / 본 dcness 자체의 docs/process/) 안에서는 ID 표기 필수 — 이건 *내부* 추적이라 OK.
+
+### 0.4 작성 스타일 — 쉬운 한글 + § 표시 명확히
+
+- 외래어 (Caveats / Disclaimer / Note / TBD 등) 보다는 **명확한 한글** 사용. (예: "Caveats" → "주의사항" / "TBD" → "추후 결정")
+- 영어 약어가 더 정확한 곳(API / SDK / SSOT / PR / CI 등 산업 표준어)은 그대로 사용.
+- **`§` 기호는 명확하게 사용** — `§N`, `§N.M` 형식. 어디서 인용했는지 **반드시 명시** (예: `governance.md §2.3` / `main-claude-rules.md §0`).
+- 단순히 "위 섹션" / "아래 참조" 같은 모호한 표현 X — 항상 `파일명 §번호` 박을 것.
+
+### 0.5 추가한 기능은 반드시 배포 경로에도 포함
+
+- 본 저장소(dcness self) 에만 추가하면 **외부 활성화 프로젝트에서는 작동하지 않는다** — 과거 사례: 기능을 dcness 자체에 추가했는데 정작 설치한 외부 프로젝트(jajang)는 그 기능이 없어 작동 안 함.
+- 모든 기능 추가 작업은 **배포 경로 검증 의무** 가 동반된다. 다음 중 *해당하는 모든 경로* 가 갱신돼야 작업 완료:
+  1. **plug-in 본체 파일** (`agents/**`, `commands/**`, `skills/**`, `hooks/**`) — 사용자가 plug-in 업데이트 시 자동 적용. 본 저장소의 같은 경로에 변경 = plug-in 도 자동 갱신 (단 사용자가 plug-in 버전 업 받은 후).
+  2. **`/init-dcness` 스킬이 사용자 프로젝트로 *복사·배포* 하는 파일** (예: `scripts/check_*.mjs`, `scripts/hooks/commit-msg`, `.github/workflows/*.yml`) — 본 저장소에만 추가하면 신규 프로젝트는 받지만 *기존 활성화 프로젝트* 는 못 받음. **`commands/init-dcness.md` 의 deploy 스텝에 반드시 추가** + 기존 사용자가 재배포받을 방법 고지.
+  3. **사용자가 따라야 하는 SSOT 문서** (예: `docs/issue-lifecycle.md`, `docs/process/git-naming-spec.md` 중 사용자용 부분) — 본 저장소 docs 만 갱신하면 사용자는 못 봄. plug-in 배포물 쪽으로 옮기거나 init-dcness 가 복사하도록 처리.
+- 기능 추가 PR 본문에 **"배포 경로 검증"** 항목 명시 — 어떤 경로(1/2/3) 로 사용자 환경에 도달하는지, 누락 없는지.
+- **검증 안 된 변경은 dcness 자체에서만 작동하는 환상**. 사용자에게 안 닿으면 기능 추가 의미 없음.
+
+---
+
+### 0.6 모드 (위 0.1~0.5 정체성 위에서)
+
 - **목적**: RWHarness fork-and-refactor — status-JSON-mutate 결정론 + 4 기둥 정합 + 함정 회피 5원칙 (`docs/status-json-mutate-pattern.md` §1~§2.5).
 - **모드**: **메인 Claude 직접 작업** (`status-json-mutate-pattern.md` §10 / §11.4 정합).
   - architect / validator / engineer 위임 강제 **없음**.

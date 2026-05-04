@@ -20,6 +20,15 @@
 
 ## Records
 
+### DCN-CHG-20260504-03
+- **Date**: 2026-05-04
+- **Change-Type**: agent
+- **Files Changed**:
+  - `CLAUDE.md` — §0 프로젝트 정체성 섹션 확장 (§0.1 plug-in 배포 정체성 / §0.2 dcness self 는 init-dcness 미적용 = 자기 규격 미얽매임 / §0.3 내부 ID 외부 배포물 금지 / §0.4 쉬운 한글 + § 인용 명시 / §0.5 추가 기능은 배포 경로에도 포함 의무 / §0.6 = 기존 모드 강등)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 메인 Claude 가 자주 까먹는 5 핵심을 CLAUDE.md §0 에 명시 — (1) plug-in 배포 정체성 / 외부 활성화 프로젝트가 기준 (2) dcness self 는 init-dcness 미적용이라 자기 규격(stories.md / issue-lifecycle §1.1 등) 에 얽매이지 않음 (3) 내부 변경 추적 ID 를 plug-in 배포 파일 (agents/commands/skills/hooks + 사용자용 SSOT) 에 박지 않음 (4) 외래어 지양 + § 인용 위치 명시 (5) 추가 기능은 plug-in 본체 / init-dcness 복사 배포 / 사용자용 SSOT 3 경로 중 해당하는 모든 곳에 포함 — dcness self 만 추가하면 사용자 환경 미작동 (jajang 사례).
+
 ### DCN-CHG-20260504-01
 - **Date**: 2026-05-04
 - **Change-Type**: agent, docs-only
