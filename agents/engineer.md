@@ -185,6 +185,15 @@ impl task 의 commit/PR 은 코드 + 관련 docs 를 1 셋트로 묶는다 — s
 
 **batch 01 (에픽 첫 batch) 한정 추가**: 신설 stories.md / batch-list.md / `backlog.md` Epic row.
 
+**epic 마지막 batch 한정 추가**: `backlog.md` Epic NN `[x]` 체크 (메인이 사전 판단해서 stage 지시 — issue-lifecycle.md §2.2).
+
+**PR body 트레일러** ([`docs/issue-lifecycle.md`](../docs/issue-lifecycle.md) §1.4):
+- 중간 task PR: `Part of #story-issue`
+- story 의 마지막 task PR: `Closes #story-issue`
+- epic 의 마지막 story 의 마지막 task PR: `Closes #story-issue` + `Closes #epic-issue` (메인이 PR 생성 직전 사전 체크 후 지시)
+
+**API 직접 close 절대금지** (issue-lifecycle.md §2.3) — `mcp__github__update_issue` state:closed 호출 금지. PR commit message `Closes #N` 으로만.
+
 **자가 검증** (commit 직전):
 ```
 git diff --cached --name-only
@@ -198,5 +207,6 @@ git diff --cached --name-only
 
 ## 참조
 
+- 이슈 생명주기 (생성·완료·미등록): [`docs/issue-lifecycle.md`](../docs/issue-lifecycle.md)
 - 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/orchestration.md`](../docs/orchestration.md)
 - prose-only 발상: [`docs/status-json-mutate-pattern.md`](../docs/status-json-mutate-pattern.md)

@@ -29,7 +29,10 @@ task 파일 끝에 `MODULE_PLAN_READY` 마커 박혀있으면 Step 2 (architect:
 - multi-task chain 필요 → `/impl-loop`
 
 ## 사전 read (skill 진입 즉시)
-`docs/loop-procedure.md` + `docs/loop-catalog.md` §3 + `docs/handoff-matrix.md` read 후 진행.
+`docs/loop-procedure.md` + `docs/loop-catalog.md` §3 + `docs/handoff-matrix.md` + `docs/issue-lifecycle.md` read 후 진행.
+
+## Pre-flight gate (Step 0 직후)
+[`docs/issue-lifecycle.md`](../docs/issue-lifecycle.md) §6 매치 강제 — 부모 epic stories.md 상단 `**GitHub Epic Issue:** [#\d+]` 또는 `미등록 (사유: …)` 매치 0건 시 즉시 STOP + 사용자 보고. silent skip 금지.
 
 ## 절차
 [`docs/loop-procedure.md`](../docs/loop-procedure.md) §1~§6 + [`docs/loop-catalog.md`](../docs/loop-catalog.md) §3 (`impl-task-loop` 풀스펙, Step 4.5 stories sync 포함) 따름. UI 감지 시 §4 (`impl-ui-design-loop`).
