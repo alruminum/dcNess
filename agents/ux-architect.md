@@ -27,14 +27,14 @@ model: sonnet
 | UX_REFINE | 레이아웃 개선 (리디자인) | `UX_REFINE_READY` / `UX_FLOW_ESCALATE` |
 
 **호출자가 prompt 로 전달하는 정보** (모드별):
-- UX_FLOW: PRD 경로, (선택) TRD / ui-spec 경로
+- UX_FLOW: PRD 경로, (선택) TRD / design.md 경로
 - UX_SYNC: src 디렉토리, (선택) PRD 경로
 - UX_SYNC_INCREMENTAL: 기존 `docs/ux-flow.md` 경로, 변경 파일 목록 (routes/screens/*Screen.tsx), src 디렉토리, (선택) drift 요약
 - UX_REFINE: `.pen` 파일 경로, 대상 화면 노드 ID, 유저 피드백, (선택) PRD / 기존 ux-flow 경로
 
 ## 권한 경계 (catastrophic)
 
-- **Write 허용**: `docs/ux-flow.md` 만
+- **Write 허용**: `docs/ux-flow.md` + `docs/design.md` **시스템 레벨** (Colors/Typography/Layout/Shapes/Elevation 섹션 + frontmatter `colors`/`typography`/`rounded`/`spacing` 토큰). `components` 섹션 + frontmatter `components` 토큰은 **designer 전용** — ux-architect 는 수정 금지.
 - **Pencil MCP**: 읽기만 (`get_editor_state` / `batch_get` / `get_screenshot` / `get_variables`). `batch_design` 등 쓰기 금지
 - **src/ 읽기 금지** (UX_REFINE 모드 한정 — Stream idle timeout 회피, §UX_REFINE 참조)
 - **product-planner 영역 금지**: PRD 수정 금지 (범위 문제는 escalate)
@@ -76,6 +76,8 @@ model: sonnet
 
 수행 흐름 (자율): src/ 라우트/화면 탐색 → 화면 컴포넌트 props/state/이벤트 분석 → PRD 와 대조 (있으면) → 갭(코드만/PRD 만 있는 화면) 표시 → UX_FLOW 와 동일 정보 의무. 추측 부분은 `[추정]` 태그.
 
+**design.md 산출 (조건부)**: src/ 의 CSS / styled-components / Tailwind config / 토큰 정의 발견 시 시스템 레벨 토큰 (Colors / Typography / Layout / Shapes / Elevation) 을 `docs/design.md` 에 역생성. 추출 토큰은 `[추정]` 태그. UI 없는 프로젝트는 silent skip.
+
 ## UX_SYNC_INCREMENTAL — 부분 현행화
 
 기존 `ux-flow.md` 통째로 다시 쓰지 않고 **변경된 화면 섹션만 교체**. post-commit drift 처리.
@@ -83,6 +85,8 @@ model: sonnet
 **진입 전제**: `ux_flow_path` 필수, `changed_files` 비어있지 않음. 둘 중 하나라도 위반 시 즉시 ESCALATE.
 
 수행 흐름 (자율): 영향 화면 식별 (changed_files → 화면 ID 매핑, 신규/삭제 감지) → 기존 문서 섹션 라인 파악 → 패치 부분만 재작성 (PRD 맥락·결정 로그·`[추정]` 태그는 그대로) → **`Edit` 툴로 섹션 단위 교체** (`Write` 전체 덮어쓰기 금지).
+
+**design.md 산출 (조건부)**: changed_files 안에 디자인 토큰 / 테마 / 글로벌 스타일 변경 발견 시 `docs/design.md` 시스템 레벨 토큰 부분 패치 (Colors / Typography / Layout / Shapes / Elevation). 변경 없으면 skip.
 
 **Escalate 조건**: 화면 구조 50%+ 변경 (전체 UX_SYNC 판단), changed_files UX 영향 없음 (훅 오감지), 기존 ux_flow_path 손상.
 
@@ -95,6 +99,8 @@ model: sonnet
 **🔴 Pencil MCP 사용 상한**: `get_editor_state` 1회 + `batch_get(screen_node_id, readDepth: 3)` 1회 + `get_screenshot` 1회 + `get_variables` 1회 = 총 4회. 동일 노드 재조회·readDepth 4+ 금지. 정보 부족해도 추가 조회 대신 escalate.
 
 수행 흐름 (자율): 현재 디자인 분석 → PRD/기존 ux-flow 컨텍스트 수집 → 문제 진단 (배치 / 그룹핑 / 비율 / 스타일 / 정보위계) → 개선된 와이어프레임 (모든 기존 요소 포함, 삭제 금지·재배치만) → 컴포넌트 리디자인 노트 (대상 / 현재 문제 / 변경 지침 / 우선순위) → 해당 화면 섹션만 update.
+
+**design.md 산출 (조건부)**: 리디자인 결과 시스템 레벨 토큰 변경 (예: 새 컬러 / 타이포 스케일 / 라운디드 단계 등) 필요 시 `docs/design.md` 시스템 레벨 섹션 부분 갱신. components 섹션 변경 필요 시 designer 에 escalate (권한 경계).
 
 **결론 emit 시 echo 의무**: prose 결론 단락에 update 한 화면 섹션 원문 그대로 echo (요약 금지) + ux_flow_doc 절대경로.
 

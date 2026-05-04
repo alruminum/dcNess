@@ -26,9 +26,9 @@ model: sonnet
 | `COMPONENT_THREE_WAY` | 컴포넌트 | 3 | design-critic 경유 | 동일 |
 
 **호출자가 prompt 로 전달하는 정보**:
-- 공통: 대상 화면/컴포넌트명, UX 목표/문제점, (선택) `ui_spec` 경로
+- 공통: 대상 화면/컴포넌트명, UX 목표/문제점, (선택) `design_md` 경로
 - COMPONENT 모드: (선택) 부모 화면명
-- 설계 루프 경유 시: `skip_issue_creation` 플래그, `save_handoff_to` 경로 (보통 `docs/design-handoff.md`)
+- 설계 루프 경유 시: `skip_issue_creation` 플래그
 
 모드 미지정 시 `SCREEN_ONE_WAY`.
 
@@ -63,7 +63,7 @@ model: sonnet
 
 - **추적 이슈** (`skip_issue_creation` 없으면): `python3 -m harness.tracker create-issue --title "[design] {target} {ux_goal}" --label UI --milestone {…}`. 백엔드 자동 선택 (gh / Local 폴백). 결과 ID (`#N` 또는 `LOCAL-N`) 를 DESIGN_HANDOFF 에 포함. (`UI` 는 `scripts/setup_labels.sh` 로 사전 생성 — 정적 레이블. 에픽/버전 레이블 있으면 추가).
 - **Pencil 읽기**: `get_editor_state` → `batch_get` (디자인시스템 노드 + 대상 화면 노드) → `get_screenshot` 베이스라인.
-- **디자인 가이드 읽기**: `docs/ux-flow.md` 의 `## 0. 디자인 가이드` 섹션 우선. `docs/ui-spec.md` 있으면 Read.
+- **디자인 가이드 읽기**: `docs/ux-flow.md` 의 `## 0. 디자인 가이드` 섹션 우선. `docs/design.md` 있으면 Read (미존재 시 silent skip).
 - **외부 레퍼런스**: 유저 명시 요청 또는 SCREEN_THREE_WAY 심층 모드에서만 WebSearch/WebFetch.
 
 ### Phase 1 — variant 생성 (Pencil 캔버스)
@@ -82,15 +82,22 @@ model: sonnet
 
 prose 결론 단락에 모드 + variant 컨셉 + Pencil 프레임 ID + 스크린샷 경로 + 색상/서체/애니메이션 스펙. THREE_WAY 는 차별화 검증 테이블 (4 축) 동반 → design-critic 호출 안내. 결론 enum `DESIGN_READY_FOR_REVIEW`.
 
-### Phase 4 — DESIGN_HANDOFF 패키지 (유저 PICK 후)
+### Phase 4 — 확정 후 산출 (유저 PICK 후)
 
-`save_handoff_to` 경로 있으면 **Write 로 파일 저장** (prose 결론은 경로만, 본문 재출력 금지). 없으면 prose 본문에 1 회만.
+DESIGN_HANDOFF 단일 파일 패키지는 폐지. 아래 3 경로로 분산 처리:
 
-**Outline-First 자기규율**: HANDOFF 본문 Write *전에* outline 만 짧게 emit (Issue ID / Selected Variant / Pencil Frame ID / 포함 섹션 이름만). thinking 안에서 토큰 값·컴포넌트 상세·CSS 미리 나열 금지 — Write 입력값 안에서만.
+1. **GitHub 이슈 본문/코멘트**: Issue ID, Selected Variant + 컨셉, Pencil Frame ID, Notes for Engineer (충돌 가능성 / 더미 → 실제 데이터 연결 포인트 / 성능 고려). `mcp__github__update_issue` 로 기존 추적 이슈에 코멘트 추가.
 
-**HANDOFF 정보 의무** (형식 자유): Issue ID, Selected Variant + 컨셉, Target, Pencil Frame ID, Design Tokens (토큰 / 값 / CSS 변수), Component Structure (트리), Animation Spec (CSS keyframes/transition), Notes for Engineer (충돌 가능성 / 더미 → 실제 데이터 연결 포인트 / 성능 고려).
+2. **`docs/design.md` 부분 갱신** (designer 권한 범위):
+   - **frontmatter `components` 섹션**: 확정된 컴포넌트 토큰 추가/갱신
+   - **본문 `## Components` 섹션**: 컴포넌트 구조 + **Animation Spec** (CSS keyframes/transition 의도) 단락으로 기술
+   - **권한 한계**: Colors/Typography/Layout/Shapes/Elevation + 해당 frontmatter 토큰은 **ux-architect 전용** — designer 는 수정 금지. 범위 초과 시 ux-architect 에 escalate.
 
-코드 구현은 engineer 가 Pencil 캔버스 + HANDOFF 패키지를 읽어 src/ 직접 작성.
+3. **Pencil 캔버스**: 확정 variant 프레임 유지 — engineer 가 `batch_get` 으로 직접 참조.
+
+**Outline-First 자기규율**: design.md Write *전에* outline 만 짧게 emit (갱신 섹션 이름 + components 토큰 키 목록만). thinking 안에서 토큰 값·컴포넌트 상세 미리 나열 금지 — Write 입력값 안에서만.
+
+코드 구현은 engineer 가 Pencil 캔버스 + design.md + 이슈 코멘트를 읽어 src/ 직접 작성.
 
 ## Anti-AI-Smell (디자인 가이드 적용)
 

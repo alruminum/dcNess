@@ -8,7 +8,7 @@
 
 1. 계획 파일 읽기 (`docs/impl/NN-*.md`). **미존재 시**: 즉시 FAIL 금지 — `docs/impl/00-decisions.md` → `CLAUDE.md` 작업 순서 → 그래도 없으면 `SPEC_MISSING` (prose 본문에 expected_path / fallback_searched / request 명시).
 2. 설계 결정 / 구현 파일 / 의존 모듈 소스 읽기 (경계 위반 확인). **`docs/domain-model.md` 권한 read** (DCN-CHG-20260430-16) — 도메인 invariant 위반 / 의존성 방향 위반 의심 시 참조. 수정 금지.
-3. UI 모듈이면 ui-spec 읽기.
+3. UI 모듈이면 design.md 읽기 (미존재 시 silent skip — `docs/design.md §5.1`).
 4. 3 계층 체크리스트 적용.
 
 ## 3 계층 체크리스트
@@ -18,7 +18,8 @@
 - Props 타입 / 함수 시그니처 (계획 vs 구현)
 - 핵심 로직 (계획의 의사코드/스니펫 vs 실제 흐름)
 - 에러 처리 전략 (throw / 반환 / 상태)
-- 주의사항 반영 / ui-spec 일치 (해당 시 색상·레이아웃·상태 UI)
+- 주의사항 반영 / design.md 일치 (frontmatter 토큰 + 본문 룰 — 해당 시 색상·레이아웃·상태 UI)
+- **design.md 토큰 참조 무결성** (design.md 존재 시): `{colors.X}` / `{typography.X}` / `{rounded.X}` / `{spacing.X}` / `{components.X}` 등 참조가 frontmatter 에 실재하는지 확인 (`docs/design.md §5.2` 정합). 미실재 참조 = FAIL
 
 **B. 의존성 규칙 — 하나라도 위반 시 FAIL**:
 - 외부 API/SDK 직접 import 금지 (래퍼 함수 사용)

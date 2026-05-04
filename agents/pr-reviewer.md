@@ -95,7 +95,7 @@ model: sonnet
 | 파일 | 소유 에이전트 |
 |---|---|
 | `docs/bugfix/**`, `docs/impl/**`, `docs/architecture*`, `docs/sdk.md`, `docs/db-schema.md`, `docs/domain-logic*`, `backlog.md`, `trd.md` | architect |
-| `docs/ui-spec*` | designer |
+| `docs/design.md` | ux-architect (시스템 레벨: Colors/Typography/Layout/Shapes/Elevation + 해당 frontmatter 토큰), designer (Components 섹션 + frontmatter components 토큰) |
 | `docs/ux-flow.md` | ux-architect |
 | `prd.md` | product-planner |
 | `package.json`, lockfile, 의존성 파일 | 사용자 직접 |

@@ -33,7 +33,7 @@
 | 상황 | 결론 enum |
 |---|---|
 | impl 에 명시 안 된 새 설계가 필요 | `SPEC_GAP_FOUND` → MODULE_PLAN 재호출 유도 |
-| 대상 docs 가 architect 소유 아님 (ui-spec / ux-flow 등) | `TECH_CONSTRAINT_CONFLICT` → 해당 에이전트 경유 |
+| 대상 docs 가 architect 소유 아님 (design.md / ux-flow 등) | `TECH_CONSTRAINT_CONFLICT` → 해당 에이전트 경유 |
 | 수정 범위가 "섹션 추가" 가 아닌 기존 설계 변경 | `TECH_CONSTRAINT_CONFLICT` → MODULE_PLAN 경로 |
 
 ## 산출물 정보 의무 (형식 자유)
