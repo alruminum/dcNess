@@ -20,6 +20,14 @@
 
 ## Records
 
+### DCN-CHG-20260504-04
+- **Date**: 2026-05-04
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/design.md` (신규) — dcness 디자인 시스템 SSOT. Google design.md spec 인용 + dcness 적용 룰.
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: Google design.md 공식 spec (`## Schema` / `# Design Tokens` / `# Sections` / `# Consumer Behavior for Unknown Content`) 채택 + dcness 적용 룰 5개 + 권장 토큰 이름 가이드 + 최소 사용 예시 작성. Story #126 (code-validation 정합) / #128 (init-dcness embed) 의 선행 의존.
+
 ### DCN-CHG-20260504-03
 - **Date**: 2026-05-04
 - **Change-Type**: agent
