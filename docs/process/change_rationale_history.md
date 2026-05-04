@@ -18,6 +18,13 @@
 
 ## Records
 
+### DCN-CHG-20260504-05
+- **Date**: 2026-05-04
+- **Rationale**: PR title 에 Task-ID 를 요구하는 게이트가 git-naming-spec PR title 형식(`[docs] {설명}`)과 충돌 — 둘 다 지키려면 title 에 ID + 설명을 모두 넣어야 해서 가독성 저하. 또한 branch protection 미설정으로 CI 실패해도 merge 가 막히지 않아 게이트 의미 반감.
+- **Alternatives**: PR title 형식에 Task-ID 포함 강제 — git-naming-spec 와 충돌, title 가독성 저하로 기각.
+- **Decision**: PR title 검사 제거 (커밋 메시지 검사로 충분) + branch protection required status checks 설정으로 게이트 강제화.
+- **Follow-Up**: branch protection 설정 후 required checks (`Task-ID format gate` / `Document Sync gate` / `git-naming-spec gate`) 작동 확인.
+
 ### DCN-CHG-20260504-03
 - **Date**: 2026-05-04
 - **Rationale**: 작업 중 메인 Claude 가 다음 5 핵심을 반복적으로 까먹어 사용자 frustration 누적. (1) 본 dcness 저장소 자체와 plug-in 배포 후 사용자 환경을 혼동 — dcness 자체에 plug-in 규격을 잘못 적용 (예: 본 저장소에 stories.md / issue-lifecycle.md §1.1 product-planner 흐름을 강제). (2) 내부 추적 ID 를 plug-in 배포 파일 (agents/commands/skills + 사용자용 SSOT) 본문에 그대로 박아 외부 사용자에게 잡음 노출. (3) 외래어 (Caveats / Disclaimer / TBD 등) 남발로 가독성 저하. (4) 인용 시 "위 섹션" 같은 모호 표기 사용으로 SSOT 추적 불가. (5) 기능 추가 시 본 저장소에만 반영하고 plug-in 배포 경로(init-dcness deploy / 사용자 SSOT) 누락 — 과거 jajang 에서 dcness 자체는 작동하는데 정작 사용자 환경은 그 기능 없어 미작동 사고 발생.

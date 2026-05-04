@@ -64,9 +64,3 @@ jobs:
 
           node scripts/check_task_id.mjs "$BASE" "$HEAD"
 
-      - name: Validate PR title (PR mode only)
-        if: github.event_name == 'pull_request'
-        run: |
-          set -e
-          TITLE="${{ github.event.pull_request.title }}"
-          node scripts/check_task_id.mjs --pr-title "$TITLE"
