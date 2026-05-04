@@ -29,6 +29,15 @@
 - **Decision**: `docs/issue-lifecycle.md` 단일 SSOT 신설. (a) 생성 = product-planner 가 PRODUCT_PLAN_READY 직후 epic + story 연속 생성 (별도 ISSUE_SYNC 폐지). (b) 완료 = epic/story 모두 PR `Closes #N` 으로만 — API 직접 close 절대금지. (c) epic close = 마지막 task PR 에 `Closes #epic` 동봉 (메인 사전 체크). (d) 미등록 허용 = stories.md 상단 명시 시만 (spike/잡탕). (e) mid-flow 누락 = `/impl` `/impl-loop` `architect TASK_DECOMPOSE` pre-flight gate 강제 STOP. (f) 라벨 형식 = jajang GitHub 실측 정합 (`v0N`+`epic-NN-<slug>`+`story`).
 - **Follow-Up**: jajang epic-11 의 회고용 미등록 (Story 1 = "issue 미등록, 회고용 직접 등록 X") 정리는 별도 수동 작업 (본 PR 범위 X). plugin cache 동기 (5 파일).
 
+### DCN-CHG-20260503-05
+- **Date**: 2026-05-03
+- **Rationale**: 직전 작업(20260503-04)으로 git-naming CI/hook 을 dcNess 자체에 적용했으나, 플러그인 사용자는 이 파일들을 직접 얻을 방법이 없었음. `init-dcness` 가 dcNess 초기화의 진입점이므로, 여기에 git-naming 파일 배포 스텝을 추가하면 사용자 프로젝트에서도 동일한 강제를 즉시 활성화할 수 있음.
+- **Alternatives**:
+  - 별도 `/setup-git-naming` skill 신규 — 사용자가 기억해야 할 진입점이 늘어남. init 흐름에서 놓칠 가능성.
+  - 문서로만 안내 — 자동화 없음. 사용자가 수동 복사해야 함.
+- **Decision**: `init-dcness` Step 2.6 으로 통합. 플러그인 root(`$PLUGIN_ROOT`)에서 `check_git_naming.mjs` / `git-naming-validation.yml` / `commit-msg` hook 을 idempotent 복사. 기존 파일 있으면 skip.
+- **Follow-Up**: plugin cache 에 3개 신규 파일 수동 sync (cache 가 구 commit 고정). 플러그인 버전 업 시 자동 반영.
+
 ### DCN-CHG-20260503-04
 - **Date**: 2026-05-03
 - **Rationale**: git-naming-spec 규칙이 문서로만 존재해 로컬에서 우회 가능. 브랜치명·PR 제목·커밋 제목 위반이 사람 눈에만 걸리면 늦게 발견됨. CI+hook으로 자동 차단해야 규칙이 실제로 작동.

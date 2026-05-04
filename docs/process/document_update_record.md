@@ -35,6 +35,15 @@
   - `docs/process/change_rationale_history.md`
 - **Summary**: GitHub 이슈 생성·완료·미등록 운영을 `docs/issue-lifecycle.md` 단일 SSOT 로 통합. epic+story 이슈 생성 책임을 product-planner 로 단일화 (PRODUCT_PLAN_READY 직후 연속 생성). API 직접 close 절대금지 (epic/story 모두 PR `Closes #N` 강제). epic close = wrap-up PR 신설 X — 마지막 task PR 에 동봉. mid-flow 누락 silent skip 차단 (pre-flight gate).
 
+### DCN-CHG-20260503-05
+- **Date**: 2026-05-03
+- **Change-Type**: agent
+- **Files Changed**:
+  - `commands/init-dcness.md` — Step 2.6 신규: git-naming enforcement deploy (check_git_naming.mjs + commit-msg hook + CI workflow)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: init-dcness skill 에 git-naming 강제 배포 스텝 추가 — 플러그인 사용자도 동일 CI/hook 강제 적용 가능
+
 ### DCN-CHG-20260503-04
 - **Date**: 2026-05-03
 - **Change-Type**: ci

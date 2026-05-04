@@ -84,6 +84,51 @@ fi
 
 이미 등록된 사용자는 멱등 — `이미 존재` 메시지.
 
+### Step 2.6 — git-naming 강제 (commit-msg hook + CI)
+
+브랜치명·커밋·PR 제목 형식 위반을 로컬과 CI 양쪽에서 자동 차단한다.
+
+```bash
+PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+
+# 1. check_git_naming.mjs 배포 (commit-msg hook + CI 의존)
+mkdir -p "$PROJECT_ROOT/scripts"
+if [ ! -f "$PROJECT_ROOT/scripts/check_git_naming.mjs" ]; then
+  cp "$PLUGIN_ROOT/scripts/check_git_naming.mjs" "$PROJECT_ROOT/scripts/"
+  echo "[dcness] scripts/check_git_naming.mjs 배포"
+else
+  echo "[dcness] scripts/check_git_naming.mjs 이미 존재 — skip"
+fi
+
+# 2. GitHub Actions workflow 배포
+mkdir -p "$PROJECT_ROOT/.github/workflows"
+if [ ! -f "$PROJECT_ROOT/.github/workflows/git-naming-validation.yml" ]; then
+  cp "$PLUGIN_ROOT/.github/workflows/git-naming-validation.yml" "$PROJECT_ROOT/.github/workflows/"
+  echo "[dcness] .github/workflows/git-naming-validation.yml 배포"
+else
+  echo "[dcness] git-naming-validation.yml 이미 존재 — skip"
+fi
+
+# 3. commit-msg hook 설치
+if [ ! -f "$PROJECT_ROOT/.git/hooks/commit-msg" ]; then
+  cp "$PLUGIN_ROOT/scripts/hooks/commit-msg" "$PROJECT_ROOT/.git/hooks/commit-msg"
+  chmod +x "$PROJECT_ROOT/.git/hooks/commit-msg"
+  echo "[dcness] .git/hooks/commit-msg 설치"
+else
+  echo "[dcness] .git/hooks/commit-msg 이미 존재 — skip"
+fi
+```
+
+출력 예시:
+```
+[dcness] scripts/check_git_naming.mjs 배포
+[dcness] .github/workflows/git-naming-validation.yml 배포
+[dcness] .git/hooks/commit-msg 설치
+```
+
+`git-naming-validation.yml` 은 PR open 시 CI 에서 브랜치명·PR 제목을 자동 검사한다. `commit-msg` hook 은 로컬에서 커밋 제목을 사전 차단한다. 두 파일은 커밋 후 프로젝트 repo 에 push 해야 CI 에서 동작한다.
+
 ### Step 3 — 사용자 안내
 
 ```
@@ -94,6 +139,11 @@ fi
 다음 세션부터 발화하는 것:
 - SessionStart 훅 — by-pid / live.json 자동 생성
 - PreToolUse Agent 훅 — catastrophic 룰 (orchestration.md §2.3) 검사
+
+git-naming 강제 (Step 2.6 완료 시):
+- 로컬: .git/hooks/commit-msg — 커밋 제목 형식 위반 차단
+- CI: .github/workflows/git-naming-validation.yml — 브랜치명·PR 제목 위반 차단
+- scripts/check_git_naming.mjs 를 커밋 후 push 해야 CI 활성화
 
 사용 가능한 skill:
 - /qa  — 이슈 분류
