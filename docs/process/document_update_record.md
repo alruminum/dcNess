@@ -20,6 +20,15 @@
 
 ## Records
 
+### DCN-CHG-20260505-02
+- **Date**: 2026-05-05
+- **Change-Type**: agent
+- **Files Changed**:
+  - `commands/init-dcness.md` — Step 2.7 신설 (design.md SSOT awareness — CLAUDE.md 매트릭스 패치 제안 + UI 프로젝트 여부 1회 질문 + minimal 템플릿 inline embed). Step 3 사용자 안내에 design.md 블록 추가.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Story #128 — `/init-dcness` skill 에 design.md 사용자 환경 도달 보장 스텝 추가. CLAUDE.md §0.5 (배포 경로 검증 의무) 정합. 두 단계 모두 멱등 + 사용자 응답 1회 의무 (silent skip 금지). minimal 템플릿은 inline embed (Story #125 sample 과 수동 동기 — 자동화는 Epic #129 후속).
+
 ### DCN-CHG-20260504-09
 - **Date**: 2026-05-04
 - **Change-Type**: agent

@@ -129,6 +129,87 @@ fi
 
 `git-naming-validation.yml` 은 PR open 시 CI 에서 브랜치명·PR 제목을 자동 검사한다. `commit-msg` hook 은 로컬에서 커밋 제목을 사전 차단한다. 두 파일은 커밋 후 프로젝트 repo 에 push 해야 CI 에서 동작한다.
 
+### Step 2.7 — design.md SSOT awareness
+
+dcness plug-in 의 디자인 시스템 SSOT 는 `docs/design.md` (Google `design.md` 공식 spec 채택). plug-in agents (designer / ux-architect / engineer / validator/code-validation 등) 가 UI 작업 시 read 한다. 활성화 프로젝트가 UI 를 다루면 본 SSOT 를 인지/활용해야 plug-in 룰이 완전 작동.
+
+본 Step 은 **bash 자동화 X — 메인 Claude 가 절차 따라 사용자 응답 받고 진행**. 두 단계 모두 멱등.
+
+#### 1. 사용자 CLAUDE.md 매트릭스 패치 제안
+
+프로젝트 root 의 `CLAUDE.md` 가 존재하면 read.
+
+- 파일 부재 시 본 단계 skip.
+- "lazy 읽기" / "작업 시 읽기" 매트릭스 안에 `docs/design.md` 행 부재 시 다음을 사용자에게 출력:
+
+  ```
+  [dcness] CLAUDE.md 매트릭스에 design.md 행이 없습니다. 다음 행을 추가할까요?
+
+  | docs/design.md | UI 모듈 작업 / 디자인 시스템 변경 시 |
+
+  → §3 (또는 동등) lazy 매트릭스에 추가합니다. (Y/n)
+  ```
+
+- 사용자 답변 받은 후에만 메인 Claude 가 Edit 으로 박음. 답 없이 silent skip 금지 — 명시적 응답 1회 의무.
+- 이미 `docs/design.md` 행 있으면 본 단계 skip (`이미 등록됨 — skip` 출력).
+
+#### 2. UI 프로젝트 여부 + design.md 템플릿 시드
+
+```
+[dcness] 이 프로젝트는 UI (화면 / 컴포넌트 / 시각 디자인) 를 다룹니까? (Y/n)
+```
+
+- **n**: 본 단계 종료 (예: dcness self / 백엔드 전용 / CLI 도구).
+- **Y**: `docs/design.md` 부재 시 다음 minimal 템플릿 출력 + Write 동의 1회 질문:
+
+  ```yaml
+  ---
+  version: alpha
+  name: <project name>
+  description: |
+    <atmosphere 한 줄: 브랜드 톤 + 타입 voice + 컬러 철학>
+
+  colors:
+    primary: "#hex"
+    neutral: "#hex"
+    canvas: "#hex"
+  typography:
+    headline-lg:
+      fontFamily: "Inter, sans-serif"
+      fontSize: 32px
+      fontWeight: 600
+      lineHeight: 1.2
+  ---
+
+  ## Overview
+  <프로젝트의 전반적 시각 톤 / 정체성 묘사>
+
+  ## Colors
+  - **Primary** (`{colors.primary}` — #hex): primary CTA / 강조 요소
+  - **Canvas** (`{colors.canvas}` — #hex): 페이지 배경
+  ```
+
+  ```
+  [dcness] 위 템플릿을 docs/design.md 로 생성할까요? (Y/n)
+  ```
+
+  사용자 동의 시 메인 Claude 가 `docs/design.md` Write. 거절 시 skip.
+
+- 이미 `docs/design.md` 파일 존재하면 본 단계 skip (`이미 존재 — skip`).
+
+#### 3. 멱등 보장
+
+- 두 번 실행해도 추가 변경 없음 — 매트릭스 행 있으면 1번 skip / `docs/design.md` 있으면 2번 skip.
+- 사용자가 \"n\" 답변 시 다음 호출 때 다시 묻지 않게 하려면 별도 marker 필요 (v1 범위 외 — 매번 묻되 사용자가 빠르게 \"n\" 가능).
+
+#### 4. 출처 / 갱신 의무
+
+본 Step inline 템플릿은 `docs/design.md` (dcness self repo) §사용 예시와 coupling — Story #125 의 spec 변경 시 본 Step 템플릿도 **수동 동기 의무**. 자동화 검토는 Epic #129 후속 추적.
+
+#### 5. 기존 활성화 프로젝트 — re-run 안내
+
+이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.7 가 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 Step 2.7 발화. 본 안내는 dcness release note / README 에 별도 명시.
+
 ### Step 3 — 사용자 안내
 
 ```
@@ -144,6 +225,10 @@ git-naming 강제 (Step 2.6 완료 시):
 - 로컬: .git/hooks/commit-msg — 커밋 제목 형식 위반 차단
 - CI: .github/workflows/git-naming-validation.yml — 브랜치명·PR 제목 위반 차단
 - scripts/check_git_naming.mjs 를 커밋 후 push 해야 CI 활성화
+
+design.md SSOT (Step 2.7 완료 시):
+- CLAUDE.md 매트릭스에 docs/design.md 행 등록 (UI 작업 시 read 후보)
+- (UI 프로젝트인 경우) docs/design.md minimal 템플릿 시드 — 컬러 / 타이포그래피 / 컴포넌트 토큰 채워 사용
 
 사용 가능한 skill:
 - /qa  — 이슈 분류

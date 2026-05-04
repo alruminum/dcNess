@@ -18,6 +18,16 @@
 
 ## Records
 
+### DCN-CHG-20260505-02
+- **Date**: 2026-05-05
+- **Rationale**: Epic #129 (design.md SSOT 도입) 의 마지막 스토리. Story #125 (spec 문서) + #126 (plug-in agents) + #127 (글로벌 / dcness self CLAUDE.md) 만 끝내면 plug-in 본체 + 글로벌 룰은 design.md 인지하지만 *외부 활성화 프로젝트* 의 CLAUDE.md (사용자 진입점) 는 모름. 결과 = "dcness self 에선 작동 / 사용자 환경에선 미작동" 사고 (jajang voice cloning 사단 패턴). CLAUDE.md §0.5 가 "배포 경로 검증 의무" 로 박은 이유.
+- **Alternatives**:
+  - 자동 Edit (사용자 응답 없이 매트릭스 직접 박음) — 사용자 CLAUDE.md 룰 구조 다양 (§ 번호 / 매트릭스 위치 / 표 헤더 형식) → 안전한 자동 패치 어려움. 명시 응답 1회 의무 채택.
+  - minimal 템플릿 외부 파일 reference (init-dcness 가 plug-in cache 에서 read) — init-dcness 실행 시점에 plug-in cache 가 신뢰할 수 있는 경로에 있다는 보장 X. inline embed 안전.
+  - "UI 프로젝트 여부" 자동 추론 (package.json 의 React/Vue/Svelte 의존성 grep) — false positive (백엔드 + 어드민 UI) / false negative (CLI 가 ASCII art 디자인) 모두 발생. 1회 질문이 정확.
+- **Decision**: (a) Step 2.7 신설 위치 = Step 2.6 직후 / Step 3 직전 (패턴 일관). (b) bash 자동화 X — 메인 Claude 가 절차 따라 사용자 응답 받고 Edit/Write. (c) minimal 템플릿 inline embed (`docs/design.md` 의 사용 예시와 coupling 수용 명시 — Epic #129 후속 추적). (d) 멱등 보장 — 매트릭스 행 있으면 1번 skip / `docs/design.md` 파일 있으면 2번 skip. (e) 기존 활성화 프로젝트 re-run 안내 = dcness release note / README 별도 명시.
+- **Follow-Up**: Epic #129 closed gate — 본 PR 머지 후 #129 본문 후속 추적 항목 (글로벌 사용자 전파 / plug-in cache sync 자동화 / 템플릿 source coupling 자동화) 별도 이슈 후보로 박을지 검토. plug-in cache sync = 본 PR 머지 후 일괄 처리 가능.
+
 ### DCN-CHG-20260504-09
 - **Date**: 2026-05-04
 - **Rationale**: 글로벌 `~/.claude/CLAUDE.md` 가 dcness plug-in 영역 룰 (PRD/TRD 작성 흐름 / 설계 문서 owner / 직접 수정 금지 매트릭스 / 모듈 단위 작업 순서 / stories 동기화) 을 중복 보유 → drift 위험 + plug-in SSOT 깨짐. dcness 가 plug-in 으로 분리되기 전 옛 잔재. plug-in agents 본문 + pr-reviewer 스코프 매트릭스 + issue-lifecycle.md 가 이미 동일 룰을 책임지므로 글로벌 중복 제거 가능.
