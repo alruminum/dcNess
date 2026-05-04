@@ -20,6 +20,21 @@
 
 ## Records
 
+### DCN-CHG-20260504-01
+- **Date**: 2026-05-04
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `docs/issue-lifecycle.md` (신규)
+  - `agents/product-planner.md` — ISSUE_SYNC 모드 폐지, Epic 이슈 단독 생성 → epic+story 동시 생성으로 전환, issue-lifecycle.md 참조
+  - `agents/architect/task-decompose.md` — Story 이슈 생성 책임 제거 (product-planner 단독), fallback 제거, H1 정규식 미등록 모드 명시, issue-lifecycle.md 참조
+  - `agents/engineer.md` — PR body 트레일러 룰 (`Part of` / `Closes`) + epic 마지막 batch backlog.md 추가 + API 직접 close 절대금지, issue-lifecycle.md 참조
+  - `docs/loop-catalog.md` — `feature-build-loop` Step 2 allowed_enums 에서 `ISSUES_SYNCED` 제거, 분기 행 제거, `PRODUCT_PLAN_READY` 분기에 epic+story 동시 생성 명시
+  - `commands/impl.md` — Pre-flight gate (issue-lifecycle §6) 1줄 추가
+  - `commands/impl-loop.md` — Pre-flight gate (각 task 진입 직전) 1줄 추가
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: GitHub 이슈 생성·완료·미등록 운영을 `docs/issue-lifecycle.md` 단일 SSOT 로 통합. epic+story 이슈 생성 책임을 product-planner 로 단일화 (PRODUCT_PLAN_READY 직후 연속 생성). API 직접 close 절대금지 (epic/story 모두 PR `Closes #N` 강제). epic close = wrap-up PR 신설 X — 마지막 task PR 에 동봉. mid-flow 누락 silent skip 차단 (pre-flight gate).
+
 ### DCN-CHG-20260503-05
 - **Date**: 2026-05-03
 - **Change-Type**: agent

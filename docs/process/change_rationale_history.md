@@ -18,9 +18,20 @@
 
 ## Records
 
+### DCN-CHG-20260504-01
+- **Date**: 2026-05-04
+- **Rationale**: GitHub 이슈 생성·완료 룰이 dcness plugin 의 여러 agent 에 분산 + 일관성 없음. (1) epic 이슈는 product-planner, story 이슈는 task-decompose 가 별도 시점에 생성 → ISSUE_SYNC 호출이 자주 skip 됨. (2) 이슈 close 주체·방법이 어디에도 명시 안 됨. (3) task-decompose 가 이슈 부재 시 stories.md fallback 으로 silent 진행 → 적용 프로젝트 (jajang) 가 이슈 등록을 전제로 설계됐음에도 누락 발견 안 됨 (epic-11 사례: PR #180 진행 중 "이슈 번호 없음 — 생략하고 진행"). (4) 라벨 형식이 plugin agent 가정 (`V0N`+`EPIC0N`+`Story0N`) vs jajang 실제 GitHub 라벨 (`v0N`+`epic-NN-<slug>`+`story`) 미스매치 — 그대로 갔으면 이슈 생성 실패.
+- **Alternatives**:
+  - 각 agent 에 이슈 룰 그대로 두고 jajang CLAUDE.md 에서 보강 — plugin 룰 SSOT 깨짐, 프로젝트별 drift.
+  - epic 이슈 = API close 허용 (story 와 정책 분리) — jajang "절대원칙 — API close 금지" 와 충돌. epic 만 예외 = 룰 복잡도 증가.
+  - epic 완료 = wrap-up PR 신설 — 형식 PR 1개 추가, 변경 거의 없음. 마지막 task PR 에 `Closes #epic` 동봉이 동일 audit trail + 추가 PR 0개로 더 가벼움.
+  - product-planner 에 EPIC_BACKFILL 미니 모드 신설 — forward-only 시나리오에서 발생 빈도 ≈ 0. 1회 마이그레이션을 위해 모드 추가는 과잉. 메인 1회 수동 처리로 충분.
+- **Decision**: `docs/issue-lifecycle.md` 단일 SSOT 신설. (a) 생성 = product-planner 가 PRODUCT_PLAN_READY 직후 epic + story 연속 생성 (별도 ISSUE_SYNC 폐지). (b) 완료 = epic/story 모두 PR `Closes #N` 으로만 — API 직접 close 절대금지. (c) epic close = 마지막 task PR 에 `Closes #epic` 동봉 (메인 사전 체크). (d) 미등록 허용 = stories.md 상단 명시 시만 (spike/잡탕). (e) mid-flow 누락 = `/impl` `/impl-loop` `architect TASK_DECOMPOSE` pre-flight gate 강제 STOP. (f) 라벨 형식 = jajang GitHub 실측 정합 (`v0N`+`epic-NN-<slug>`+`story`).
+- **Follow-Up**: jajang epic-11 의 회고용 미등록 (Story 1 = "issue 미등록, 회고용 직접 등록 X") 정리는 별도 수동 작업 (본 PR 범위 X). plugin cache 동기 (5 파일).
+
 ### DCN-CHG-20260503-05
 - **Date**: 2026-05-03
-- **Rationale**: DCN-CHG-20260503-04 에서 git-naming CI/hook 을 dcNess 자체에 적용했으나, 플러그인 사용자는 이 파일들을 직접 얻을 방법이 없었음. `init-dcness` 가 dcNess 초기화의 진입점이므로, 여기에 git-naming 파일 배포 스텝을 추가하면 사용자 프로젝트에서도 동일한 강제를 즉시 활성화할 수 있음.
+- **Rationale**: 직전 작업(20260503-04)으로 git-naming CI/hook 을 dcNess 자체에 적용했으나, 플러그인 사용자는 이 파일들을 직접 얻을 방법이 없었음. `init-dcness` 가 dcNess 초기화의 진입점이므로, 여기에 git-naming 파일 배포 스텝을 추가하면 사용자 프로젝트에서도 동일한 강제를 즉시 활성화할 수 있음.
 - **Alternatives**:
   - 별도 `/setup-git-naming` skill 신규 — 사용자가 기억해야 할 진입점이 늘어남. init 흐름에서 놓칠 가능성.
   - 문서로만 안내 — 자동화 없음. 사용자가 수동 복사해야 함.
