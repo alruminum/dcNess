@@ -20,6 +20,14 @@
 
 ## Records
 
+### DCN-CHG-20260504-07
+- **Date**: 2026-05-04
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/design.md` — 머지된 spec 문서 cleanup 5건 (디버그 잔재 `# test` 라인 삭제 / 외부 노출 부적절 참조 제거 / 사용 예시 best practice 정합 / Layout 한글 표기 정리 / typography 권장 9개 전체 인용)
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: 직전 머지본 `docs/design.md` 의 cleanup. (1) 마지막 줄 `# test` 디버그 잔재 삭제. (2) 외부 사용자에게 의미 없는 dcness 내부 ID (`Story #126` / `Story #128` / `CLAUDE.md §0.4`) 본문에서 제거 — 본 spec 은 plug-in 사용자에게도 도달하는 SSOT 이므로 `CLAUDE.md §0.3` (내부 ID 외부 배포물 금지) 정합. (3) 사용 예시의 fontWeight / lineHeight 를 Google spec 권장 best practice 로 교체 (string `"400"` → bare number `400` / `"20px"` → unitless multiplier `1.43`). (4) §4 표 Layout 한글 표기 동의어 반복 정리. (5) §5.5 권장 typography 9개 (Google spec `# Recommended Token Names`) 전체 인용.
+
 ### DCN-CHG-20260504-06
 - **Date**: 2026-05-04
 - **Change-Type**: agent, docs-only
