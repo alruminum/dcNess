@@ -18,6 +18,13 @@
 
 ## Records
 
+### DCN-CHG-20260504-08
+- **Date**: 2026-05-04
+- **Rationale**: agent 7개에 `ui-spec` / `design-handoff` 참조가 잔존하여 spec ↔ 실제 산출 미스매치 발생. pr-reviewer 스코프 매트릭스엔 `ui-spec*` owner = designer 로 표기됐지만 designer.md Write 책임엔 ui-spec 없음 — UI 작업 시 파일 부재 → silent skip / 혼란. design.md SSOT 도입(Story #125) 후 정합 완료 필요.
+- **Alternatives**: ui-spec 유지 + design.md 병행 — 두 파일 관리 비용 증가, agent 간 읽기 경로 분산으로 기각. design-handoff.md 유지 — 1회성 패키지로 Pencil/이슈/design.md 분산 흡수가 더 명확해 기각.
+- **Decision**: ui-spec/design-handoff 전면 폐지 → design.md 단일 SSOT. 권한 분리(ux-architect = 시스템 레벨, designer = components 섹션)로 충돌 방지. HANDOFF 패키지는 GitHub 이슈 코멘트 + design.md 부분 갱신 + Pencil 캔버스 3 경로로 분산.
+- **Follow-Up**: Story #127 글로벌 CLAUDE.md 반영, Story #128 init-dcness 사용자 배포 처리.
+
 ### DCN-CHG-20260504-06
 - **Date**: 2026-05-04
 - **Rationale**: GitHub Development 섹션에 `Part of #N` 키워드는 언급만 될 뿐 자동 연결되지 않음. `Fixes #N` / `Closes #N` 같은 closing keyword 만 Development 에 표시됨. 중간 PR 에 closing keyword 사용 시 issue 가 조기 close 되는 문제 존재. 실측으로 이미 머지된 PR body 에 `Fixes #N` 추가 → Development 소급 반영 + issue 재발동 없음 확인.

@@ -26,7 +26,7 @@ model: opus
 ONE_WAY 모드(1 variant) 에선 호출 X — 유저가 Pencil 앱에서 직접 확인.
 
 **호출자가 prompt 로 전달하는 정보**:
-- REVIEW: Pencil 스크린샷 경로 또는 variant 메타데이터, (선택) 애니메이션 스펙, (선택) `docs/ui-spec.md` 경로
+- REVIEW: Pencil 스크린샷 경로 또는 variant 메타데이터, (선택) 애니메이션 스펙, (선택) `docs/design.md` 경로
 - UX_SHORTLIST: 5 개 ASCII 와이어프레임 경로/목록
 
 모드 미지정 시 REVIEW.

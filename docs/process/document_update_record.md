@@ -20,6 +20,21 @@
 
 ## Records
 
+### DCN-CHG-20260504-08
+- **Date**: 2026-05-04
+- **Change-Type**: agent
+- **Files Changed**:
+  - `agents/ux-architect.md` — UX_FLOW 입력 ui-spec → design.md, Write 권한에 design.md 시스템 레벨 추가, UX_SYNC / UX_SYNC_INCREMENTAL / UX_REFINE 모드에 design.md 산출 조건부 추가
+  - `agents/designer.md` — 디자인 가이드 읽기 ui-spec → design.md (silent skip), Phase 4 HANDOFF 슬림화 (3 경로 분산)
+  - `agents/engineer.md` — 읽기 순서 ui-spec → design.md (silent skip — design.md §5.1)
+  - `agents/design-critic.md` — REVIEW 입력 ui-spec → design.md
+  - `agents/architect/docs-sync.md` — 소유 아님 예시 ui-spec → design.md
+  - `agents/validator/code-validation.md` — ui-spec 읽기 → design.md 읽기 (silent skip), design.md 토큰 참조 무결성 체크 신설 (design.md §5.2)
+  - `agents/pr-reviewer.md` — 스코프 매트릭스 ui-spec* → design.md (두 owner 명시)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: plug-in 7개 agent ui-spec / design-handoff 토큰 → design.md 통일. designer Phase 4 DESIGN_HANDOFF 패키지 폐지 → 3 경로 분산 (이슈 / design.md 부분 갱신 / Pencil 캔버스). ux-architect 시스템 레벨 + designer Components 섹션 권한 분리. code-validation 토큰 참조 무결성 신규 체크. **후속 추적**: agents/architect.md / module-plan.md / task-decompose.md 에도 ui-spec / design-handoff 잔존 — 별도 이슈로 follow-up 필요.
+
 ### DCN-CHG-20260504-07
 - **Date**: 2026-05-04
 - **Change-Type**: docs-only

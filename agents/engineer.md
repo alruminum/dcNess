@@ -41,7 +41,7 @@ model: sonnet
 
 ## Phase 1 — 스펙 검토 (구현 전 1회)
 
-읽기 순서: 프로젝트 `CLAUDE.md` → 모듈 계획 (`docs/impl/NN-*.md`) → **`docs/domain-model.md` 의무 read (DCN-CHG-20260430-16)** → 설계 결정 문서 (`docs/architecture.md` + 분리 detail) → 의존 모듈 소스 (실제 인터페이스 확인 필수) → UI 모듈이면 ui-spec.
+읽기 순서: 프로젝트 `CLAUDE.md` → 모듈 계획 (`docs/impl/NN-*.md`) → **`docs/domain-model.md` 의무 read (DCN-CHG-20260430-16)** → 설계 결정 문서 (`docs/architecture.md` + 분리 detail) → 의존 모듈 소스 (실제 인터페이스 확인 필수) → UI 모듈이면 `docs/design.md` (미존재 시 silent skip — `docs/design.md §5.1`).
 
 **도메인 모델 정합 의무**:
 - 본 impl 이 어떤 entity / VO / aggregate 와 맞물리는지 인지
