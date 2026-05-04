@@ -24,16 +24,24 @@
 - **Date**: 2026-05-04
 - **Change-Type**: agent
 - **Files Changed**:
-  - `agents/ux-architect.md` — UX_FLOW 입력 ui-spec → design.md, Write 권한에 design.md 시스템 레벨 추가
-  - `agents/designer.md` — 디자인 가이드 읽기 ui-spec → design.md, Phase 4 HANDOFF 슬림화 (3 경로 분산)
-  - `agents/engineer.md` — 읽기 순서 ui-spec → design.md
+  - `agents/ux-architect.md` — UX_FLOW 입력 ui-spec → design.md, Write 권한에 design.md 시스템 레벨 추가, UX_SYNC / UX_SYNC_INCREMENTAL / UX_REFINE 모드에 design.md 산출 조건부 추가
+  - `agents/designer.md` — 디자인 가이드 읽기 ui-spec → design.md (silent skip), Phase 4 HANDOFF 슬림화 (3 경로 분산)
+  - `agents/engineer.md` — 읽기 순서 ui-spec → design.md (silent skip — design.md §5.1)
   - `agents/design-critic.md` — REVIEW 입력 ui-spec → design.md
   - `agents/architect/docs-sync.md` — 소유 아님 예시 ui-spec → design.md
-  - `agents/validator/code-validation.md` — ui-spec 읽기 → design.md 읽기, design.md 토큰 참조 무결성 체크 신설
+  - `agents/validator/code-validation.md` — ui-spec 읽기 → design.md 읽기 (silent skip), design.md 토큰 참조 무결성 체크 신설 (design.md §5.2)
   - `agents/pr-reviewer.md` — 스코프 매트릭스 ui-spec* → design.md (두 owner 명시)
   - `docs/process/document_update_record.md` (본 항목)
   - `docs/process/change_rationale_history.md`
-- **Summary**: plug-in 7개 agent ui-spec/design-handoff 토큰 → design.md 통일 (Story #126)
+- **Summary**: plug-in 7개 agent ui-spec / design-handoff 토큰 → design.md 통일. designer Phase 4 DESIGN_HANDOFF 패키지 폐지 → 3 경로 분산 (이슈 / design.md 부분 갱신 / Pencil 캔버스). ux-architect 시스템 레벨 + designer Components 섹션 권한 분리. code-validation 토큰 참조 무결성 신규 체크. **후속 추적**: agents/architect.md / module-plan.md / task-decompose.md 에도 ui-spec / design-handoff 잔존 — 별도 이슈로 follow-up 필요.
+
+### DCN-CHG-20260504-07
+- **Date**: 2026-05-04
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/design.md` — 머지된 spec 문서 cleanup 5건 (디버그 잔재 `# test` 라인 삭제 / 외부 노출 부적절 참조 제거 / 사용 예시 best practice 정합 / Layout 한글 표기 정리 / typography 권장 9개 전체 인용)
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: 직전 머지본 `docs/design.md` 의 cleanup. (1) 마지막 줄 `# test` 디버그 잔재 삭제. (2) 외부 사용자에게 의미 없는 dcness 내부 ID (`Story #126` / `Story #128` / `CLAUDE.md §0.4`) 본문에서 제거 — 본 spec 은 plug-in 사용자에게도 도달하는 SSOT 이므로 `CLAUDE.md §0.3` (내부 ID 외부 배포물 금지) 정합. (3) 사용 예시의 fontWeight / lineHeight 를 Google spec 권장 best practice 로 교체 (string `"400"` → bare number `400` / `"20px"` → unitless multiplier `1.43`). (4) §4 표 Layout 한글 표기 동의어 반복 정리. (5) §5.5 권장 typography 9개 (Google spec `# Recommended Token Names`) 전체 인용.
 
 ### DCN-CHG-20260504-06
 - **Date**: 2026-05-04

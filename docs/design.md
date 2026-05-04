@@ -64,7 +64,7 @@ components:
 | 1 | Overview | 개요 (브랜드 & 스타일) |
 | 2 | Colors | 색상 |
 | 3 | Typography | 타이포그래피 |
-| 4 | Layout | 레이아웃 (레이아웃 & 간격) |
+| 4 | Layout | 레이아웃 & 간격 |
 | 5 | Elevation & Depth | 고도 & 깊이 |
 | 6 | Shapes | 도형 |
 | 7 | Components | 컴포넌트 |
@@ -84,7 +84,7 @@ agent 는 파일 부재를 오류로 처리하지 않는다.
 ### 5.2 토큰 참조 무결성 검증
 
 `{colors.X}` 등 참조가 프론트매터에 실재해야 함.
-**검증 담당**: `agents/validator/code-validation.md` (해당 파일에서 신규 체크 항목으로 추가 — Story #126).
+**검증 담당**: `agents/validator/code-validation.md` (코드 검증 단계의 체크 항목).
 `plan-validation` / `design-validation` 은 본 검증 비대상.
 
 ### 5.3 외부 import 1회 변환
@@ -94,8 +94,9 @@ VoltAgent ecosystem (getdesign.md) 등 외부 `design.md` 가져올 때 LLM 1회
 
 ### 5.4 작성 스타일
 
-본 spec 본문은 `CLAUDE.md §0.4` 정합 — "주의사항" / "추후 결정" 등 명확한 한글 사용.
+명확한 한글 사용 — 외래어 (Caveats / Disclaimer / TBD 등) 는 "주의사항" / "추후 결정" 으로 풀어 쓴다.
 외부 spec 에서 인용하는 라인 (Atmosphere / Tonal Layers 등) 은 영어 그대로 유지 (의미 정확성 우선).
+산업 표준 약어 (API / SDK / SSOT / PR / CI 등) 는 그대로 사용.
 
 ### 5.5 권장 토큰 이름 (Google spec `# Recommended Token Names (Non-Normative)`)
 
@@ -103,7 +104,7 @@ VoltAgent ecosystem (getdesign.md) 등 외부 `design.md` 가져올 때 LLM 1회
 
 **colors**: `primary` / `secondary` / `tertiary` / `neutral` / `surface` / `on-surface` / `error`
 
-**typography**: `headline-display` / `body-lg` / `body-md` / `label-sm`
+**typography**: `headline-display` / `headline-lg` / `headline-md` / `body-lg` / `body-md` / `body-sm` / `label-lg` / `label-md` / `label-sm`
 
 **rounded**: `none` / `sm` / `md` / `lg` / `xl` / `full`
 
@@ -134,9 +135,9 @@ colors:
 typography:
   body-md:
     fontFamily: "Roboto"
-    fontSize: "14px"
-    fontWeight: "400"
-    lineHeight: "20px"
+    fontSize: 14px
+    fontWeight: 400
+    lineHeight: 1.43
 ---
 
 ## Overview
@@ -150,5 +151,4 @@ MyApp 의 기본 색상은 보라색 계열이며 Material You 기반이다.
 - `surface`: 배경 기본값
 ```
 
-> `init-dcness` 실행 시 본 예시를 프로젝트에 inline 으로 embed 한다 (Story #128).
-# test
+> `init-dcness` 실행 시 본 예시를 프로젝트에 inline 으로 embed 한다.
