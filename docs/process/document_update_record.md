@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260504-09
+- **Date**: 2026-05-04
+- **Change-Type**: agent
+- **Files Changed**:
+  - `agents/engineer.md` — Phase 2 구현 룰에 "샌드박스 / mock 분기 의무" 추가 (광고 / 결제 / 외부 SDK 호출 시 mock 분기 강제). 글로벌 CLAUDE.md 에서 옮겨온 universal 룰.
+  - `CLAUDE.md` — §3 lazy 읽기 매트릭스에 `docs/design.md` 행 추가 (UI 디자인 시스템 SSOT 변경 / plug-in agent 디자인 룰 영향 작업 시).
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Story #127 — dcness self `CLAUDE.md` §3 lazy 매트릭스에 design.md 행 추가 + 글로벌 `~/.claude/CLAUDE.md` slim down (dcness 영역 4 섹션 제거: 새 프로젝트 시작 흐름 / 모듈 단위 작업 순서 / 직접 수정 금지 매트릭스 / stories 동기화 1줄). 글로벌에서 빠진 universal 룰 중 dcness 미포함이던 "샌드박스 / mock 분기" 를 `agents/engineer.md` Phase 2 로 이전. 글로벌 ~/.claude/CLAUDE.md 직접 편집 = 본 PR commit 외 (사용자 홈, git 추적 외).
+
 ### DCN-CHG-20260504-08
 - **Date**: 2026-05-04
 - **Change-Type**: agent
