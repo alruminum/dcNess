@@ -53,9 +53,24 @@ epic issue ─┬─ story issue ── (task: PR 기반, 이슈 없음)
 
 ### 1.4 Task — PR 트레일러
 
-- 중간 task PR: `Part of #story-issue`
+- 중간 task PR: `Part of #story-issue` (Development 섹션 자동 연결 X — 언급만)
 - story 의 마지막 task PR: `Closes #story-issue`
 - epic 의 마지막 story 의 마지막 task PR: `Closes #story-issue` + `Closes #epic-issue` (한 줄당 1개 또는 comma 분리)
+
+**Development 섹션 역방향 업데이트** (story 마지막 PR 생성 시 필수):
+
+`Closes #story-issue` PR 생성과 동시에, 이전 `Part of #story-issue` PR 들을 찾아 body 앞에 `Fixes #story-issue` 를 추가한다. 이미 머지된 PR body 업데이트는 issue close 를 재발동하지 않으며 Development 섹션에 소급 반영된다.
+
+```bash
+ISSUE=<story-issue-number>
+REPO=<owner>/<repo>
+gh search prs --repo "$REPO" "Part of #$ISSUE" --json number --jq '.[].number' \
+  | while read num; do
+      cur=$(gh pr view "$num" --repo "$REPO" --json body --jq '.body')
+      gh pr edit "$num" --repo "$REPO" --body "Fixes #$ISSUE
+$cur"
+    done
+```
 
 ## 2. 완료 규칙
 

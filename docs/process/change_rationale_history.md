@@ -18,6 +18,13 @@
 
 ## Records
 
+### DCN-CHG-20260504-06
+- **Date**: 2026-05-04
+- **Rationale**: GitHub Development 섹션에 `Part of #N` 키워드는 언급만 될 뿐 자동 연결되지 않음. `Fixes #N` / `Closes #N` 같은 closing keyword 만 Development 에 표시됨. 중간 PR 에 closing keyword 사용 시 issue 가 조기 close 되는 문제 존재. 실측으로 이미 머지된 PR body 에 `Fixes #N` 추가 → Development 소급 반영 + issue 재발동 없음 확인.
+- **Alternatives**: 모든 중간 PR 에 `Fixes #N` 사용 — 1/3 PR 머지 시 issue 조기 close 발생으로 기각.
+- **Decision**: 중간 PR 은 `Part of #N` 유지 (조기 close 방지) + story 마지막 PR 생성 시 `gh search prs` + `gh pr edit` 로 이전 PR body 에 `Fixes #N` 소급 추가. Development 에 전체 PR 표시 + 정확한 close 시점 보장.
+- **Follow-Up**: engineer 가 마지막 PR 생성 시 역방향 업데이트 명령어 실행 의무 준수 여부 확인.
+
 ### DCN-CHG-20260504-05
 - **Date**: 2026-05-04
 - **Rationale**: PR title 에 Task-ID 를 요구하는 게이트가 git-naming-spec PR title 형식(`[docs] {설명}`)과 충돌 — 둘 다 지키려면 title 에 ID + 설명을 모두 넣어야 해서 가독성 저하. 또한 branch protection 미설정으로 CI 실패해도 merge 가 막히지 않아 게이트 의미 반감.

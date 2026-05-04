@@ -192,6 +192,8 @@ impl task 의 commit/PR 은 코드 + 관련 docs 를 1 셋트로 묶는다 — s
 - story 의 마지막 task PR: `Closes #story-issue`
 - epic 의 마지막 story 의 마지막 task PR: `Closes #story-issue` + `Closes #epic-issue` (메인이 PR 생성 직전 사전 체크 후 지시)
 
+**Development 섹션 역방향 업데이트** (story 마지막 PR 생성 시): `issue-lifecycle.md §1.4` 명령어로 이전 `Part of #story-issue` PR 들에 `Fixes #story-issue` 추가 — 마지막 PR `Closes` 와 동시 실행.
+
 **API 직접 close 절대금지** (issue-lifecycle.md §2.3) — `mcp__github__update_issue` state:closed 호출 금지. PR commit message `Closes #N` 으로만.
 
 **자가 검증** (commit 직전):

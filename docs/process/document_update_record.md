@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260504-06
+- **Date**: 2026-05-04
+- **Change-Type**: agent, docs-only
+- **Files Changed**:
+  - `docs/issue-lifecycle.md` — §1.4 Development 섹션 역방향 업데이트 룰 + 명령어 추가
+  - `agents/engineer.md` — PR body 트레일러 섹션에 Development 역방향 업데이트 한 줄 추가
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: 중간 task PR `Part of #N` 은 Development 섹션에 자동 연결되지 않는다는 사실 명시 + story 마지막 PR 생성 시 이전 PR body 에 `Fixes #N` 을 소급 추가해 Development 섹션에 전체 PR 을 표시하는 역방향 업데이트 룰 추가. 이미 머지된 PR body 업데이트는 issue close 재발동 없음 실측 확인.
+
 ### DCN-CHG-20260504-05
 - **Date**: 2026-05-04
 - **Change-Type**: ci

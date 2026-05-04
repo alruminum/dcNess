@@ -151,3 +151,4 @@ MyApp 의 기본 색상은 보라색 계열이며 Material You 기반이다.
 ```
 
 > `init-dcness` 실행 시 본 예시를 프로젝트에 inline 으로 embed 한다 (Story #128).
+# test
