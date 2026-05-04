@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+- **🔒 Task-ID 게이트 PR title 검사 제거 + branch protection 설정** (`DCN-CHG-20260504-05`):
+  - `scripts/check_task_id.mjs` — `--pr-title` 모드 제거 (커밋 메시지 검사만 유지).
+  - `.github/workflows/task-id-validation.yml` — `Validate PR title` step 제거.
+  - GitHub main branch protection required status checks 설정 (3개 게이트 강제화).
+
 - **🏷️ git-naming-spec CI/hook 강제** (`DCN-CHG-20260503-04`):
   - `scripts/check_git_naming.mjs` 신규 — 브랜치명·커밋/PR 제목 형식 검증 스크립트.
   - `scripts/hooks/commit-msg` 신규 — 로컬 commit-msg hook (커밋 제목 즉시 차단).

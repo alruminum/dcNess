@@ -6,7 +6,6 @@
  * 사용:
  *   node scripts/check_task_id.mjs                 # 로컬: HEAD 커밋 1개 검사
  *   node scripts/check_task_id.mjs <base> <head>   # CI: base..head 범위 검사
- *   node scripts/check_task_id.mjs --pr-title "<title>"  # CI: PR title 검사 (옵션)
  *
  * 규칙:
  *   - 모든 비-머지 커밋은 메시지(subject 또는 body) 안에 정확히 1개의
@@ -14,7 +13,6 @@
  *   - 토큰 패턴: ^DCN-CHG-\d{8}-\d{2}$ (zero-pad 일별 순번)
  *   - 머지 커밋(2개 이상 parent)은 검사 면제 — squash merge 합본 등 자동 생성 케이스.
  *   - Document-Exception-Task: DCN-CHG-... 도 동일 토큰으로 인정.
- *   - PR title 옵션 사용 시 title 안에 1개 이상 매칭이면 PASS.
  *
  * exit 0: 통과
  * exit 1: 위반 (Task-ID 누락 / 형식 위반 / 다중 ID)
@@ -98,24 +96,6 @@ const args = process.argv.slice(2);
 
 if (!isGitRepo() && !args.includes('--pr-title')) {
   console.log('[task-id] not a git repo — skip');
-  process.exit(0);
-}
-
-// PR title 모드
-const prTitleIdx = args.indexOf('--pr-title');
-if (prTitleIdx !== -1) {
-  const title = args[prTitleIdx + 1];
-  if (!title) {
-    console.error('[task-id] --pr-title 인자 누락');
-    process.exit(1);
-  }
-  const result = validateMessage(title);
-  if (!result.ok) {
-    console.error(`[task-id] FAIL — PR title 검증: ${result.error}`);
-    console.error(`  title: ${title}`);
-    process.exit(1);
-  }
-  console.log(`[task-id] PASS — PR title Task-ID: ${result.taskIds[0]}`);
   process.exit(0);
 }
 

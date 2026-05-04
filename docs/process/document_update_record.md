@@ -20,6 +20,16 @@
 
 ## Records
 
+### DCN-CHG-20260504-05
+- **Date**: 2026-05-04
+- **Change-Type**: ci
+- **Files Changed**:
+  - `.github/workflows/task-id-validation.yml` — PR title 검사 step (`Validate PR title`) 제거
+  - `scripts/check_task_id.mjs` — `--pr-title` 모드 코드 + 관련 주석 제거
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Task-ID 게이트에서 PR title 검사 제거 (커밋 메시지 검사만 유지). GitHub branch protection required status checks 설정으로 게이트 강제화.
+
 ### DCN-CHG-20260504-04
 - **Date**: 2026-05-04
 - **Change-Type**: docs-only
