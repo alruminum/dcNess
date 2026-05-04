@@ -29,7 +29,10 @@ inner = `impl-task-loop` (catalog §3) per task.
 - 전체 완료 → 보고 (처리 N/N + 각 PR URL)
 
 ## 사전 read (skill 진입 즉시)
-`docs/loop-procedure.md` + `docs/loop-catalog.md` §3 + §10 + `docs/handoff-matrix.md` read 후 진행.
+`docs/loop-procedure.md` + `docs/loop-catalog.md` §3 + §10 + `docs/handoff-matrix.md` + `docs/issue-lifecycle.md` read 후 진행.
+
+## Pre-flight gate (각 task 진입 직전)
+[`docs/issue-lifecycle.md`](../docs/issue-lifecycle.md) §6 매치 강제 — 부모 epic stories.md 의 epic/story 이슈 매치 부재 시 해당 task STOP + 사용자 보고. silent skip 금지.
 
 ## 절차
 [`docs/loop-procedure.md`](../docs/loop-procedure.md) §1~§6 + [`docs/loop-catalog.md`](../docs/loop-catalog.md) §3 (inner) + §10 (chain 정책) 따름.

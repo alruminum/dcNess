@@ -32,7 +32,7 @@
 **Step 별 allowed_enums** (`end-step --allowed-enums`):
 | step | agent[:mode] | allowed_enums |
 |---|---|---|
-| 2 | product-planner | `PRODUCT_PLAN_READY,CLARITY_INSUFFICIENT,PRODUCT_PLAN_CHANGE_DIFF,PRODUCT_PLAN_UPDATED,ISSUES_SYNCED` |
+| 2 | product-planner | `PRODUCT_PLAN_READY,CLARITY_INSUFFICIENT,PRODUCT_PLAN_CHANGE_DIFF,PRODUCT_PLAN_UPDATED` |
 | 3 | plan-reviewer | `PLAN_REVIEW_PASS,PLAN_REVIEW_CHANGES_REQUESTED` |
 | 4 | ux-architect:UX_FLOW | `UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE` |
 | 5 | validator:UX_VALIDATION | `PASS,FAIL` |
@@ -41,10 +41,10 @@
 | 7 | architect:TASK_DECOMPOSE | `READY_FOR_IMPL` |
 
 **분기**:
+- `PRODUCT_PLAN_READY` → product-planner 가 epic + story 이슈 동시 생성 후 plan-reviewer 진입 ([`issue-lifecycle.md`](issue-lifecycle.md) §1)
 - `PRODUCT_PLAN_UPDATED` → plan-reviewer skip + ux-architect 직행 (이전 PLAN_REVIEW_PASS 활용)
 - `PRODUCT_PLAN_CHANGE_DIFF` → plan-reviewer 변경분만 재심사
 - `CLARITY_INSUFFICIENT` → 사용자 역질문 후 product-planner 재호출
-- `ISSUES_SYNCED` → 동기화 완료, 종료
 - `PLAN_REVIEW_CHANGES_REQUESTED` → product-planner 재진입 (cycle ≤ 2)
 - `UX_REFINE_READY` → designer SCREEN 분기 (ux-design-stage 또는 ux-refine-stage 진입 권장)
 - `UX_FLOW_ESCALATE` → 사용자 위임
