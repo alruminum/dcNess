@@ -18,6 +18,16 @@
 
 ## Records
 
+### DCN-CHG-20260505-01
+- **Date**: 2026-05-05
+- **Rationale**: Story #126 (agents 7개 ui-spec / design-handoff → design.md 정합) 의 검증 기준 "plug-in 전체 grep `ui-spec` / `design-handoff` 결과 0건" 미충족 — agents/architect 계열 3 파일 (architect.md L45 Design Ref / module-plan.md L15 read 목록 + L87 듀얼 모드 trigger / task-decompose.md L26 듀얼 모드 trigger + L38 스킵 조건) 5 위치에 토큰 잔존. 단순 토큰 교체 외 듀얼 모드 룰이 design-handoff.md 부재를 trigger 로 썼으므로 의미 변경 동반 → #126 PR 분리.
+- **Alternatives**:
+  - 옵션 B (Pencil 캔버스 frame 부재 = 듀얼 모드) — Pencil 의무 호출 비용 + Pencil 못 켠 환경 대응 어려움.
+  - 옵션 C (A AND B 양쪽 부재) — 느슨해서 듀얼 모드 발동 빈도 낮음, 토큰 우선 가드 의미 약화.
+  - 옵션 D (듀얼 모드 자체 폐기) — design.md 도입으로 의미 약해진 건 맞지만 designer 작업 *전* 임시 시각화 강제는 여전히 유효 (디자인 시안 도착 전 컴포넌트 갈아엎기 0 목표).
+- **Decision**: **옵션 A** — `docs/design.md` 미존재 OR `components` 섹션 미정의 = 듀얼 모드. 가장 추적 가능 (파일 기반 단순 체크), Pencil 의존 X. module-plan.md 와 task-decompose.md 둘 다 동일 trigger 표기 통일. 부수 효과로 module-plan.md L15 의 `domain-logic` → `domain-model` 통일 (같은 파일 L15 본문이 이미 `docs/domain-model.md` 의무 read 라 표기 일관성 정합).
+- **Follow-Up**: Epic #129 잔여 = Story #128 (init-dcness Step 2.7) 만 남음. 본 PR 머지 후 plug-in cache sync 동기 필요 (Story #126 와 같은 절차).
+
 ### DCN-CHG-20260504-09
 - **Date**: 2026-05-04
 - **Rationale**: 글로벌 `~/.claude/CLAUDE.md` 가 dcness plug-in 영역 룰 (PRD/TRD 작성 흐름 / 설계 문서 owner / 직접 수정 금지 매트릭스 / 모듈 단위 작업 순서 / stories 동기화) 을 중복 보유 → drift 위험 + plug-in SSOT 깨짐. dcness 가 plug-in 으로 분리되기 전 옛 잔재. plug-in agents 본문 + pr-reviewer 스코프 매트릭스 + issue-lifecycle.md 가 이미 동일 룰을 책임지므로 글로벌 중복 제거 가능.

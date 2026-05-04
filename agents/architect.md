@@ -42,7 +42,7 @@ model: sonnet
 - **Schema-First**: DB DDL / 도메인 엔티티 / API 계약 먼저 정의, 코드는 파생물. 예외: 탐색적 프로토타입 (impl 에 명시).
 - **보안·관찰가능성은 후처리 X**: 인증/인가·시크릿·로깅 전략은 설계 초기부터.
 - **ux-flow.md 참조**: System Design 시 전달되면 화면 인벤토리·플로우를 시스템 구조 입력으로. 화면 구조 임의 변경 X, 변경 필요 시 escalate.
-- **Design Ref 섹션**: design-handoff.md 전달 시 impl 에 `## Design Ref` 추가 (Pencil frame ID + 디자인 토큰 + 컴포넌트 구조 요약). engineer 가 batch_get 으로 직접 참조.
+- **Design Ref 섹션**: 다음 둘 중 하나 시 impl 에 `## Design Ref` 추가 — (a) `docs/design.md` 의 `components` 섹션에 본 impl 대상 컴포넌트 정의됨, OR (b) Pencil 캔버스에 본 impl 대상 frame 확정. 내용 = `Pencil Frame ID + design.md components 토큰 키 + 본문 §Components 발췌`. engineer 가 batch_get / Read 로 직접 참조.
 
 ## Karpathy 원칙 (DCN-CHG-20260430-17)
 
