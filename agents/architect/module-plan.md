@@ -12,7 +12,7 @@
 
 ## 작업 흐름 (자율 조정 가능)
 
-SYSTEM_DESIGN_READY → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md` → **`docs/domain-model.md` 의무 read** (DCN-CHG-20260430-16 — 도메인 모델 위에서 모듈 plan) → 관련 설계 문서 (architecture / domain-logic / db-schema / ui-spec) → **DB 영향도 분석** (변경 시) → 기존 유사 구현 패턴 검토 → 의존 모듈 소스 (실제 인터페이스 확인 필수) → 계획 파일 작성.
+SYSTEM_DESIGN_READY → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md` → **`docs/domain-model.md` 의무 read** (DCN-CHG-20260430-16 — 도메인 모델 위에서 모듈 plan) → 관련 설계 문서 (architecture / domain-model / db-schema / design.md) → **DB 영향도 분석** (변경 시) → 기존 유사 구현 패턴 검토 → 의존 모듈 소스 (실제 인터페이스 확인 필수) → 계획 파일 작성.
 
 ## 모듈 = 테스트 단위 정합 (DCN-CHG-20260430-16, 의무)
 
@@ -84,7 +84,11 @@ SYSTEM_DESIGN_READY → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md`
 
 ## 듀얼 모드 가드레일 — 디자인 토큰 의존성 (UI 컴포넌트 impl)
 
-UI 컴포넌트 impl 이고 **`docs/ux-flow.md` §0 디자인 가이드 존재 + `docs/design-handoff.md` 미존재** (= 듀얼 모드) 인 경우:
+UI 컴포넌트 impl 이고 다음 둘 중 하나 시 (= 듀얼 모드 — designer 작업 전 임시 시각화 필요):
+- `docs/design.md` 미존재
+- `docs/design.md` 의 `components` 섹션 (frontmatter 또는 본문 §Components) 에 본 impl 대상 컴포넌트 미정의
+
+이 경우:
 - `## 의존성` 섹션에 `src/theme/` 명시 (없으면 `01-theme-tokens.md` 선행 impl 필요)
 - 인터페이스 정의에서 색·폰트·간격은 `theme.colors.*`, `theme.typography.*`, `theme.spacing.*` 형식만 — hex (`#FFD700`) / 폰트명 직접 / rem·px 직접값 금지
 - `## 수용 기준` 1 행 추가: `| REQ-NNN | 직접 색·폰트·간격 리터럴 사용 금지 | (TEST) | grep 으로 hex/px 리터럴 0 건 확인 |`

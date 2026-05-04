@@ -29,6 +29,17 @@
   - `docs/process/change_rationale_history.md`
 - **Summary**: Story #128 — `/init-dcness` skill 에 design.md 사용자 환경 도달 보장 스텝 추가. CLAUDE.md §0.5 (배포 경로 검증 의무) 정합. 두 단계 모두 멱등 + 사용자 응답 1회 의무 (silent skip 금지). minimal 템플릿은 inline embed (Story #125 sample 과 수동 동기 — 자동화는 Epic #129 후속).
 
+### DCN-CHG-20260505-01
+- **Date**: 2026-05-05
+- **Change-Type**: agent
+- **Files Changed**:
+  - `agents/architect.md` — §공통 원칙 Design Ref 섹션 트리거를 design-handoff.md 전달 → design.md `components` 섹션 정의 OR Pencil frame 확정 으로 교체. 내용도 design.md 토큰 키 + 본문 §Components 발췌 기반으로 재기술.
+  - `agents/architect/module-plan.md` — 작업 흐름 read 목록 `(architecture / domain-logic / db-schema / ui-spec)` → `(architecture / domain-model / db-schema / design.md)`. 듀얼 모드 가드레일 trigger = `design.md` 미존재 OR `components` 섹션 미정의 (옵션 A).
+  - `agents/architect/task-decompose.md` — 듀얼 모드 trigger 동일 옵션 A 정합. 스킵 조건 = design.md `components` 섹션에 epic UI 컴포넌트 정의됨.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: Story #138 — agents/architect 계열 3 파일 잔존 `ui-spec` / `design-handoff` 토큰 5 위치 정리 + 듀얼 모드 trigger 옵션 A (design.md `components` 섹션 기반) 로 재정의. Story #126 검증 기준 "plug-in 전체 grep 0건" 충족.
+
 ### DCN-CHG-20260504-09
 - **Date**: 2026-05-04
 - **Change-Type**: agent
