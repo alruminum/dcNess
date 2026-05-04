@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260504-03
+- **Date**: 2026-05-04
+- **Rationale**: 작업 중 메인 Claude 가 다음 5 핵심을 반복적으로 까먹어 사용자 frustration 누적. (1) 본 dcness 저장소 자체와 plug-in 배포 후 사용자 환경을 혼동 — dcness 자체에 plug-in 규격을 잘못 적용 (예: 본 저장소에 stories.md / issue-lifecycle.md §1.1 product-planner 흐름을 강제). (2) 내부 추적 ID 를 plug-in 배포 파일 (agents/commands/skills + 사용자용 SSOT) 본문에 그대로 박아 외부 사용자에게 잡음 노출. (3) 외래어 (Caveats / Disclaimer / TBD 등) 남발로 가독성 저하. (4) 인용 시 "위 섹션" 같은 모호 표기 사용으로 SSOT 추적 불가. (5) 기능 추가 시 본 저장소에만 반영하고 plug-in 배포 경로(init-dcness deploy / 사용자 SSOT) 누락 — 과거 jajang 에서 dcness 자체는 작동하는데 정작 사용자 환경은 그 기능 없어 미작동 사고 발생.
+- **Alternatives**:
+  - main-claude-rules.md 에만 추가 — 본 CLAUDE.md 안 읽으면 인지 못 함. CLAUDE.md 가 1차 진입점이라 §0 정체성 박스에 박는 게 가장 강함.
+  - 별도 conventions.md 신규 분리 — 추가 파일 = SSOT 분산 + lazy read 위험. 5 룰은 정체성 직결이라 §0 inline 이 적절.
+- **Decision**: CLAUDE.md §0 프로젝트 정체성 섹션을 5 sub-section 으로 확장. §0.1 plug-in 배포 정체성 (= 활성화 외부 프로젝트가 기준) / §0.2 dcness self 는 init-dcness 미적용 = plug-in 규격 미얽매임 / §0.3 내부 ID 외부 배포물 금지 / §0.4 쉬운 한글 + § 인용 명시 / §0.5 기능 추가 시 배포 경로 (plug-in 본체 / init-dcness 복사 / 사용자 SSOT) 검증 의무. 기존 §0 모드 섹션은 §0.6 으로 강등 (정체성 위에서 작동하는 모드).
+- **Follow-Up**: 외부 배포 SSOT (`docs/issue-lifecycle.md`) 안의 내부 ID 인용 정리 (별도 작업). plug-in 배포 파일 전수 grep 으로 내부 ID 잔존 확인 (별도 작업). 기존 활성화 프로젝트 (jajang 등) 가 init-dcness 재실행 없이도 신규 deploy 받을 방법 검토 (별도 작업).
+
 ### DCN-CHG-20260504-01
 - **Date**: 2026-05-04
 - **Rationale**: GitHub 이슈 생성·완료 룰이 dcness plugin 의 여러 agent 에 분산 + 일관성 없음. (1) epic 이슈는 product-planner, story 이슈는 task-decompose 가 별도 시점에 생성 → ISSUE_SYNC 호출이 자주 skip 됨. (2) 이슈 close 주체·방법이 어디에도 명시 안 됨. (3) task-decompose 가 이슈 부재 시 stories.md fallback 으로 silent 진행 → 적용 프로젝트 (jajang) 가 이슈 등록을 전제로 설계됐음에도 누락 발견 안 됨 (epic-11 사례: PR #180 진행 중 "이슈 번호 없음 — 생략하고 진행"). (4) 라벨 형식이 plugin agent 가정 (`V0N`+`EPIC0N`+`Story0N`) vs jajang 실제 GitHub 라벨 (`v0N`+`epic-NN-<slug>`+`story`) 미스매치 — 그대로 갔으면 이슈 생성 실패.
