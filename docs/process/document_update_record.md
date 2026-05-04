@@ -20,6 +20,14 @@
 
 ## Records
 
+### DCN-CHG-20260504-02
+- **Date**: 2026-05-04
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/milestones/v01/epics/epic-03-infra/stories.md` (신규)
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: EPIC03 (인프라, #110) 안에 spec 현실 갭 8건 stories 일괄 등록 — Story 5 (메타) + Story 6 (design.md SSOT 도입) + Story 7 (stories.md owner) + Story 8 (00-decisions owner) + Story 9 (domain-logic/model 통일) + Story 10 (epic-index/backlog 분리) + Story 11 (db-schema 부트스트랩) + Story 12 (bugfix 글로벌 + issue-lifecycle plugin). GitHub 이슈 #115~#122 생성, stories.md 와 cross-link.
+
 ### DCN-CHG-20260504-01
 - **Date**: 2026-05-04
 - **Change-Type**: agent, docs-only
