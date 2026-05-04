@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260503-05
+- **Date**: 2026-05-03
+- **Rationale**: DCN-CHG-20260503-04 에서 git-naming CI/hook 을 dcNess 자체에 적용했으나, 플러그인 사용자는 이 파일들을 직접 얻을 방법이 없었음. `init-dcness` 가 dcNess 초기화의 진입점이므로, 여기에 git-naming 파일 배포 스텝을 추가하면 사용자 프로젝트에서도 동일한 강제를 즉시 활성화할 수 있음.
+- **Alternatives**:
+  - 별도 `/setup-git-naming` skill 신규 — 사용자가 기억해야 할 진입점이 늘어남. init 흐름에서 놓칠 가능성.
+  - 문서로만 안내 — 자동화 없음. 사용자가 수동 복사해야 함.
+- **Decision**: `init-dcness` Step 2.6 으로 통합. 플러그인 root(`$PLUGIN_ROOT`)에서 `check_git_naming.mjs` / `git-naming-validation.yml` / `commit-msg` hook 을 idempotent 복사. 기존 파일 있으면 skip.
+- **Follow-Up**: plugin cache 에 3개 신규 파일 수동 sync (cache 가 구 commit 고정). 플러그인 버전 업 시 자동 반영.
+
 ### DCN-CHG-20260503-04
 - **Date**: 2026-05-03
 - **Rationale**: git-naming-spec 규칙이 문서로만 존재해 로컬에서 우회 가능. 브랜치명·PR 제목·커밋 제목 위반이 사람 눈에만 걸리면 늦게 발견됨. CI+hook으로 자동 차단해야 규칙이 실제로 작동.

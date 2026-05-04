@@ -20,6 +20,15 @@
 
 ## Records
 
+### DCN-CHG-20260503-05
+- **Date**: 2026-05-03
+- **Change-Type**: agent
+- **Files Changed**:
+  - `commands/init-dcness.md` — Step 2.6 신규: git-naming enforcement deploy (check_git_naming.mjs + commit-msg hook + CI workflow)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: init-dcness skill 에 git-naming 강제 배포 스텝 추가 — 플러그인 사용자도 동일 CI/hook 강제 적용 가능
+
 ### DCN-CHG-20260503-04
 - **Date**: 2026-05-03
 - **Change-Type**: ci
