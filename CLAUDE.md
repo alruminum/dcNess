@@ -117,6 +117,7 @@
 | [`docs/process/document_update_record.md`](docs/process/document_update_record.md) | 모든 변경 기록 시 (WHAT 로그) |
 | [`docs/process/change_rationale_history.md`](docs/process/change_rationale_history.md) | spec / agent / harness / hooks / ci 변경 시 (WHY 로그) |
 | [`docs/process/document_impact_matrix.md`](docs/process/document_impact_matrix.md) | 변경 영향 범위 검토 시 |
+| [`docs/design.md`](docs/design.md) | 디자인 시스템 SSOT 변경 / plug-in agent 디자인 룰 영향 작업 시 |
 | [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | 하네스 설계·Phase 수정 시 |
 | [`docs/orchestration.md`](docs/orchestration.md) | 오케스트레이션 로직(시퀀스·retry·escalate) 수정 시 |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태·TODO·Blockers 확인 시 |

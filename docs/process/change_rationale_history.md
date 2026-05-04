@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260504-09
+- **Date**: 2026-05-04
+- **Rationale**: 글로벌 `~/.claude/CLAUDE.md` 가 dcness plug-in 영역 룰 (PRD/TRD 작성 흐름 / 설계 문서 owner / 직접 수정 금지 매트릭스 / 모듈 단위 작업 순서 / stories 동기화) 을 중복 보유 → drift 위험 + plug-in SSOT 깨짐. dcness 가 plug-in 으로 분리되기 전 옛 잔재. plug-in agents 본문 + pr-reviewer 스코프 매트릭스 + issue-lifecycle.md 가 이미 동일 룰을 책임지므로 글로벌 중복 제거 가능.
+- **Alternatives**:
+  - 글로벌 CLAUDE.md 그대로 두고 dcness self CLAUDE.md 에 design.md 만 추가 — drift 누적 + 사용자 혼란 (dcness 룰이 어디서 적용되는지 모호).
+  - 글로벌 → 매트릭스만 design.md 로 교체 (slim X) — 잔존 중복 4 섹션 그대로, 본질적 문제 해소 X.
+- **Decision**: (a) 글로벌 `~/.claude/CLAUDE.md` slim down — 4 섹션 제거 (새 프로젝트 시작 흐름 / 모듈 단위 작업 순서 / 직접 수정 금지 매트릭스 / stories 동기화 1줄). universal 룰 (제1룰 / 에이전트 & 플러그인 안내 / SDK 검증 / 내용 먼저 보여주기 / hooks 금지 / 커밋 절차 link) 만 유지. 113줄 → ~46줄. (b) 글로벌에 있던 universal 룰 중 dcness plug-in 누락 항목 (mock 분기) 을 `agents/engineer.md` Phase 2 로 이전. (c) dcness self `CLAUDE.md` §3 lazy 매트릭스에 design.md 행 추가 (UI 디자인 시스템 SSOT 변경 작업 시 read 후보).
+- **Follow-Up**: 글로벌 변경은 사용자 홈 직접 편집 = git 추적 외. 다른 사용자가 같은 slim down 받으려면 별도 안내 필요 (Epic #129 후속 추적 항목 — 글로벌 사용자 전파).
+
 ### DCN-CHG-20260504-08
 - **Date**: 2026-05-04
 - **Rationale**: agent 7개에 `ui-spec` / `design-handoff` 참조가 잔존하여 spec ↔ 실제 산출 미스매치 발생. pr-reviewer 스코프 매트릭스엔 `ui-spec*` owner = designer 로 표기됐지만 designer.md Write 책임엔 ui-spec 없음 — UI 작업 시 파일 부재 → silent skip / 혼란. design.md SSOT 도입(Story #125) 후 정합 완료 필요.
