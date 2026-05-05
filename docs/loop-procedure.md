@@ -1,18 +1,18 @@
 # Loop Execution Procedure (메인 Claude 컨베이어 mechanics)
 
 > **Status**: ACTIVE
-> **Origin**: `DCN-CHG-20260430-27` (신설), `DCN-CHG-20260430-30` (loop-catalog.md split), `DCN-CHG-20260501-16` (prose auto-staging 반영)
+> **Origin**: `DCN-CHG-20260430-27` (신설), `DCN-CHG-20260430-30` (loop-catalog.md split), `DCN-CHG-20260501-16` (prose auto-staging 반영), `DCN-CHG-20260505-03` (loop-catalog.md → orchestration.md 흡수)
 > **Scope**: dcness 8 loop 의 *공통 실행 절차* SSOT — Step 0~8 mechanics. 메인 Claude 가 skill 트리거 또는 직접 발화로 루프 시작 시 본 문서를 컨베이어 매뉴얼처럼 따른다.
-> **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) = [`loop-catalog.md`](loop-catalog.md). 시퀀스 mini-graph + 결정표 = [`orchestration.md`](orchestration.md) §2~§7. cross-cutting 룰 (echo / yolo / worktree / AMBIGUOUS) = [`process/dcness-guidelines.md`](process/dcness-guidelines.md).
+> **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) + 시퀀스 mini-graph + 결정표 = [`orchestration.md`](orchestration.md) §2~§4. cross-cutting 룰 (echo / yolo / worktree / AMBIGUOUS) = [`process/dcness-guidelines.md`](process/dcness-guidelines.md).
 
 ---
 
 ## 0. 진입 모델
 
-skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`loop-catalog.md`](loop-catalog.md) §1 인덱스 + 해당 loop 풀스펙 sub-section** 보고 task 리스트 동적 구성 → §1~§6 mechanics 따름.
+skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`orchestration.md`](orchestration.md) §4.1 인덱스 + 해당 loop 풀스펙 sub-section** 보고 task 리스트 동적 구성 → §1~§6 mechanics 따름.
 
-- **skill 경유**: `commands/<skill>.md` 의 `Loop` 필드가 catalog 행 가리킴. skill 은 input 정형화 + 라우팅 추천만 — 절차는 본 SSOT, loop spec 은 catalog.
-- **직접 발화** ("이거 quick 으로 가자"): orchestration.md §3 mini-graph + catalog §1 인덱스 보고 메인이 자율 구성. 강제 X.
+- **skill 경유**: `commands/<skill>.md` 의 `Loop` 필드가 orchestration §4 행 가리킴. skill 은 input 정형화 + 라우팅 추천만 — 절차는 본 SSOT, loop spec 은 orchestration §4.
+- **직접 발화** ("이거 quick 으로 가자"): orchestration.md §3 mini-graph + §4.1 인덱스 보고 메인이 자율 구성. 강제 X.
 - **dcness-guidelines.md (SessionStart inject)**: 본 문서 + catalog 모두 read 의무 명시. 매 세션 진입 시 메인 자동 인지.
 
 ---
@@ -37,7 +37,7 @@ echo "[<entry>] run started: $RUN_ID"
 
 ## 2. Step 1 — TaskCreate
 
-[`loop-catalog.md`](loop-catalog.md) 행의 `task_list` 컬럼대로 일괄 등록. `/impl-loop` inner 의 경우 prefix `b<i>.` 의무 (DCN-CHG-30-12).
+[`orchestration.md`](orchestration.md) §4 행의 `task_list` 컬럼대로 일괄 등록. `/impl-loop` inner 의 경우 prefix `b<i>.` 의무 (DCN-CHG-30-12).
 
 ```
 TaskCreate("<agent>: <mode 또는 짧은 설명>")
@@ -91,7 +91,7 @@ cycle 한도 = orchestration.md §5. yolo 매핑 = guidelines §5 + helper `auto
 
 ---
 
-## 3.4 impl-task-loop 3-commit 구조 (loop-catalog §3 한정)
+## 3.4 impl-task-loop 3-commit 구조 (orchestration §4.3 한정)
 
 `impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` 에서 루프 종료 전 3 단계 commit + PR create 를 강제 (catastrophic gate §2.3.6~§2.3.8, `hooks.py`).
 
@@ -272,22 +272,21 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 
 ## 7. Loop 카탈로그 (cross-ref)
 
-8 loop 별 풀스펙 (`entry_point` / `task_list` / `advance` / `clean_enum` / `expected_steps` / `branch_prefix` / Step 별 `allowed_enums` / 분기 / `sub_cycles`) = [`loop-catalog.md`](loop-catalog.md) §1~§9.
+8 loop 별 풀스펙 (`entry_point` / `task_list` / `advance` / `clean_enum` / `expected_steps` / `branch_prefix` / Step 별 `allowed_enums` / 분기 / `sub_cycles`) = [`orchestration.md`](orchestration.md) §4.
 
-**메인 Claude 진입 시 의무**: catalog §1 인덱스 → 해당 loop sub-section read.
+**메인 Claude 진입 시 의무**: orchestration §4.1 인덱스 → 해당 loop sub-section read.
 
 ### 7.1 catastrophic 룰 정합
 
-[`orchestration.md`](orchestration.md) §2.3 4룰 + §7.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. catalog 의 각 loop sequence 가 이 룰 자연 충족 (validator → pr-reviewer 직전 PASS / engineer 직전 plan READY / TASK_DECOMPOSE 직전 DESIGN_REVIEW_PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
+[`orchestration.md`](orchestration.md) §2.3 4룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (validator → pr-reviewer 직전 PASS / engineer 직전 plan READY / TASK_DECOMPOSE 직전 DESIGN_REVIEW_PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
 
-> Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`loop-catalog.md`](loop-catalog.md) 로 분리 (DCN-CHG-20260430-30 — 행동지침 md 300줄 cap 룰 정합).
+> Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (DCN-CHG-20260505-03 — loop-catalog.md 폐기, 8 → 7 SSOT).
 
 ---
 
 ## 8. 참조
 
-- [`loop-catalog.md`](loop-catalog.md) — 8 loop 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix decision rule)
-- [`orchestration.md`](orchestration.md) §2~§7 — 시퀀스 mini-graph / 결정표 / retry / escalate / handoff
+- [`orchestration.md`](orchestration.md) §2~§4 — 시퀀스 mini-graph / 8 loop 행별 풀스펙 / handoff cross-ref
 - [`process/dcness-guidelines.md`](process/dcness-guidelines.md) — echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy / 행동지침 md 300줄 cap
 - [`conveyor-design.md`](conveyor-design.md) §2 / §3 / §7 — 컨베이어 디자인 + catastrophic gate
 - `harness/session_state.py` — helper CLI (`begin-run` / `end-run` / `begin-step` / `end-step` / `finalize-run` / `run-dir` / `auto-resolve`)

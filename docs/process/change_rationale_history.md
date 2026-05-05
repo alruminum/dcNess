@@ -18,6 +18,25 @@
 
 ## Records
 
+### DCN-CHG-20260505-03
+- **Date**: 2026-05-05
+- **Rationale**: dcness 사용자 기준 SSOT 8 개 (5 코어 + 3 reference) 가 너무 많고 난잡 — 사용자 직관 지적. 검토 결과 (A) `orchestration.md` + `loop-catalog.md` 통합 ROI 가장 높음:
+  - 두 파일 도메인 직접 overlap (둘 다 "어떤 loop / 시퀀스" 정의)
+  - 두 파일 간 cross-ref 라인 다수 (orchestration L6/L129~131/L286~287, loop-catalog L6/L23/L241/L248)
+  - agents/ 13 개가 모두 `orchestration.md` 만 ref → 합치면 read 1 회로 줄어 토큰 / thinking 시간 절감
+  - handoff-matrix.md 가 이미 split 분리된 사례 (DCN-CHG-20260430-32) — 패턴 정합
+- **Alternatives**:
+  - 새 이름 `loop-spec.md` 도입 — agents/ 13 개 ref 모두 update 필요, ref churn 더 큼.
+  - cap 그대로 유지하면서 슬림화 (300 줄 안) — 두 파일 콘텐츠 547 줄 → 300 줄 절반 cut 비현실적. 핵심 정보 손실 위험.
+  - loop-spec/ 디렉토리 sub-doc 분할 — 파일 수 그대로 (2 → 2), 의미 없음.
+  - (B) issue-lifecycle + git-naming-spec 통합 — 도메인 overlap 미미 (PR 트레일러 형식만 약간), 분리 상태가 SSOT 명확성 우수 → 보류.
+  - handoff-matrix + dcness-guidelines 통합 (C) — 둘 다 cap 충족 (256, 257 줄), 합치면 cap 위반. 보류.
+- **Decision**: (a) `orchestration.md` 이름 유지 + loop-catalog.md 콘텐츠 흡수 → ref churn 최소화 (agents/ 13 개 변경 0). (b) `orchestration.md` 만 cap 500 예외 (다른 4 SSOT 는 300 유지) — main-claude-rules.md §2.1 cap 표 update. 사유 = 통합으로 read 1 회 / 토큰 누적 줄음, cap 초과 비용 < 분리 read 비용. (c) 신 §구조 — §0 정체성 / §1 적용 모드 / §2 게이트 시퀀스 / §3 진입 경로 mini-graph / §4 8 loop 행별 풀스펙 (구 loop-catalog 흡수) / §5 catastrophic vs 자율 / §6 코드 driver / §7 참조. 최종 464 줄. (d) `harness/agent_boundary.py` 의 `loop-catalog\.md` regex 는 본 PR 범위 외 — `harness` change-type 추가 시 pytest-gate + tests/ 의무 발생. dead code 로 남겨두고 follow-up cleanup PR.
+- **Follow-Up**:
+  - `harness/agent_boundary.py` DCNESS_INFRA_PATTERNS 안 `loop-catalog\.md` regex 1 줄 제거 — 별도 PR (harness change-type)
+  - (B) issue-lifecycle + git-naming-spec — 보류 결정 유지. 추후 도메인 overlap 발견 시 재검토.
+  - handoff-matrix + dcness-guidelines 통합 (C) — cap 위반 위험 해결책 발견 시 별도 이슈
+
 ### DCN-CHG-20260505-02
 - **Date**: 2026-05-05
 - **Rationale**: Epic #129 (design.md SSOT 도입) 의 마지막 스토리. Story #125 (spec 문서) + #126 (plug-in agents) + #127 (글로벌 / dcness self CLAUDE.md) 만 끝내면 plug-in 본체 + 글로벌 룰은 design.md 인지하지만 *외부 활성화 프로젝트* 의 CLAUDE.md (사용자 진입점) 는 모름. 결과 = "dcness self 에선 작동 / 사용자 환경에선 미작동" 사고 (jajang voice cloning 사단 패턴). CLAUDE.md §0.5 가 "배포 경로 검증 의무" 로 박은 이유.

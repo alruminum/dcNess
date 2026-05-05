@@ -20,6 +20,27 @@
 
 ## Records
 
+### DCN-CHG-20260505-03
+- **Date**: 2026-05-05
+- **Change-Type**: docs-only, hooks
+- **Files Changed**:
+  - `docs/orchestration.md` — rewrite. loop-catalog.md §1~§11 콘텐츠 흡수 → 신 §4 (8 loop 행별 풀스펙). 기타 §0 슬림화 / §6 코드 driver 슬림화. 298 → 464 줄.
+  - `docs/loop-catalog.md` — git rm (콘텐츠 orchestration.md §4 로 흡수)
+  - `commands/impl.md` — `loop-catalog.md §3` → `orchestration.md §4.3` ref patch (3 곳)
+  - `commands/impl-loop.md` — `loop-catalog.md §10` → `orchestration.md §4.10` 등 (3 곳)
+  - `commands/product-plan.md` — `loop-catalog.md §2` → `orchestration.md §4.2` (3 곳)
+  - `commands/qa.md` — `loop-catalog.md §6` → `orchestration.md §4.6` (1 곳)
+  - `commands/quick.md` — `loop-catalog.md §5` → `orchestration.md §4.5` (3 곳)
+  - `docs/loop-procedure.md` — Cross-ref 헤더 + §0 + §2 + §3.4 + §7 + §8 ref patch
+  - `docs/issue-lifecycle.md` L137 — `loop-catalog.md` ref → `orchestration.md §4`
+  - `docs/handoff-matrix.md` — Cross-ref 헤더 + §4.4 INFRA_PATTERNS 표시 + §5 참조 patch
+  - `docs/process/dcness-guidelines.md` §0 + §0.1 — 2 SSOT 분담 설명에서 catalog → orchestration §4 로 변경
+  - `docs/process/main-claude-rules.md` §0 + §2.1 cap 표 + §2.2 SSOT 표 (5 → 4) + §2.5 + §4 — `orchestration.md` cap 500 예외 명시
+  - `hooks/session-start.sh` L73 — inject 텍스트에서 `loop-catalog` 제거
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: SSOT 슬림화 1 차 — `docs/loop-catalog.md` (249 줄) 콘텐츠를 `docs/orchestration.md` 로 흡수 + `loop-catalog.md` 삭제. 8 → 7 SSOT (5 코어 → 4 코어). agents/ 13 개 footer ref 변경 0 (orchestration.md 만 ref 했던 패턴 정합). commands/ 5 개 § 번호 patch + docs/ 5 개 ref update + hooks/ 1 곳. orchestration.md cap 500 예외 (다른 4 SSOT 는 300 유지).
+
 ### DCN-CHG-20260505-02
 - **Date**: 2026-05-05
 - **Change-Type**: agent

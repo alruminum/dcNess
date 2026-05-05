@@ -70,7 +70,7 @@ Read 도구로 다음 파일을 *지금 바로* 호출한다 (절대 경로):
 
 ---
 
-**나머지 loop 실행 docs (loop-procedure / loop-catalog / orchestration / handoff-matrix) 는 지금 읽지 말 것.**
+**나머지 loop 실행 docs (loop-procedure / orchestration / handoff-matrix) 는 지금 읽지 말 것.**
 각 skill 의 ## 사전 read 섹션이 진입 시 직접 경로를 안내한다.
 '''
 print(json.dumps({

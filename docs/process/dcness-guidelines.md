@@ -4,24 +4,24 @@
 > 룰 추가 시 본 파일에만 append — skill 들은 cross-ref 만.
 > Task-ID: DCN-CHG-20260430-26 (SSOT 분리 + hook inject).
 
-## 0. 루프 SSOT (DCN-30-27 / -30)
+## 0. 루프 SSOT (DCN-30-27 / -30 / DCN-CHG-20260505-03)
 
 dcness 의 8 loop 운영은 **2 SSOT** 분담 (지금 읽지 말 것 — skill 진입 시 사전 read 안내):
 - loop-procedure doc — *공통 실행 절차* (Step 0~8 mechanics — worktree / begin-run / TaskCreate / agent 호출 / Step 4.5 stories sync / finalize-run / clean 7a / caveat 7b / auto-review)
-- loop-catalog doc — *8 loop 행별 풀스펙* (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles)
+- orchestration doc §4 — *8 loop 행별 풀스펙* (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles). DCN-CHG-20260505-03 에서 `loop-catalog.md` 흡수 통합.
 
 **세션 시작 시 이 두 doc 을 읽지 말 것.** skill 트리거 시 해당 skill 파일의 `## 사전 read` 섹션이 정확한 경로와 섹션 번호를 안내한다 (DCN-CHG-20260501-17 lazy-load).
 
-skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure doc, loop spec 은 loop-catalog doc.
+skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure doc, loop spec 은 orchestration §4.
 
 ## 0.1 행동지침 md 작성 룰 — 300줄 cap (DCN-30-30)
 
 dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 *직접 read* 하는 md) 는 **파일당 300줄 cap**. 초과 시 책임 분리 축으로 split.
 
 **대상 파일 (예시)**:
-- `docs/loop-procedure.md` / `docs/loop-catalog.md` (loop SSOT)
+- `docs/loop-procedure.md` (loop mechanics SSOT)
 - `docs/process/dcness-guidelines.md` (본 가이드라인)
-- `docs/orchestration.md`
+- `docs/orchestration.md` (loop spec SSOT — DCN-CHG-20260505-03 후 cap 500 예외)
 - `commands/*.md` (skill prompt)
 - `agents/**/*.md` (agent prompt)
 

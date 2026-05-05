@@ -134,7 +134,7 @@ story 이슈 부재 시 동일 패턴 (Story N 헤더 직하 `**GitHub Issue:** 
 ## 7. 참조
 
 - 시퀀스 / 핸드오프: [`orchestration.md`](orchestration.md)
-- loop catalog: [`loop-catalog.md`](loop-catalog.md)
+- loop spec (8 loop 행별 풀스펙): [`orchestration.md`](orchestration.md) §4
 - product-planner: [`../agents/product-planner.md`](../agents/product-planner.md) §PRODUCT_PLAN
 - task-decompose: [`../agents/architect/task-decompose.md`](../agents/architect/task-decompose.md)
 - engineer: [`../agents/engineer.md`](../agents/engineer.md) §1 task = 1 PR

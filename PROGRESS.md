@@ -2,6 +2,13 @@
 
 ## 현재 상태
 
+- **🧹 SSOT 슬림화 1 차 — orchestration ↔ loop-catalog 통합** (`DCN-CHG-20260505-03`, #144):
+  - `docs/loop-catalog.md` (249 줄) → `docs/orchestration.md` 흡수 통합 + git rm. **8 → 7 SSOT** (5 코어 → 4 코어).
+  - 신 `orchestration.md` 구조: §0 정체성 / §1 적용 모드 / §2 게이트 시퀀스 / §3 진입 경로 mini-graph / §4 8 loop 행별 풀스펙 (구 loop-catalog 흡수) / §5 catastrophic vs 자율 / §6 코드 driver / §7 참조. 최종 464 줄.
+  - **cap 완화**: `orchestration.md` 만 500 줄 cap 예외. 다른 4 SSOT (handoff-matrix / loop-procedure / dcness-guidelines / main-claude-rules) 는 300 cap 유지.
+  - **ref churn 최소화**: agents/ 13 개 footer 변경 0 (orchestration.md 만 ref 했던 패턴). commands/ 5 개 § 번호 patch + docs/ 5 개 ref update + hooks/ 1 곳.
+  - **Follow-up**: `harness/agent_boundary.py` DCNESS_INFRA_PATTERNS 의 `loop-catalog\.md` regex 1 줄 제거 = 별도 PR (harness change-type 회피 위해 본 PR 범위 외).
+
 - **🔒 Task-ID 게이트 PR title 검사 제거 + branch protection 설정** (`DCN-CHG-20260504-05`):
   - `scripts/check_task_id.mjs` — `--pr-title` 모드 제거 (커밋 메시지 검사만 유지).
   - `.github/workflows/task-id-validation.yml` — `Validate PR title` step 제거.
