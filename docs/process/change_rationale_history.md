@@ -18,6 +18,16 @@
 
 ## Records
 
+### DCN-CHG-20260505-04
+- **Date**: 2026-05-05
+- **Rationale**: DCN-CHG-20260505-03 (#144) 커밋 메시지 body 안에 역사 참조 (`DCN-CHG-20260430-32` — handoff-matrix.md split 사례 비유) 박았는데 Task-ID format gate 가 "다중 Task-ID 발견 — governance §2.1 위반" 으로 fail. 룰의 본질은 "본 작업의 *canonical* Task-ID 1 개" 이지 메시지 텍스트 안 ID-shaped 토큰 갯수 가 아님. body 의 역사 참조는 작업 정체성과 무관 — 게이트가 over-strict.
+- **Alternatives**:
+  - 본 PR 메시지 amend 후 force push — 권한 차단 (force push 보호). 1 회성 우회 가치 < 룰 본질 fix 가치.
+  - body 역사 참조 형식 escape (예: `(이전 split 사례 — handoff-matrix split)` ID 제거) — 매번 작성자가 회피해야 함, 검증 가능한 룰 부재. 유지비용 큼.
+  - subject 에서만 1 개 + Document-Exception-Task 명시적 marker 만 추가 허용 — 복잡, "역사 참조" 는 보통 prose 안 자연 멘션이라 marker 강제 부자연.
+- **Decision**: subject 1 줄째에서만 Task-ID 1 개 검사. body 자유 (역사 참조 / Document-Exception-Task / 후속 작업 link 등 모두 허용). 사유 = (a) 작업 convention 이 이미 subject 에 ID 박는 패턴 (`[issue-N] <설명> (DCN-CHG-...)`). (b) "canonical 1 개" 의 본질은 작업 정체성 = subject. (c) body 의 prose 자유는 작성자 표현권 보장. (d) governance §2.1 본문에 위치 룰 명문화 (DCN-CHG-20260505-04).
+- **Follow-Up**: 기존 머지된 commits 의 body 안 ID 멘션은 영향 X (게이트는 subject 만 검사). harness/agent_boundary.py loop-catalog regex follow-up 도 본 fix 후 정상 진행 가능.
+
 ### DCN-CHG-20260505-03
 - **Date**: 2026-05-05
 - **Rationale**: dcness 사용자 기준 SSOT 8 개 (5 코어 + 3 reference) 가 너무 많고 난잡 — 사용자 직관 지적. 검토 결과 (A) `orchestration.md` + `loop-catalog.md` 통합 ROI 가장 높음:

@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260505-04
+- **Date**: 2026-05-05
+- **Change-Type**: ci, docs-only
+- **Files Changed**:
+  - `scripts/check_task_id.mjs` — `validateMessage` → `validateSubject` 으로 변경. subject 1 줄째에서만 Task-ID 1 개 검사. body 안 다른 ID 멘션 (역사 참조 / Document-Exception-Task / 후속 작업 link) 자유 허용.
+  - `docs/process/governance.md` §2.1 — commit message 위치 룰 명시. subject 에 canonical 1 개 / body 자유.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md` (ci 변경 동반)
+- **Summary**: Task-ID format gate fix — DCN-CHG-20260505-03 (#144) 커밋이 body 안 역사 참조 (`DCN-CHG-20260430-32`) 때문에 "다중 Task-ID" 로 fail 한 회귀. 룰 본질은 "본 작업의 canonical 1 개" 인데 body 텍스트 검색이 너무 엄격. subject 에서만 검사 + body 자유로 명확화. 게이트 PASS 회복 + 룰 명문화.
+
 ### DCN-CHG-20260505-03
 - **Date**: 2026-05-05
 - **Change-Type**: docs-only, hooks
