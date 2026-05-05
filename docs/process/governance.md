@@ -26,7 +26,10 @@
 - `DCN`: 프로젝트 식별자(dcNess)
 - `YYYYMMDD`: 작업 시작일(KST)
 - `NN`: 같은 날 내 순번(`01`–`99`, zero-pad)
-- 모든 작업은 단 하나의 Task-ID. 동일 ID가 두 로그(`document_update_record.md`, `change_rationale_history.md`)를 묶는다.
+- 모든 작업은 단 하나의 *canonical* Task-ID. 동일 ID가 두 로그(`document_update_record.md`, `change_rationale_history.md`)를 묶는다.
+- **commit message 위치 룰** (DCN-CHG-20260505-04):
+  - **subject (1 줄째)** 에 canonical Task-ID 정확히 1 개 박는다 — 게이트 (`scripts/check_task_id.mjs`) 가 검사.
+  - **body** 는 자유 — 역사 참조 / `Document-Exception-Task: ...` / 후속 작업 link 등 다른 Task-ID 멘션 무제한 허용 (canonical 정체성과 무관).
 
 ### 2.2 Change-Type 토큰
 

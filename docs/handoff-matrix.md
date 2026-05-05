@@ -3,7 +3,7 @@
 > **Status**: ACTIVE
 > **Origin**: `DCN-CHG-20260430-32` (orchestration.md split — 행동지침 md 300줄 cap 정합)
 > **Scope**: dcness 컨베이어의 *agent 측 강제 영역* SSOT — 결론 enum 별 다음 trigger / retry 한도 / escalate 카탈로그 / 접근 권한 (호출 / Write / Read / 인프라 패턴).
-> **Cross-ref**: 시퀀스 spec = [`orchestration.md`](orchestration.md). loop 별 풀스펙 = [`loop-catalog.md`](loop-catalog.md). 절차 mechanics = [`loop-procedure.md`](loop-procedure.md).
+> **Cross-ref**: 시퀀스 spec + 8 loop 행별 풀스펙 = [`orchestration.md`](orchestration.md) §2~§4. 절차 mechanics = [`loop-procedure.md`](loop-procedure.md).
 
 ---
 
@@ -229,13 +229,12 @@ DCNESS_INFRA_PATTERNS = [
     r'(^|/)docs/orchestration\.md$',
     r'(^|/)docs/handoff-matrix\.md$',
     r'(^|/)docs/loop-procedure\.md$',
-    r'(^|/)docs/loop-catalog\.md$',
     r'(^|/)docs/process/(governance|dcness-guidelines)\.md$',
     r'(^|/)scripts/(check_document_sync|check_task_id|setup_branch_protection|analyze_metrics)\.mjs$',
 ]
 ```
 
-> RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 dcness 가 정정 — 파일명은 `docs/orchestration.md` + `docs/handoff-matrix.md` (split 후 양쪽). loop-procedure / loop-catalog / dcness-guidelines / hooks·session_state·agent_boundary 도 dcness 가 추가 보호 (DCN-30-30/31/32 split 산출물).
+> RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 dcness 가 정정 — 파일명은 `docs/orchestration.md` + `docs/handoff-matrix.md` (split 후 양쪽). loop-procedure / dcness-guidelines / hooks·session_state·agent_boundary 도 dcness 가 추가 보호 (DCN-30-30/31/32 split + DCN-CHG-20260505-03 loop-catalog 흡수 산출물).
 
 인프라 프로젝트(`is_infra_project()` True) 에선 위 패턴 해제 (dcness 자체 작업 시 본 SSOT 들도 편집 가능해야 함).
 
@@ -254,8 +253,7 @@ RWHarness 4 신호 OR 정합:
 
 ## 5. 참조
 
-- [`orchestration.md`](orchestration.md) — 시퀀스 catalog (§2 게이트 + §3 진입 경로)
-- [`loop-catalog.md`](loop-catalog.md) — 8 loop 행별 풀스펙
+- [`orchestration.md`](orchestration.md) — 시퀀스 catalog (§2 게이트 + §3 진입 경로 + §4 8 loop 행별 풀스펙)
 - [`loop-procedure.md`](loop-procedure.md) — Step 0~8 mechanics
 - [`status-json-mutate-pattern.md`](status-json-mutate-pattern.md) — proposal SSOT (정체성 / 원칙)
 - `agents/*.md` — 각 agent 의 결론 enum 출처

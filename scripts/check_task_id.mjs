@@ -7,12 +7,12 @@
  *   node scripts/check_task_id.mjs                 # 로컬: HEAD 커밋 1개 검사
  *   node scripts/check_task_id.mjs <base> <head>   # CI: base..head 범위 검사
  *
- * 규칙:
- *   - 모든 비-머지 커밋은 메시지(subject 또는 body) 안에 정확히 1개의
- *     DCN-CHG-YYYYMMDD-NN 토큰을 포함해야 한다.
+ * 규칙 (DCN-CHG-20260505-04 갱신):
+ *   - 모든 비-머지 커밋의 *subject* (1줄째) 에 정확히 1개의
+ *     DCN-CHG-YYYYMMDD-NN 토큰을 포함해야 한다 (canonical Task-ID).
+ *   - body 는 역사 참조 / Document-Exception-Task / 기타 ID 자유 — 검사 X.
  *   - 토큰 패턴: ^DCN-CHG-\d{8}-\d{2}$ (zero-pad 일별 순번)
  *   - 머지 커밋(2개 이상 parent)은 검사 면제 — squash merge 합본 등 자동 생성 케이스.
- *   - Document-Exception-Task: DCN-CHG-... 도 동일 토큰으로 인정.
  *
  * exit 0: 통과
  * exit 1: 위반 (Task-ID 누락 / 형식 위반 / 다중 ID)
@@ -61,27 +61,32 @@ function getCommitSubject(sha) {
 }
 
 /**
- * 단일 메시지 검증.
+ * 단일 메시지 검증 — subject 1줄에서 정확히 1개 Task-ID.
+ * body 는 역사 참조 / Document-Exception-Task / 기타 ID 자유 (검사 X).
+ *
+ * 사유: governance §2.1 의 "단 하나의 Task-ID" = 본 작업의 *canonical* ID 1 개.
+ * body 안 다른 ID 멘션은 historical context — 작업 정체성과 무관.
+ * (DCN-CHG-20260505-04 정합)
+ *
+ * @param {string} subject — git log %s (commit subject 1줄)
  * @returns {{ok: boolean, error?: string, taskIds: string[]}}
  */
-function validateMessage(message) {
-  const matches = message.match(TASK_ID_RE) || [];
+function validateSubject(subject) {
+  const matches = subject.match(TASK_ID_RE) || [];
   const unique = [...new Set(matches)];
 
   if (unique.length === 0) {
-    return { ok: false, error: 'Task-ID 누락 — DCN-CHG-YYYYMMDD-NN 토큰 필요', taskIds: [] };
+    return { ok: false, error: 'Task-ID 누락 — subject 에 DCN-CHG-YYYYMMDD-NN 토큰 필요', taskIds: [] };
   }
 
-  // 다중 Task-ID 는 governance §2.1 위반 — "단 하나의 Task-ID"
   if (unique.length > 1) {
     return {
       ok: false,
-      error: `다중 Task-ID 발견 (${unique.length}개): ${unique.join(', ')} — governance §2.1 위반`,
+      error: `subject 다중 Task-ID 발견 (${unique.length}개): ${unique.join(', ')} — governance §2.1 위반 (subject 정확히 1개)`,
       taskIds: unique,
     };
   }
 
-  // 엄격 매칭 검증 (이미 regex 가 보장하지만 방어적으로 재확인)
   for (const id of unique) {
     if (!TASK_ID_STRICT_RE.test(id)) {
       return { ok: false, error: `형식 위반: ${id}`, taskIds: unique };
@@ -135,9 +140,8 @@ for (const sha of commits) {
     skippedMerges++;
     continue;
   }
-  const msg = getCommitMessage(sha);
   const subject = getCommitSubject(sha);
-  const result = validateMessage(msg);
+  const result = validateSubject(subject);
   if (!result.ok) {
     violations.push({
       sha: sha.substring(0, 7),

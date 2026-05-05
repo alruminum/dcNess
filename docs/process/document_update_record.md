@@ -20,6 +20,38 @@
 
 ## Records
 
+### DCN-CHG-20260505-04
+- **Date**: 2026-05-05
+- **Change-Type**: ci, docs-only
+- **Files Changed**:
+  - `scripts/check_task_id.mjs` — `validateMessage` → `validateSubject` 으로 변경. subject 1 줄째에서만 Task-ID 1 개 검사. body 안 다른 ID 멘션 (역사 참조 / Document-Exception-Task / 후속 작업 link) 자유 허용.
+  - `docs/process/governance.md` §2.1 — commit message 위치 룰 명시. subject 에 canonical 1 개 / body 자유.
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md` (ci 변경 동반)
+- **Summary**: Task-ID format gate fix — DCN-CHG-20260505-03 (#144) 커밋이 body 안 역사 참조 (`DCN-CHG-20260430-32`) 때문에 "다중 Task-ID" 로 fail 한 회귀. 룰 본질은 "본 작업의 canonical 1 개" 인데 body 텍스트 검색이 너무 엄격. subject 에서만 검사 + body 자유로 명확화. 게이트 PASS 회복 + 룰 명문화.
+
+### DCN-CHG-20260505-03
+- **Date**: 2026-05-05
+- **Change-Type**: docs-only, hooks
+- **Files Changed**:
+  - `docs/orchestration.md` — rewrite. loop-catalog.md §1~§11 콘텐츠 흡수 → 신 §4 (8 loop 행별 풀스펙). 기타 §0 슬림화 / §6 코드 driver 슬림화. 298 → 464 줄.
+  - `docs/loop-catalog.md` — git rm (콘텐츠 orchestration.md §4 로 흡수)
+  - `commands/impl.md` — `loop-catalog.md §3` → `orchestration.md §4.3` ref patch (3 곳)
+  - `commands/impl-loop.md` — `loop-catalog.md §10` → `orchestration.md §4.10` 등 (3 곳)
+  - `commands/product-plan.md` — `loop-catalog.md §2` → `orchestration.md §4.2` (3 곳)
+  - `commands/qa.md` — `loop-catalog.md §6` → `orchestration.md §4.6` (1 곳)
+  - `commands/quick.md` — `loop-catalog.md §5` → `orchestration.md §4.5` (3 곳)
+  - `docs/loop-procedure.md` — Cross-ref 헤더 + §0 + §2 + §3.4 + §7 + §8 ref patch
+  - `docs/issue-lifecycle.md` L137 — `loop-catalog.md` ref → `orchestration.md §4`
+  - `docs/handoff-matrix.md` — Cross-ref 헤더 + §4.4 INFRA_PATTERNS 표시 + §5 참조 patch
+  - `docs/process/dcness-guidelines.md` §0 + §0.1 — 2 SSOT 분담 설명에서 catalog → orchestration §4 로 변경
+  - `docs/process/main-claude-rules.md` §0 + §2.1 cap 표 + §2.2 SSOT 표 (5 → 4) + §2.5 + §4 — `orchestration.md` cap 500 예외 명시
+  - `hooks/session-start.sh` L73 — inject 텍스트에서 `loop-catalog` 제거
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+- **Summary**: SSOT 슬림화 1 차 — `docs/loop-catalog.md` (249 줄) 콘텐츠를 `docs/orchestration.md` 로 흡수 + `loop-catalog.md` 삭제. 8 → 7 SSOT (5 코어 → 4 코어). agents/ 13 개 footer ref 변경 0 (orchestration.md 만 ref 했던 패턴 정합). commands/ 5 개 § 번호 patch + docs/ 5 개 ref update + hooks/ 1 곳. orchestration.md cap 500 예외 (다른 4 SSOT 는 300 유지).
+
 ### DCN-CHG-20260505-02
 - **Date**: 2026-05-05
 - **Change-Type**: agent

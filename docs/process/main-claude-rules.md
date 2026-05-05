@@ -17,7 +17,7 @@
 - **접근 영역** = file path 경계 (agent-boundary ALLOW / READ_DENY) + 외부 시스템 mutation 차단 (push, gh issue, plugin 디렉토리)
 - **출력 형식 / handoff 형식 / preamble 구조 / marker / status JSON / Flag / 모든 형식적 강제 = agent 자율**. harness 가 강제하지 않는다.
 
-dcness SSOT (orchestration / handoff-matrix / loop-procedure / loop-catalog / dcness-guidelines / 본 문서) 는 위 2개 강제 영역만 정의. 형식 강제 (마커 / status JSON / Flag) 는 `status-json-mutate-pattern.md` 에 의해 폐기 — 본 문서 안에서도 그 어휘는 사용하지 않는다.
+dcness SSOT (orchestration / handoff-matrix / loop-procedure / dcness-guidelines / 본 문서) 는 위 2개 강제 영역만 정의. 형식 강제 (마커 / status JSON / Flag) 는 `status-json-mutate-pattern.md` 에 의해 폐기 — 본 문서 안에서도 그 어휘는 사용하지 않는다.
 
 ### 적용 — 메인 Claude 의 자율 보존 책임
 
@@ -83,29 +83,27 @@ dcness SSOT (orchestration / handoff-matrix / loop-procedure / loop-catalog / dc
 
 dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 *직접 read* 하는 md) 는 **파일당 300줄 cap**. 초과 시 책임 분리 축으로 split.
 
-**대상**: skill prompt (`commands/*.md`) / agent prompt (`agents/**/*.md`) / SSOT (`docs/loop-procedure.md` / `docs/loop-catalog.md` / `docs/handoff-matrix.md` / `docs/orchestration.md`) / dcness-guidelines.md / 본 문서.
+**대상**: skill prompt (`commands/*.md`) / agent prompt (`agents/**/*.md`) / SSOT (`docs/loop-procedure.md` / `docs/handoff-matrix.md` / `docs/orchestration.md`) / dcness-guidelines.md / 본 문서.
 
 **대상 외**: 역사 로그 (`document_update_record.md` / `change_rationale_history.md`) / `PROGRESS.md` / spec / proposals / 코드.
 
 **Why**: 메인 Claude / sub-agent 가 매 결정 시 read → 토큰 누적 + thinking 시간 ↑. 300줄 = 한 read 임계.
 
 **현재 cap 충족 상태** (사용자 verification 의무 — `wc -l` 실측):
-| 파일 | 줄 수 (작성 시점) |
-|---|---|
-| `docs/orchestration.md` | 298 |
-| `docs/handoff-matrix.md` | 256 |
-| `docs/loop-procedure.md` | 242 |
-| `docs/loop-catalog.md` | 239 |
-| `docs/process/dcness-guidelines.md` | 257 |
+| 파일 | 줄 수 (작성 시점) | cap |
+|---|---|---|
+| `docs/orchestration.md` | 464 | **500** (DCN-CHG-20260505-03 — loop-catalog 흡수 통합. 다른 SSOT 는 300 유지) |
+| `docs/handoff-matrix.md` | 256 | 300 |
+| `docs/loop-procedure.md` | 240 | 300 |
+| `docs/process/dcness-guidelines.md` | 257 | 300 |
 
-### 2.2 5 SSOT 위치 + 책임 축
+### 2.2 4 SSOT 위치 + 책임 축
 
 | 파일 | 책임 | 메인 read 시점 |
 |---|---|---|
-| [`docs/orchestration.md`](../orchestration.md) | 시퀀스 catalog (§0 정체성, §2~§3 시퀀스 + mini-graph) | 신규 작업 시 진입 경로 결정 |
+| [`docs/orchestration.md`](../orchestration.md) | 시퀀스 mini-graph + **8 loop 행별 풀스펙** (entry / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles) | 신규 작업 시 진입 경로 결정 + loop 진입 시 풀스펙 read |
 | [`docs/handoff-matrix.md`](../handoff-matrix.md) | agent 측 강제 영역 (결정표 / Retry / Escalate / 접근 권한) | agent 호출 분기 / 한도 결정 시 |
 | [`docs/loop-procedure.md`](../loop-procedure.md) | Step 0~8 mechanics (worktree → begin-run → TaskCreate → begin-step → Agent → end-step → finalize-run --auto-review) | 매 컨베이어 진행 |
-| [`docs/loop-catalog.md`](../loop-catalog.md) | 8 loop × 풀스펙 (entry / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles) | loop 진입 시 풀스펙 read |
 | [`docs/process/dcness-guidelines.md`](dcness-guidelines.md) | cross-cutting 룰 (echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy 참조 / **§12 self-verify 원칙**) | 모든 dcness skill 진행 시 |
 
 ### 2.3 거버넌스
@@ -134,7 +132,7 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 
 > 출처: `harness/agent_boundary.py` + `hooks/file-guard.sh` + handoff-matrix §4.4.
 
-PreToolUse 훅 `Edit|Write|Read|Bash` matcher 등록 — sub-agent 가 dcness 인프라 path (orchestration.md / handoff-matrix.md / loop-procedure.md / loop-catalog.md / dcness-guidelines.md / hooks/ / harness/ 등) 변경 시도 시 차단. `agent_id` payload 로 메인 vs sub 구분 — 메인은 통과 (거버넌스 책임).
+PreToolUse 훅 `Edit|Write|Read|Bash` matcher 등록 — sub-agent 가 dcness 인프라 path (orchestration.md / handoff-matrix.md / loop-procedure.md / dcness-guidelines.md / hooks/ / harness/ 등) 변경 시도 시 차단. `agent_id` payload 로 메인 vs sub 구분 — 메인은 통과 (거버넌스 책임).
 
 `is_infra_project()` 4 OR 신호로 dcness 자체 저장소 작업 시 해제 — 메인이 SSOT 편집 가능.
 
@@ -221,6 +219,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - 글로벌: `~/.claude/CLAUDE.md` (제1룰 + 새 프로젝트 흐름 + 모듈 단위 작업 순서 + 커밋 절차)
 - 프로젝트: `CLAUDE.md` (dcness 정체성 + 거버넌스 핵심 + 문서 지도)
-- SSOT 5종: `docs/orchestration.md` / `docs/handoff-matrix.md` / `docs/loop-procedure.md` / `docs/loop-catalog.md` / `docs/process/dcness-guidelines.md`
+- SSOT 4종 (DCN-CHG-20260505-03 후): `docs/orchestration.md` / `docs/handoff-matrix.md` / `docs/loop-procedure.md` / `docs/process/dcness-guidelines.md`
 - 거버넌스: `docs/process/governance.md`
 - 카탈로그: `docs/known-hallucinations.md` (외부 도구 hallucination 누적)
