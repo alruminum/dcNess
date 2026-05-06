@@ -367,17 +367,19 @@ def detect_wastes(
                 fix=f"agents/{cur.agent}.md fail 전략 강화 또는 impl 보강",
             ))
 
-    # ECHO_VIOLATION (DCN-30-15) — prose_excerpt 가 너무 짧음
+    # ECHO_VIOLATION — prose 전체 줄 수 기준 (prose_full). prose_full 없는 레코드는 skip.
     for s in steps:
-        line_count = len([l for l in s.prose_excerpt.splitlines() if l.strip()])
-        if line_count < 3 and s.enum != "AMBIGUOUS":
+        if not s.prose_full:
+            continue
+        line_count = len([l for l in s.prose_full.splitlines() if l.strip()])
+        if line_count < 5 and s.enum != "AMBIGUOUS":
             findings.append(WasteFinding(
                 pattern="ECHO_VIOLATION",
                 severity="MEDIUM",
                 step_idx=s.idx,
                 agent=s.agent,
-                detail=f"{s.agent} prose 발췌 {line_count}줄 (DCN-30-15 룰 — 5~12줄 의무)",
-                fix="agents/{agent}.md / commands/quick.md 가시성 룰 재인용",
+                detail=f"{s.agent} prose {line_count}줄 (5줄 미만 — 충분한 분석 필요)",
+                fix=f"agents/{s.agent}.md 가시성 룰 강화 또는 prose 내용 보강",
             ))
 
     # PLACEHOLDER_LEAK (DCN-30-18) — Must 직결 placeholder 흔적
@@ -599,15 +601,16 @@ def detect_goods(steps: list[StepRecord]) -> list[GoodFinding]:
                 detail=f"{s.agent} enum={s.enum} (expected 정합)",
             ))
 
-    # PROSE_ECHO_OK — prose_excerpt 5~12줄 + must_fix=False
+    # PROSE_ECHO_OK — prose 충분 (5줄 이상)
     for s in steps:
-        line_count = len([l for l in s.prose_excerpt.splitlines() if l.strip()])
-        if 5 <= line_count <= 12:
+        check_text = s.prose_full or s.prose_excerpt
+        line_count = len([l for l in check_text.splitlines() if l.strip()])
+        if line_count >= 5:
             goods.append(GoodFinding(
                 pattern="PROSE_ECHO_OK",
                 step_idx=s.idx,
                 agent=s.agent,
-                detail=f"{s.agent} prose_excerpt {line_count}줄 (DCN-30-15 룰 정합)",
+                detail=f"{s.agent} prose {line_count}줄 (충분한 분석 포함)",
             ))
 
     # DDD_PHASE_A — architect SYSTEM_DESIGN prose 안 Domain Model 섹션 존재
@@ -900,7 +903,7 @@ def render_report(report: RunReport) -> str:
     lines.append("| # | 시작(local) | agent | mode | elapsed(s) | duration(s) | out_tok | total_tok | tool_uses | cost($) | enum | must_fix | prose줄 |")
     lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for s in report.steps:
-        line_count = len([l for l in s.prose_excerpt.splitlines() if l.strip()])
+        line_count = len([l for l in (s.prose_full or s.prose_excerpt).splitlines() if l.strip()])
         dur_s = f"{s.duration_ms / 1000:.0f}" if s.matched_invocation else "-"
         out_tok = f"{s.output_tokens:,}" if s.matched_invocation else "-"
         tot_tok = f"{s.total_tokens:,}" if s.matched_invocation else "-"

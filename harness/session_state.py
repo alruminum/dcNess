@@ -1121,6 +1121,22 @@ def _extract_prose_summary(prose: str, *, max_lines: int = _SUMMARY_LINE_LIMIT) 
     return "\n".join(out_lines)
 
 
+def _find_prose_fallback(sid: str, rid: str, agent: str, mode: Optional[str]) -> Optional[str]:
+    """hook staging 실패 시 run_dir 에서 prose 파일 패턴 탐색 fallback."""
+    try:
+        rd = run_dir(sid, rid)
+        stem = f"{agent}-{mode}" if mode else agent
+        base_path = rd / f"{stem}.md"
+        if base_path.exists():
+            return str(base_path)
+        candidates = sorted(rd.glob(f"{stem}-*.md"), key=lambda p: p.stat().st_mtime)
+        if candidates:
+            return str(candidates[-1])
+    except Exception:
+        pass
+    return None
+
+
 def _cli_end_step(args: Any) -> int:
     """sid+rid auto-detect → write_prose + interpret_with_fallback.
 
@@ -1194,6 +1210,13 @@ def _cli_end_step(args: Any) -> int:
         except Exception:
             _staged = None
         if not _staged:
+            _staged = _find_prose_fallback(sid, rid, args.agent, mode)
+            if _staged:
+                print(
+                    f"[session_state] hook staging fallback → {Path(_staged).name}",
+                    file=sys.stderr,
+                )
+        if not _staged:
             print("[session_state] --prose-file 미제공 + hook staging 없음", file=sys.stderr)
             return 1
         prose_path = Path(_staged)
@@ -1240,14 +1263,18 @@ def _cli_end_step(args: Any) -> int:
 
 _MUST_FIX_RE = re.compile(r"\bMUST[\s_-]?FIX\b", re.IGNORECASE)
 
-# DCN-CHG-20260501-09: 부정 컨텍스트 검출 — pr-reviewer 가 prose 안
-# "MUST FIX 0" / "MUST FIX 0, NICE TO HAVE 6" / "MUST FIX 없음" / "no must fix"
-# 처럼 *부정* 의미로 토큰을 쓰는 케이스 false positive 차단.
-# 자장 run-ef6c2c00 실측 — 6 pr-reviewer step 모두 같은 패턴.
+# 같은 줄 부정 패턴 — "MUST FIX 0" / "MUST FIX 없음" / "no must fix"
 _MUST_FIX_NEGATION_RE = re.compile(
-    r"\bMUST[\s_-]?FIX\b[\s:=]*"  # "MUST FIX" + 구두점/공백
-    r"(?:0(?!\s*\d)|없[음다])"      # 직후 "0" (단일 자릿수만, "10" 같은 다자릿 제외) 또는 "없음/없다"
-    r"|\bno\s+MUST[\s_-]?FIX\b",   # 또는 영어 "no MUST FIX"
+    r"\bMUST[\s_-]?FIX\b[\s:=]*"
+    r"(?:0(?!\s*\d)|없[음다])"
+    r"|\bno\s+MUST[\s_-]?FIX\b",
+    re.IGNORECASE,
+)
+# Markdown 헤더 단독 줄 — "## MUST FIX" 처럼 내용 없이 헤더만
+_MUST_FIX_HEADER_ONLY_RE = re.compile(r'^\s*#{1,6}\s*MUST[\s_-]?FIX\s*$', re.IGNORECASE)
+# 헤더 다음 줄 부정 패턴 — "없음." / "0건" / "해당 없음" 등
+_NEXT_LINE_NEGATION_RE = re.compile(
+    r'^(?:없[음다]\.?|0건|0개|해당\s*없[음다]\.?|없습니다\.?)\s*$',
     re.IGNORECASE,
 )
 
@@ -1256,19 +1283,26 @@ def _has_positive_must_fix(prose: str) -> bool:
     """prose 안 MUST FIX 가 *positive* (실제 fix 요청) 의미로 등장했는지.
 
     검사 절차:
-      1. `MUST FIX` 매칭 0개 → False (없음)
-      2. 라인 단위 — 매칭 라인 중 *부정 컨텍스트 아닌* 라인 1개 이상 → True
-      3. 모든 매칭 라인이 부정 컨텍스트 → False
-
-    DCN-CHG-20260501-09 규제 — 단순 단어경계 매칭의 false positive 차단.
+      1. MUST FIX 매칭 0개 → False
+      2. 라인 단위 — 같은 줄 부정 컨텍스트 → skip
+      3. Markdown 헤더 단독 줄 (## MUST FIX) → 다음 비어있지 않은 줄이 부정이면 skip
+      4. 위 조건 모두 통과 → True (실제 fix 항목 존재)
     """
     if not _MUST_FIX_RE.search(prose):
         return False
-    for line in prose.splitlines():
+    lines = prose.splitlines()
+    for i, line in enumerate(lines):
         if not _MUST_FIX_RE.search(line):
             continue
         if _MUST_FIX_NEGATION_RE.search(line):
-            continue  # 부정 라인 — skip
+            continue  # 같은 줄 부정
+        if _MUST_FIX_HEADER_ONLY_RE.match(line):
+            # 헤더 단독 줄 — 다음 의미있는 줄 확인
+            next_content = next(
+                (l.strip() for l in lines[i + 1:] if l.strip()), ""
+            )
+            if not next_content or _NEXT_LINE_NEGATION_RE.match(next_content):
+                continue  # 다음 줄이 없거나 부정 → false positive
         return True
     return False
 
