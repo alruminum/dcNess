@@ -2,7 +2,7 @@
 
 > **Status**: ACTIVE
 > **Scope**: dcness 8 loop 의 *공통 실행 절차* SSOT — Step 0~8 mechanics. 메인 Claude 가 skill 트리거 또는 직접 발화로 루프 시작 시 본 문서를 컨베이어 매뉴얼처럼 따른다.
-> **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) + 시퀀스 mini-graph + 결정표 = [`orchestration.md`](orchestration.md) §2~§4. cross-cutting 룰 (echo / yolo / worktree / AMBIGUOUS) = [`process/dcness-guidelines.md`](process/dcness-guidelines.md).
+> **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) + 시퀀스 mini-graph + 결정표 = [`orchestration.md`](orchestration.md) §2~§4. cross-cutting 룰 (echo / yolo / worktree / AMBIGUOUS) = [`plugin/skill-guidelines.md`](plugin/skill-guidelines.md).
 
 ---
 
@@ -12,7 +12,7 @@ skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`orchestration.md`
 
 - **skill 경유**: `commands/<skill>.md` 의 `Loop` 필드가 orchestration §4 행 가리킴. skill 은 input 정형화 + 라우팅 추천만 — 절차는 본 SSOT, loop spec 은 orchestration §4.
 - **직접 발화** ("이거 quick 으로 가자"): orchestration.md §3 mini-graph + §4.1 인덱스 보고 메인이 자율 구성. 강제 X.
-- **dcness-guidelines.md (SessionStart inject)**: 본 문서 + catalog 모두 read 의무 명시. 매 세션 진입 시 메인 자동 인지.
+- **skill-guidelines.md (SessionStart inject)**: 본 문서 + catalog 모두 read 의무 명시. 매 세션 진입 시 메인 자동 인지.
 
 ---
 
@@ -286,7 +286,7 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 ## 8. 참조
 
 - [`orchestration.md`](orchestration.md) §2~§4 — 시퀀스 mini-graph / 8 loop 행별 풀스펙 / handoff cross-ref
-- [`process/dcness-guidelines.md`](process/dcness-guidelines.md) — echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy / 행동지침 md 300줄 cap
+- [`plugin/skill-guidelines.md`](plugin/skill-guidelines.md) — echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy
 - [`archive/conveyor-design.md`](archive/conveyor-design.md) §2 / §3 / §7 — 컨베이어 디자인 + catastrophic gate (역사 자료)
 - `harness/session_state.py` — helper CLI (`begin-run` / `end-run` / `begin-step` / `end-step` / `finalize-run` / `run-dir` / `auto-resolve`)
 - `harness/run_review.py` — review 엔진 (`--auto-review` 호출 대상)

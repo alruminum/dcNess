@@ -119,10 +119,10 @@ else
   echo "[dcness] .git/hooks/commit-msg 이미 존재 — skip"
 fi
 
-# 4. dcness-guidelines.md 배포 (SessionStart 훅이 읽는 파일)
-mkdir -p "$PROJECT_ROOT/docs/process"
-cp "$PLUGIN_ROOT/docs/process/dcness-guidelines.md" "$PROJECT_ROOT/docs/process/dcness-guidelines.md"
-echo "[dcness] docs/process/dcness-guidelines.md 배포"
+# 4. skill-guidelines.md 배포 (SessionStart 훅이 읽는 파일)
+mkdir -p "$PROJECT_ROOT/docs/plugin"
+cp "$PLUGIN_ROOT/docs/plugin/skill-guidelines.md" "$PROJECT_ROOT/docs/plugin/skill-guidelines.md"
+echo "[dcness] docs/plugin/skill-guidelines.md 배포"
 ```
 
 출력 예시:
@@ -130,7 +130,7 @@ echo "[dcness] docs/process/dcness-guidelines.md 배포"
 [dcness] scripts/check_git_naming.mjs 배포
 [dcness] .github/workflows/git-naming-validation.yml 배포
 [dcness] .git/hooks/commit-msg 설치
-[dcness] docs/process/dcness-guidelines.md 배포
+[dcness] docs/plugin/skill-guidelines.md 배포
 ```
 
 `git-naming-validation.yml` 은 PR open 시 CI 에서 브랜치명·PR 제목을 자동 검사한다. `commit-msg` hook 은 로컬에서 커밋 제목을 사전 차단한다. 두 파일은 커밋 후 프로젝트 repo 에 push 해야 CI 에서 동작한다.
@@ -231,7 +231,7 @@ git-naming 강제 (Step 2.6 완료 시):
 - 로컬: .git/hooks/commit-msg — 커밋 제목 형식 위반 차단
 - CI: .github/workflows/git-naming-validation.yml — 브랜치명·PR 제목 위반 차단
 - scripts/check_git_naming.mjs 를 커밋 후 push 해야 CI 활성화
-- docs/process/dcness-guidelines.md 배포 — SessionStart 훅이 세션마다 읽는 룰 파일
+- docs/plugin/skill-guidelines.md 배포 — SessionStart 훅이 세션마다 읽는 룰 파일
 
 design.md SSOT (Step 2.7 완료 시):
 - CLAUDE.md 매트릭스에 docs/design.md 행 등록 (UI 작업 시 read 후보)

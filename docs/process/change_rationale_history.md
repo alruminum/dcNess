@@ -2501,3 +2501,21 @@
 - **Follow-Up**:
   - **(별도 Task)** Phase 2 다른 12 agent docs 변환 시 본 섹션의 "validator 등" 표현이 자연스럽게 일반화 (각 검증 에이전트마다 동일 패턴).
   - **(측정)** 외부 에이전트가 본 저장소에 보낸 PR 의 status JSON 사용 빈도. 30일 후 운영 데이터로 본 안내가 효과적인지 평가.
+
+### DCN-CHG-20260506-06
+- **Date**: 2026-05-06
+- **Rationale**:
+  - `docs/process/dcness-guidelines.md` 는 (a) 모든 dcness skill 진행 시 cross-cutting 룰 (외부 활성화 프로젝트 의미 있음) + (b) dcness self 작업용 300줄 cap 같은 self-only 섹션이 혼재. 사용자가 분할 의무 명시 (Epic 2 #151 배경).
+  - TBD §8 / §9 는 미정 상태로 파일에 있던 항목 — 파일 분할 기회에 삭제하고 GitHub 이슈 (#174 / #175) 로 추적.
+  - §12 self-verify 는 skill 진행 시에도 dcness 자체 작업 시에도 동일 적용되므로 양쪽에 포함.
+- **Alternatives**:
+  1. *그대로 유지* — self-only 룰이 외부 활성화 프로젝트 사용자에게 noise. 기각.
+  2. *skill-guidelines.md 만 분리, dcness-guidelines.md 유지 (self 포함)* — 기존 파일 잔재로 인용처 혼란. 기각.
+  3. *(채택)* **완전 분할**: `docs/plugin/skill-guidelines.md` (외부 배포) + `docs/internal/self-guidelines.md` (내부) + 원본 삭제.
+- **Decision**:
+  - 옵션 3 채택. §0.1 (300줄 cap) → self §1. §8/§9 TBD → 이슈 삭제. §10~§13 → skill §8~§11 (renumber). §12 → skill §10 + self §2 양쪽.
+  - `harness/agent_boundary.py` DCNESS_INFRA_PATTERNS: `docs/process/(governance|dcness-guidelines)` → `docs/process/governance` + `docs/(plugin/skill-guidelines|internal/self-guidelines)` 분리.
+  - `hooks/session-start.sh` 경로 + 확인 토큰 갱신 (`§13` → `§11`).
+- **Follow-Up**:
+  - Story 2.3 (#159) 에서 `docs/plugin/skill-guidelines.md` 를 `docs/plugin/` 폴더 이동 대상에 포함 확인.
+  - Story 2.5 (#161) 에서 agents/ 파일 내 `dcness-guidelines` 잔여 참조 확인 (현재 없음, 검증 완료).

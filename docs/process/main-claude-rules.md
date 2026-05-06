@@ -17,7 +17,7 @@
 - **접근 영역** = file path 경계 (agent-boundary ALLOW / READ_DENY) + 외부 시스템 mutation 차단 (push, gh issue, plugin 디렉토리)
 - **출력 형식 / handoff 형식 / preamble 구조 / marker / status JSON / Flag / 모든 형식적 강제 = agent 자율**. harness 가 강제하지 않는다.
 
-dcness SSOT (orchestration / handoff-matrix / loop-procedure / dcness-guidelines / 본 문서) 는 위 2개 강제 영역만 정의. 형식 강제 (마커 / status JSON / Flag) 는 `status-json-mutate-pattern.md` 에 의해 폐기 — 본 문서 안에서도 그 어휘는 사용하지 않는다.
+dcness SSOT (orchestration / handoff-matrix / loop-procedure / skill-guidelines / self-guidelines / 본 문서) 는 위 2개 강제 영역만 정의. 형식 강제 (마커 / status JSON / Flag) 는 `status-json-mutate-pattern.md` 에 의해 폐기 — 본 문서 안에서도 그 어휘는 사용하지 않는다.
 
 ### 적용 — 메인 Claude 의 자율 보존 책임
 
@@ -79,11 +79,11 @@ dcness SSOT (orchestration / handoff-matrix / loop-procedure / dcness-guidelines
 
 ### 2.1 행동지침 md 300줄 cap (DCN-30-30)
 
-> 출처: `docs/process/dcness-guidelines.md` §0.1.
+> 출처: `docs/internal/self-guidelines.md` §1.
 
 dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 *직접 read* 하는 md) 는 **파일당 300줄 cap**. 초과 시 책임 분리 축으로 split.
 
-**대상**: skill prompt (`commands/*.md`) / agent prompt (`agents/**/*.md`) / SSOT (`docs/loop-procedure.md` / `docs/handoff-matrix.md` / `docs/orchestration.md`) / dcness-guidelines.md / 본 문서.
+**대상**: skill prompt (`commands/*.md`) / agent prompt (`agents/**/*.md`) / SSOT (`docs/loop-procedure.md` / `docs/handoff-matrix.md` / `docs/orchestration.md`) / `docs/plugin/skill-guidelines.md` / `docs/internal/self-guidelines.md` / 본 문서.
 
 **대상 외**: 역사 로그 (`document_update_record.md` / `change_rationale_history.md`) / `PROGRESS.md` / spec / proposals / 코드.
 
@@ -95,7 +95,8 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 | `docs/orchestration.md` | 464 | **500** (DCN-CHG-20260505-03 — loop-catalog 흡수 통합. 다른 SSOT 는 300 유지) |
 | `docs/handoff-matrix.md` | 256 | 300 |
 | `docs/loop-procedure.md` | 240 | 300 |
-| `docs/process/dcness-guidelines.md` | 257 | 300 |
+| `docs/plugin/skill-guidelines.md` | 232 | 300 |
+| `docs/internal/self-guidelines.md` | 51 | 300 |
 
 ### 2.2 4 SSOT 위치 + 책임 축
 
@@ -104,7 +105,8 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 | [`docs/orchestration.md`](../orchestration.md) | 시퀀스 mini-graph + **8 loop 행별 풀스펙** (entry / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles) | 신규 작업 시 진입 경로 결정 + loop 진입 시 풀스펙 read |
 | [`docs/handoff-matrix.md`](../handoff-matrix.md) | agent 측 강제 영역 (결정표 / Retry / Escalate / 접근 권한) | agent 호출 분기 / 한도 결정 시 |
 | [`docs/loop-procedure.md`](../loop-procedure.md) | Step 0~8 mechanics (worktree → begin-run → TaskCreate → begin-step → Agent → end-step → finalize-run --auto-review) | 매 컨베이어 진행 |
-| [`docs/process/dcness-guidelines.md`](dcness-guidelines.md) | cross-cutting 룰 (echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy 참조 / **§12 self-verify 원칙**) | 모든 dcness skill 진행 시 |
+| [`docs/plugin/skill-guidelines.md`](../plugin/skill-guidelines.md) | cross-cutting 룰 (echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy 참조 / **§10 self-verify 원칙**) | 모든 dcness skill 진행 시 |
+| [`docs/internal/self-guidelines.md`](../internal/self-guidelines.md) | dcness self 협업 룰 (300줄 cap / §2 self-verify) | dcness 자체 작업 시 |
 
 ### 2.3 거버넌스
 
@@ -123,16 +125,16 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 
 > 출처: SessionStart inject directive (`hooks/session-start.sh`, DCN-30-40).
 
-1. **매 Agent 호출 후 prose 5~12줄 의무 echo** (가시성 §1, dcness-guidelines.md)
+1. **매 Agent 호출 후 prose 5~12줄 의무 echo** (가시성 §1, skill-guidelines.md)
 2. **begin-step / end-step 1:1 의무** (Step 기록 §2)
-3. **추측 금지 + 실측 후 단언** (§12 self-verify, 본 문서 §1 정합)
+3. **추측 금지 + 실측 후 단언** (skill-guidelines.md §10 / self-guidelines.md §2 / 본 문서 §1 정합)
 4. **finalize-run 시 `--auto-review` flag 의무** (loop-procedure §5.1)
 
 ### 2.5 sub-agent path 보호 (DCN-CHG-20260501-01)
 
 > 출처: `harness/agent_boundary.py` + `hooks/file-guard.sh` + handoff-matrix §4.4.
 
-PreToolUse 훅 `Edit|Write|Read|Bash` matcher 등록 — sub-agent 가 dcness 인프라 path (orchestration.md / handoff-matrix.md / loop-procedure.md / dcness-guidelines.md / hooks/ / harness/ 등) 변경 시도 시 차단. `agent_id` payload 로 메인 vs sub 구분 — 메인은 통과 (거버넌스 책임).
+PreToolUse 훅 `Edit|Write|Read|Bash` matcher 등록 — sub-agent 가 dcness 인프라 path (orchestration.md / handoff-matrix.md / loop-procedure.md / skill-guidelines.md / self-guidelines.md / hooks/ / harness/ 등) 변경 시도 시 차단. `agent_id` payload 로 메인 vs sub 구분 — 메인은 통과 (거버넌스 책임).
 
 `is_infra_project()` 4 OR 신호로 dcness 자체 저장소 작업 시 해제 — 메인이 SSOT 편집 가능.
 
@@ -219,6 +221,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - 글로벌: `~/.claude/CLAUDE.md` (제1룰 + 새 프로젝트 흐름 + 모듈 단위 작업 순서 + 커밋 절차)
 - 프로젝트: `CLAUDE.md` (dcness 정체성 + 거버넌스 핵심 + 문서 지도)
-- SSOT 4종 (DCN-CHG-20260505-03 후): `docs/orchestration.md` / `docs/handoff-matrix.md` / `docs/loop-procedure.md` / `docs/process/dcness-guidelines.md`
+- SSOT 4종 (DCN-CHG-20260505-03 후): `docs/orchestration.md` / `docs/handoff-matrix.md` / `docs/loop-procedure.md` / `docs/plugin/skill-guidelines.md` (+ `docs/internal/self-guidelines.md`)
 - 거버넌스: `docs/process/governance.md`
 - 카탈로그: `docs/known-hallucinations.md` (외부 도구 hallucination 누적)
