@@ -28,11 +28,9 @@ const REPO = 'alruminum/dcNess'; // hardcoded — fork 시 본 라인만 정정
 const BRANCH = 'main';
 
 // 필수 status checks (.github/workflows/*.yml 의 jobs.<name>.name 필드 기준)
+// #182 머지 후: Document Sync / Task-ID gate 폐기. unittest / manifest 는 paths-filter 로 conditional → required 부적합.
 const REQUIRED_CHECKS = [
-  'Document Sync gate',
-  'unittest discover',
-  'validate manifest',
-  'Task-ID format gate',
+  'git-naming-spec gate',
 ];
 
 const PAYLOAD = {
@@ -98,7 +96,7 @@ try {
   console.error(`  ${e.stderr?.toString() || e.message}`);
   console.error('');
   console.error('가능한 원인:');
-  console.error('  1. admin 권한 부족 → GitHub UI 에서 수동 적용 (docs/internal/branch-protection-setup.md)');
+  console.error('  1. admin 권한 부족 → GitHub UI 에서 수동 적용 (docs/archive/branch-protection-setup.md)');
   console.error('  2. 필수 check 이름 mismatch → 실제 워크플로우 jobs.<id>.name 확인');
   console.error('  3. branch protection plan 제한 (private repo + free plan 일부 기능 제한)');
   process.exit(1);

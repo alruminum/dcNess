@@ -115,9 +115,8 @@ except MissingSignal as e:
 
 본 저장소의 모든 변경은 [`docs/internal/governance.md`](docs/internal/governance.md) 에 따른다 (SSOT).
 
-- **Task-ID**: `DCN-CHG-YYYYMMDD-NN` 형식. 모든 작업은 단 하나의 ID.
-- **3중 강제**: git pre-commit hook + Claude Code PreToolUse hook + AGENTS.md (외부 에이전트 지침)
-- **CI 게이트**: PR 단위로 base..head diff 검사 — local 우회 차단
+- **게이트**: main-block + git-naming + pytest (pre-commit hook 자동 실행)
+- **branch → PR → merge** 필수. main 직접 push 금지.
 
 PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 
@@ -156,9 +155,9 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 | [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) | Prose-Only 원칙 현행 SSOT (대 원칙 + Anti-Pattern 5원칙) |
 | [`docs/archive/status-json-mutate-pattern.md`](docs/archive/status-json-mutate-pattern.md) | Prose-Only 원전 proposal (Phase 분할 / Risks / Plugin 전환 절차) (역사 자료) |
 | [`docs/archive/migration-decisions.md`](docs/archive/migration-decisions.md) | 모듈 PRESERVE / DISCARD / REFACTOR 분류 (역사 자료) |
-| [`docs/internal/governance.md`](docs/internal/governance.md) | Document Sync SSOT |
-| [`docs/internal/document_update_record.md`](docs/internal/document_update_record.md) | WHAT 로그 (Task-ID 별 변경 파일) |
-| [`docs/internal/change_rationale_history.md`](docs/internal/change_rationale_history.md) | WHY 로그 (Task-ID 별 동기·대안·결정·후속) |
+| [`docs/internal/governance.md`](docs/internal/governance.md) | 거버넌스 SSOT (현행 — Task-ID/WHAT/WHY 시스템 폐기 후 슬림) |
+| [`docs/archive/document_update_record.md`](docs/archive/document_update_record.md) | (frozen) 옛 WHAT 로그 — 현재는 GitHub PR/issue/git log 가 SSOT |
+| [`docs/archive/change_rationale_history.md`](docs/archive/change_rationale_history.md) | (frozen) 옛 WHY 로그 — 현재는 PR description/이슈 thread/commit body 가 SSOT |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태 / TODO / Blockers |
 | [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 |
 | [`CLAUDE.md`](CLAUDE.md) | 메인 Claude 작업 지침 |
