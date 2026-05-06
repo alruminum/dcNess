@@ -2,6 +2,12 @@
 
 ## 현재 상태
 
+- **🧹 Epic 1 — 외부 배포물 정리 (#150)** (`DCN-CHG-20260506-02` ~ `-05`):
+  - **Story 1.1** (`-02`): `.claude-plugin/`, `commands/`, `README.md` RWHarness 고유명사 13건 제거 (표기 "선행 하네스" 통일)
+  - **Story 1.2** (`-03`): 외부 배포 경로 (agents/ 21개 / commands/ 3개 / docs/ 5개 / CLAUDE.md) DCN-CHG 내부 ID 92건 스크럽
+  - **Story 1.3** (`-04`): `docs/archive/` 신설 + 역사 자료 5개 이동 (conveyor-design / epic-index / manual-smoke-guide / migration-decisions / plugin-dryrun-guide) + 인용처 전수 갱신
+  - **Story 1.4** (`-05`): `README.md` / `PROGRESS.md` 현행화 — DCN-CHG 잔여 5건 제거, Status 헤더 갱신, Skill 목록 8→10개, 다음 단계 정리
+
 - **🔧 Task-ID format gate fix — subject-only 검사** (`DCN-CHG-20260505-04`):
   - `scripts/check_task_id.mjs` — `validateMessage` → `validateSubject`. subject 1 줄째에서만 정확히 1 개 검사. body 안 역사 참조 / Document-Exception-Task / 후속 link 자유 허용.
   - `docs/process/governance.md` §2.1 — commit message 위치 룰 명문화 (subject canonical 1 개 / body 자유).
