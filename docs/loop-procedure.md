@@ -1,7 +1,6 @@
 # Loop Execution Procedure (메인 Claude 컨베이어 mechanics)
 
 > **Status**: ACTIVE
-> **Origin**: `DCN-CHG-20260430-27` (신설), `DCN-CHG-20260430-30` (loop-catalog.md split), `DCN-CHG-20260501-16` (prose auto-staging 반영), `DCN-CHG-20260505-03` (loop-catalog.md → orchestration.md 흡수)
 > **Scope**: dcness 8 loop 의 *공통 실행 절차* SSOT — Step 0~8 mechanics. 메인 Claude 가 skill 트리거 또는 직접 발화로 루프 시작 시 본 문서를 컨베이어 매뉴얼처럼 따른다.
 > **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) + 시퀀스 mini-graph + 결정표 = [`orchestration.md`](orchestration.md) §2~§4. cross-cutting 룰 (echo / yolo / worktree / AMBIGUOUS) = [`process/dcness-guidelines.md`](process/dcness-guidelines.md).
 
@@ -59,11 +58,11 @@ ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>")
 TaskUpdate("<task>", completed)
 ```
 
-begin-step stdout 에 `[INSIGHTS: <agent>/<mode>]` 섹션이 있으면 Agent prompt 끝에 그대로 포함시킨다 (DCN-CHG-20260502-02). 해당 agent 의 과거 루프 학습 내용 — "하지 말 것" / "잘 됐던 것" — 이 프로젝트 레벨로 누적된 것.
+begin-step stdout 에 `[INSIGHTS: <agent>/<mode>]` 섹션이 있으면 Agent prompt 끝에 그대로 포함시킨다. 해당 agent 의 과거 루프 학습 내용 — "하지 말 것" / "잘 됐던 것" — 이 프로젝트 레벨로 누적된 것.
 
-메인이 prose를 직접 Write 할 필요 없음 — PostToolUse Agent hook 이 sub 종료 시 `tool_response.text` 에서 prose 를 자동으로 `<run_dir>/<agent>[-<MODE>].md` 에 저장하고 `live.json.current_step.prose_file` 에 경로 기록 (DCN-CHG-20260501-15). `end-step` 이 이 경로를 자동 읽는다.
+메인이 prose를 직접 Write 할 필요 없음 — PostToolUse Agent hook 이 sub 종료 시 `tool_response.text` 에서 prose 를 자동으로 `<run_dir>/<agent>[-<MODE>].md` 에 저장하고 `live.json.current_step.prose_file` 에 경로 기록. `end-step` 이 이 경로를 자동 읽는다.
 
-### 3.2 prose 파일 자동 명명 규칙 (DCN-CHG-20260501-15)
+### 3.2 prose 파일 자동 명명 규칙
 
 PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
 - 단순: `<run_dir>/<agent>.md`
@@ -280,7 +279,7 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 
 [`orchestration.md`](orchestration.md) §2.3 4룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (validator → pr-reviewer 직전 PASS / engineer 직전 plan READY / TASK_DECOMPOSE 직전 DESIGN_REVIEW_PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
 
-> Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (DCN-CHG-20260505-03 — loop-catalog.md 폐기, 8 → 7 SSOT).
+> Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (loop-catalog.md 폐기, 8 → 7 SSOT).
 
 ---
 

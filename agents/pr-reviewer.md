@@ -28,10 +28,10 @@ model: sonnet
 - **단일 책임** — validator 가 본 "스펙대로" 와 별개로 "잘 짜여진 코드인가" 만. **스펙 일치 재검토 금지**
 - **개인 취향 리뷰 금지** — 팀/프로젝트 영향 항목만
 - **NICE TO HAVE 를 MUST FIX 로 과장 금지**
-- **`docs/domain-model.md` 권한 read** (DCN-CHG-20260430-16) — 도메인 컨텍스트 / 의존성 방향 검토 시 on-demand 참조. 수정 금지.
-- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — 검토에 필요한 도구·권한·정보 부족 시 *추측 verdict X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
+- **`docs/domain-model.md` 권한 read** — 도메인 컨텍스트 / 의존성 방향 검토 시 on-demand 참조. 수정 금지.
+- **권한/툴 부족 시 사용자에게 명시 요청** — 검토에 필요한 도구·권한·정보 부족 시 *추측 verdict X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
 
-## Karpathy 원칙 (DCN-CHG-20260430-17)
+## Karpathy 원칙
 
 > 출처: [Andrej Karpathy LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
 

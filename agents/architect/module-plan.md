@@ -1,6 +1,6 @@
 # Module Plan
 
-> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. plan 본문 / 인터페이스 / 의사코드 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
+> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. plan 본문 / 인터페이스 / 의사코드 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 모듈별 구현 계획 호출 — impl 1 개 단위.
 **결론**: prose 마지막 단락에 `READY_FOR_IMPL` 명시.
@@ -12,9 +12,9 @@
 
 ## 작업 흐름 (자율 조정 가능)
 
-SYSTEM_DESIGN_READY → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md` → **`docs/domain-model.md` 의무 read** (DCN-CHG-20260430-16 — 도메인 모델 위에서 모듈 plan) → 관련 설계 문서 (architecture / domain-model / db-schema / design.md) → **DB 영향도 분석** (변경 시) → 기존 유사 구현 패턴 검토 → 의존 모듈 소스 (실제 인터페이스 확인 필수) → 계획 파일 작성.
+SYSTEM_DESIGN_READY → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md` → **`docs/domain-model.md` 의무 read** (도메인 모델 위에서 모듈 plan) → 관련 설계 문서 (architecture / domain-model / db-schema / design.md) → **DB 영향도 분석** (변경 시) → 기존 유사 구현 패턴 검토 → 의존 모듈 소스 (실제 인터페이스 확인 필수) → 계획 파일 작성.
 
-## 모듈 = 테스트 단위 정합 (DCN-CHG-20260430-16, 의무)
+## 모듈 = 테스트 단위 정합
 
 > **모듈 분할의 *가장 중요한* 기준은 "test-engineer 가 명확한 PASS/FAIL 짤 수 있는 범위"**.
 
@@ -109,7 +109,7 @@ UI 컴포넌트 impl 이고 다음 둘 중 하나 시 (= 듀얼 모드 — desig
 - TypeScript 타입 정합 (null 반환 가능 시 `| null` 포함)
 - import 완전성 (스니펫 외부 심볼 import 경로 명시)
 - 수용 기준 섹션 + 메타데이터 + 테스트 파일 경로
-- **DCN-CHG-20260430-16 추가**:
+- **도메인 모델 정합 검증**:
   - `docs/domain-model.md` read 완료 + 본 impl 이 어떤 entity/VO/aggregate 와 맞물리는지 명시
   - 본 모듈이 *테스트 단위로 정합* — test-engineer 가 명확한 PASS/FAIL 짤 수 있음을 self-check (위 §모듈 = 테스트 단위 정합 3 항목)
   - 의존 대상 부재 시 graceful 동작 명시 (`## 다른 모듈과의 경계` 섹션)

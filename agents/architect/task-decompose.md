@@ -1,6 +1,6 @@
 # Task Decompose
 
-> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. impl 목차 / 각 impl 본문 / 의사코드 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
+> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. impl 목차 / 각 impl 본문 / 의사코드 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 epic stories → 기술 구현 단위 분해 호출. product-planner 완료 후 호출.
 **결론**: 각 분해된 impl 파일 작성 후 prose 마지막 단락에 `READY_FOR_IMPL` 명시 (×N task 가능).
@@ -15,7 +15,7 @@
 - 한 태스크 = engineer 가 한 번 루프로 구현 가능한 단위
 - 파일 1~3 개 생성/수정 범위
 - 명확한 PASS/FAIL 판단 가능
-- **DCN-CHG-20260430-16 추가** — 분할 단위 정합 검증:
+- **분할 단위 정합 검증 (의무)**:
   - 각 task 가 *test-engineer 관점에서 명확히 테스트 가능* 한지 (`docs/domain-model.md` + `docs/architecture.md` 의 의존성 그래프 참조)
   - 같은 변경 이유로 묶이는가 (SRP 정합 — UI + 비즈니스 로직 한 task X)
   - 의존성 1 묶음 = 1 task (system-design 의 모듈 분할과 정합)
@@ -52,7 +52,7 @@ UI 컴포넌트 포함 epic 분해 시, 다음 둘 중 하나 = **듀얼 모드*
 - 생성된 impl 파일 목록 (경로 + depth + 가드레일 표시 — 듀얼 모드 시 `01-theme-tokens.md`)
 - 생성된 GitHub story 이슈 번호 목록 (Story 1 → #N, Story 2 → #M, …)
 
-## impl 파일 명명 + H1 제목 (DCN-CHG-20260501-05)
+## impl 파일 명명 + H1 제목
 
 ### 파일명
 `impl/NN-<slug>.md` — `NN` = 에픽 내 독립 순번 (전역 누적 X). `slug` = kebab-case 1줄 요약.
@@ -79,7 +79,7 @@ UI 컴포넌트 포함 epic 분해 시, 다음 둘 중 하나 = **듀얼 모드*
 ```
 정식 등록 epic 이면 `#\d+` 필수 (issue-lifecycle §3 미등록 모드 stories.md 명시 시만 생략 허용). 위반 1건이라도 발견 시 즉시 정정 후 종료.
 
-## 각 impl 파일 형식 의무 (DCN-CHG-20260430-13)
+## 각 impl 파일 형식 의무
 
 각 impl task 파일 (`docs/milestones/vNN/epics/epic-NN-*/impl/NN-*.md`) 은 다음 섹션 박는다 — `/impl` skill 의 MODULE_PLAN step skip 판정 근거:
 
@@ -109,7 +109,7 @@ def foo(a, b):
 ## MODULE_PLAN_READY
 ```
 
-마지막 줄에 `MODULE_PLAN_READY` 마커 박음 = "이 task 자체가 MODULE_PLAN 수준 detail 충족". `/impl` 가 이 마커 grep 후 architect MODULE_PLAN step skip → test-engineer 직진 (DCN-CHG-20260430-13).
+마지막 줄에 `MODULE_PLAN_READY` 마커 박음 = "이 task 자체가 MODULE_PLAN 수준 detail 충족". `/impl` 가 이 마커 grep 후 architect MODULE_PLAN step skip → test-engineer 직진.
 
 마커 박지 않으면 (또는 위 섹션 미충족) `/impl` 가 architect MODULE_PLAN 정상 호출 — 본 컨벤션이 *권장* 이지 의무 아님 (메인 자율 + state-aware skip).
 

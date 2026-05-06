@@ -48,7 +48,7 @@ HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/
 
 ### Step 1 — 리포트 출력 (그대로 character-for-character 복사)
 
-⚠️ **출력 룰 절대 준수**:
+⚠️ **출력 룰 절대 준수 **:
 
 Bash stdout 의 마크다운 리포트를 **한 글자도 바꾸지 않고 그대로** Claude 텍스트 응답에 복사. 마크다운 테이블을 ASCII 박스로 변환 X. 섹션 생략 / 축약 / 재배치 X. "핵심은~" / "정리하면~" 같은 자체 해석 삽입 X.
 

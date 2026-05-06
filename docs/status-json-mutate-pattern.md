@@ -1,13 +1,13 @@
 # Prose-Only Pattern — 형식 강제 폐기 + heuristic enum 추출
 
-> **Status**: PROPOSAL_DRAFT (brainstorm) → **HEURISTIC-ONLY 정착** (DCN-CHG-20260430-04)
+> **Status**: PROPOSAL_DRAFT (brainstorm) → **HEURISTIC-ONLY 정착**
 > **Origin**: 2026-04-29 jha0313/harness_framework 비교 + W0 PoC + 형식 강제 함정 자각
 > **적용**: 신규 프로젝트 (dcNess 등) 에서 메인 Claude 직접 작업. RWHarness 자체엔 적용 안 함. §11 참조.
 > **이전 이름**: status-json-mutate-pattern. 신규 진단 (status JSON 도 형식 강제의 한 형태) 후 *prose-only* 로 정정.
 
 > ### ✅ 2026-04-30 정착 결정 — heuristic-only
 >
-> 본 proposal 의 *원래 비전* 은 "메타 LLM (haiku) 해석" 이었으나, dcNess 도그푸딩 결과 **메타 LLM 호출도 폐기** (DCN-CHG-20260430-04). 이유:
+> 본 proposal 의 *원래 비전* 은 "메타 LLM (haiku) 해석" 이었으나, dcNess 도그푸딩 결과 **메타 LLM 호출도 폐기**. 이유:
 >
 > 1. **API 키 의존 회피** — dcNess 자체가 plugin 으로 사용자 환경 도그푸딩. ANTHROPIC_API_KEY 강제 의존 = 진입 장벽.
 > 2. **메인 Claude = LLM** — 이미 메인이 LLM 이라 별도 judge 호출 = 2-LLM 패턴. 비용 + latency + 또 다른 사다리 (LLM 결과 검증) 진입 위험.
@@ -288,13 +288,13 @@ harness 가 prose 의 *의미* 를 LLM 으로 해석.
 
 ### Phase 3 — dcNess 적용 결과 (PHASE_3_DONE)
 - [x] commit-gate.py Gate 1/4/5 코드 0 — *dcNess 자연 만족* (migration-decisions §2.2 — commit-gate.py DISCARD, 처음부터 미도입)
-- [x] `.github/workflows/*` 3+ 신설 — `document-sync.yml` (`DCN-CHG-20260429-08`) + `python-tests.yml` (`-09`) + `plugin-manifest.yml` (`-10`) + `task-id-validation.yml` (`-20`) **= 4 워크플로 + branch protection (`-21`)**
+- [x] `.github/workflows/*` 4종 신설 — `document-sync.yml` + `python-tests.yml` + `plugin-manifest.yml` + `task-id-validation.yml` **= 4 워크플로 + branch protection**
 - [x] ENV 게이트 (`HARNESS_PROSE_*`) 모두 제거 — *dcNess 자연 만족* (도입 0)
 - [x] CHG-14.1 폐기 정정 — *RWHarness 영역* (dcNess 외, 본 acceptance 비대상)
 - [x] **dcNess 한정 추가 acceptance**:
-  - [x] Task-ID 형식 검증 게이트 (`DCN-CHG-20260429-20`)
+  - [x] Task-ID 형식 검증 게이트
   - [x] LGTM 게이트 외부화 = branch protection required reviewers (`-21`)
-  - [x] 메타 LLM (haiku) interpreter 통합 = `harness/llm_interpreter.py` (`-22`) → **DISCARDED** (`DCN-CHG-20260430-04` heuristic-only 정착)
+  - [x] 메타 LLM (haiku) interpreter 통합 = `harness/llm_interpreter.py` (`-22`) → **DISCARDED** (heuristic-only 정착)
   - [x] heuristic-first + LLM-fallback 합성 + telemetry 분석기 (`-23`)
   - [x] plugin 배포 dry-run 가이드 = `docs/process/plugin-dryrun-guide.md` (`-24`)
 
@@ -441,7 +441,7 @@ RWHarness 자체엔 적용 안 함 — 본 proposal 은 신규 프로젝트의 d
 ### 11.4 도입할 것 / 도입 안 할 것 / 안전망
 
 > **대 원칙 정합** (§2.5): 작업 순서 + 접근 영역만 제어.
-> **본 §11.4 의 *적용 SSOT*** = [`docs/orchestration.md`](orchestration.md) (`DCN-CHG-20260429-25`).
+> **본 §11.4 의 *적용 SSOT*** = [`docs/orchestration.md`](orchestration.md).
 
 #### 도입할 것
 - **작업 순서 강제**: 시퀀스 (validator → engineer → pr-reviewer) + retry 정책 (사용자 프로젝트 적용 시) → `docs/orchestration.md` §2/§4/§5

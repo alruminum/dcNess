@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260506-03
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only + agent
+- **Files Changed**:
+  - `agents/architect.md` / `agents/architect/docs-sync.md` / `agents/architect/light-plan.md` / `agents/architect/module-plan.md` / `agents/architect/spec-gap.md` / `agents/architect/system-design.md` / `agents/architect/task-decompose.md` / `agents/architect/tech-epic.md` — DCN-CHG ID 제거·일반화
+  - `agents/design-critic.md` / `agents/designer.md` / `agents/engineer.md` / `agents/plan-reviewer.md` / `agents/pr-reviewer.md` / `agents/product-planner.md` / `agents/qa.md` / `agents/security-reviewer.md` / `agents/test-engineer.md` / `agents/ux-architect.md` / `agents/validator.md` / `agents/validator/code-validation.md` / `agents/validator/design-validation.md` — DCN-CHG ID 제거
+  - `commands/efficiency.md` / `commands/audit-redo.md` — DCN-CHG ID 제거
+  - `docs/orchestration.md` / `docs/handoff-matrix.md` / `docs/loop-procedure.md` / `docs/status-json-mutate-pattern.md` / `docs/issue-lifecycle.md` — Origin 헤더 삭제 + 본문 DCN-CHG ID 제거·일반화
+  - `CLAUDE.md` — 예시 ID를 템플릿 형식으로 교체
+- **Summary**: 외부 배포 경로 본문의 DCN-CHG 내부 변경 추적 ID ~92건 제거·일반화. 설명 값 있는 곳은 자연어 보존. Origin 헤더 5건 삭제. (Story 1.2 / Issue #154)
+
+
 ### DCN-CHG-20260506-02
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only + agent
@@ -30,6 +42,8 @@
   - `commands/run-review.md` — frontmatter description / line 8 / line 51 / line 115 에서 RWHarness 고유명사 제거 또는 일반화
   - `README.md` — 5개 라인 (line 7/11/34/129/157) RWHarness 고유명사 제거 또는 일반화
 - **Summary**: 외부 노출 경로 (.claude-plugin/, commands/, README.md) 에서 RWHarness 고유명사 13건 제거. 기술 정보 보존, 고유명사만 일반화. (Story 1.1 / Issue #153)
+
+
 
 ### DCN-CHG-20260506-01
 - **Date**: 2026-05-06

@@ -36,7 +36,7 @@ ONE_WAY 모드(1 variant) 에선 호출 X — 유저가 Pencil 앱에서 직접 
 - **읽기 전용**: 어떤 파일도 수정 X
 - **단일 책임**: 심사. 직접 수정·새 variant 생성 X
 - **강제 PASS 금지** — 3 라운드 연속 REJECT 라도 기준 낮추지 않음. 루프 탈출 = designer 의 `DESIGN_LOOP_ESCALATE`.
-- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — 심사에 필요한 도구·권한·정보 부족 시 *추측 verdict X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
+- **권한/툴 부족 시 사용자에게 명시 요청** — 심사에 필요한 도구·권한·정보 부족 시 *추측 verdict X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
 
 ## REVIEW — 4 기준 심사 (각 10 점, 총 40 점)
 

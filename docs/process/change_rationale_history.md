@@ -18,6 +18,16 @@
 
 ## Records
 
+### DCN-CHG-20260506-03
+- **Date**: 2026-05-06
+- **Rationale**: 외부 배포 경로 파일에 `DCN-CHG-YYYYMMDD-NN` 내부 변경 추적 ID가 ~92건 노출. 사용자 관점에서 맥락 없는 숫자 ID는 노이즈 + CLAUDE.md §0.3 자체 가이드라인("외부 파일 안에 내부 ID 박지 않는다") 위반.
+- **Alternatives**:
+  - ID 보존 + 각주/링크로 설명 — 외부 사용자에게 dcNess 내부 이슈 추적 시스템 노출. 노이즈 더 커짐.
+  - 설명 내용도 함께 삭제 — 의미 있는 설계 맥락 (예: LLM fallback 폐기 이유, anchor 자율화 의미) 까지 소실.
+- **Decision**: ID만 제거, 설명 자연어 보존. `(DCN-CHG-XXX, 설명)` → `(설명)`. 설명 없는 단순 참조는 통째 삭제. Origin 헤더 라인은 메타 정보라 통째 삭제.
+- **Follow-Up**: Story 1.3 (archive) / Story 1.4 (README 현행화) 에서 추가 정리 예정.
+
+
 ### DCN-CHG-20260506-02
 - **Date**: 2026-05-06
 - **Rationale**: 외부 사용자가 보는 파일 (.claude-plugin/, commands/, README.md) 에 "RWHarness" 고유명사가 노출됨. 사용자 입장에서 출처 불명의 명칭이라 노이즈. plug-in 정체성을 dcNess 자체로 명확히 해야 함.
@@ -26,6 +36,8 @@
   - 완전 삭제 (기술 내용도 함께) — 설계 근거 정보 손실. init-dcness.md line 284 의 whitelist 위치 차이 설명 등 실용 정보 유실.
 - **Decision**: 고유명사만 제거/일반화, 기술 내용 보존. "RWHarness 처럼" → 삭제, "RWHarness `init-rwh`" → "이전 하네스 패턴 대비", 비교 테이블 헤더 → "선행 하네스" 등.
 - **Follow-Up**: Story 1.2 (DCN-CHG 본문 표기 스크럽) 에서 commands/run-review.md frontmatter 의 DCN-CHG ID 잔재 처리.
+
+
 
 ### DCN-CHG-20260506-01
 - **Date**: 2026-05-06
