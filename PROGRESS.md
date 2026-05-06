@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **🔧 #151 후속 — 옛 경로 잔존 7건 정리** (`DCN-CHG-20260506-14`): Epic 2 검증 정규식이 `(../docs/X.md)` 만 잡아 `(../X.md)` 형태 마크다운 링크 누수. `harness/agent_boundary.py` docstring + `docs/internal/main-claude-rules.md` (5건+4링크) + `docs/internal/self-guidelines.md` (2건) + `docs/plugin/handoff-matrix.md` §4.4 (1건) + `commands/init-dcness.md` §4 (dcness self repo 명시 라인) 일괄 갱신.
+
 - **🔧 harness/ docstring archive 경로 정리 (#179)** (`DCN-CHG-20260506-08`): Story 1.3 인용처 갱신 누락분. `harness/session_state.py` + `harness/hooks.py` 의 `docs/conveyor-design.md` 인용 → `docs/archive/conveyor-design.md`.
 
 - **🔒 main 직접 commit 차단 hook 게이트 신설 (#173)** (`DCN-CHG-20260506-07`): `scripts/hooks/pre-commit` + `scripts/hooks/cc-pre-commit.sh` 양쪽에 main 브랜치 차단 추가. 자연어 룰만 있던 카테고리 mechanical 강제 (Story 1.3 회귀 방지). governance §2.7 게이트 매트릭스에 row 추가.

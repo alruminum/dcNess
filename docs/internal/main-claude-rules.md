@@ -10,7 +10,7 @@
 
 ## 0. 정체성 — 강제하는 것 / 강제 안 하는 것
 
-> **🔴 대 원칙** (`docs/plugin/prose-only-principle.md` §1 / `docs/orchestration.md` §0 직접 인용):
+> **🔴 대 원칙** (`docs/plugin/prose-only-principle.md` §1 / `docs/plugin/orchestration.md` §0 직접 인용):
 > **harness 가 강제하는 것은 단 2가지 — (1) 작업 순서, (2) 접근 영역. 그 외 모두 agent 자율.**
 
 - **작업 순서** = 시퀀스 (validator → engineer → pr-reviewer 등) + retry 정책
@@ -83,7 +83,7 @@ dcness SSOT (orchestration / handoff-matrix / loop-procedure / skill-guidelines 
 
 dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 *직접 read* 하는 md) 는 **파일당 300줄 cap**. 초과 시 책임 분리 축으로 split.
 
-**대상**: skill prompt (`commands/*.md`) / agent prompt (`agents/**/*.md`) / SSOT (`docs/loop-procedure.md` / `docs/handoff-matrix.md` / `docs/orchestration.md`) / `docs/plugin/skill-guidelines.md` / `docs/internal/self-guidelines.md` / 본 문서.
+**대상**: skill prompt (`commands/*.md`) / agent prompt (`agents/**/*.md`) / SSOT (`docs/plugin/loop-procedure.md` / `docs/plugin/handoff-matrix.md` / `docs/plugin/orchestration.md`) / `docs/plugin/skill-guidelines.md` / `docs/internal/self-guidelines.md` / 본 문서.
 
 **대상 외**: 역사 로그 (`document_update_record.md` / `change_rationale_history.md`) / `PROGRESS.md` / spec / proposals / 코드.
 
@@ -92,9 +92,9 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 **현재 cap 충족 상태** (사용자 verification 의무 — `wc -l` 실측):
 | 파일 | 줄 수 (작성 시점) | cap |
 |---|---|---|
-| `docs/orchestration.md` | 464 | **500** (DCN-CHG-20260505-03 — loop-catalog 흡수 통합. 다른 SSOT 는 300 유지) |
-| `docs/handoff-matrix.md` | 256 | 300 |
-| `docs/loop-procedure.md` | 240 | 300 |
+| `docs/plugin/orchestration.md` | 464 | **500** (DCN-CHG-20260505-03 — loop-catalog 흡수 통합. 다른 SSOT 는 300 유지) |
+| `docs/plugin/handoff-matrix.md` | 256 | 300 |
+| `docs/plugin/loop-procedure.md` | 240 | 300 |
 | `docs/plugin/skill-guidelines.md` | 232 | 300 |
 | `docs/internal/self-guidelines.md` | 51 | 300 |
 
@@ -102,11 +102,11 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 
 | 파일 | 책임 | 메인 read 시점 |
 |---|---|---|
-| [`docs/orchestration.md`](../orchestration.md) | 시퀀스 mini-graph + **8 loop 행별 풀스펙** (entry / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles) | 신규 작업 시 진입 경로 결정 + loop 진입 시 풀스펙 read |
-| [`docs/handoff-matrix.md`](../handoff-matrix.md) | agent 측 강제 영역 (결정표 / Retry / Escalate / 접근 권한) | agent 호출 분기 / 한도 결정 시 |
-| [`docs/loop-procedure.md`](../loop-procedure.md) | Step 0~8 mechanics (worktree → begin-run → TaskCreate → begin-step → Agent → end-step → finalize-run --auto-review) | 매 컨베이어 진행 |
+| [`docs/plugin/orchestration.md`](../plugin/orchestration.md) | 시퀀스 mini-graph + **8 loop 행별 풀스펙** (entry / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles) | 신규 작업 시 진입 경로 결정 + loop 진입 시 풀스펙 read |
+| [`docs/plugin/handoff-matrix.md`](../plugin/handoff-matrix.md) | agent 측 강제 영역 (결정표 / Retry / Escalate / 접근 권한) | agent 호출 분기 / 한도 결정 시 |
+| [`docs/plugin/loop-procedure.md`](../plugin/loop-procedure.md) | Step 0~8 mechanics (worktree → begin-run → TaskCreate → begin-step → Agent → end-step → finalize-run --auto-review) | 매 컨베이어 진행 |
 | [`docs/plugin/skill-guidelines.md`](../plugin/skill-guidelines.md) | cross-cutting 룰 (echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy 참조 / **§10 self-verify 원칙**) | 모든 dcness skill 진행 시 |
-| [`docs/internal/self-guidelines.md`](../internal/self-guidelines.md) | dcness self 협업 룰 (300줄 cap / §2 self-verify) | dcness 자체 작업 시 |
+| [`docs/internal/self-guidelines.md`](self-guidelines.md) | dcness self 협업 룰 (300줄 cap / §2 self-verify) | dcness 자체 작업 시 |
 
 ### 2.3 거버넌스
 

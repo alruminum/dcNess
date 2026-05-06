@@ -234,7 +234,7 @@ DCNESS_INFRA_PATTERNS = [
 ]
 ```
 
-> RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 dcness 가 정정 — 파일명은 `docs/orchestration.md` + `docs/handoff-matrix.md` (split 후 양쪽). loop-procedure / skill-guidelines / self-guidelines / hooks·session_state·agent_boundary 도 dcness 가 추가 보호 (DCN-30-30/31/32 split + loop-catalog 흡수 산출물).
+> RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 dcness 가 정정 — 파일명은 `docs/plugin/orchestration.md` + `docs/plugin/handoff-matrix.md` (split 후 양쪽). loop-procedure / skill-guidelines / self-guidelines / hooks·session_state·agent_boundary 도 dcness 가 추가 보호 (DCN-30-30/31/32 split + loop-catalog 흡수 산출물).
 
 인프라 프로젝트(`is_infra_project()` True) 에선 위 패턴 해제 (dcness 자체 작업 시 본 SSOT 들도 편집 가능해야 함).
 
