@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260506-01
+- **Date**: 2026-05-06
+- **Rationale**: `session-start.sh`이 `${PROJ}/docs/process/dcness-guidelines.md`를 읽지만, `init-dcness.md` Step 2.6 bash 블록에 해당 파일 배포 스텝이 없었음. 결과: jajang 등 사용자 프로젝트에서 파일 미존재 → Read 실패 → 로드 토큰만 출력되고 실제 룰 미로드 상태. 감지 계기: 사용자가 세션 시작 후 "(파일 실존 안 함을 보고합니다)" 메시지 직접 확인.
+- **Alternatives**:
+  - `session-start.sh`이 파일 없으면 플러그인 캐시(`~/.claude/plugins/cache/dcness/...`)에서 직접 읽도록 수정 — 경로 하드코딩 + 캐시 구조 변화 취약. `GUIDELINES_PATH`가 이미 `${PROJ}/docs/process/` 패턴으로 설계됨.
+  - 배포 대신 플러그인 캐시 경로를 `GUIDELINES_PATH`로 변경 — 사용자 프로젝트가 플러그인 캐시 경로 의존 → 이식성 저하.
+- **Decision**: `init-dcness.md` Step 2.6 bash에 스텝 4 추가: `$PLUGIN_ROOT/docs/process/dcness-guidelines.md` → `$PROJECT_ROOT/docs/process/dcness-guidelines.md`. 존재 체크 없이 항상 덮어쓰기 — 플러그인 업데이트 시 최신 버전 자동 반영. Step 3 안내 텍스트에도 항목 추가.
+- **Follow-Up**: jajang 등 기존 활성화 프로젝트는 `/init-dcness` 재실행 필요. README/release note에 re-run 안내 필요.
+
 ### DCN-CHG-20260505-04
 - **Date**: 2026-05-05
 - **Rationale**: DCN-CHG-20260505-03 (#144) 커밋 메시지 body 안에 역사 참조 (`DCN-CHG-20260430-32` — handoff-matrix.md split 사례 비유) 박았는데 Task-ID format gate 가 "다중 Task-ID 발견 — governance §2.1 위반" 으로 fail. 룰의 본질은 "본 작업의 *canonical* Task-ID 1 개" 이지 메시지 텍스트 안 ID-shaped 토큰 갯수 가 아님. body 의 역사 참조는 작업 정체성과 무관 — 게이트가 over-strict.
