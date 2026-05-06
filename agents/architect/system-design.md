@@ -1,6 +1,6 @@
 # System Design
 
-> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. prose 본문 / Domain Model 표 / 모듈 분해 / 산출물 본체 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (jajang 6분 stall, DCN-30-20). master 룰: `agents/architect.md` §자기규율.
+> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. prose 본문 / Domain Model 표 / 모듈 분해 / 산출물 본체 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (jajang 6분 stall, DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 시스템 설계 호출. 구현 시작 전 시스템 전체 구조 확정.
 **결론**: prose 마지막 단락에 `SYSTEM_DESIGN_READY` 명시.
@@ -10,7 +10,7 @@
 
 PRODUCT_PLAN_READY → 선택된 옵션 범위 확인 → 프로젝트 `CLAUDE.md` (기존 기술 스택/제약) → (있으면) `docs/ux-flow.md` → **Phase A: Domain Model 선정의** → **Phase B: 시스템 설계** (Outline-First — architect.md §자기규율 참조: outline text 출력 → Write 본체) → prose 결론.
 
-## Phase A — Domain Model 선정의 (DCN-CHG-20260430-16, 의무)
+## Phase A — Domain Model 선정의
 
 > **반드시 시스템 설계 *전*에 도메인 모델 확정**. 도메인 모델 부재로 시스템 구조 잡으면 데이터 흐름 / 모듈 경계가 임의로 결정됨 → 추후 갈아엎기.
 
@@ -56,7 +56,7 @@ Frameworks & Drivers (UI / DB / 외부 SDK)
 | **ISP** (Interface Segregation) | client 는 자기가 안 쓰는 interface 메서드 의존 X. 비대 interface 는 분리 |
 | **DIP** (Dependency Inversion) | **별도 강화** — 아래 §의존성 설계 원칙 참조 |
 
-### 의존성 설계 원칙 (DCN-CHG-20260430-16, 핵심)
+### 의존성 설계 원칙
 
 > **누가 봐도 납득 가능한 인과관계로 의존성 설정 + 깨지지 않도록 보호**.
 
@@ -155,7 +155,7 @@ DIP 사용 조건 (남용 금지):
 - 관찰가능성: 로깅 전략, 에러 추적 방식
 - 비용: 예산 제약 있으면 상한 명시
 
-## 문서 크기 룰 (DCN-CHG-20260430-16)
+## 문서 크기 룰
 
 > **시스템 설계 문서 1개 = 300줄 이하**. 초과 시 상세도면을 별도 .md 로 분리 + 링크.
 
@@ -176,7 +176,7 @@ docs/domain-model.md (300줄 이하)
 
 이유: 한 파일 300줄 넘으면 컨텍스트 길이 부담 + 변경 시 충돌 위험 + 읽는 사람 집중력 저하.
 
-## 현행화 룰 (DCN-CHG-20260430-16, 의무)
+## 현행화 룰
 
 > **설계 문서는 항상 코드/PRD 와 정합 유지**. 코드/PRD 변경 시 즉시 반영 — 누락 = bug.
 
@@ -191,7 +191,7 @@ architect 가 SYSTEM_DESIGN / SPEC_GAP 호출될 때마다 다음 검사:
 
 엔지니어 (engineer / test-engineer) 가 코드 변경 후 도메인 모델 / 시스템 구조 변경이 필요하면 *직접 수정 금지* → SPEC_GAP_FOUND escalate.
 
-## Spike Gate — 핵심 가치 의존성 실측 의무 (DCN-CHG-20260430-18)
+## Spike Gate — 핵심 가치 의존성 실측 의무
 
 > **추상 인터페이스 (ABC / Protocol) + Mock 구현만으로 SYSTEM_DESIGN_READY 통과 금지**.
 >
@@ -251,4 +251,4 @@ spike FAIL (PRD 시나리오 통과 못 함):
 - `docs/domain-model.md` 갱신 여부 (신규 / 변경 / 변경 없음)
 - `docs/architecture.md` 갱신 여부 + 분리된 detail 파일 list
 - 모듈 분할 = 의존성 1 묶음 + 테스트 단위 정합 self-check 결과
-- **Spike Gate 결과 (DCN-CHG-20260430-18)** — PRD Must 직결 외부 의존 list + 각 spike 통과 여부 + 검증된 SDK/모델 명. spike 미실행 시 SYSTEM_DESIGN_READY 출력 X.
+- **Spike Gate 결과** — PRD Must 직결 외부 의존 list + 각 spike 통과 여부 + 검증된 SDK/모델 명. spike 미실행 시 SYSTEM_DESIGN_READY 출력 X.

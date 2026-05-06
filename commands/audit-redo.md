@@ -1,6 +1,6 @@
 ---
 name: audit-redo
-description: dcness conveyor run 의 redo-log + agent-trace 결합 분석 skill. (sub, mode) 별 redo 빈도 추출 + Layer 1 (현 프로젝트 1차 prompt 첨가) + Layer 2 (dcness plugin agent definition 영구 patch) 후보 제안. 사용자가 "/audit-redo", "redo 분석", "감시자 학습", "패턴 환류" 등을 말할 때 사용. /run-review 와 직교 — /run-review = waste/good findings, /audit-redo = redo 패턴 학습 (DCN-CHG-20260501-12).
+description: dcness conveyor run 의 redo-log + agent-trace 결합 분석 skill. (sub, mode) 별 redo 빈도 추출 + Layer 1 (현 프로젝트 1차 prompt 첨가) + Layer 2 (dcness plugin agent definition 영구 patch) 후보 제안. 사용자가 "/audit-redo", "redo 분석", "감시자 학습", "패턴 환류" 등을 말할 때 사용. /run-review 와 직교 — /run-review = waste/good findings, /audit-redo = redo 패턴 학습.
 ---
 
 # Audit Redo Skill — 메인 감시자 학습 진화 (Layer 1 + Layer 2)

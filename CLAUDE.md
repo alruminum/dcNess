@@ -43,7 +43,7 @@
 
 - `DCN-CHG-YYYYMMDD-NN` 같은 **내부 변경 추적 ID** 는 dcness 내부 거버넌스(`docs/process/document_update_record.md` / `change_rationale_history.md` / commit message) 용이다.
 - **외부에 배포되는 파일** (= plug-in 사용자가 보게 되는 파일: `agents/**`, `commands/**`, `skills/**`, `hooks/**`, 그리고 plug-in 사용자가 따라야 하는 SSOT 인 `docs/issue-lifecycle.md` 등) 안에는 **내부 ID 를 본문으로 박지 않는다**.
-- 외부 사용자에게 "DCN-CHG-20260504-01 에서 ..." 같은 표현은 **잡음**이다. 그 변경 이유 / 작동 룰만 자연어로 설명하면 충분.
+- 외부 사용자에게 "DCN-CHG-YYYYMMDD-NN 에서 ..." 같은 표현은 **잡음**이다. 그 변경 이유 / 작동 룰만 자연어로 설명하면 충분.
 - 단 dcness 자체 거버넌스 로그(`document_update_record.md` / `change_rationale_history.md` / commit message / 본 dcness 자체의 docs/process/) 안에서는 ID 표기 필수 — 이건 *내부* 추적이라 OK.
 
 ### 0.4 작성 스타일 — 쉬운 한글 + § 표시 명확히

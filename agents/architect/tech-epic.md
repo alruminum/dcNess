@@ -1,6 +1,6 @@
 # Technical Epic
 
-> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. epic 본문 / 영향도 분석 / 마이그레이션 단계 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. THINKING_LOOP 회귀 회피 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
+> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. epic 본문 / 영향도 분석 / 마이그레이션 단계 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. THINKING_LOOP 회귀 회피 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 기술 에픽 작성 호출 — 기술 부채/인프라/리팩토링/아키텍처 변경.
 **결론**: prose 마지막 단락에 `SYSTEM_DESIGN_READY` 명시.

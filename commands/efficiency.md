@@ -5,7 +5,7 @@ description: Claude Code 세션 JSONL 로그 (`~/.claude/projects/<encoded-repo>
 
 # Efficiency Skill — Claude Code 세션 토큰/비용 분석
 
-> **출처 (attribution)**: `jha0313/skills_repo` 의 `improve-token-efficiency` skill (DCN-CHG-20260430-08 흡수). 4 script 보존, dcness 패턴 (helper protocol + skill prompt) 으로 wrap.
+> **출처 (attribution)**: `jha0313/skills_repo` 의 `improve-token-efficiency` skill. 4 script 보존, dcness 패턴 (helper protocol + skill prompt) 으로 wrap.
 
 ## 언제 사용
 
@@ -136,7 +136,7 @@ prefix 매칭 — `claude-haiku-4-5-20251001`, `claude-opus-4-7[1m]` 같은 vari
 - **세션 디렉터리 부재**: 레포가 Claude Code 로 한 번도 열린 적 없으면 "분석할 세션 없음" 안내 + 종료.
 - **모든 세션 빈 usage**: 오래된 CLI 버전. 자동 제외 후 남은 게 없으면 종료.
 - **가격 미등록 모델**: prefix 매칭 + Opus default fallback. `PRICING` 갱신 권장.
-- **dcness telemetry 와 분리**: `.metrics/heuristic-calls.jsonl` (heuristic enum 추출 telemetry, DCN-CHG-20260430-04) ≠ 본 skill 의 CC 세션 비용 분석. 두 영역 별도.
+- **dcness telemetry 와 분리**: `.metrics/heuristic-calls.jsonl` (heuristic enum 추출 telemetry) ≠ 본 skill 의 CC 세션 비용 분석. 두 영역 별도.
 
 ## 참조
 
@@ -145,4 +145,4 @@ prefix 매칭 — `claude-haiku-4-5-20251001`, `claude-opus-4-7[1m]` 같은 vari
 - `harness/efficiency/detect_patterns.py` — 토큰 thrash 패턴 탐지
 - `harness/efficiency/build_patterns_dashboard.py` — 패턴 HTML
 - `scripts/dcness-efficiency` — wrapper (analyze / dashboard / patterns / full)
-- `jha0313/skills_repo/improve-token-efficiency` — 출처 skill (DCN-CHG-20260430-08 흡수)
+- `jha0313/skills_repo/improve-token-efficiency` — 출처 skill

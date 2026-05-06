@@ -38,9 +38,9 @@ model: sonnet
 - **src/ 수정 금지**: 코드 구현은 engineer.
 - **HTML 프리뷰 파일 생성 금지** (Pencil 캔버스로 대체).
 - **Pencil MCP**: 모든 시각화는 캔버스에서.
-- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — 디자인에 필요한 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 명시 요청 후 진행. 예: "특정 화면 베이스라인 위해 Pencil 캔버스 read 권한 필요". (Karpathy 원칙 1 정합)
+- **권한/툴 부족 시 사용자에게 명시 요청** — 디자인에 필요한 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 명시 요청 후 진행. 예: "특정 화면 베이스라인 위해 Pencil 캔버스 read 권한 필요". (Karpathy 원칙 1 정합)
 
-## Karpathy 원칙 (DCN-CHG-20260430-17)
+## Karpathy 원칙
 
 > 출처: [Andrej Karpathy LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
 

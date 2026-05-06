@@ -1,6 +1,6 @@
 # Docs Sync
 
-> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지** (DCN-CHG-20260430-39). thinking = 의사결정 분기만. docs 동기화 patch 본문 = thinking 종료 *후* 즉시 emit 또는 `Edit/Write` 입력값 안에서만. THINKING_LOOP 회귀 회피 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
+> ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. docs 동기화 patch 본문 = thinking 종료 *후* 즉시 emit 또는 `Edit/Write` 입력값 안에서만. THINKING_LOOP 회귀 회피 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 docs 동기화 호출 — impl 완료 후 참조 설계 문서에 파생 서술 추가. 새 설계 결정은 절대 하지 않는다.
 **결론**: prose 마지막 단락에 `DOCS_SYNCED` / `SPEC_GAP_FOUND` / `TECH_CONSTRAINT_CONFLICT` 중 하나 명시.
@@ -26,7 +26,7 @@
 - **impl 파일 수정 금지** — impl 은 이미 확정된 계약
 - **src/ 수정 금지** — 구현 이미 완료
 - **architecture.md / db-schema.md 이외 docs 수정 요청 거부** — 그 외는 MODULE_PLAN / SYSTEM_DESIGN 경로
-- **권한/툴 부족 시 사용자에게 명시 요청 (DCN-CHG-20260430-18, 공통 지침)** — sync 에 필요한 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
+- **권한/툴 부족 시 사용자에게 명시 요청** — sync 에 필요한 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
 
 ## 위반 시 결론 enum
 

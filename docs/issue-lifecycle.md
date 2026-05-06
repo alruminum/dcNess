@@ -1,7 +1,6 @@
 # Issue Lifecycle
 
 > **Status**: ACTIVE
-> **Origin**: `DCN-CHG-20260504-01`
 > **Scope**: GitHub 이슈 생성·완료·미등록 운영 SSOT. dcness plugin 이 적용된 모든 프로젝트가 본 문서를 따른다. 각 agent / skill 은 본 문서를 *참조* 만 한다 (룰 재기술 금지).
 
 ## 0. 이슈 계층

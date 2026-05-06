@@ -1,7 +1,6 @@
 # Handoff Matrix — Agent 결정 / Retry / Escalate / 권한
 
 > **Status**: ACTIVE
-> **Origin**: `DCN-CHG-20260430-32` (orchestration.md split — 행동지침 md 300줄 cap 정합)
 > **Scope**: dcness 컨베이어의 *agent 측 강제 영역* SSOT — 결론 enum 별 다음 trigger / retry 한도 / escalate 카탈로그 / 접근 권한 (호출 / Write / Read / 인프라 패턴).
 > **Cross-ref**: 시퀀스 spec + 8 loop 행별 풀스펙 = [`orchestration.md`](orchestration.md) §2~§4. 절차 mechanics = [`loop-procedure.md`](loop-procedure.md).
 
@@ -96,7 +95,7 @@
 | CODE_VALIDATION | `PASS` | pr-reviewer |
 | CODE_VALIDATION | `FAIL` | engineer 재시도 (attempt < 3) |
 | CODE_VALIDATION | `SPEC_MISSING` | architect SPEC_GAP |
-| DESIGN_VALIDATION | `DESIGN_REVIEW_PASS` | architect TASK_DECOMPOSE (DCN-CHG-20260430-05) |
+| DESIGN_VALIDATION | `DESIGN_REVIEW_PASS` | architect TASK_DECOMPOSE |
 | DESIGN_VALIDATION | `DESIGN_REVIEW_FAIL` | architect SYSTEM_DESIGN 재진입 (cycle 한도 2) |
 | DESIGN_VALIDATION | `DESIGN_REVIEW_ESCALATE` | 사용자 위임 |
 | UX_VALIDATION | `PASS` | architect SYSTEM_DESIGN |
@@ -219,7 +218,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 ### 4.4 인프라 패턴 (전 에이전트 공통 차단)
 
-> **코드 SSOT** (DCN-CHG-20260501-01): 실제 강제 패턴은 `harness/agent_boundary.py:DCNESS_INFRA_PATTERNS`. 본 §4.4 와 코드는 항상 동기 — 변경 시 양쪽 함께.
+> **코드 SSOT**: 실제 강제 패턴은 `harness/agent_boundary.py:DCNESS_INFRA_PATTERNS`. 본 §4.4 와 코드는 항상 동기 — 변경 시 양쪽 함께.
 
 ```python
 DCNESS_INFRA_PATTERNS = [
@@ -234,7 +233,7 @@ DCNESS_INFRA_PATTERNS = [
 ]
 ```
 
-> RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 dcness 가 정정 — 파일명은 `docs/orchestration.md` + `docs/handoff-matrix.md` (split 후 양쪽). loop-procedure / dcness-guidelines / hooks·session_state·agent_boundary 도 dcness 가 추가 보호 (DCN-30-30/31/32 split + DCN-CHG-20260505-03 loop-catalog 흡수 산출물).
+> RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 dcness 가 정정 — 파일명은 `docs/orchestration.md` + `docs/handoff-matrix.md` (split 후 양쪽). loop-procedure / dcness-guidelines / hooks·session_state·agent_boundary 도 dcness 가 추가 보호 (DCN-30-30/31/32 split + loop-catalog 흡수 산출물).
 
 인프라 프로젝트(`is_infra_project()` True) 에선 위 패턴 해제 (dcness 자체 작업 시 본 SSOT 들도 편집 가능해야 함).
 
@@ -247,7 +246,7 @@ RWHarness 4 신호 OR 정합:
 3. `CLAUDE_PLUGIN_ROOT` 환경변수 non-empty
 4. `cwd.resolve() == Path("/Users/<user>/project/dcness")` (또는 화이트리스트 매칭)
 
-> **코드 강제** (DCN-CHG-20260501-01): `harness/agent_boundary.py` 가 본 spec 의 SSOT 구현. `hooks/file-guard.sh` (PreToolUse Edit/Write/Read/Bash) + `hooks/post-agent-clear.sh` (PostToolUse Agent) 가 활성화. opt-out 마커 = `.no-dcness-guard` (cwd) — 사용자 임시 우회.
+> **코드 강제**: `harness/agent_boundary.py` 가 본 spec 의 SSOT 구현. `hooks/file-guard.sh` (PreToolUse Edit/Write/Read/Bash) + `hooks/post-agent-clear.sh` (PostToolUse Agent) 가 활성화. opt-out 마커 = `.no-dcness-guard` (cwd) — 사용자 임시 우회.
 
 ---
 
