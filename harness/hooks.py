@@ -1,4 +1,4 @@
-"""hooks.py — Claude Code 훅 핸들러 (`docs/conveyor-design.md` §7).
+"""hooks.py — Claude Code 훅 핸들러 (`docs/archive/conveyor-design.md` §7).
 
 bash 훅 (`hooks/*.sh`) 이 stdin payload + cc_pid 를 본 모듈의 핸들러로 전달.
 순수 Python 으로 catastrophic 검사 + by-pid 레지스트리 갱신을 처리.

@@ -18,6 +18,16 @@
 
 ## Records
 
+### DCN-CHG-20260506-08
+- **Date**: 2026-05-06
+- **Rationale**: Story 1.3 (#155) commit `2df1113` 가 `docs/conveyor-design.md` → `docs/archive/conveyor-design.md` 이동 + 인용처 12곳 갱신 했지만 harness 코드 docstring 2건 누락. Epic 1 검증 단계 (Epic 1 머지 후 review) 에서 발견 — `rg -n 'docs/conveyor-design\.md' harness/` → 2 hit. cmd-click 시 깨짐.
+- **Alternatives**:
+  1. *그대로 두기* — dcness self 작업자가 cmd-click 시 매번 깨짐 경험. 작은 비용이지만 누적.
+  2. *(채택)* **단순 path 갱신**: `docs/conveyor-design.md` → `docs/archive/conveyor-design.md`. mechanical fix.
+  3. *Epic 2 Story 2.5 (참조 경로 일괄 갱신) 에 묶어 처리* — Epic 2 진행 시점이 미정. 그때까지 깨진 채. 작은 fix 분리하는 게 회귀 추적 명확.
+- **Decision**: 옵션 2. 즉시 별도 PR 로 정리. Issue #179 생성 후 진행.
+- **Follow-Up**: `harness/` 안 다른 archived 경로 참조 0 — 본 PR 로 정리 완료. 향후 archive 이동 작업 시 `harness/` 도 검증 항목에 포함 의무.
+
 ### DCN-CHG-20260506-07
 - **Date**: 2026-05-06
 - **Rationale**: Epic 1 머지 후 reflog 검증 — Story 1.3 (`#155`) commit `2df1113` 이 *main 위에서 직접* 만들어짐 (11:53 main HEAD → commit). PR 도 안 만들어졌고 issue auto-close 도 안 됨. 자연어 룰 (`CLAUDE.md` line 166 "main 직접 commit/push 금지" / `docs/process/git-naming-spec.md` / `docs/process/main-claude-rules.md`) 만으론 메인 Claude / 작업자가 새는 게 dcness self 에서 입증. 다른 강제 카테고리 (doc-sync / Task-ID format / pytest) 는 hook 으로 mechanical 강제 → 새지 않음. main commit 차단만 자연어 룰 → 새는 카테고리.

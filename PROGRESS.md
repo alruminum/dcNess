@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **🔧 harness/ docstring archive 경로 정리 (#179)** (`DCN-CHG-20260506-08`): Story 1.3 인용처 갱신 누락분. `harness/session_state.py` + `harness/hooks.py` 의 `docs/conveyor-design.md` 인용 → `docs/archive/conveyor-design.md`.
+
 - **🔒 main 직접 commit 차단 hook 게이트 신설 (#173)** (`DCN-CHG-20260506-07`): `scripts/hooks/pre-commit` + `scripts/hooks/cc-pre-commit.sh` 양쪽에 main 브랜치 차단 추가. 자연어 룰만 있던 카테고리 mechanical 강제 (Story 1.3 회귀 방지). governance §2.7 게이트 매트릭스에 row 추가.
 
 - **📂 Epic 2 — docs 폴더 분리 (#151)** (진행 중):

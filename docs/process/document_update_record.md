@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260506-08
+- **Date**: 2026-05-06
+- **Change-Type**: harness, docs-only
+- **Files Changed**:
+  - `harness/session_state.py` line 3 — `docs/conveyor-design.md` → `docs/archive/conveyor-design.md`
+  - `harness/hooks.py` line 1 — 동일
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md` (Why)
+  - `PROGRESS.md` (현재 상태 1줄)
+- **Summary**: Story 1.3 (#155) 의 인용처 전수 갱신에서 누락된 harness 코드 docstring 2건을 archive 경로로 정리. (Issue #179)
+- Document-Exception: docstring 만 변경 — 동작 영향 0. tests/** 또는 docs/impl/** 동반 불필요.
+- Document-Exception-Task: DCN-CHG-20260506-08
+
 ### DCN-CHG-20260506-07
 - **Date**: 2026-05-06
 - **Change-Type**: ci, docs-only
