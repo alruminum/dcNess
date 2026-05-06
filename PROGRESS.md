@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **✅ 거버넌스 슬림화 완료 (#182)**: Task-ID + WHAT/WHY 로그 시스템 폐기 3-PR 시리즈 완료. PR-1(게이트/스크립트 폐기) + PR-2(문서 정리 + 룰 슬림화) + PR-3(Epic 3 재평가 — 그대로 진행 결정). 다음: Epic 3 (#152) Story 3.1 (#162) — marketplace.json source.ref 실측 검증.
+
 - **🔧 #151 후속 — 옛 경로 잔존 7건 정리** (`DCN-CHG-20260506-14`): Epic 2 검증 정규식이 `(../docs/X.md)` 만 잡아 `(../X.md)` 형태 마크다운 링크 누수. `harness/agent_boundary.py` docstring + `docs/internal/main-claude-rules.md` (5건+4링크) + `docs/internal/self-guidelines.md` (2건) + `docs/plugin/handoff-matrix.md` §4.4 (1건) + `commands/init-dcness.md` §4 (dcness self repo 명시 라인) 일괄 갱신.
 
 - **🔧 harness/ docstring archive 경로 정리 (#179)** (`DCN-CHG-20260506-08`): Story 1.3 인용처 갱신 누락분. `harness/session_state.py` + `harness/hooks.py` 의 `docs/conveyor-design.md` 인용 → `docs/archive/conveyor-design.md`.
