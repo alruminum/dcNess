@@ -18,6 +18,21 @@
 
 ## Records
 
+### DCN-CHG-20260506-11
+- **Date**: 2026-05-06
+- **Rationale**: 본 세션 (2026-05-06) 다른 sub-session 이 Story 2.2 (#158) PR #181 생성 후 머지 안 하고 멈춤. `CLAUDE.md` §5 step 8 (`gh pr merge`) 명시에도 불구하고. 룰 문서 안 모호한 "사용자 승인 → squash merge" (handoff-matrix 110, orchestration 60) 가 인간 사용자 수동 머지 대기로 오역되는 root cause. 또한 `regular merge` 정착 후 `loop-procedure.md` 안 `--squash` 잔재 2 곳 + `CLAUDE.md` line 92 자기모순 (line 168 "squash 금지" 와 충돌).
+- **Alternatives**:
+  1. *그대로 두기* — 회귀 반복. 매 PR 마다 사용자가 수동 개입. 비용 큼.
+  2. *(채택)* **자동 머지 명시화** — "LGTM 후 자동 (regular merge)" 명문화 + squash 잔재 제거.
+  3. *모드 분기 (큰 변경은 사용자 승인, 디폴트 자동)* — "큰 변경" 정의 모호. 기준 자체가 또 다른 회귀 source. 디폴트 = 자동 + 메인 판단으로 사용자에게 prose 보고하면 충분. 옵션 3 deferred.
+- **Decision**:
+  - 5 곳 정정 — handoff-matrix.md 110 / orchestration.md 60 / loop-procedure.md 238 + 255 / CLAUDE.md 92.
+  - UX refine 단계의 "사용자 승인" (handoff-matrix 36 / orchestration 156, 382, 388) 은 *진짜* 인간 사용자 검토 단계라 그대로. 머지 단계와 의미 분리.
+- **Follow-Up**:
+  - 다음 PR 작업부터 다른 세션이 자동 머지 진행 — 본 PR 자체가 self-test (CI PASS + LGTM 후 즉시 머지).
+  - 본 정정은 [#182](https://github.com/alruminum/dcNess/issues/182) (거버넌스 슬림화) 별개. 머지 컨벤션 명확화 ≠ 거버넌스 폐기.
+  - 외부 활성화 프로젝트 (jajang 등) plug-in update 시 자동 반영 (`docs/plugin/` 본체 갱신).
+
 ### DCN-CHG-20260506-08
 - **Date**: 2026-05-06
 - **Rationale**: Story 1.3 (#155) commit `2df1113` 가 `docs/conveyor-design.md` → `docs/archive/conveyor-design.md` 이동 + 인용처 12곳 갱신 했지만 harness 코드 docstring 2건 누락. Epic 1 검증 단계 (Epic 1 머지 후 review) 에서 발견 — `rg -n 'docs/conveyor-design\.md' harness/` → 2 hit. cmd-click 시 깨짐.
