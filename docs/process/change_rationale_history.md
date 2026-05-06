@@ -2531,6 +2531,22 @@
   - **(별도 Task)** Phase 2 다른 12 agent docs 변환 시 본 섹션의 "validator 등" 표현이 자연스럽게 일반화 (각 검증 에이전트마다 동일 패턴).
   - **(측정)** 외부 에이전트가 본 저장소에 보낸 PR 의 status JSON 사용 빈도. 30일 후 운영 데이터로 본 안내가 효과적인지 평가.
 
+### DCN-CHG-20260506-09
+- **Date**: 2026-05-06
+- **Rationale**:
+  - `docs/status-json-mutate-pattern.md` (444줄) 는 proposal 단계 브레인스토밍 문서. Phase 분할 / Risks / RWHarness 전환 절차 등 역사 자료가 대부분. 사용자에게 필요한 것은 대 원칙 + Anti-Pattern 5원칙 + heuristic-only 결정 — 이 핵심만 58줄 SSOT 로 추출.
+  - 외부 배포물(agents/ 12개 footer)이 444줄 제안서를 직접 참조하는 구조 = 사용자가 원하는 내용을 찾기 위해 불필요한 역사 자료를 읽어야 하는 noise.
+  - Epic 2 (#151) docs 폴더 분리 목표 정합: "사용자가 봐야 할 (plugin/) / 역사 자료 (archive/)" 구분.
+- **Alternatives**:
+  1. *그대로 유지* — 444줄 proposal 이 현행 SSOT. 사용자 noise 지속. 기각.
+  2. *status-json-mutate-pattern.md 를 직접 슬림화* — 원전 훼손, 역사 추적 어려움. 기각.
+  3. *(채택)* **추출 + archive**: 핵심 원리 → `docs/plugin/prose-only-principle.md` (58줄) + 원본 → `docs/archive/status-json-mutate-pattern.md` 보존.
+- **Decision**:
+  - 옵션 3 채택. agents/ footer 12개 + 기타 인용처 25곳 → `docs/plugin/prose-only-principle.md` 로 갱신. 역사 자료(Phase 분할/Risks) 는 archive 에서 계속 접근 가능.
+- **Follow-Up**:
+  - Story 2.3 (#159) 에서 `docs/plugin/` 폴더 이동 시 `prose-only-principle.md` 포함 확인 (이미 `docs/plugin/` 에 위치).
+  - Story 2.5 (#161) 참조 경로 일괄 갱신 시 `docs/archive/status-json-mutate-pattern.md` 잔여 참조 확인.
+
 ### DCN-CHG-20260506-06
 - **Date**: 2026-05-06
 - **Rationale**:

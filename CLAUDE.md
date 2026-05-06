@@ -67,8 +67,8 @@
 
 ### 0.6 모드 (위 0.1~0.5 정체성 위에서)
 
-- **목적**: RWHarness fork-and-refactor — status-JSON-mutate 결정론 + 4 기둥 정합 + 함정 회피 5원칙 (`docs/status-json-mutate-pattern.md` §1~§2.5).
-- **모드**: **메인 Claude 직접 작업** (`status-json-mutate-pattern.md` §10 / §11.4 정합).
+- **목적**: RWHarness fork-and-refactor — Prose-Only 원칙 결정론 + 4 기둥 정합 + 함정 회피 5원칙 (`docs/plugin/prose-only-principle.md` §2).
+- **모드**: **메인 Claude 직접 작업** (`docs/archive/status-json-mutate-pattern.md` §10 / §11.4 정합).
   - architect / validator / engineer 위임 강제 **없음**.
   - RWHarness 가드 미적용 환경. **단** Document Sync 거버넌스만 강제.
   - 글로벌 `~/.claude/CLAUDE.md` 의 RWHarness 위임 룰(에이전트 분기 / 인프라 프로젝트 분기)은 본 프로젝트에 **미적용**. 본 파일이 우선한다.
@@ -118,7 +118,8 @@
 | [`docs/process/change_rationale_history.md`](docs/process/change_rationale_history.md) | spec / agent / harness / hooks / ci 변경 시 (WHY 로그) |
 | [`docs/process/document_impact_matrix.md`](docs/process/document_impact_matrix.md) | 변경 영향 범위 검토 시 |
 | [`docs/design.md`](docs/design.md) | 디자인 시스템 SSOT 변경 / plug-in agent 디자인 룰 영향 작업 시 |
-| [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | 하네스 설계·Phase 수정 시 |
+| [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) | Prose-Only 원칙 (대 원칙 + Anti-Pattern) 확인 시 |
+| [`docs/archive/status-json-mutate-pattern.md`](docs/archive/status-json-mutate-pattern.md) | 하네스 Phase 분할 / 전환 절차 원전 참조 시 (역사 자료) |
 | [`docs/orchestration.md`](docs/orchestration.md) | 오케스트레이션 로직(시퀀스·retry·escalate) 수정 시 |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태·TODO·Blockers 확인 시 |
 | [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 수정 시 |

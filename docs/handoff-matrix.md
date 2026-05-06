@@ -160,7 +160,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 ## 3. Escalate 조건 카탈로그
 
-다음 결론 enum 수신 시 **메인 Claude / driver 가 즉시 사용자 보고 후 대기** ([`status-json-mutate-pattern.md`](status-json-mutate-pattern.md) §2.5 정합 — 자동 복구 금지):
+다음 결론 enum 수신 시 **메인 Claude / driver 가 즉시 사용자 보고 후 대기** ([`plugin/prose-only-principle.md`](plugin/prose-only-principle.md) §2 원칙 2 정합 — 자동 복구 금지):
 
 | Enum | 출처 agent | 의미 |
 |---|---|---|
@@ -179,7 +179,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 ## 4. 접근 권한 매트릭스
 
-> RWHarness `harness-architecture.md` §3 의 dcNess 변환. dcness 의 두 번째 강제 영역 = "접근 영역" ([`status-json-mutate-pattern.md`](status-json-mutate-pattern.md) §2.5 정합).
+> RWHarness `harness-architecture.md` §3 의 dcNess 변환. dcness 의 두 번째 강제 영역 = "접근 영역" ([`plugin/prose-only-principle.md`](plugin/prose-only-principle.md) §1 정합).
 
 ### 4.1 호출 권한 (HARNESS_ONLY_AGENTS)
 
@@ -255,6 +255,7 @@ RWHarness 4 신호 OR 정합:
 
 - [`orchestration.md`](orchestration.md) — 시퀀스 catalog (§2 게이트 + §3 진입 경로 + §4 8 loop 행별 풀스펙)
 - [`loop-procedure.md`](loop-procedure.md) — Step 0~8 mechanics
-- [`status-json-mutate-pattern.md`](status-json-mutate-pattern.md) — proposal SSOT (정체성 / 원칙)
+- [`plugin/prose-only-principle.md`](plugin/prose-only-principle.md) — Prose-Only 원칙 현행 SSOT (대 원칙 + Anti-Pattern 5원칙)
+- [`archive/status-json-mutate-pattern.md`](archive/status-json-mutate-pattern.md) — Prose-Only 원전 proposal (역사 자료)
 - `agents/*.md` — 각 agent 의 결론 enum 출처
 - `harness/signal_io.py` / `harness/interpret_strategy.py` — enum 추출 인프라

@@ -148,7 +148,7 @@ EOF
 - 핵심: harness/session_state.py, harness/hooks.py, hooks/*.sh, commands/*.md
 - spec: docs/archive/conveyor-design.md (v2 Task tool 패턴, 역사 자료), docs/orchestration.md
 - agents/*.md 13개 모두 prose-only (DCN-CHG-27)
-- proposal: docs/status-json-mutate-pattern.md §2.5 (prose-only)
+- proposal: docs/plugin/prose-only-principle.md §2 (Anti-Pattern 5원칙)
 
 다음 세션은 worktree 도입 의논 이어서 + manual smoke 또는 /init-dcness 진행.
 ```

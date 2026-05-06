@@ -96,4 +96,4 @@ LOW 만 있으면 `SECURE` (리포트 포함).
 ## 참조
 
 - 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/orchestration.md`](../docs/orchestration.md)
-- prose-only 발상: [`docs/status-json-mutate-pattern.md`](../docs/status-json-mutate-pattern.md)
+- prose-only 발상: [`docs/plugin/prose-only-principle.md`](../docs/plugin/prose-only-principle.md)
