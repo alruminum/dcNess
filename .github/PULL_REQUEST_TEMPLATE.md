@@ -1,28 +1,25 @@
-## Summary
-<!-- 변경 요약 1~3줄 -->
+## 변경 요약
 
-## Task-ID
-`DCN-CHG-YYYYMMDD-NN`
+### {커밋 제목}
+- **What**: 
+- **Why**: 
 
-## Change-Type
-<!-- governance §2.2 — 해당 토큰 모두 체크 -->
-- [ ] `spec`
-- [ ] `agent`
-- [ ] `harness`
-- [ ] `hooks`
-- [ ] `ci`
-- [ ] `test`
-- [ ] `docs-only`
+## 결정 근거
 
-## Document Sync Checklist
-- [ ] `docs/internal/document_update_record.md` 갱신 (WHAT 로그)
-- [ ] `docs/internal/change_rationale_history.md` 갱신 — *spec/agent/harness/hooks/ci 변경 시*
-- [ ] `PROGRESS.md` 갱신 — *harness/hooks/ci 변경 시*
-- [ ] 카테고리별 deliverable 동반 (impact matrix)
-- [ ] `node scripts/check_document_sync.mjs` 로컬 실행 통과
-- [ ] *(예외 시)* `Document-Exception:` 사유 기재
+<!-- 검토한 대안, 선택 이유. 단순 변경이면 `-` -->
+-
+
+## 관련 이슈
+
+- #N
+
+## 배포 경로 검증
+
+<!-- plug-in 기능 추가 시: 어떤 경로(1/2/3)로 사용자 환경에 도달하는지 명시 (CLAUDE.md §0.5) -->
+-
 
 ## Test Plan
+
 - [ ] 관련 테스트 추가/갱신
 - [ ] 회귀 검증
 

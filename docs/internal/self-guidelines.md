@@ -16,10 +16,10 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 - `agents/**/*.md` (agent prompt)
 
 **대상 외 (cap 미적용)**:
-- `docs/internal/document_update_record.md` / `change_rationale_history.md` (역사 로그 — append-only)
 - `PROGRESS.md` (스냅샷)
 - `docs/spec/**` / `docs/proposals/**` (긴 사양 문서 — 의사결정 직접 read X)
 - `tests/**` / `harness/**` 등 코드
+- `docs/archive/**` (역사 자료 — read-only)
 
 **Why**:
 - 메인 Claude / sub-agent 가 매 결정 시 read → 토큰 누적 + thinking 시간 ↑.
