@@ -6,9 +6,19 @@
 #   cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 #
 # 게이트:
-#   1. document-sync (모든 commit)
-#   2. python-tests (harness/tests/agents/yml staged 시만)
+#   1. main 직접 commit 차단 (모든 commit)
+#   2. document-sync (모든 commit)
+#   3. python-tests (harness/tests/agents/yml staged 시만)
 
 set -e
+
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+if [ "$current_branch" = "main" ]; then
+  echo "ERROR: main 직접 commit 금지. branch 만든 후 commit + PR." >&2
+  echo "  git checkout -b feature/<name>" >&2
+  echo "  git commit ..." >&2
+  exit 1
+fi
+
 node scripts/check_document_sync.mjs
 sh scripts/check_python_tests.sh

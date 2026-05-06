@@ -20,6 +20,18 @@
 
 ## Records
 
+### DCN-CHG-20260506-07
+- **Date**: 2026-05-06
+- **Change-Type**: ci, docs-only
+- **Files Changed**:
+  - `scripts/hooks/pre-commit` — main 직접 commit 차단 게이트 추가 (set -e 다음)
+  - `scripts/hooks/cc-pre-commit.sh` — `git commit` 매처 안 main 차단 게이트 추가 (exit 2)
+  - `docs/process/governance.md` §2.7 — 게이트 매트릭스에 main-block row 추가, 발견 사례 인용
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md` (Why / Decision)
+  - `PROGRESS.md` (현재 상태 1줄 추가)
+- **Summary**: main 직접 commit 차단 hook 게이트 신설. 자연어 룰만 있던 카테고리에 mechanical 강제 추가 (Story 1.3 회귀 방지). git pre-commit + cc-pre-commit 양쪽. (Issue #173)
+
 ### DCN-CHG-20260506-05
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only
