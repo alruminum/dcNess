@@ -20,6 +20,13 @@
 
 ## Records
 
+### DCN-CHG-20260506-01
+- **Date**: 2026-05-06
+- **Change-Type**: agent
+- **Files Changed**:
+  - `commands/init-dcness.md` — Step 2.6 bash 블록에 dcness-guidelines.md 배포 스텝 추가 (스텝 4). Step 3 안내 텍스트에 dcness-guidelines.md 항목 추가.
+- **Summary**: init-dcness 가 dcness-guidelines.md 를 사용자 프로젝트에 배포하지 않아 SessionStart 훅 Read 실패하는 버그 수정.
+
 ### DCN-CHG-20260505-04
 - **Date**: 2026-05-05
 - **Change-Type**: ci, docs-only
