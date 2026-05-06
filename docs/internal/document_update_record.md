@@ -20,6 +20,22 @@
 
 ## Records
 
+### DCN-CHG-20260506-15
+- **Date**: 2026-05-06
+- **Change-Type**: ci, hooks
+- **Files Changed**:
+  - `scripts/check_task_id.mjs` — 삭제
+  - `scripts/check_document_sync.mjs` — 삭제
+  - `.github/workflows/task-id-validation.yml` — 삭제
+  - `.github/workflows/document-sync.yml` — 삭제
+  - `scripts/hooks/pre-commit` — doc-sync 호출 제거 (main-block + python-tests 유지)
+  - `scripts/hooks/cc-pre-commit.sh` — doc-sync 블록 제거
+  - `docs/plugin/handoff-matrix.md` — infra 보호 패턴에서 `check_document_sync|check_task_id` 제거
+  - `docs/internal/document_update_record.md` (본 항목 — 마지막 entry)
+  - `docs/internal/change_rationale_history.md` (WHY — 마지막 entry)
+  - `PROGRESS.md`
+- **Summary**: 이슈 #182 PR-1 — Task-ID + 동반 갱신 게이트 시스템 폐기. GitHub 이 WHAT/WHY 추적을 더 정확하게 대체. 이후 동반 갱신 강제 없음.
+
 ### DCN-CHG-20260506-14
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only, harness

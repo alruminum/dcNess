@@ -34,12 +34,6 @@ case "$COMMAND" in
       echo "  git checkout -b feature/<name>" >&2
       exit 2
     fi
-    if [ -f scripts/check_document_sync.mjs ]; then
-      if ! node scripts/check_document_sync.mjs >&2; then
-        # PreToolUse block: exit 2
-        exit 2
-      fi
-    fi
     if [ -f scripts/check_python_tests.sh ]; then
       if ! sh scripts/check_python_tests.sh; then
         exit 2
