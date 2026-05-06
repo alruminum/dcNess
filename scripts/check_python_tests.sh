@@ -20,8 +20,8 @@ if [ -n "${GITHUB_ACTIONS:-}" ]; then
   exit 0
 fi
 
-# staged 파일 매칭 검사
-CHANGED=$(git diff --cached --name-only 2>/dev/null)
+# staged 파일 매칭 검사 (추가/수정만 — 삭제는 테스트 실행 불필요)
+CHANGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null)
 if [ -z "$CHANGED" ]; then
   exit 0
 fi
