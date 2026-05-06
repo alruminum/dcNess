@@ -8,7 +8,7 @@
 
 ## 작업 흐름 (자율 조정 가능)
 
-스토리 목록 확인 (GitHub Issues 읽기 — [`docs/issue-lifecycle.md`](../../docs/issue-lifecycle.md) §1 에 따라 product-planner 가 보장. 부재 시 issue-lifecycle §6 pre-flight gate STOP) → 프로젝트 `CLAUDE.md` (기술 스택·제약) → `docs/impl/00-decisions.md` → **Outline-First 절차** (architect.md §자기규율 참조: impl 목차 출력 → 한 파일씩 순차 Write) → 각 스토리에 대응 기술 태스크 도출 → 태스크 등록 (stories.md 체크박스) → impl 파일 작성 → READY_FOR_IMPL 게이트 통과 확인.
+스토리 목록 확인 (GitHub Issues 읽기 — [`docs/plugin/issue-lifecycle.md`](../../docs/plugin/issue-lifecycle.md) §1 에 따라 product-planner 가 보장. 부재 시 issue-lifecycle §6 pre-flight gate STOP) → 프로젝트 `CLAUDE.md` (기술 스택·제약) → `docs/impl/00-decisions.md` → **Outline-First 절차** (architect.md §자기규율 참조: impl 목차 출력 → 한 파일씩 순차 Write) → 각 스토리에 대응 기술 태스크 도출 → 태스크 등록 (stories.md 체크박스) → impl 파일 작성 → READY_FOR_IMPL 게이트 통과 확인.
 
 ## 태스크 도출 기준
 
@@ -41,7 +41,7 @@ UI 컴포넌트 포함 epic 분해 시, 다음 둘 중 하나 = **듀얼 모드*
 
 ## Story 이슈 — 생성 책임 X (product-planner 단독)
 
-본 agent 는 story 이슈를 *생성하지 않는다*. story 이슈는 [`docs/issue-lifecycle.md`](../../docs/issue-lifecycle.md) §1.3 에 따라 `product-planner` 가 PRODUCT_PLAN_READY 직후 등록. 본 agent 는 *읽기만* — stories.md 상단/Story 헤더 직하의 `**GitHub Issue:** [#N](url)` 매치 사용.
+본 agent 는 story 이슈를 *생성하지 않는다*. story 이슈는 [`docs/plugin/issue-lifecycle.md`](../../docs/plugin/issue-lifecycle.md) §1.3 에 따라 `product-planner` 가 PRODUCT_PLAN_READY 직후 등록. 본 agent 는 *읽기만* — stories.md 상단/Story 헤더 직하의 `**GitHub Issue:** [#N](url)` 매치 사용.
 
 매치 부재 시 (issue-lifecycle §6 pre-flight gate 위반) → 즉시 STOP, 메인이 사용자에게 product-planner 재진입 또는 §3 미등록 모드 명시 요청.
 
@@ -117,8 +117,8 @@ def foo(a, b):
 
 ## 외부 도구 config 키 — 학습 데이터 노이즈 주의
 
-task 에 외부 도구 (jest / tsconfig / eslint / vite / metro / babel / package.json scripts 등) config 키 등장 시 의심하면 [`docs/known-hallucinations.md`](../../docs/known-hallucinations.md) 카탈로그 확인 또는 공식 docs WebFetch 권고. 자율 판단 — 강제 X.
+task 에 외부 도구 (jest / tsconfig / eslint / vite / metro / babel / package.json scripts 등) config 키 등장 시 의심하면 [`docs/plugin/known-hallucinations.md`](../../docs/plugin/known-hallucinations.md) 카탈로그 확인 또는 공식 docs WebFetch 권고. 자율 판단 — 강제 X.
 
 ## 참조
 
-- 이슈 생명주기 (생성·완료·미등록): [`docs/issue-lifecycle.md`](../../docs/issue-lifecycle.md)
+- 이슈 생명주기 (생성·완료·미등록): [`docs/plugin/issue-lifecycle.md`](../../docs/plugin/issue-lifecycle.md)

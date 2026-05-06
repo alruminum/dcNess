@@ -1,13 +1,13 @@
 # AGENTS — Common Instructions
 
-본 저장소는 **Document Sync 거버넌스**를 강제한다. 규칙 정의의 SSOT 는 [`docs/process/governance.md`](docs/process/governance.md). 본 파일은 *지침* 일 뿐 규칙을 *재기술하지 않는다*.
+본 저장소는 **Document Sync 거버넌스**를 강제한다. 규칙 정의의 SSOT 는 [`docs/internal/governance.md`](docs/internal/governance.md). 본 파일은 *지침* 일 뿐 규칙을 *재기술하지 않는다*.
 
 ## 모든 에이전트(사람 포함) 강제 절차
 
 1. **작업 시작**: Task-ID 발급 — `DCN-CHG-YYYYMMDD-NN` (governance §2.1).
 2. **작업 완료 직전** 다음 파일 갱신:
-   - `docs/process/document_update_record.md` (모든 변경)
-   - `docs/process/change_rationale_history.md` (spec / agent / harness / hooks / ci 변경 시)
+   - `docs/internal/document_update_record.md` (모든 변경)
+   - `docs/internal/change_rationale_history.md` (spec / agent / harness / hooks / ci 변경 시)
    - `PROGRESS.md` (harness / hooks / ci 변경 시)
    - 카테고리별 deliverable (governance §2.6)
 3. **commit 직전 반드시**: `node scripts/check_document_sync.mjs` 실행. 실패 시 누락 항목 보충 후 재시도.
@@ -66,8 +66,8 @@ orchestrator 측 해석은 [`harness/signal_io.py`](harness/signal_io.py) 의 `i
 
 ## 참조
 
-- [`docs/process/governance.md`](docs/process/governance.md) — SSOT (모든 거버넌스 규칙)
+- [`docs/internal/governance.md`](docs/internal/governance.md) — SSOT (모든 거버넌스 규칙)
 - [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) — Prose-Only 원칙 현행 SSOT
-- [`docs/process/document_impact_matrix.md`](docs/process/document_impact_matrix.md) — 변경 → 검토 문서 빠른 참조
+- [`docs/internal/document_impact_matrix.md`](docs/internal/document_impact_matrix.md) — 변경 → 검토 문서 빠른 참조
 - [`PROGRESS.md`](PROGRESS.md) — 현재 상태 / TODO / Blockers
 - [`README.md`](README.md) — 프로젝트 개요 + Quick Start

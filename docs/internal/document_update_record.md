@@ -20,6 +20,30 @@
 
 ## Records
 
+### DCN-CHG-20260506-13
+- **Date**: 2026-05-06
+- **Change-Type**: agent, docs-only, harness, test
+- **Files Changed**:
+  - `agents/*.md` (16개) — orchestration/issue-lifecycle hyperlink `docs/` → `docs/plugin/`
+  - `agents/architect/*.md` + `agents/validator/*.md` (4개) — known-hallucinations 포함 `../../docs/` → `../../docs/plugin/`
+  - `commands/quick.md` + `commands/impl.md` + `commands/impl-loop.md` + `commands/product-plan.md` + `commands/qa.md` — orchestration/loop-procedure/handoff-matrix/issue-lifecycle `docs/` → `docs/plugin/`
+  - `commands/smart-compact.md` — docs/process/ → docs/internal/ + orchestration 경로
+  - `docs/internal/self-guidelines.md` — docs/process/ → docs/internal/
+  - `docs/internal/branch-surface-tracking.md` — docs/process/ → docs/internal/
+  - `docs/plugin/handoff-matrix.md` — INFRA_PATTERNS 구 경로 4개 갱신 (orchestration/handoff-matrix/loop-procedure/governance)
+  - `harness/agent_boundary.py` — DCNESS_INFRA_PATTERNS 구 경로 갱신 + docs/loop-catalog 삭제된 항목 제거
+  - `tests/test_agent_boundary.py` — 테스트 경로 참조 4개 갱신
+  - `CLAUDE.md` — docs/process/ 전면 갱신 + orchestration/design docs/plugin/ 갱신
+  - `README.md` — docs/process/ → docs/internal/ (6건)
+  - `AGENTS.md` — docs/process/ → docs/internal/ (5건)
+  - `scripts/check_document_sync.mjs` + `scripts/check_task_id.mjs` + `scripts/check_git_naming.mjs` + `scripts/check_python_tests.sh` + `scripts/setup_branch_protection.mjs` — 주석 경로 갱신
+  - `scripts/hooks/cc-pre-commit.sh` + `scripts/hooks/pre-commit` + `scripts/hooks/commit-msg` — 주석 경로 갱신
+  - `.github/PULL_REQUEST_TEMPLATE.md` + `.github/workflows/*.yml` (3개) — 경로 갱신
+  - `docs/internal/document_update_record.md` (본 항목)
+  - `docs/internal/change_rationale_history.md` (Why)
+  - `PROGRESS.md` (harness 변경)
+- **Summary**: Story 2.5 (#161) — Epic 2 (Story 2.1~2.4) 이동 완료 후 전체 참조 경로 일괄 갱신. agents/ 24건, commands/ 갱신, docs/internal cross-ref, harness DCNESS_INFRA_PATTERNS 4개 → 신 경로 + 삭제된 loop-catalog 제거, tests 4건, CLAUDE.md/README.md/AGENTS.md, scripts/hooks/.github 주석 경로 전수 갱신.
+
 ### DCN-CHG-20260506-12
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only, ci

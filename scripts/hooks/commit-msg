@@ -1,6 +1,6 @@
 #!/bin/sh
 # commit-msg hook — git-naming-spec 커밋 제목 형식 검증
-# 규칙 정의: docs/process/git-naming-spec.md §2 (SSOT)
+# 규칙 정의: docs/plugin/git-naming-spec.md §2 (SSOT)
 #
 # 설치: cp scripts/hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
 

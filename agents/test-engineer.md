@@ -105,5 +105,5 @@ impl 인터페이스 모호 시 *추측 금지*:
 
 ## 참조
 
-- 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/orchestration.md`](../docs/orchestration.md)
+- 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md)
 - prose-only 발상: [`docs/plugin/prose-only-principle.md`](../docs/plugin/prose-only-principle.md)

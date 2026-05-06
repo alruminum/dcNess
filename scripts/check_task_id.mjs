@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * dcNess Task-ID 형식 검증 게이트
- * 규칙 정의: docs/process/governance.md §2.1 (SSOT)
+ * 규칙 정의: docs/internal/governance.md §2.1 (SSOT)
  *
  * 사용:
  *   node scripts/check_task_id.mjs                 # 로컬: HEAD 커밋 1개 검사
@@ -160,7 +160,7 @@ if (violations.length > 0) {
     console.error(`    → ${v.error}`);
   }
   console.error('');
-  console.error('규칙: docs/process/governance.md §2.1 (Task-ID = DCN-CHG-YYYYMMDD-NN, 커밋당 1개)');
+  console.error('규칙: docs/internal/governance.md §2.1 (Task-ID = DCN-CHG-YYYYMMDD-NN, 커밋당 1개)');
   process.exit(1);
 }
 

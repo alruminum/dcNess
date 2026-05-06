@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260506-13
+- **Date**: 2026-05-06
+- **Rationale**: Story 2.5 (#161) — Epic 2 (Story 2.1~2.4) 에서 파일 이동은 완료됐으나 전체 저장소의 구 경로 참조 (~138 occurrence) 가 남아 있음. agents/ footers, commands/ 본문, harness/agent_boundary.py DCNESS_INFRA_PATTERNS, tests, CLAUDE.md/README.md/AGENTS.md, scripts/hooks/.github 주석 등 모든 영역에서 깨진 링크 상태.
+- **Alternatives**:
+  1. *파일 이동과 동시에 갱신 (Story 2.4 포함)* — 한 PR 에 git mv + 참조 갱신. PR 범위 과대 + 리뷰 부담. 분리가 단순하고 검증 용이.
+  2. *(채택)* **별도 Story 2.5: 이동 완료 후 참조 일괄 갱신** — agents/commands/harness/scripts 영역별 순차 갱신. 각 변경 후 rg 카운트 검증. 선행 Story 2.4 의 `check_document_sync.mjs` 경로 수정 덕분에 게이트 작동 상태에서 갱신 가능.
+- **Decision**: 옵션 2. 전 영역 일괄 갱신 1 commit. harness/agent_boundary.py DCNESS_INFRA_PATTERNS 에서 삭제된 `docs/loop-catalog.md` 항목 동시 제거 (파일 실존 없음 확인). tests 경로도 동시 갱신하여 pytest PASS 유지.
+- **Follow-Up**: Epic 2 (#151) 종료 — docs 폴더 분리 완료 (plugin/ + internal/ + archive/ 구조). Epic 3 (#152) release 브랜치 인프라로 이행.
+
 ### DCN-CHG-20260506-12
 - **Date**: 2026-05-06
 - **Rationale**: Story 2.4 (#160) — Epic 2 docs 폴더 분리의 3번째 파일 이동 단계. `docs/process/` 에 dcness self 거버넌스 7개 (governance / main-claude-rules / document_update_record / change_rationale_history / document_impact_matrix / branch-protection-setup / branch-surface-tracking) 가 남아 있음. `check_document_sync.mjs` 의 RECORD/RATIONALE 상수가 `docs/process/` 를 하드코딩 — 이동 후 게이트 작동 불가 상태 즉시 수정 필요.

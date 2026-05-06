@@ -55,4 +55,4 @@
 
 ## 외부 도구 config 키 — 학습 데이터 노이즈 주의
 
-light plan 에 외부 도구 (jest / tsconfig / eslint / vite / metro / babel / package.json scripts 등) config 키 등장 시 의심하면 [`docs/known-hallucinations.md`](../../docs/known-hallucinations.md) 카탈로그 확인 또는 공식 docs WebFetch 권고. 자율 판단 — 강제 X.
+light plan 에 외부 도구 (jest / tsconfig / eslint / vite / metro / babel / package.json scripts 등) config 키 등장 시 의심하면 [`docs/plugin/known-hallucinations.md`](../../docs/plugin/known-hallucinations.md) 카탈로그 확인 또는 공식 docs WebFetch 권고. 자율 판단 — 강제 X.

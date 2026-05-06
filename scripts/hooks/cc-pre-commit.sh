@@ -1,6 +1,6 @@
 #!/bin/sh
 # dcNess Claude Code PreToolUse hook (Bash matcher)
-# 규칙 정의: docs/process/governance.md §2.7
+# 규칙 정의: docs/internal/governance.md §2.7
 #
 # 입력: stdin JSON ({"tool_name":"Bash","tool_input":{"command":"..."}})
 # 동작: command 에 `git commit` 포함 시 doc-sync 게이트 실행
