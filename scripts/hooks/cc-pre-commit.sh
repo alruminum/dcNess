@@ -27,6 +27,13 @@ case "$COMMAND" in
   *"git commit"*)
     # 프로젝트 루트로 이동
     cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}" 2>/dev/null || exit 0
+    # main 직접 commit 차단
+    current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    if [ "$current_branch" = "main" ]; then
+      echo "ERROR: main 직접 commit 금지. branch 만든 후 commit + PR." >&2
+      echo "  git checkout -b feature/<name>" >&2
+      exit 2
+    fi
     if [ -f scripts/check_document_sync.mjs ]; then
       if ! node scripts/check_document_sync.mjs >&2; then
         # PreToolUse block: exit 2

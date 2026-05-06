@@ -18,6 +18,25 @@
 
 ## Records
 
+### DCN-CHG-20260506-07
+- **Date**: 2026-05-06
+- **Rationale**: Epic 1 머지 후 reflog 검증 — Story 1.3 (`#155`) commit `2df1113` 이 *main 위에서 직접* 만들어짐 (11:53 main HEAD → commit). PR 도 안 만들어졌고 issue auto-close 도 안 됨. 자연어 룰 (`CLAUDE.md` line 166 "main 직접 commit/push 금지" / `docs/process/git-naming-spec.md` / `docs/process/main-claude-rules.md`) 만으론 메인 Claude / 작업자가 새는 게 dcness self 에서 입증. 다른 강제 카테고리 (doc-sync / Task-ID format / pytest) 는 hook 으로 mechanical 강제 → 새지 않음. main commit 차단만 자연어 룰 → 새는 카테고리.
+- **Alternatives**:
+  1. *현행 자연어 룰만 유지 + 회고 강화* — Story 1.3 같은 회귀가 다시 일어날 거란 입증 끝. 자연어 룰 한계는 dcness 자체 메모리 (`feedback_echo_rule_strict.md`) 와 같은 패턴 — 토큰 절약 본능 / 휴리스틱으로 새는 카테고리.
+  2. *(채택)* **pre-commit hook 에 main 차단 게이트 추가**. git pre-commit + Claude Code PreToolUse hook 양쪽. 현 3중 강제 (doc-sync / Task-ID / pytest) 와 동일 패턴.
+  3. *Document-Exception 우회 메커니즘 같이 도입* — over-engineering 위험. 1차 PR 에선 단순 차단 only. 진짜 필요할 때 별도 이슈로 도입.
+  4. *GitHub branch protection 만 강화* — server-side. 본 회귀는 *commit* 단계 (push 전) 에서 만들어짐. branch protection 은 push 막을 수 있지만 local commit 자체는 못 막음 → root cause 미포착.
+- **Decision**:
+  - 옵션 2 채택. `scripts/hooks/pre-commit` 에 `set -e` 다음 `[ "$current_branch" = "main" ]` 검사 추가 → exit 1 차단.
+  - `scripts/hooks/cc-pre-commit.sh` 의 `*"git commit"*` 매처 안에도 동일 검사 추가 → exit 2 (Claude Code PreToolUse 차단).
+  - 옵션 3 (Document-Exception 우회) 는 deferred — 실제 필요 시 별도 이슈.
+  - 옵션 4 (branch protection) 는 별개 — 보완재. 본 PR 범위 외.
+- **Follow-Up**:
+  - dcness self repo 의 `.git/hooks/pre-commit` 은 PR 머지 후 *수동 재설치* 의무 — `cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x ...`.
+  - 사용자 활성화 프로젝트 (jajang 등) 는 plug-in update 받아도 `.git/hooks/pre-commit` 자동 갱신 X. `/init-dcness` 재실행 시만 갱신. PR body 에 안내 명시.
+  - Story 1.3 회귀의 *짝꿍* 문제 (#146 — PR body `Closes` 키워드 게이트) 는 별개 이슈로 진행. 본 게이트 (main 차단) → branch 강제 → PR 강제 → #146 게이트 발동 → auto-close. 사슬 완성.
+  - Epic 2 진행 시 본 게이트가 박힌 상태라 Story 1.3 같은 회귀 자동 방지.
+
 ### DCN-CHG-20260506-04
 - **Date**: 2026-05-06
 - **Rationale**: `docs/` 최상위와 `docs/process/`에 마이그레이션 완료 자료(migration-decisions.md), 스냅샷(epic-index.md), 폐기 결정 기록(conveyor-design.md), 일회성 가이드(manual-smoke-guide.md, plugin-dryrun-guide.md)가 active SSOT 문서와 섞여 있음. "현행 SSOT"와 "역사 자료"를 한눈에 구분하기 어려움.

@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **🔒 main 직접 commit 차단 hook 게이트 신설 (#173)** (`DCN-CHG-20260506-07`): `scripts/hooks/pre-commit` + `scripts/hooks/cc-pre-commit.sh` 양쪽에 main 브랜치 차단 추가. 자연어 룰만 있던 카테고리 mechanical 강제 (Story 1.3 회귀 방지). governance §2.7 게이트 매트릭스에 row 추가.
+
 - **📂 Epic 2 — docs 폴더 분리 (#151)** (진행 중):
   - **Story 2.1** (`DCN-CHG-20260506-06`): `docs/process/dcness-guidelines.md` 분할 → `docs/plugin/skill-guidelines.md` (skill 룰) + `docs/internal/self-guidelines.md` (self 룰). §8/§9 TBD → 이슈 #174/#175. 인용처 17곳 갱신. harness INFRA_PATTERNS 경로 갱신 + 신규 테스트 2케이스.
 

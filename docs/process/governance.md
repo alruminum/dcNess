@@ -105,8 +105,11 @@ Document-Exception-Task: DCN-CHG-YYYYMMDD-NN
 
 | 게이트 | 스크립트 | 적용 범위 | 우회 |
 |---|---|---|---|
+| main-block | `scripts/hooks/pre-commit` 안 inline 검사 | 모든 commit | 없음 (룰 위반 시 작업자가 branch 만들어 재시도) |
 | doc-sync | `scripts/check_document_sync.mjs` | 모든 commit | `Document-Exception:` 토큰 (§2.4) |
 | pytest | `scripts/check_python_tests.sh` | `harness/` / `tests/` / `agents/` / `python-tests.yml` staged 시만 | `--no-verify` (룰 위반) |
+
+main-block 게이트 — 자연어 룰 (`CLAUDE.md` line 166 / `docs/process/git-naming-spec.md` / `docs/process/main-claude-rules.md`) 만으론 메인 Claude / 작업자가 새는 회귀 방지. 발견 사례: Story 1.3 (#155) commit `2df1113` — 메인이 main 위에서 직접 commit. 차단 이후 회귀 시 `git checkout -b feature/<name>` 안내.
 
 CI 레벨(`.github/workflows/document-sync.yml`, `python-tests.yml`)은 별도 Task-ID 로 추가/유지.
 
