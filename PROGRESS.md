@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **✅ Epic 3 Story 3.2 (#163) 완료 — release 브랜치 + sync_release.sh**: `scripts/sync_release.sh` 신규. origin/main → release 동기화 (dcness self 경로 제거 후 force-with-lease push). release 브랜치 초기화 완료. 검증: docs/internal|archive 0 hit / docs/plugin 9 파일 / tests|harness 0 hit. 부수 수정: pytest 게이트 삭제 트리거 버그(`--diff-filter=ACM`). PR #202.
+
 - **✅ Epic 3 Story 3.1 (#162) 완료 — source.ref GREEN**: `marketplace.json` plugin source 의 `{ "source": "github", "repo": "alruminum/dcNess", "ref": "release-dryrun" }` 실측. docs/internal/ + docs/archive/ cache 미존재 확인. Epic 3 Story 3.2~3.4 진행 가능. 결과: `docs/internal/story-3-1-source-ref-verification.md`.
 
 - **🗑️ 거버넌스 슬림화 PR-1 진행 중 (#182)** (`DCN-CHG-20260506-15`): Task-ID + 동반 갱신 게이트 시스템 폐기. check_task_id.mjs / check_document_sync.mjs 삭제, CI 워크플로우 2개 삭제, hooks 호출 제거. PR-2(문서 정리)·PR-3(Epic3 재평가) 후속. (PR-3 #193 가 먼저 머지되며 `Closes #182` 가 잘못 발동해 이슈가 close 된 것을 reopen 후 PR-1/PR-2 정상 진행 중.)
