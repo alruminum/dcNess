@@ -1,6 +1,6 @@
 # dcNess
 
-> **Status**: `0.1.0-alpha` — Phase 1~3 완료 · Plugin 배포 dry-run 예정
+> **Status**: `0.2.0` — Phase 1~3 완료 · Epic 3 완료 (release 브랜치 배포 채널 전환) · Plugin 배포 dry-run 진행 중
 > **Origin**: [`alruminum/realworld-harness`](https://github.com/alruminum/realworld-harness) fork-and-refactor
 > **Spec**: [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) (Prose-Only 원칙)
 

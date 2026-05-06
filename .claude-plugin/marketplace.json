@@ -7,13 +7,17 @@
     "email": "alruminum@gmail.com"
   },
   "metadata": {
-    "description": "dcNess 첫 알파 — prose-only 결정론 + 메타 LLM 해석 + 함정 회피 5원칙 + Document Sync 거버넌스.",
-    "version": "0.1.0-alpha"
+    "description": "dcNess — prose-only 결정론 + 메타 LLM 해석 + 함정 회피 5원칙. release 브랜치 배포 (docs/internal/ · docs/archive/ 미포함).",
+    "version": "0.2.0"
   },
   "plugins": [
     {
       "name": "dcness",
-      "source": "./",
+      "source": {
+        "source": "github",
+        "repo": "alruminum/dcNess",
+        "ref": "release"
+      },
       "description": "Prose-only harness — agent 자유 prose emit, harness 가 메타 LLM 으로 결론 해석. 형식 강제 사다리 폐기.",
       "category": "development",
       "tags": [
