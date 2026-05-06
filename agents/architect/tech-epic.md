@@ -12,7 +12,9 @@
 
 ## 작업 흐름 (자율 조정 가능)
 
-다음 에픽 번호 확인 (GitHub Issues 우선: `mcp__github__list_issues` milestone=Epics / 폴백: `backlog.md`) → 에픽 + 스토리 이슈 등록 (GitHub `create_issue` + sub-issue 연결, milestone 반드시 포함 / 폴백: `docs/milestones/vNN/epics/epic-NN-*/stories.md` + `backlog.md` 행 추가) → 프로젝트 `CLAUDE.md` 에픽 목록 섹션 업데이트 → 필요 시 각 스토리에 대응 impl 파일 작성 (Module Plan 실행) → 결론 emit.
+다음 에픽 번호 확인 (GitHub Issues 우선: `mcp__github__list_issues` milestone=Epics / 폴백: `backlog.md`) → 에픽 + 스토리 이슈 등록 ([`docs/plugin/issue-lifecycle.md`](../../docs/plugin/issue-lifecycle.md) §1.2~§1.3 + §1.3.1 sub-issue 연결, milestone 반드시 포함 / 폴백: `docs/milestones/vNN/epics/epic-NN-*/stories.md` + `backlog.md` 행 추가) → 프로젝트 `CLAUDE.md` 에픽 목록 섹션 업데이트 → 필요 시 각 스토리에 대응 impl 파일 작성 (Module Plan 실행) → 결론 emit.
+
+스토리 이슈 생성 완료 후 prose 마지막에 sub-issue 연결용 정보 (epic number + 각 story `.id`) 박아 메인 Claude 가 일괄 호출 가능하도록 한다 (architect 자신은 `gh api` 호출 X).
 
 **Epic 제목 형식**: `[{milestone_name}] Epic N: 에픽 이름` (예: `[v1] Epic 3: 인증 시스템 리팩토링`).
 **Story 제목 형식**: `[{milestone_name}] Story N: 스토리 설명`.
