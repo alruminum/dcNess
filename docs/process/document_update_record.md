@@ -1600,3 +1600,24 @@
   - `docs/process/change_rationale_history.md`
   - `PROGRESS.md`
 - **Summary**: Plugin 배포 인프라 — `dcness@dcness` plugin/marketplace manifest 신규. `status-json-mutate-pattern.md` §12 (RWHarness → 신규 Plugin 전환 절차) 정합. governance §2.2 의 `agent` 카테고리에 `.claude-plugin/` 패턴 추가하여 plugin manifest 변경에도 record/rationale 동반 강제.
+
+### DCN-CHG-20260506-06
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only, harness
+- **Files Changed**:
+  - `docs/plugin/skill-guidelines.md` (신규 — skill cross-cutting 룰)
+  - `docs/internal/self-guidelines.md` (신규 — dcness self 협업 룰)
+  - `docs/process/dcness-guidelines.md` (삭제 — 위 두 파일로 분할)
+  - `harness/agent_boundary.py` (DCNESS_INFRA_PATTERNS 경로 갱신)
+  - `tests/test_agent_boundary.py` (신규 2 케이스: skill-guidelines / self-guidelines 차단)
+  - `docs/loop-procedure.md` (3곳 참조 갱신)
+  - `docs/orchestration.md` (2곳 참조 갱신)
+  - `docs/handoff-matrix.md` (2곳 참조 갱신)
+  - `commands/init-dcness.md` (deploy 경로 갱신)
+  - `hooks/session-start.sh` (GUIDELINES_PATH + 토큰 갱신)
+  - `docs/process/main-claude-rules.md` (7곳 참조 갱신)
+  - `harness/run_review.py` (fix 문자열 참조 갱신)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Story 2.1 (#157) — `docs/process/dcness-guidelines.md` (257줄) 를 skill 룰과 self 룰로 분할. §8 / §9 TBD 섹션은 이슈 #174 / #175 로 등록 후 삭제. §12 self-verify 는 양쪽에 포함. DCNESS_INFRA_PATTERNS 경로 갱신 + 신규 테스트 2케이스. 총 인용처 17곳 갱신.

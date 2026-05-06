@@ -123,6 +123,22 @@ class WriteAllowedInfraPatternBlockTests(unittest.TestCase):
             )
             self.assertIsNotNone(reason)
 
+    def test_engineer_blocked_on_skill_guidelines(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            reason = check_write_allowed(
+                "engineer", "docs/plugin/skill-guidelines.md", cwd=cwd
+            )
+            self.assertIsNotNone(reason)
+
+    def test_engineer_blocked_on_self_guidelines(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            reason = check_write_allowed(
+                "engineer", "docs/internal/self-guidelines.md", cwd=cwd
+            )
+            self.assertIsNotNone(reason)
+
 
 class WriteAllowedAllowMatrixTests(unittest.TestCase):
     """user 프로젝트 — ALLOW_MATRIX 매칭/미매칭."""

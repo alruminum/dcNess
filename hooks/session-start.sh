@@ -40,7 +40,7 @@ python3 -m harness.hooks session-start --cc-pid "$CC_PID"
 #   {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}
 # Read 도구는 절대 경로만 허용 — CLAUDE_PROJECT_DIR 로 절대 경로 구성.
 PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-GUIDELINES_PATH="${PROJ}/docs/process/dcness-guidelines.md"
+GUIDELINES_PATH="${PROJ}/docs/plugin/skill-guidelines.md"
 
 python3 -c "
 import json, sys
@@ -64,7 +64,7 @@ Read 도구로 다음 파일을 *지금 바로* 호출한다 (절대 경로):
 ### STEP 2: 확인 토큰 출력 [스킵 불가]
 
 읽은 후 첫 응답의 **첫 줄**에 반드시 다음 토큰을 출력한다:
-  [dcness-guidelines 로드 완료 — §13 감시자 Hat 장착]
+  [skill-guidelines 로드 완료 — §11 감시자 Hat 장착]
 
 이 토큰 없이 응답 = 즉시 룰 위반 (유저가 즉시 확인 가능).
 

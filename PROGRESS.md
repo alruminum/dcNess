@@ -2,6 +2,9 @@
 
 ## 현재 상태
 
+- **📂 Epic 2 — docs 폴더 분리 (#151)** (진행 중):
+  - **Story 2.1** (`DCN-CHG-20260506-06`): `docs/process/dcness-guidelines.md` 분할 → `docs/plugin/skill-guidelines.md` (skill 룰) + `docs/internal/self-guidelines.md` (self 룰). §8/§9 TBD → 이슈 #174/#175. 인용처 17곳 갱신. harness INFRA_PATTERNS 경로 갱신 + 신규 테스트 2케이스.
+
 - **🧹 Epic 1 — 외부 배포물 정리 (#150)** (`DCN-CHG-20260506-02` ~ `-05`):
   - **Story 1.1** (`-02`): `.claude-plugin/`, `commands/`, `README.md` RWHarness 고유명사 13건 제거 (표기 "선행 하네스" 통일)
   - **Story 1.2** (`-03`): 외부 배포 경로 (agents/ 21개 / commands/ 3개 / docs/ 5개 / CLAUDE.md) DCN-CHG 내부 ID 92건 스크럽

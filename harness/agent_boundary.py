@@ -54,7 +54,8 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
     r'(^|/)docs/handoff-matrix\.md$',
     r'(^|/)docs/loop-procedure\.md$',
     r'(^|/)docs/loop-catalog\.md$',
-    r'(^|/)docs/process/(governance|dcness-guidelines)\.md$',
+    r'(^|/)docs/process/governance\.md$',
+    r'(^|/)docs/(plugin/skill-guidelines|internal/self-guidelines)\.md$',
     r'(^|/)scripts/(check_document_sync|check_task_id|setup_branch_protection|analyze_metrics)\.mjs$',
 )
 
