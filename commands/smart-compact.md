@@ -146,7 +146,7 @@ EOF
 
 # 컨텍스트
 - 핵심: harness/session_state.py, harness/hooks.py, hooks/*.sh, commands/*.md
-- spec: docs/conveyor-design.md (v2 Task tool 패턴), docs/orchestration.md
+- spec: docs/archive/conveyor-design.md (v2 Task tool 패턴, 역사 자료), docs/orchestration.md
 - agents/*.md 13개 모두 prose-only (DCN-CHG-27)
 - proposal: docs/status-json-mutate-pattern.md §2.5 (prose-only)
 

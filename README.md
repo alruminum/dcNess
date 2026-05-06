@@ -154,7 +154,7 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 | 문서 | 역할 |
 |---|---|
 | [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | proposal — Prose-Only Pattern (Goal / Mechanism / Phase / Risks / Plugin 전환 절차) |
-| [`docs/migration-decisions.md`](docs/migration-decisions.md) | 모듈 PRESERVE / DISCARD / REFACTOR 분류 |
+| [`docs/archive/migration-decisions.md`](docs/archive/migration-decisions.md) | 모듈 PRESERVE / DISCARD / REFACTOR 분류 (역사 자료) |
 | [`docs/process/governance.md`](docs/process/governance.md) | Document Sync SSOT |
 | [`docs/process/document_update_record.md`](docs/process/document_update_record.md) | WHAT 로그 (Task-ID 별 변경 파일) |
 | [`docs/process/change_rationale_history.md`](docs/process/change_rationale_history.md) | WHY 로그 (Task-ID 별 동기·대안·결정·후속) |

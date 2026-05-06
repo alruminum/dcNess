@@ -280,5 +280,5 @@ inactive 로 회귀. 재설치 후엔 각 활성 프로젝트마다 `/init-dcnes
 
 - `harness/session_state.py` — `is_project_active` / `enable_project` / `disable_project` / CLI subcommands
 - `hooks/session-start.sh` / `hooks/catastrophic-gate.sh` — 첫 줄에 `is-active` 게이트
-- `docs/conveyor-design.md` §13 — worktree γ resolution (활성화도 main repo 기준)
+- `docs/archive/conveyor-design.md` §13 — worktree γ resolution (활성화도 main repo 기준)
 - 이전 하네스 패턴 대비: whitelist 위치가 글로벌 `~/.claude/harness-projects.json` 대신 plugin-scoped `~/.claude/plugins/data/dcness-dcness/projects.json`

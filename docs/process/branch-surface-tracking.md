@@ -6,7 +6,7 @@
 >
 > **본 문서가 정의하는 것**: 신규 분기 / 진입경로 추가 PR 의 self-check + 사다리 시그널 분류 + 임계 도달 시 대응.
 >
-> **본 문서가 정의하지 *않는* 것**: 사다리 자체를 *방지* 하는 메커니즘 (그건 운영적 절제 — `migration-decisions.md` §7 참조).
+> **본 문서가 정의하지 *않는* 것**: 사다리 자체를 *방지* 하는 메커니즘 (그건 운영적 절제 — `docs/archive/migration-decisions.md` §7 참조).
 
 ---
 
@@ -84,7 +84,7 @@ PR body 에 명시:
 
 1. 신규 Task-ID 발급 (`docs/process/document_update_record.md` 안 별도 entry)
 2. 회의 — 현재 사다리 진입 사실 명시 + RWH 사례 비교 + 발상 전환 후보
-3. `migration-decisions.md` 갱신 — 임계 도달 패턴 + 결정
+3. `docs/archive/migration-decisions.md` 확인 — 임계 도달 패턴 + 결정
 
 발상 전환 후보 (참고):
 - 분기 자체 폐기 (가능하면)
@@ -133,5 +133,5 @@ dcness 의 베팅:
 - `docs/process/governance.md` — PR 일반 절차
 - `docs/process/document_update_record.md` `DCN-CHG-20260430-03` — 본 문서 신규 entry
 - `docs/process/change_rationale_history.md` `DCN-CHG-20260430-03` — 채택 동기 + RWH 진단 인용 + 행동 결정
-- `docs/migration-decisions.md` §7 (보강 후) — RWH 사다리 카탈로그 + dcness 한계 명시
+- `docs/archive/migration-decisions.md` §7 — RWH 사다리 카탈로그 + dcness 한계 명시 (역사 자료)
 - `docs/status-json-mutate-pattern.md` §2.5 — proposal 5 원칙 (룰 순감소 / catastrophic-prevention 등)

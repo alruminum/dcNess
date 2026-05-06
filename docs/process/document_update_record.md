@@ -20,6 +20,30 @@
 
 ## Records
 
+### DCN-CHG-20260506-04
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only + agent
+- **Files Changed**:
+  - `docs/archive/` (신규 폴더)
+  - `docs/migration-decisions.md` → `docs/archive/migration-decisions.md` (이동)
+  - `docs/epic-index.md` → `docs/archive/epic-index.md` (이동)
+  - `docs/conveyor-design.md` → `docs/archive/conveyor-design.md` (이동)
+  - `docs/process/manual-smoke-guide.md` → `docs/archive/manual-smoke-guide.md` (이동)
+  - `docs/process/plugin-dryrun-guide.md` → `docs/archive/plugin-dryrun-guide.md` (이동)
+  - `docs/archive/plugin-dryrun-guide.md` — 내부 상대 링크 수정 (`../migration-decisions.md` → `migration-decisions.md`, `branch-protection-setup.md` → `../process/branch-protection-setup.md`)
+  - `README.md` — migration-decisions.md 링크 → archive 경로
+  - `CLAUDE.md` — plugin-dryrun-guide.md 링크 → archive 경로
+  - `commands/init-dcness.md` — conveyor-design.md 참조 → archive 경로
+  - `commands/smart-compact.md` — conveyor-design.md 참조 → archive 경로
+  - `docs/orchestration.md` — conveyor-design.md / plugin-dryrun-guide.md / migration-decisions.md 링크 → archive 경로
+  - `docs/loop-procedure.md` — conveyor-design.md 링크 → archive 경로
+  - `docs/process/branch-protection-setup.md` — migration-decisions.md 링크 → archive 경로
+  - `docs/process/dcness-guidelines.md` — conveyor-design.md 참조 → archive 경로
+  - `docs/process/branch-surface-tracking.md` — migration-decisions.md 참조 3곳 → archive 경로
+  - `PROGRESS.md` — plugin-dryrun-guide.md TODO 경로 갱신
+  - `docs/status-json-mutate-pattern.md` — migration-decisions.md 참조 → archive 경로
+- **Summary**: `docs/archive/` 신설 + 마이그레이션 완료·일회성·멈춘 의사결정 문서 5개 이동. 깨진 링크 0개가 되도록 인용처 전수 갱신. (Story 1.3 / Issue #155)
+
 ### DCN-CHG-20260506-03
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only + agent

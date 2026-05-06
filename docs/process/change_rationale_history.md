@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260506-04
+- **Date**: 2026-05-06
+- **Rationale**: `docs/` 최상위와 `docs/process/`에 마이그레이션 완료 자료(migration-decisions.md), 스냅샷(epic-index.md), 폐기 결정 기록(conveyor-design.md), 일회성 가이드(manual-smoke-guide.md, plugin-dryrun-guide.md)가 active SSOT 문서와 섞여 있음. "현행 SSOT"와 "역사 자료"를 한눈에 구분하기 어려움.
+- **Alternatives**:
+  - 파일명에 `_archived` 접미사 — 경로 변경 없음 + 위치 혼재 지속. 폴더 분리 효과 없음.
+  - 삭제 — 마이그레이션 이유 / 폐기 결정 카탈로그 영구 손실. 감사 추적 불가.
+- **Decision**: `docs/archive/` 폴더 신설 + 5개 파일 이동. 인용처 전수 검사 후 링크 갱신. 역사 로그(document_update_record.md / change_rationale_history.md) 내 과거 언급은 변경 안 함(역사적 참조는 정확해야 하기 때문).
+- **Follow-Up**: Story 1.4 (README/AGENTS/PROGRESS 현행화) 에서 docs 지도 최종 정리 예정.
+
 ### DCN-CHG-20260506-03
 - **Date**: 2026-05-06
 - **Rationale**: 외부 배포 경로 파일에 `DCN-CHG-YYYYMMDD-NN` 내부 변경 추적 ID가 ~92건 노출. 사용자 관점에서 맥락 없는 숫자 ID는 노이즈 + CLAUDE.md §0.3 자체 가이드라인("외부 파일 안에 내부 ID 박지 않는다") 위반.

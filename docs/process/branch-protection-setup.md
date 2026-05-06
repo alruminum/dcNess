@@ -127,5 +127,5 @@ gh api repos/alruminum/dcNess/branches/main/protection \
 - [`governance.md`](governance.md) — SSOT
 - [`scripts/setup_branch_protection.mjs`](../../scripts/setup_branch_protection.mjs) — 자동화 스크립트
 - [`docs/status-json-mutate-pattern.md`](../status-json-mutate-pattern.md) §5 Phase 3 — 외부화 발상 출처
-- [`docs/migration-decisions.md`](../migration-decisions.md) §2.2 — RWHarness commit-gate.py / class Flag DISCARD 분류
+- [`docs/archive/migration-decisions.md`](../archive/migration-decisions.md) §2.2 — RWHarness commit-gate.py / class Flag DISCARD 분류
 - [GitHub Docs — Branch protection rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches)

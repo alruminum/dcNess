@@ -202,9 +202,9 @@ dcNess 의 `.metrics/` 와 `.claude/harness-state/` 는 보존 (분석 자료).
 | 문서 | 역할 |
 |---|---|
 | [`status-json-mutate-pattern.md`](../status-json-mutate-pattern.md) §12 | proposal SSOT — 절차의 의도/근거 |
-| [`migration-decisions.md`](../migration-decisions.md) | 모듈 분류 결과 (DISCARD / PRESERVE / REFACTOR) |
-| [`branch-protection-setup.md`](branch-protection-setup.md) | main 브랜치 보호 (Phase 3 iter 2) |
-| [`governance.md`](governance.md) | dcNess 자체 거버넌스 (commit/PR 룰) |
+| [`migration-decisions.md`](migration-decisions.md) | 모듈 분류 결과 (DISCARD / PRESERVE / REFACTOR) |
+| [`branch-protection-setup.md`](../process/branch-protection-setup.md) | main 브랜치 보호 (Phase 3 iter 2) |
+| [`governance.md`](../process/governance.md) | dcNess 자체 거버넌스 (commit/PR 룰) |
 | 본 가이드 | proposal §12 의 *적용 운영 절차* (Phase 3 iter 5) |
 
 ---

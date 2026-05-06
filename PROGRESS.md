@@ -473,7 +473,7 @@
 - [ ] poor_cache_util 비용 $507 → $200 미만 (improve-token-efficiency 측정)
 - [ ] 메타 LLM cycle 당 < $0.10 (analyzer fitness PASS — 본 Phase 3 인프라 완성)
 - [ ] catastrophic 가드 무손실 (의도적 src/ 외 수정 → 차단 검증)
-- [ ] **plugin 배포 dry-run** (`docs/process/plugin-dryrun-guide.md` §1~§9 절차 실행)
+- [ ] **plugin 배포 dry-run** (`docs/archive/plugin-dryrun-guide.md` §1~§9 절차 실행)
 
 ### 인프라 / CI 보강
 - [ ] branch protection 룰 추가 (사용자 수동, GitHub Settings)

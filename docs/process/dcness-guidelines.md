@@ -189,7 +189,7 @@ else
 fi
 ```
 
-자세히 = `docs/conveyor-design.md` §13.
+자세히 = `docs/archive/conveyor-design.md` §13.
 
 ## 8. (TBD) Epic / Story / Milestone 분할 기준
 

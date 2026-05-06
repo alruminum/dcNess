@@ -124,7 +124,7 @@
 | [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 수정 시 |
 | [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) | PR 체크리스트 확인 시 |
 | [`docs/process/branch-protection-setup.md`](docs/process/branch-protection-setup.md) | 브랜치 보호 설정 변경 시 |
-| [`docs/process/plugin-dryrun-guide.md`](docs/process/plugin-dryrun-guide.md) | 플러그인 배포 dry-run 시 |
+| [`docs/archive/plugin-dryrun-guide.md`](docs/archive/plugin-dryrun-guide.md) | 플러그인 배포 dry-run 시 (역사 자료) |
 | [`scripts/check_document_sync.mjs`](scripts/check_document_sync.mjs) | Document Sync 게이트 구현 참조 시 |
 | [`scripts/check_python_tests.sh`](scripts/check_python_tests.sh) | pytest 게이트 구현 참조 시 |
 | [`scripts/hooks/pre-commit`](scripts/hooks/pre-commit) | git pre-commit hook 수정 시 |

@@ -429,7 +429,7 @@ RWHarness 자체엔 적용 안 함 — 본 proposal 은 신규 프로젝트의 d
 2. **형식 강제로 자연 폐기되는가?** — prose + 메타 LLM 적용 시 의미 잃는가? → 폐기 후보
 3. **단순화 가능한가?** — 룰 누적 패턴인가? → 리팩터링 후보
 
-분류 결과는 `docs/migration-decisions.md` 에 기록.
+분류 결과는 `docs/archive/migration-decisions.md` 에 기록.
 
 ### 11.3 RWHarness Read 권한 부여 메커니즘
 
