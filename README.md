@@ -115,9 +115,8 @@ except MissingSignal as e:
 
 본 저장소의 모든 변경은 [`docs/internal/governance.md`](docs/internal/governance.md) 에 따른다 (SSOT).
 
-- **Task-ID**: `DCN-CHG-YYYYMMDD-NN` 형식. 모든 작업은 단 하나의 ID.
-- **3중 강제**: git pre-commit hook + Claude Code PreToolUse hook + AGENTS.md (외부 에이전트 지침)
-- **CI 게이트**: PR 단위로 base..head diff 검사 — local 우회 차단
+- **게이트**: main-block + git-naming + pytest (pre-commit hook 자동 실행)
+- **branch → PR → merge** 필수. main 직접 push 금지.
 
 PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 
