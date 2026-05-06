@@ -40,7 +40,29 @@ python3 -m harness.hooks session-start --cc-pid "$CC_PID"
 #   {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}
 # Read 도구는 절대 경로만 허용 — CLAUDE_PROJECT_DIR 로 절대 경로 구성.
 PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-GUIDELINES_PATH="${PROJ}/docs/plugin/skill-guidelines.md"
+
+# skill-guidelines.md 는 plugin SSOT — 사용자 repo cp 폐지 (#198 OMC 식 thin shim).
+# Plugin path 우선 → cache lookup fallback → legacy 사용자 repo 경로 (마이그레이션 호환).
+resolve_guidelines_path() {
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/docs/plugin/skill-guidelines.md" ]; then
+    echo "${CLAUDE_PLUGIN_ROOT}/docs/plugin/skill-guidelines.md"; return 0
+  fi
+  cache_dir="${HOME}/.claude/plugins/cache/dcness/dcness"
+  if [ -d "$cache_dir" ]; then
+    latest=$(ls -1 "$cache_dir" 2>/dev/null | sort -V | tail -1)
+    if [ -n "$latest" ] && [ -f "$cache_dir/$latest/docs/plugin/skill-guidelines.md" ]; then
+      echo "$cache_dir/$latest/docs/plugin/skill-guidelines.md"; return 0
+    fi
+  fi
+  legacy="${PROJ}/docs/plugin/skill-guidelines.md"
+  [ -f "$legacy" ] && echo "$legacy" && return 0
+  return 1
+}
+GUIDELINES_PATH=$(resolve_guidelines_path)
+if [ -z "$GUIDELINES_PATH" ]; then
+  # plugin / cache / legacy 모두 부재 — silent skip (BLOCKING gate 발화 안 함)
+  exit 0
+fi
 
 python3 -c "
 import json, sys

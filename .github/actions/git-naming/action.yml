@@ -1,0 +1,28 @@
+name: 'dcness git-naming validation'
+description: 'Validate branch name / commit / PR title against dcness git-naming-spec'
+inputs:
+  branch:
+    description: 'Branch name to validate (skip if empty)'
+    required: false
+    default: ''
+  title:
+    description: 'PR title or commit subject to validate (skip if empty)'
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Validate branch name
+      if: inputs.branch != ''
+      shell: bash
+      run: node "${{ github.action_path }}/../../../scripts/check_git_naming.mjs" --branch "${{ inputs.branch }}"
+
+    - name: Validate title
+      if: inputs.title != ''
+      shell: bash
+      run: node "${{ github.action_path }}/../../../scripts/check_git_naming.mjs" --title "${{ inputs.title }}"
