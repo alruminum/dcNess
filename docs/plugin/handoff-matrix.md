@@ -230,7 +230,7 @@ DCNESS_INFRA_PATTERNS = [
     r'(^|/)docs/plugin/loop-procedure\.md$',
     r'(^|/)docs/internal/governance\.md$',
     r'(^|/)docs/(plugin/skill-guidelines|internal/self-guidelines)\.md$',
-    r'(^|/)scripts/(check_document_sync|check_task_id|setup_branch_protection|analyze_metrics)\.mjs$',
+    r'(^|/)scripts/(setup_branch_protection|analyze_metrics)\.mjs$',
 ]
 ```
 

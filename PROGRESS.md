@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **🗑️ 거버넌스 슬림화 PR-1 진행 중 (#182)** (`DCN-CHG-20260506-15`): Task-ID + 동반 갱신 게이트 시스템 폐기. check_task_id.mjs / check_document_sync.mjs 삭제, CI 워크플로우 2개 삭제, hooks 호출 제거. PR-2(문서 정리)·PR-3(Epic3 재평가) 후속.
+
 - **🔧 #151 후속 — 옛 경로 잔존 7건 정리** (`DCN-CHG-20260506-14`): Epic 2 검증 정규식이 `(../docs/X.md)` 만 잡아 `(../X.md)` 형태 마크다운 링크 누수. `harness/agent_boundary.py` docstring + `docs/internal/main-claude-rules.md` (5건+4링크) + `docs/internal/self-guidelines.md` (2건) + `docs/plugin/handoff-matrix.md` §4.4 (1건) + `commands/init-dcness.md` §4 (dcness self repo 명시 라인) 일괄 갱신.
 
 - **🔧 harness/ docstring archive 경로 정리 (#179)** (`DCN-CHG-20260506-08`): Story 1.3 인용처 갱신 누락분. `harness/session_state.py` + `harness/hooks.py` 의 `docs/conveyor-design.md` 인용 → `docs/archive/conveyor-design.md`.
