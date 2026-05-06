@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260506-10
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `docs/orchestration.md` → `docs/plugin/orchestration.md` (git mv + 내부 cross-ref 9곳 갱신)
+  - `docs/handoff-matrix.md` → `docs/plugin/handoff-matrix.md` (git mv + 내부 cross-ref 3곳 갱신)
+  - `docs/loop-procedure.md` → `docs/plugin/loop-procedure.md` (git mv + 내부 cross-ref 3곳 갱신)
+  - `docs/issue-lifecycle.md` → `docs/plugin/issue-lifecycle.md` (git mv + agents/ 인용 3곳 `../../` 깊이 갱신)
+  - `docs/design.md` → `docs/plugin/design.md` (git mv, 내부 ref 없음)
+  - `docs/known-hallucinations.md` → `docs/plugin/known-hallucinations.md` (git mv, 내부 ref 없음)
+  - `docs/process/git-naming-spec.md` → `docs/plugin/git-naming-spec.md` (git mv, 내부 ref 없음)
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: Story 2.3 (#159) — 외부 배포 SSOT 7개를 `docs/plugin/` 으로 git mv (history 보존). 이동된 파일끼리의 내부 cross-ref 만 갱신. 외부 인용처 (agents/ / commands/ / scripts/ / hooks/ / CLAUDE.md / README.md / .github/) ~138 occurrence 는 Story 2.5 (#161) 일괄 처리 — 본 PR 머지 직후 후속.
+
 ### DCN-CHG-20260506-09
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only, agent
