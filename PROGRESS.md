@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-- **✅ Epic 3 Story 3.3 (#164) 완료 — release-sync.yml + branch protection 가이드**: `.github/workflows/release-sync.yml` 신규 (main push 시 자동 release sync, concurrency 그룹으로 중복 실행 방지). `docs/internal/branch-protection-setup.md` 신규 (release 브랜치 보호 설정 절차). PR #TBD.
+- **✅ Epic 3 Story 3.3 (#164) 완료 — release-sync.yml + branch protection 가이드**: `.github/workflows/release-sync.yml` 신규 (main push 시 자동 release sync, concurrency 그룹으로 중복 실행 방지). `docs/internal/branch-protection-setup.md` 신규 (release 브랜치 보호 설정 절차). PR #205.
 
 - **✅ Epic 3 Story 3.2 (#163) 완료 — release 브랜치 + sync_release.sh**: `scripts/sync_release.sh` 신규. origin/main → release 동기화 (dcness self 경로 제거 후 force-with-lease push). release 브랜치 초기화 완료. 검증: docs/internal|archive 0 hit / docs/plugin 9 파일 / tests|harness 0 hit. 부수 수정: pytest 게이트 삭제 트리거 버그(`--diff-filter=ACM`). PR #202.
 
