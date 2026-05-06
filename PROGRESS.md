@@ -7,6 +7,8 @@
 - **🔒 main 직접 commit 차단 hook 게이트 신설 (#173)** (`DCN-CHG-20260506-07`): `scripts/hooks/pre-commit` + `scripts/hooks/cc-pre-commit.sh` 양쪽에 main 브랜치 차단 추가. 자연어 룰만 있던 카테고리 mechanical 강제 (Story 1.3 회귀 방지). governance §2.7 게이트 매트릭스에 row 추가.
 
 - **📂 Epic 2 — docs 폴더 분리 (#151)** (진행 중):
+  - **Story 2.4** (`DCN-CHG-20260506-12`): dcness self 거버넌스 7개를 `docs/process/` → `docs/internal/` git mv. `check_document_sync.mjs` RECORD/RATIONALE 상수 경로 갱신. `docs/process/` 폴더 비움 완료.
+  - **Story 2.3** (`DCN-CHG-20260506-10`): 외부 배포 SSOT 7개 → `docs/plugin/` git mv.
   - **Story 2.2** (`DCN-CHG-20260506-09`): `docs/status-json-mutate-pattern.md` (444줄) 핵심 추출 → `docs/plugin/prose-only-principle.md` (58줄 SSOT) 신규 + 원본 `docs/archive/` 이동. agents/ 12개 footer + 기타 인용처 25곳 갱신.
   - **Story 2.1** (`DCN-CHG-20260506-06`): `docs/process/dcness-guidelines.md` 분할 → `docs/plugin/skill-guidelines.md` (skill 룰) + `docs/internal/self-guidelines.md` (self 룰). §8/§9 TBD → 이슈 #174/#175. 인용처 17곳 갱신. harness INFRA_PATTERNS 경로 갱신 + 신규 테스트 2케이스.
 

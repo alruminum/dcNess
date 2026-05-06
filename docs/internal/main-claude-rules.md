@@ -110,15 +110,15 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 
 ### 2.3 거버넌스
 
-> 출처: `docs/process/governance.md` (전체 룰).
+> 출처: `docs/internal/governance.md` (전체 룰).
 
 - **Task-ID**: `DCN-CHG-YYYYMMDD-NN` (오늘 = `DCN-CHG-20260501-NN`)
 - **Change-Type 7종**: `spec` / `agent` / `harness` / `hooks` / `ci` / `test` / `docs-only` (복수 가능, governance §2.2)
 - **commit 절차**: branch → PR → squash merge. main 직접 push 금지. branch 는 merge 후에도 삭제하지 않음.
 - **doc-sync gate**: `node scripts/check_document_sync.mjs` 통과 필수 — git pre-commit hook + Claude Code PreToolUse hook 동시 차단. `--no-verify` 등 우회 금지.
 - **동반 갱신** (governance §2.6):
-  - `docs/process/document_update_record.md` (모든 변경 — WHAT)
-  - `docs/process/change_rationale_history.md` (spec / agent / harness / hooks / ci 변경 시 — WHY)
+  - `docs/internal/document_update_record.md` (모든 변경 — WHAT)
+  - `docs/internal/change_rationale_history.md` (spec / agent / harness / hooks / ci 변경 시 — WHY)
   - `PROGRESS.md` (harness / hooks / ci 변경 시)
 
 ### 2.4 핵심 강제 룰 — 매 작업 의무
@@ -221,6 +221,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - 글로벌: `~/.claude/CLAUDE.md` (제1룰 + 새 프로젝트 흐름 + 모듈 단위 작업 순서 + 커밋 절차)
 - 프로젝트: `CLAUDE.md` (dcness 정체성 + 거버넌스 핵심 + 문서 지도)
-- SSOT 4종 (DCN-CHG-20260505-03 후): `docs/orchestration.md` / `docs/handoff-matrix.md` / `docs/loop-procedure.md` / `docs/plugin/skill-guidelines.md` (+ `docs/internal/self-guidelines.md`)
-- 거버넌스: `docs/process/governance.md`
-- 카탈로그: `docs/known-hallucinations.md` (외부 도구 hallucination 누적)
+- SSOT 4종 (DCN-CHG-20260505-03 후): `docs/plugin/orchestration.md` / `docs/plugin/handoff-matrix.md` / `docs/plugin/loop-procedure.md` / `docs/plugin/skill-guidelines.md` (+ `docs/internal/self-guidelines.md`)
+- 거버넌스: `docs/internal/governance.md`
+- 카탈로그: `docs/plugin/known-hallucinations.md` (외부 도구 hallucination 누적)

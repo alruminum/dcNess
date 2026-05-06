@@ -50,8 +50,8 @@
 1. **시작**: Task-ID 발급(`DCN-CHG-YYYYMMDD-NN`).
 2. **수행**: 코드/문서 수정.
 3. **완료 직전**:
-   - `docs/process/document_update_record.md` 에 WHAT 항목 추가
-   - 코드/정책/빌드 변경(2.6 §heavy)이면 `docs/process/change_rationale_history.md` 에 WHY 항목 추가
+   - `docs/internal/document_update_record.md` 에 WHAT 항목 추가
+   - 코드/정책/빌드 변경(2.6 §heavy)이면 `docs/internal/change_rationale_history.md` 에 WHY 항목 추가
    - `PROGRESS.md` 갱신(2.6 §progress 카테고리 변경 시)
 4. **commit**: `node scripts/check_document_sync.mjs` 통과 후 commit.
 5. **PR**: `.github/PULL_REQUEST_TEMPLATE.md` 체크리스트 작성.
@@ -89,8 +89,8 @@ Document-Exception-Task: DCN-CHG-YYYYMMDD-NN
 
 | 등장 카테고리 | 필수 동반 |
 |---|---|
-| **any** (모든 변경) | `docs/process/document_update_record.md` 갱신 |
-| `spec` / `agent` / `harness` / `hooks` / `ci` 중 하나 이상 (§heavy) | + `docs/process/change_rationale_history.md` 갱신 |
+| **any** (모든 변경) | `docs/internal/document_update_record.md` 갱신 |
+| `spec` / `agent` / `harness` / `hooks` / `ci` 중 하나 이상 (§heavy) | + `docs/internal/change_rationale_history.md` 갱신 |
 | `harness` / `hooks` / `ci` 중 하나 이상 (§progress) | + `PROGRESS.md` 갱신 |
 | `spec` 변경 시 | + `docs/spec/**` 또는 `docs/proposals/**` 안 산출물 변경 *(또는 Document-Exception)* |
 | `harness` 변경 시 | + `tests/**` 또는 `docs/impl/**` 변경 *(또는 Document-Exception)* |
@@ -109,7 +109,7 @@ Document-Exception-Task: DCN-CHG-YYYYMMDD-NN
 | doc-sync | `scripts/check_document_sync.mjs` | 모든 commit | `Document-Exception:` 토큰 (§2.4) |
 | pytest | `scripts/check_python_tests.sh` | `harness/` / `tests/` / `agents/` / `python-tests.yml` staged 시만 | `--no-verify` (룰 위반) |
 
-main-block 게이트 — 자연어 룰 (`CLAUDE.md` line 166 / `docs/process/git-naming-spec.md` / `docs/process/main-claude-rules.md`) 만으론 메인 Claude / 작업자가 새는 회귀 방지. 발견 사례: Story 1.3 (#155) commit `2df1113` — 메인이 main 위에서 직접 commit. 차단 이후 회귀 시 `git checkout -b feature/<name>` 안내.
+main-block 게이트 — 자연어 룰 (`CLAUDE.md` line 166 / `docs/plugin/git-naming-spec.md` / `docs/internal/main-claude-rules.md`) 만으론 메인 Claude / 작업자가 새는 회귀 방지. 발견 사례: Story 1.3 (#155) commit `2df1113` — 메인이 main 위에서 직접 commit. 차단 이후 회귀 시 `git checkout -b feature/<name>` 안내.
 
 CI 레벨(`.github/workflows/document-sync.yml`, `python-tests.yml`)은 별도 Task-ID 로 추가/유지.
 
@@ -135,10 +135,10 @@ CI 레벨(`.github/workflows/document-sync.yml`, `python-tests.yml`)은 별도 T
 
 | 파일 | 역할 |
 |---|---|
-| `docs/process/document_update_record.md` | WHAT 로그(작업별 변경 파일·요약) |
-| `docs/process/change_rationale_history.md` | WHY 로그(작업별 동기·대안·결정·후속) |
-| `docs/process/document_impact_matrix.md` | 변경 → 검토 문서 매핑 빠른 참조표 |
-| `docs/process/branch-protection-setup.md` | §2.8 적용 가이드 (자동 + 수동 + 검증) |
+| `docs/internal/document_update_record.md` | WHAT 로그(작업별 변경 파일·요약) |
+| `docs/internal/change_rationale_history.md` | WHY 로그(작업별 동기·대안·결정·후속) |
+| `docs/internal/document_impact_matrix.md` | 변경 → 검토 문서 매핑 빠른 참조표 |
+| `docs/internal/branch-protection-setup.md` | §2.8 적용 가이드 (자동 + 수동 + 검증) |
 | `scripts/check_document_sync.mjs` | CI 게이트 구현 |
 | `scripts/check_task_id.mjs` | Task-ID 형식 검증 게이트 (§2.1 강제) |
 | `scripts/check_python_tests.sh` | pytest pre-commit 게이트 (§2.7 — paths 분기 unittest discover) |
