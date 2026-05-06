@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260506-15
+- **Date**: 2026-05-06
+- **Rationale**: 이슈 #182 — dcness 부트스트랩(2026-04-29) 시점엔 GitHub 이슈/PR 패턴 미정착, 자체 WHAT/WHY 로그가 fallback으로 필요했음. 현재 175+ 이슈 + 180+ PR 정착 — GitHub이 변경 파일·이유·크로스레퍼런스·시계열 모두 자동 캡처. 누적 미사용: 200+ commit × ~700 토큰 = ~14만 토큰 작성 대비 read 빈도 거의 0. plugin cache 437KB가 모든 사용자에게 배포되는 비용도 있음.
+- **Alternatives**:
+  1. *유지* — redundant 비용(토큰·인지 부담·cache 크기) 계속 지불. 새 정보 없음.
+  2. *(채택)* **폐기 + GitHub SSOT 수렴** — 게이트/스크립트 삭제(PR-1) + 문서 정리(PR-2) 2단계 분할. PR-1 자체 commit은 기존 룰 준수(마지막 entry 작성) 후 게이트 제거.
+- **Decision**: 옵션 2. PR-1에서 게이트 4개(check_task_id.mjs / check_document_sync.mjs / task-id-validation.yml / document-sync.yml) 및 hooks 호출 삭제. PR-2에서 문서 잔재 정리(governance slim / CLAUDE.md / main-claude-rules.md 등). 본 entry가 마지막 WHY 로그.
+- **Follow-Up**: PR-2 (#182) — governance.md slim + docs/internal/* archive 이동 + 룰 문서 거버넌스 잔재 제거. Epic 3 (#152) 재평가(이슈 #182 PR-3).
+
 ### DCN-CHG-20260506-14
 - **Date**: 2026-05-06
 - **Rationale**: Epic 2 (#151) closed 후 사용자가 "구현 사항 리뷰" 요청 — 실측 결과 active 코드/문서 7곳에 옛 경로 (`docs/orchestration.md` / `docs/handoff-matrix.md` / `docs/loop-procedure.md` / `docs/design.md` 의 *self-repo* 인용) 잔존. Epic 검증 정규식 `rg '\(\.\./docs/orchestration\.md\)'` 가 `(../orchestration.md)` 형태 (docs/ 한 단계 prefix 없는 internal/ 내부 상대경로) 마크다운 링크를 못 잡아 누수.
