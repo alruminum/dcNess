@@ -2615,3 +2615,19 @@
 - **Follow-Up**:
   - Story 2.3 (#159) 에서 `docs/plugin/skill-guidelines.md` 를 `docs/plugin/` 폴더 이동 대상에 포함 확인.
   - Story 2.5 (#161) 에서 agents/ 파일 내 `dcness-guidelines` 잔여 참조 확인 (현재 없음, 검증 완료).
+
+### DCN-CHG-20260506-16
+- **Rationale**:
+  - `marketplace.json` 의 `source: "./"` 는 로컬 경로 — 실제 사용자가 plugin install 시 GitHub 브랜치 콘텐츠를 수신하려면 `{ source: "github", repo, ref }` 형태 필요 (Story 3.1 공식 spec 실측 확인).
+  - `ref: "release"` 를 지정하면 release 브랜치 콘텐츠만 plugin cache 로 복사됨 — Story 3.2 에서 release 브랜치에 `docs/internal/` · `docs/archive/` 제거 완료이므로 사용자 환경에서 자동으로 내부 문서 0.
+  - version `0.1.0-alpha` → `0.2.0` — Epic 3 = 배포 채널 근본 변경 (로컬 → release 브랜치). 알파 딱지 제거 + 명시적 버전 신호.
+- **Alternatives**:
+  1. *`source: "main"` 지정* — main 에는 `docs/internal/` · `docs/archive/` 포함. 제거 의도와 상충. 기각.
+  2. *로컬 `"./"` 유지* — 외부 사용자에게 배포 불가. Story 3 목적 미달. 기각.
+  3. *(채택)* **`ref: "release"`** — Story 3.1~3.3 인프라 위에서 동작하는 최종 전환. release-sync.yml 이 main push 마다 자동 동기화.
+- **Decision**:
+  - 옵션 3 채택. version 0.2.0 bump 동반 (배포 채널 변경 신호).
+  - `init-dcness.md` plugin cache 경로는 `dcness/*` glob — 버전 무관하게 동작, 수정 불필요.
+- **Follow-Up**:
+  - PR 머지 → release-sync.yml 자동 발화 → jajang 에서 `/plugin update dcness` + cache 검증.
+  - `~/.claude/plugins/cache/dcness/dcness/0.2.0/docs/internal/` 미존재 확인.

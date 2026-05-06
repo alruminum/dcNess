@@ -1763,3 +1763,15 @@
   - `docs/process/change_rationale_history.md`
   - `PROGRESS.md`
 - **Summary**: Story 2.1 (#157) — `docs/process/dcness-guidelines.md` (257줄) 를 skill 룰과 self 룰로 분할. §8 / §9 TBD 섹션은 이슈 #174 / #175 로 등록 후 삭제. §12 self-verify 는 양쪽에 포함. DCNESS_INFRA_PATTERNS 경로 갱신 + 신규 테스트 2케이스. 총 인용처 17곳 갱신.
+
+### DCN-CHG-20260506-16
+- **Date**: 2026-05-06
+- **Change-Type**: ci
+- **Files Changed**:
+  - `.claude-plugin/marketplace.json` (source `"./"` → `{ "source": "github", "repo": "alruminum/dcNess", "ref": "release" }` + metadata.version `0.1.0-alpha` → `0.2.0`)
+  - `.claude-plugin/plugin.json` (version `0.1.0-alpha` → `0.2.0`)
+  - `docs/archive/document_update_record.md` (본 항목)
+  - `docs/archive/change_rationale_history.md`
+  - `PROGRESS.md`
+  - `README.md`
+- **Summary**: Story 3.4 (#165) — marketplace.json plugin source 를 로컬 경로(`./`)에서 GitHub release 브랜치 참조로 전환. plugin.json + marketplace.json 버전 0.2.0 bump. Epic 3 코드 작업 완료. PR 머지 후 release-sync.yml 자동 발화로 release 브랜치 갱신 → 외부 활성화 프로젝트가 `/plugin update dcness` 실행 시 docs/internal/ · docs/archive/ 미포함 release 브랜치 콘텐츠 수신.

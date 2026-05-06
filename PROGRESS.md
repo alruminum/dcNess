@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **✅ Epic 3 Story 3.4 (#165) 완료 — marketplace.json source.ref → release 전환 + 0.2.0 bump**: `.claude-plugin/marketplace.json` plugin source 를 `{ "source": "github", "repo": "alruminum/dcNess", "ref": "release" }` 로 전환 (로컬 `./` 제거). `plugin.json` + `marketplace.json` metadata.version `0.1.0-alpha` → `0.2.0`. Epic 3 코드 작업 완료 — PR 머지 후 release-sync.yml 자동 발화로 release 브랜치 갱신. 외부 dry-run (jajang `/plugin update dcness`) 은 PR 머지 후 별도 진행. DCN-CHG-20260506-16.
+
 - **✅ Epic 3 Story 3.3 (#164) 완료 — release-sync.yml + branch protection 가이드**: `.github/workflows/release-sync.yml` 신규 (main push 시 자동 release sync, concurrency 그룹으로 중복 실행 방지). `docs/internal/branch-protection-setup.md` 신규 (release 브랜치 보호 설정 절차). PR #205.
 
 - **✅ Epic 3 Story 3.2 (#163) 완료 — release 브랜치 + sync_release.sh**: `scripts/sync_release.sh` 신규. origin/main → release 동기화 (dcness self 경로 제거 후 force-with-lease push). release 브랜치 초기화 완료. 검증: docs/internal|archive 0 hit / docs/plugin 9 파일 / tests|harness 0 hit. 부수 수정: pytest 게이트 삭제 트리거 버그(`--diff-filter=ACM`). PR #202.
