@@ -1,6 +1,6 @@
 # dcNess
 
-> **Status**: `0.1.0-alpha` — Phase 1 (validator 단위, prose-only) 완료
+> **Status**: `0.1.0-alpha` — Phase 1~3 완료 · Plugin 배포 dry-run 예정
 > **Origin**: [`alruminum/realworld-harness`](https://github.com/alruminum/realworld-harness) fork-and-refactor
 > **Spec**: [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) (Prose-Only Pattern)
 
@@ -10,7 +10,7 @@ Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함
 
 | 항목 | 선행 하네스 | dcNess |
 |---|---|---|
-| 결정론 메커니즘 | `parse_marker` regex + `MARKER_ALIASES` 사다리 (~180 LOC) | `signal_io.interpret_signal` — agent prose 자유 emit, **heuristic-only** 단어경계 매칭으로 결론 enum 추출. ambiguous 시 메인 Claude cascade (DCN-CHG-20260430-04) |
+| 결정론 메커니즘 | `parse_marker` regex + `MARKER_ALIASES` 사다리 (~180 LOC) | `signal_io.interpret_signal` — agent prose 자유 emit, **heuristic-only** 단어경계 매칭으로 결론 enum 추출. ambiguous 시 메인 Claude cascade |
 | 형식 강제 | `---MARKER:X---` + alias 변형 12개 | **0** — 형식 / flag / schema 모두 agent 자율. harness 강제 = 작업 순서 + 접근 영역만 |
 | 컨텍스트 layer | 5 layer (CLAUDE.md + agents + agent-config + preamble + sub-doc) | 2 layer (CLAUDE.md + agents) — preamble / agent-config 자동 주입 폐기 |
 | 게이트 | hook 7+ (agent-boundary / commit-gate / etc.) | 거버넌스 + 3 CI workflow (Document Sync + Python tests + Plugin manifest) |
@@ -21,7 +21,7 @@ Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함
 > "agent 는 prose 자유롭게 emit.
 >  harness 는 prose 의 결론 enum 을 *휴리스틱 단어경계 매칭* 으로 추출.
 >  ambiguous 시 메인 Claude 가 cascade (재호출 / 사용자 위임).
->  형식 강제 0, flag 0, schema 0, **메타 LLM 호출 0** (DCN-CHG-20260430-04)."
+>  형식 강제 0, flag 0, schema 0, **메타 LLM 호출 0**."
 
 ## 1차 구현 (Phase 1) 현황
 
@@ -106,7 +106,7 @@ except MissingSignal as e:
     else:
         ...  # 즉시 fail (not_found / empty)
 
-# 프로덕션 dcness — heuristic-only (DCN-CHG-20260430-04 정착, 메타 LLM 호출 X)
+# 프로덕션 dcness — heuristic-only (메타 LLM 호출 X)
 # 휴리스틱 ambiguous → MissingSignal propagate → 메인 Claude 가 cascade
 # `interpreter=` 인자는 테스트용 DI swap 만 보존
 ```
@@ -121,16 +121,14 @@ except MissingSignal as e:
 
 PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 
-## 다음 단계 (Phase 2 ~ )
+## 다음 단계
 
 [`PROGRESS.md`](PROGRESS.md) §TODO 참조. 핵심 후보:
 
-- 다른 agent docs prose-only 변환 — 13 docs 완료 (`DCN-CHG-20260429-19` Phase 2 종결)
-- Plugin 배포 dry-run — 플러그인 공존 검증 (proposal §12.3.2)
-- DESIGN_VALIDATION step — `/product-plan` 시퀀스에 검증 cycle 추가 완료 (`DCN-CHG-20260430-05`)
+- Plugin 배포 dry-run — 플러그인 공존 검증
 - 후속 skill `/ux` (designer + design-critic, Pencil MCP 의존) — `commands/` 카테고리 확장 후보
 
-## Skill 목록 (`commands/`, 8개)
+## Skill 목록 (`commands/`, 10개)
 
 | 발화 | 역할 |
 |---|---|
@@ -141,13 +139,15 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 | `/impl` | per-task 정식 impl 루프 (architect MODULE_PLAN → test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer) |
 | `/impl-loop` | multi-task sequential auto chain (각 task 마다 /impl 호출 + clean 자동 진행) |
 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
-| `/efficiency` | Claude Code 세션 토큰/캐시/비용 분석 + HTML 대시보드 + 6 절감 휴리스틱 (출처: `jha0313/skills_repo` `improve-token-efficiency` 흡수) |
+| `/efficiency` | Claude Code 세션 토큰/캐시/비용 분석 + HTML 대시보드 + 6 절감 휴리스틱 |
+| `/run-review` | dcness conveyor run 사후 분석 — 각 step 잘한 점·잘못한 점·비용 추출, self-improvement 루프 시작점 |
+| `/audit-redo` | redo-log + agent-trace 결합 분석 — (sub, mode) 별 redo 빈도 + Layer 1/2 개선 후보 제안 |
 
 행동형 skill (`/quick` `/product-plan` `/impl` `/impl-loop`) 공통:
 - yolo keyword (`yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서`) 검출 시 CLARITY/AMBIGUOUS/ESCALATE 자동 폴백 (catastrophic 룰은 hard safety)
 - worktree keyword (`worktree` / `wt` / `격리` / `isolate`) 검출 시 EnterWorktree 격리
 
-읽기형 skill (`/qa` `/smart-compact` `/efficiency`) 은 keyword 무관 (read-only 분석).
+읽기형 skill (`/qa` `/smart-compact` `/efficiency` `/run-review` `/audit-redo`) 은 keyword 무관 (read-only 분석).
 
 ## 참조 문서
 

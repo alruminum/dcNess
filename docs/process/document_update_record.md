@@ -20,6 +20,15 @@
 
 ## Records
 
+### DCN-CHG-20260506-05
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only
+- **Files Changed**:
+  - `README.md` — Status 헤더 갱신, DCN-CHG ID 5건 제거, Skill 목록 8→10개 (audit-redo/run-review 추가), 다음 단계 정리
+  - `PROGRESS.md` — Epic 1 Stories 1.1~1.4 완료 항목 추가
+  - `docs/process/document_update_record.md` (본 항목)
+- **Summary**: README.md / PROGRESS.md 현행화 — 외부 배포물 내 DCN-CHG ID 잔여분 제거, 실제 commands/ 파일 수 반영, Phase 1~3 완료 상태 반영. (Story 1.4 / Issue #156)
+
 ### DCN-CHG-20260506-04
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only + agent
