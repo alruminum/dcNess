@@ -1,6 +1,6 @@
 """session_state.py — 세션/run 격리 상태 API (멀티세션 기본 가정).
 
-발상 (`docs/conveyor-design.md` §4 / §6 / §9):
+발상 (`docs/archive/conveyor-design.md` §4 / §6 / §9):
     Claude Code 가 세션 단위 동작 → 한 사용자가 동시 다중 세션 띄울 수 있음.
     각 세션 안에서 컨베이어가 다중 run 가능 (예: 백그라운드 ralph + foreground quick).
     sid × run_id 별 격리된 디렉토리 구조 + `_meta` envelope 으로 leftover 방어.
