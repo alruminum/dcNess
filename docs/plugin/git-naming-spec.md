@@ -77,8 +77,12 @@
 
 ## 관련 이슈
 
-<!-- issue-lifecycle.md §1.4: 중간 task → `Part of #N` / 마지막 task → `Closes #N` / epic 마지막 task → `Closes #story` + `Closes #epic` -->
-Closes #N
+<!-- issue-lifecycle.md §1.4 키워드 룰:
+     - 중간 task → `Part of #N` (default — 본 PR 이 issue 를 끝내지 않으면 이 줄 유지)
+     - 마지막 task → `Closes #N` 으로 변경
+     - epic 마지막 task → `Closes #story` + `Closes #epic` 둘 다 박음
+     under-link 보다 over-close 사고가 더 큼 (#193 → #182 사례) — default 는 안전한 `Part of` -->
+Part of #N
 
 ## 참고
 
