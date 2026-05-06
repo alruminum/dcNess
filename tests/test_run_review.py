@@ -150,12 +150,24 @@ class WasteDetectionTests(unittest.TestCase):
         self.assertIn("RETRY_SAME_FAIL", kinds)
 
     def test_echo_violation(self):
+        # prose_full 이 짧을 때만 ECHO_VIOLATION (prose_excerpt 기준 X)
+        steps = [
+            StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
+                       enum="READY_FOR_IMPL", must_fix=False,
+                       prose_excerpt="too short",
+                       prose_full="too short\n"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertTrue(any(w.pattern == "ECHO_VIOLATION" for w in wastes))
+
+    def test_echo_violation_no_prose_full_skipped(self):
+        # prose_full 없으면 오탐 방지 — skip
         steps = [
             StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
                        enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="too short"),
         ]
         wastes = detect_wastes(steps)
-        self.assertTrue(any(w.pattern == "ECHO_VIOLATION" for w in wastes))
+        self.assertFalse(any(w.pattern == "ECHO_VIOLATION" for w in wastes))
 
     def test_placeholder_leak(self):
         steps = [
