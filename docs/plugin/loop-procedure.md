@@ -235,7 +235,7 @@ EOF
 if [ "$HAS_REMOTE" = "yes" ]; then
   git push -u origin "$BRANCH"
   gh pr create --title "<제목>" --body "<요약 + Test plan + run_id>"
-  gh pr merge --squash --auto 2>/dev/null || gh pr merge --squash || \
+  gh pr merge --merge --auto 2>/dev/null || gh pr merge --merge || \
     echo "[<entry>] PR merge 차단 — branch protection / CI 대기"
   git checkout main && git pull --ff-only 2>/dev/null || true
 fi
@@ -252,7 +252,7 @@ worktree 진입 시 squash 흡수 검사 후 `ExitWorktree(action="<keep|remove>
 
 ⚠️ Caveat: <has_ambiguous / has_must_fix / unexpected enum / sensitive untracked>
 
-커밋/PR 진행할까요? (수동 — branch → PR → squash merge)
+커밋/PR 진행할까요? (branch → PR → regular merge 자동)
 ```
 
 worktree 처리도 사용자 결정.

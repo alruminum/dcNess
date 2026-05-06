@@ -20,6 +20,19 @@
 
 ## Records
 
+### DCN-CHG-20260506-11
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only, agent
+- **Files Changed**:
+  - `docs/plugin/handoff-matrix.md` line 110 — `LGTM | 사용자 승인 → squash merge` → `LGTM | regular merge 자동 ...`
+  - `docs/plugin/orchestration.md` line 60 — `merge[merge: 사용자 승인 + squash]` → `merge[merge: LGTM 후 자동 + regular]`
+  - `docs/plugin/loop-procedure.md` line 238 — `gh pr merge --squash` → `gh pr merge --merge`
+  - `docs/plugin/loop-procedure.md` line 255 — `(수동 — branch → PR → squash merge)` → `(branch → PR → regular merge 자동)`
+  - `CLAUDE.md` line 92 — `branch → PR → squash merge` → `branch → PR → regular merge` + 자동 머지 명시
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md` (Why)
+- **Summary**: PR/머지 룰 모호 표현 정정. "사용자 승인 → squash merge" 표현이 다른 세션에서 인간 사용자 수동 머지 대기로 오역되어 PR 생성 후 멈추는 회귀 발생. 자동 머지 (CI PASS + LGTM 후) 명시 + regular merge 잔재 정리. (Issue #184)
+
 ### DCN-CHG-20260506-10
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only

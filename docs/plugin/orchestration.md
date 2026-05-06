@@ -57,7 +57,7 @@ flowchart TD
     impl[impl: engineer attempt 0..3]
     cv[validator CODE_VALIDATION]
     review[review: pr-reviewer]
-    merge[merge: 사용자 승인 + squash]
+    merge[merge: LGTM 후 자동 + regular]
     cleanup[post-commit cleanup]
 
     plan -->|READY_FOR_IMPL| pv

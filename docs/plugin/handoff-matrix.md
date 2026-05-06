@@ -107,7 +107,7 @@
 
 | 결론 | 다음 trigger |
 |---|---|
-| `LGTM` | 사용자 승인 → squash merge |
+| `LGTM` | regular merge 자동 (CI PASS + LGTM 후 메인이 즉시 머지) |
 | `CHANGES_REQUESTED` | engineer POLISH |
 
 ### 1.11 qa

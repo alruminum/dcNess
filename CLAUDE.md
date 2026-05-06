@@ -89,7 +89,7 @@
    - `node scripts/check_document_sync.mjs` (모든 commit)
    - `sh scripts/check_python_tests.sh` (`harness/` / `tests/` / `agents/` / `python-tests.yml` staged 시만)
    - 자동: Claude Code PreToolUse hook (`scripts/hooks/cc-pre-commit.sh`) + git pre-commit hook 이 동시 차단.
-6. **branch → PR → squash merge** (직접 `main` push 금지).
+6. **branch → PR → regular merge** (직접 `main` push 금지). CI PASS + LGTM 후 메인이 즉시 머지 — *사용자 수동 승인 대기 X*.
 
 ## 2. 거버넌스 핵심 (전체 룰은 SSOT 참조)
 
