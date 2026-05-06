@@ -1,8 +1,15 @@
 #!/bin/sh
-# commit-msg hook — git-naming-spec 커밋 제목 형식 검증
+# commit-msg hook — git-naming-spec 커밋 제목 형식 검증 (thin shim)
 # 규칙 정의: docs/plugin/git-naming-spec.md §2 (SSOT)
 #
-# 설치: cp scripts/hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
+# 본 hook 은 plugin SSOT 에서 검증 스크립트를 직접 호출 — 사용자 repo 에 mjs 복사 X (#198).
+# init-dcness 가 매 실행마다 본 shim 을 .git/hooks/commit-msg 로 always-overwrite — plugin
+# 업데이트가 자동 hook 갱신.
+#
+# Plugin root 동적 resolve 우선순위:
+#   1. CLAUDE_PLUGIN_ROOT 환경변수 (Claude Code 가 set)
+#   2. ~/.claude/plugins/cache/dcness/dcness/* 의 최신 디렉토리 (cache lookup)
+#   3. 위 둘 다 부재 시 사용자 repo 의 scripts/check_git_naming.mjs (legacy fallback)
 
 COMMIT_TITLE=$(head -1 "$1")
 
@@ -11,4 +18,31 @@ if echo "$COMMIT_TITLE" | grep -qE "^Merge (branch|pull request)"; then
   exit 0
 fi
 
-node "$(git rev-parse --show-toplevel)/scripts/check_git_naming.mjs" --title "$COMMIT_TITLE"
+resolve_plugin_script() {
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs" ]; then
+    echo "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs"
+    return 0
+  fi
+  cache_dir="${HOME}/.claude/plugins/cache/dcness/dcness"
+  if [ -d "$cache_dir" ]; then
+    latest=$(ls -1 "$cache_dir" 2>/dev/null | sort -V | tail -1)
+    if [ -n "$latest" ] && [ -f "$cache_dir/$latest/scripts/check_git_naming.mjs" ]; then
+      echo "$cache_dir/$latest/scripts/check_git_naming.mjs"
+      return 0
+    fi
+  fi
+  legacy="$(git rev-parse --show-toplevel 2>/dev/null)/scripts/check_git_naming.mjs"
+  if [ -f "$legacy" ]; then
+    echo "$legacy"
+    return 0
+  fi
+  return 1
+}
+
+SCRIPT_PATH=$(resolve_plugin_script)
+if [ -z "$SCRIPT_PATH" ]; then
+  echo "[commit-msg] WARN — check_git_naming.mjs 미발견 (plugin 미설치 또는 cache 비정상). hook skip." >&2
+  exit 0
+fi
+
+node "$SCRIPT_PATH" --title "$COMMIT_TITLE"

@@ -84,56 +84,79 @@ fi
 
 이미 등록된 사용자는 멱등 — `이미 존재` 메시지.
 
-### Step 2.6 — git-naming 강제 (commit-msg hook + CI)
+### Step 2.6 — git-naming 강제 (thin shim, fat plugin)
 
-브랜치명·커밋·PR 제목 형식 위반을 로컬과 CI 양쪽에서 자동 차단한다.
+브랜치명·커밋·PR 제목 형식 위반을 로컬과 (선택적으로) CI 양쪽에서 자동 차단한다.
+
+> **#198 정정**: mjs / skill-guidelines.md 는 사용자 repo 에 cp 안 한다 — plugin SSOT 직접 호출. commit-msg hook 만 thin shim 으로 always-overwrite 한다 (`.git/hooks/` 위치 강제 + plugin 업데이트 자동 갱신).
 
 ```bash
 PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)"
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 
-# 1. check_git_naming.mjs 배포 (commit-msg hook + CI 의존)
-mkdir -p "$PROJECT_ROOT/scripts"
-if [ ! -f "$PROJECT_ROOT/scripts/check_git_naming.mjs" ]; then
-  cp "$PLUGIN_ROOT/scripts/check_git_naming.mjs" "$PROJECT_ROOT/scripts/"
-  echo "[dcness] scripts/check_git_naming.mjs 배포"
-else
-  echo "[dcness] scripts/check_git_naming.mjs 이미 존재 — skip"
-fi
+# 1. commit-msg hook (thin shim) — always-overwrite
+#    내용은 plugin path 동적 resolve + check_git_naming.mjs 호출 1줄. 본체 로직 plugin 안.
+cp "$PLUGIN_ROOT/scripts/hooks/commit-msg" "$PROJECT_ROOT/.git/hooks/commit-msg"
+chmod +x "$PROJECT_ROOT/.git/hooks/commit-msg"
+echo "[dcness] .git/hooks/commit-msg 갱신 (thin shim → plugin SSOT 호출)"
 
-# 2. GitHub Actions workflow 배포
-mkdir -p "$PROJECT_ROOT/.github/workflows"
-if [ ! -f "$PROJECT_ROOT/.github/workflows/git-naming-validation.yml" ]; then
-  cp "$PLUGIN_ROOT/.github/workflows/git-naming-validation.yml" "$PROJECT_ROOT/.github/workflows/"
-  echo "[dcness] .github/workflows/git-naming-validation.yml 배포"
-else
-  echo "[dcness] git-naming-validation.yml 이미 존재 — skip"
+# 2. legacy 정리 안내 — 옛 cp 패턴 잔재 제거 권고
+if [ -f "$PROJECT_ROOT/scripts/check_git_naming.mjs" ]; then
+  echo "[dcness] NOTE — scripts/check_git_naming.mjs 가 사용자 repo 에 잔존. 이제 plugin SSOT 에서 호출하므로 제거 권장:"
+  echo "         git rm scripts/check_git_naming.mjs"
 fi
-
-# 3. commit-msg hook 설치
-if [ ! -f "$PROJECT_ROOT/.git/hooks/commit-msg" ]; then
-  cp "$PLUGIN_ROOT/scripts/hooks/commit-msg" "$PROJECT_ROOT/.git/hooks/commit-msg"
-  chmod +x "$PROJECT_ROOT/.git/hooks/commit-msg"
-  echo "[dcness] .git/hooks/commit-msg 설치"
-else
-  echo "[dcness] .git/hooks/commit-msg 이미 존재 — skip"
+if [ -f "$PROJECT_ROOT/docs/plugin/skill-guidelines.md" ]; then
+  echo "[dcness] NOTE — docs/plugin/skill-guidelines.md 가 사용자 repo 에 잔존. session-start.sh 가 이제 plugin SSOT 에서 read. 제거 권장:"
+  echo "         git rm docs/plugin/skill-guidelines.md"
 fi
-
-# 4. skill-guidelines.md 배포 (SessionStart 훅이 읽는 파일)
-mkdir -p "$PROJECT_ROOT/docs/plugin"
-cp "$PLUGIN_ROOT/docs/plugin/skill-guidelines.md" "$PROJECT_ROOT/docs/plugin/skill-guidelines.md"
-echo "[dcness] docs/plugin/skill-guidelines.md 배포"
 ```
 
-출력 예시:
+#### 3. CI 강제 — 사용자 선택 (옵션)
+
+GitHub Actions 에서 git-naming 강제 원하는지 묻는다.
+
 ```
-[dcness] scripts/check_git_naming.mjs 배포
-[dcness] .github/workflows/git-naming-validation.yml 배포
-[dcness] .git/hooks/commit-msg 설치
-[dcness] docs/plugin/skill-guidelines.md 배포
+[dcness] GitHub Actions CI 에서 git-naming 강제할까요?
+  - PR open / sync 시마다 브랜치명 + PR 제목 자동 검증
+  - 본 thin yml 1개만 사용자 repo 에 깔리고, 검증 본체는 alruminum/dcNess composite action 호출
+  - 로컬 commit-msg hook 만으로 충분하면 n
+(Y/n)
 ```
 
-`git-naming-validation.yml` 은 PR open 시 CI 에서 브랜치명·PR 제목을 자동 검사한다. `commit-msg` hook 은 로컬에서 커밋 제목을 사전 차단한다. 두 파일은 커밋 후 프로젝트 repo 에 push 해야 CI 에서 동작한다.
+- **Y**: 다음 thin yml 을 `$PROJECT_ROOT/.github/workflows/git-naming-validation.yml` 로 *always-overwrite* (이미 존재해도 갱신 — plugin 업데이트 자동 반영):
+
+  ```yaml
+  name: git-naming-validation
+  on:
+    pull_request:
+      branches: [main]
+      types: [opened, synchronize, reopened, edited]
+  permissions:
+    contents: read
+    pull-requests: read
+  jobs:
+    naming:
+      name: git-naming-spec gate
+      runs-on: ubuntu-latest
+      steps:
+        - uses: alruminum/dcNess/.github/actions/git-naming@main
+          with:
+            branch: ${{ github.head_ref }}
+            title: ${{ github.event.pull_request.title }}
+  ```
+
+  - 사용자 repo 에 mjs / 검증 로직 본체 cp 0 — 모두 dcNess repo composite action 안.
+  - 사용자가 `@main` 대신 `@v1.2.3` 등 tag pin 으로 버전 고정 가능.
+  - 머지 후 push → 다음 PR 부터 CI 자동 발화.
+
+- **n**: skip. 로컬 commit-msg hook 만으로 강제 (push 전 차단).
+
+출력 예시 (Y 선택):
+```
+[dcness] .git/hooks/commit-msg 갱신 (thin shim → plugin SSOT 호출)
+[dcness] .github/workflows/git-naming-validation.yml 갱신 (composite action 호출)
+[dcness] CI 활성화 — 머지 후 push 시 다음 PR 부터 발화
+```
 
 ### Step 2.7 — design.md SSOT awareness
 
@@ -228,10 +251,9 @@ dcness plug-in 의 디자인 시스템 SSOT 는 `docs/design.md` (Google `design
 - PreToolUse Agent 훅 — catastrophic 룰 (orchestration.md §2.3) 검사
 
 git-naming 강제 (Step 2.6 완료 시):
-- 로컬: .git/hooks/commit-msg — 커밋 제목 형식 위반 차단
-- CI: .github/workflows/git-naming-validation.yml — 브랜치명·PR 제목 위반 차단
-- scripts/check_git_naming.mjs 를 커밋 후 push 해야 CI 활성화
-- docs/plugin/skill-guidelines.md 배포 — SessionStart 훅이 세션마다 읽는 룰 파일
+- 로컬: .git/hooks/commit-msg (thin shim) — 커밋 제목 형식 위반 차단. 본체 로직 plugin SSOT 안.
+- CI (사용자 선택): .github/workflows/git-naming-validation.yml — composite action 호출 1줄
+- skill-guidelines.md / check_git_naming.mjs 는 사용자 repo cp 안 함 — plugin SSOT 직접 호출 (#198)
 
 design.md SSOT (Step 2.7 완료 시):
 - CLAUDE.md 매트릭스에 docs/design.md 행 등록 (UI 작업 시 read 후보)
