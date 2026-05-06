@@ -106,5 +106,5 @@ CRITICAL 이슈 발견 시 다른 이슈 분석 즉시 중단 + 보고.
 
 ## 참조
 
-- 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/orchestration.md`](../docs/orchestration.md)
+- 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md)
 - prose-only 발상: [`docs/plugin/prose-only-principle.md`](../docs/plugin/prose-only-principle.md)

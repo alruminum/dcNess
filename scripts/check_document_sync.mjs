@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * dcNess Document Sync gate
- * 규칙 정의: docs/process/governance.md §2.5 / §2.6 (SSOT)
+ * 규칙 정의: docs/internal/governance.md §2.5 / §2.6 (SSOT)
  *
  * 사용:
  *   node scripts/check_document_sync.mjs                 # 로컬 (staged + unstaged)
@@ -151,7 +151,7 @@ if (violations.length > 0) {
   console.error('[doc-sync] FAIL — violations:');
   violations.forEach(v => console.error(`  - ${v}`));
   console.error('');
-  console.error('규칙: docs/process/governance.md §2.6');
+  console.error('규칙: docs/internal/governance.md §2.6');
   console.error('예외: 현재 diff 추가 라인 또는 commit 메시지에 `Document-Exception: <사유>` 기재');
   process.exit(1);
 }

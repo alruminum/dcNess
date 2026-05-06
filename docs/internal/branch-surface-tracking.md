@@ -1,6 +1,6 @@
 # Branch Surface Tracking — 사다리 진입 조기 감지
 
-> **출처**: 2026-04-30 RWH 에이전트 진단 + 본 저장소 응답 (`docs/process/change_rationale_history.md` `DCN-CHG-20260430-03`).
+> **출처**: 2026-04-30 RWH 에이전트 진단 + 본 저장소 응답 (`docs/internal/change_rationale_history.md` `DCN-CHG-20260430-03`).
 >
 > **목적**: dcNess 가 RWH 가 빠진 *patch-of-patch 사다리* (특히 사다리 #2 = 내부 state hole) 에 진입하는 시점을 가능한 한 조기에 자각.
 >
@@ -82,7 +82,7 @@ PR body 에 명시:
 
 다음 작업 중단 + spec 발상 전환 협의:
 
-1. 신규 Task-ID 발급 (`docs/process/document_update_record.md` 안 별도 entry)
+1. 신규 Task-ID 발급 (`docs/internal/document_update_record.md` 안 별도 entry)
 2. 회의 — 현재 사다리 진입 사실 명시 + RWH 사례 비교 + 발상 전환 후보
 3. `docs/archive/migration-decisions.md` 확인 — 임계 도달 패턴 + 결정
 
@@ -122,7 +122,7 @@ dcness 의 베팅:
 1. 매 `harness` / `hooks` / `spec` PR 작성 시 §2 self-check 첨부
 2. warning 도달 시 §3.1 절차
 3. critical 도달 시 §3.2 절차
-4. 30 일 단위 회고 — `docs/process/branch-surface-tracking-log.md` (별도, 본 PR 에선 생성 안 함) 에 누적 기록 → 임계 수치 보정
+4. 30 일 단위 회고 — `docs/internal/branch-surface-tracking-log.md` (별도, 본 PR 에선 생성 안 함) 에 누적 기록 → 임계 수치 보정
 
 본 문서는 sticky — RWH 가 dcness 에 던진 가장 가치 있는 외부 시각이라 dcness governance 의 영구 자리에 박는다.
 
@@ -130,8 +130,8 @@ dcness 의 베팅:
 
 ## 7. 참조
 
-- `docs/process/governance.md` — PR 일반 절차
-- `docs/process/document_update_record.md` `DCN-CHG-20260430-03` — 본 문서 신규 entry
-- `docs/process/change_rationale_history.md` `DCN-CHG-20260430-03` — 채택 동기 + RWH 진단 인용 + 행동 결정
+- `docs/internal/governance.md` — PR 일반 절차
+- `docs/internal/document_update_record.md` `DCN-CHG-20260430-03` — 본 문서 신규 entry
+- `docs/internal/change_rationale_history.md` `DCN-CHG-20260430-03` — 채택 동기 + RWH 진단 인용 + 행동 결정
 - `docs/archive/migration-decisions.md` §7 — RWH 사다리 카탈로그 + dcness 한계 명시 (역사 자료)
 - `docs/plugin/prose-only-principle.md` §2 — Anti-Pattern 5원칙 (룰 순감소 / catastrophic-prevention 등)

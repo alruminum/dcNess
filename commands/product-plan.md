@@ -6,7 +6,7 @@ description: 새 기능 / PRD 변경 / 큰 기획을 받아 product-planner → 
 # Product Plan Skill
 
 ## Loop
-`feature-build-loop` ([orchestration.md §3.1 / §4.2](../docs/orchestration.md)).
+`feature-build-loop` ([orchestration.md §3.1 / §4.2](../docs/plugin/orchestration.md)).
 
 ## Inputs (메인이 사용자에게 받아야 할 정보)
 - 요구사항 / 문제 정의 (한 단락)
@@ -29,7 +29,7 @@ description: 새 기능 / PRD 변경 / 큰 기획을 받아 product-planner → 
 - escalate enum → 사용자 위임 (orchestration §4.2 분기 표 참조)
 
 ## 사전 read (skill 진입 즉시)
-`docs/loop-procedure.md` + `docs/orchestration.md` §2~§3 + §4.2 + `docs/handoff-matrix.md` read 후 진행.
+`docs/plugin/loop-procedure.md` + `docs/plugin/orchestration.md` §2~§3 + §4.2 + `docs/plugin/handoff-matrix.md` read 후 진행.
 
 ## 절차
-[`docs/loop-procedure.md`](../docs/loop-procedure.md) §1~§6 + [`docs/orchestration.md`](../docs/orchestration.md) §4.2 (`feature-build-loop` 풀스펙) 따름. 본 파일은 input 명세 + 라우팅만.
+[`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.2 (`feature-build-loop` 풀스펙) 따름. 본 파일은 input 명세 + 라우팅만.

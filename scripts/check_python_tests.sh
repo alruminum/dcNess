@@ -1,6 +1,6 @@
 #!/bin/sh
 # dcNess pytest pre-commit gate (paths 분기)
-# 규칙 정의: docs/process/governance.md §2.7
+# 규칙 정의: docs/internal/governance.md §2.7
 #
 # 동작:
 #   1. staged 파일 목록 추출 (git diff --cached --name-only)

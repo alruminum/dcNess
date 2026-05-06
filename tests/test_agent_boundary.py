@@ -68,7 +68,7 @@ class WriteAllowedMainBypassTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             cwd = Path(td)
             self.assertIsNone(check_write_allowed(None, "hooks/x.sh", cwd=cwd))
-            self.assertIsNone(check_write_allowed("", "docs/orchestration.md", cwd=cwd))
+            self.assertIsNone(check_write_allowed("", "docs/plugin/orchestration.md", cwd=cwd))
 
 
 class WriteAllowedInfraProjectBypassTests(unittest.TestCase):
@@ -82,7 +82,7 @@ class WriteAllowedInfraProjectBypassTests(unittest.TestCase):
                     check_write_allowed("engineer", "hooks/x.sh", cwd=cwd)
                 )
                 self.assertIsNone(
-                    check_write_allowed("engineer", "docs/orchestration.md", cwd=cwd)
+                    check_write_allowed("engineer", "docs/plugin/orchestration.md", cwd=cwd)
                 )
 
 
@@ -110,7 +110,7 @@ class WriteAllowedInfraPatternBlockTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             cwd = Path(td)
             reason = check_write_allowed(
-                "architect", "docs/orchestration.md", cwd=cwd
+                "architect", "docs/plugin/orchestration.md", cwd=cwd
             )
             self.assertIsNotNone(reason)
             self.assertIn("인프라", reason)
@@ -119,7 +119,7 @@ class WriteAllowedInfraPatternBlockTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             cwd = Path(td)
             reason = check_write_allowed(
-                "engineer", "docs/process/governance.md", cwd=cwd
+                "engineer", "docs/internal/governance.md", cwd=cwd
             )
             self.assertIsNotNone(reason)
 

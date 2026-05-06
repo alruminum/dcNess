@@ -1,6 +1,6 @@
 # GitHub Actions — Document Sync gate (CI level)
 #
-# 규칙 정의: docs/process/governance.md §2.5 / §2.6 (SSOT)
+# 규칙 정의: docs/internal/governance.md §2.5 / §2.6 (SSOT)
 # 본 워크플로우는 PR 단위로 base..head diff 를 검사한다.
 # 로컬 게이트 (git pre-commit + Claude Code PreToolUse) 를 통과한 상태에서도
 # 누군가 hook 우회(--no-verify 등) 했을 가능성을 CI 에서 차단.
