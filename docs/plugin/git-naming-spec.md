@@ -77,7 +77,8 @@
 
 ## 관련 이슈
 
-- #N
+<!-- issue-lifecycle.md §1.4: 중간 task → `Part of #N` / 마지막 task → `Closes #N` / epic 마지막 task → `Closes #story` + `Closes #epic` -->
+Closes #N
 
 ## 참고
 
