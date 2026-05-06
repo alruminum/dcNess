@@ -27,6 +27,7 @@
 - **Decision**: ID만 제거, 설명 자연어 보존. `(DCN-CHG-XXX, 설명)` → `(설명)`. 설명 없는 단순 참조는 통째 삭제. Origin 헤더 라인은 메타 정보라 통째 삭제.
 - **Follow-Up**: Story 1.3 (archive) / Story 1.4 (README 현행화) 에서 추가 정리 예정.
 
+
 ### DCN-CHG-20260506-02
 - **Date**: 2026-05-06
 - **Rationale**: 외부 사용자가 보는 파일 (.claude-plugin/, commands/, README.md) 에 "RWHarness" 고유명사가 노출됨. 사용자 입장에서 출처 불명의 명칭이라 노이즈. plug-in 정체성을 dcNess 자체로 명확히 해야 함.
@@ -35,6 +36,9 @@
   - 완전 삭제 (기술 내용도 함께) — 설계 근거 정보 손실. init-dcness.md line 284 의 whitelist 위치 차이 설명 등 실용 정보 유실.
 - **Decision**: 고유명사만 제거/일반화, 기술 내용 보존. "RWHarness 처럼" → 삭제, "RWHarness `init-rwh`" → "이전 하네스 패턴 대비", 비교 테이블 헤더 → "선행 하네스" 등.
 - **Follow-Up**: Story 1.2 (DCN-CHG 본문 표기 스크럽) 에서 commands/run-review.md frontmatter 의 DCN-CHG ID 잔재 처리.
+
+
+
 ### DCN-CHG-20260506-01
 - **Date**: 2026-05-06
 - **Rationale**: `session-start.sh`이 `${PROJ}/docs/process/dcness-guidelines.md`를 읽지만, `init-dcness.md` Step 2.6 bash 블록에 해당 파일 배포 스텝이 없었음. 결과: jajang 등 사용자 프로젝트에서 파일 미존재 → Read 실패 → 로드 토큰만 출력되고 실제 룰 미로드 상태. 감지 계기: 사용자가 세션 시작 후 "(파일 실존 안 함을 보고합니다)" 메시지 직접 확인.
