@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **✅ Epic 3 Story 3.1 (#162) 완료 — source.ref GREEN**: `marketplace.json` plugin source 의 `{ "source": "github", "repo": "alruminum/dcNess", "ref": "release-dryrun" }` 실측. docs/internal/ + docs/archive/ cache 미존재 확인. Epic 3 Story 3.2~3.4 진행 가능. 결과: `docs/internal/story-3-1-source-ref-verification.md`.
+
 - **🗑️ 거버넌스 슬림화 PR-1 진행 중 (#182)** (`DCN-CHG-20260506-15`): Task-ID + 동반 갱신 게이트 시스템 폐기. check_task_id.mjs / check_document_sync.mjs 삭제, CI 워크플로우 2개 삭제, hooks 호출 제거. PR-2(문서 정리)·PR-3(Epic3 재평가) 후속. (PR-3 #193 가 먼저 머지되며 `Closes #182` 가 잘못 발동해 이슈가 close 된 것을 reopen 후 PR-1/PR-2 정상 진행 중.)
 
 - **🔧 #151 후속 — 옛 경로 잔존 7건 정리** (`DCN-CHG-20260506-14`): Epic 2 검증 정규식이 `(../docs/X.md)` 만 잡아 `(../X.md)` 형태 마크다운 링크 누수. `harness/agent_boundary.py` docstring + `docs/internal/main-claude-rules.md` (5건+4링크) + `docs/internal/self-guidelines.md` (2건) + `docs/plugin/handoff-matrix.md` §4.4 (1건) + `commands/init-dcness.md` §4 (dcness self repo 명시 라인) 일괄 갱신.
