@@ -4,11 +4,11 @@
 > **Origin**: [`alruminum/realworld-harness`](https://github.com/alruminum/realworld-harness) fork-and-refactor
 > **Spec**: [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) (Prose-Only Pattern)
 
-Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함정 회피 5원칙** 기반의 RWHarness 후속.
+Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함정 회피 5원칙** 기반.
 
 ## 무엇이 다른가
 
-| 항목 | RWHarness | dcNess |
+| 항목 | 선행 하네스 | dcNess |
 |---|---|---|
 | 결정론 메커니즘 | `parse_marker` regex + `MARKER_ALIASES` 사다리 (~180 LOC) | `signal_io.interpret_signal` — agent prose 자유 emit, **heuristic-only** 단어경계 매칭으로 결론 enum 추출. ambiguous 시 메인 Claude cascade (DCN-CHG-20260430-04) |
 | 형식 강제 | `---MARKER:X---` + alias 변형 12개 | **0** — 형식 / flag / schema 모두 agent 자율. harness 강제 = 작업 순서 + 접근 영역만 |
@@ -31,7 +31,7 @@ Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함
 |---|---|---|
 | Signal I/O 모듈 | [`harness/signal_io.py`](harness/signal_io.py) | 29 단위 테스트 통과 (round-trip / path 화이트리스트 / 휴리스틱 / DI swap) |
 | Validator agent docs | [`agents/validator.md`](agents/validator.md) + [`agents/validator/*.md`](agents/validator) (5 모드) | prose writing guide (결론 + 이유) |
-| Plugin manifest | [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) + [marketplace.json](.claude-plugin/marketplace.json) | RWHarness 와 공존 가능 (`name=dcness`) |
+| Plugin manifest | [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) + [marketplace.json](.claude-plugin/marketplace.json) | 다른 플러그인과 공존 가능 (`name=dcness`) |
 | Governance | [`docs/process/governance.md`](docs/process/governance.md) | Document Sync 게이트 SSOT |
 | CI workflows | [`.github/workflows/`](.github/workflows) | 3 종 (document-sync / python-tests / plugin-manifest) |
 
@@ -126,7 +126,7 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 [`PROGRESS.md`](PROGRESS.md) §TODO 참조. 핵심 후보:
 
 - 다른 agent docs prose-only 변환 — 13 docs 완료 (`DCN-CHG-20260429-19` Phase 2 종결)
-- Plugin 배포 dry-run — RWHarness 와 공존 검증 (proposal §12.3.2)
+- Plugin 배포 dry-run — 플러그인 공존 검증 (proposal §12.3.2)
 - DESIGN_VALIDATION step — `/product-plan` 시퀀스에 검증 cycle 추가 완료 (`DCN-CHG-20260430-05`)
 - 후속 skill `/ux` (designer + design-critic, Pencil MCP 의존) — `commands/` 카테고리 확장 후보
 
@@ -154,7 +154,7 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 | 문서 | 역할 |
 |---|---|
 | [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | proposal — Prose-Only Pattern (Goal / Mechanism / Phase / Risks / Plugin 전환 절차) |
-| [`docs/migration-decisions.md`](docs/migration-decisions.md) | RWHarness 모듈 PRESERVE / DISCARD / REFACTOR 분류 |
+| [`docs/migration-decisions.md`](docs/migration-decisions.md) | 모듈 PRESERVE / DISCARD / REFACTOR 분류 |
 | [`docs/process/governance.md`](docs/process/governance.md) | Document Sync SSOT |
 | [`docs/process/document_update_record.md`](docs/process/document_update_record.md) | WHAT 로그 (Task-ID 별 변경 파일) |
 | [`docs/process/change_rationale_history.md`](docs/process/change_rationale_history.md) | WHY 로그 (Task-ID 별 동기·대안·결정·후속) |
