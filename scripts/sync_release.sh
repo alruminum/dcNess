@@ -12,7 +12,6 @@ EXCLUDE_PATHS=(
     "docs/internal"
     "docs/archive"
     "tests"
-    "harness"
     "PROGRESS.md"
     "CLAUDE.md"
     "scripts/sync_release.sh"
