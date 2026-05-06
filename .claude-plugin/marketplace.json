@@ -1,13 +1,13 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "dcness",
-  "description": "Lightweight harness — prose-only determinism + meta-LLM interpretation. RWHarness fork-and-refactor.",
+  "description": "Lightweight harness — prose-only determinism + meta-LLM interpretation.",
   "owner": {
     "name": "alruminum",
     "email": "alruminum@gmail.com"
   },
   "metadata": {
-    "description": "dcNess 첫 알파 — prose-only 결정론 + 메타 LLM 해석 + 함정 회피 5원칙 + Document Sync 거버넌스. RWHarness 와 공존 가능 설계 (proposal §12).",
+    "description": "dcNess 첫 알파 — prose-only 결정론 + 메타 LLM 해석 + 함정 회피 5원칙 + Document Sync 거버넌스.",
     "version": "0.1.0-alpha"
   },
   "plugins": [

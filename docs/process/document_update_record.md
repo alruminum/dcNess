@@ -20,6 +20,17 @@
 
 ## Records
 
+### DCN-CHG-20260506-02
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only + agent
+- **Files Changed**:
+  - `.claude-plugin/plugin.json` — description 에서 "RWHarness fork-and-refactor" 문구 제거
+  - `.claude-plugin/marketplace.json` — top-level description + metadata.description 에서 RWHarness 언급 제거
+  - `commands/init-dcness.md` — line 8 "RWHarness 처럼" 비교 구 제거, line 284 `init-rwh` 참조 일반화
+  - `commands/run-review.md` — frontmatter description / line 8 / line 51 / line 115 에서 RWHarness 고유명사 제거 또는 일반화
+  - `README.md` — 5개 라인 (line 7/11/34/129/157) RWHarness 고유명사 제거 또는 일반화
+- **Summary**: 외부 노출 경로 (.claude-plugin/, commands/, README.md) 에서 RWHarness 고유명사 13건 제거. 기술 정보 보존, 고유명사만 일반화. (Story 1.1 / Issue #153)
+
 ### DCN-CHG-20260506-01
 - **Date**: 2026-05-06
 - **Change-Type**: agent
