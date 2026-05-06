@@ -210,7 +210,7 @@ dcness plug-in 의 디자인 시스템 SSOT 는 `docs/design.md` (Google `design
 
 #### 4. 출처 / 갱신 의무
 
-본 Step inline 템플릿은 `docs/design.md` (dcness self repo) §사용 예시와 coupling — Story #125 의 spec 변경 시 본 Step 템플릿도 **수동 동기 의무**. 자동화 검토는 Epic #129 후속 추적.
+본 Step inline 템플릿은 `docs/plugin/design.md` (dcness self repo) §사용 예시와 coupling — Story #125 의 spec 변경 시 본 Step 템플릿도 **수동 동기 의무**. 자동화 검토는 Epic #129 후속 추적.
 
 #### 5. 기존 활성화 프로젝트 — re-run 안내
 

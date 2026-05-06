@@ -20,6 +20,20 @@
 
 ## Records
 
+### DCN-CHG-20260506-14
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only, harness
+- **Files Changed**:
+  - `harness/agent_boundary.py` — module docstring 의 `docs/handoff-matrix.md` → `docs/plugin/handoff-matrix.md`
+  - `docs/internal/main-claude-rules.md` — §0 / §2.1 (cap 표) / §2.2 (4 SSOT 표) 의 `docs/orchestration.md` / `docs/handoff-matrix.md` / `docs/loop-procedure.md` 인용 + 마크다운 링크 (`../orchestration.md` 등) 모두 `docs/plugin/...` 경로로 갱신. 본문 5건 + 링크 4건.
+  - `docs/internal/self-guidelines.md` — §1 대상 파일 목록의 `docs/loop-procedure.md` / `docs/orchestration.md` → `docs/plugin/...`
+  - `docs/plugin/handoff-matrix.md` — §4.4 RWHarness 비교 단락 안 `docs/orchestration.md` + `docs/handoff-matrix.md` 텍스트 인용 → `docs/plugin/...`
+  - `commands/init-dcness.md` — §4 출처 단락 (dcness self repo 명시 라인) 의 `docs/design.md` → `docs/plugin/design.md` (다른 라인은 *사용자 프로젝트* docs/design.md 의도, 미변경)
+  - `docs/internal/document_update_record.md` (본 항목)
+  - `docs/internal/change_rationale_history.md` (Why)
+- **Summary**: Story 2.5 (#161) 후속 — Epic 2 (#151) 폴더 분리 후 active 코드/문서에 잔존한 옛 경로 참조 7건 일괄 갱신. 이슈 검증 정규식이 `(../docs/orchestration.md)` 패턴만 잡아 `(../orchestration.md)` 형태 마크다운 링크가 누수된 것을 정정.
+- Document-Exception: harness/agent_boundary.py 변경이 module docstring 1줄 (참조 경로 텍스트) 로 동작 영향 없어 tests/ 동반 변경 불필요.
+
 ### DCN-CHG-20260506-13
 - **Date**: 2026-05-06
 - **Change-Type**: agent, docs-only, harness, test

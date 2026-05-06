@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260506-14
+- **Date**: 2026-05-06
+- **Rationale**: Epic 2 (#151) closed 후 사용자가 "구현 사항 리뷰" 요청 — 실측 결과 active 코드/문서 7곳에 옛 경로 (`docs/orchestration.md` / `docs/handoff-matrix.md` / `docs/loop-procedure.md` / `docs/design.md` 의 *self-repo* 인용) 잔존. Epic 검증 정규식 `rg '\(\.\./docs/orchestration\.md\)'` 가 `(../orchestration.md)` 형태 (docs/ 한 단계 prefix 없는 internal/ 내부 상대경로) 마크다운 링크를 못 잡아 누수.
+- **Alternatives**:
+  1. *재오픈하지 않고 archive 처리* — 잔존 7건이 모두 historical 로그라면 OK. 그러나 실측 시 `harness/agent_boundary.py` docstring + `main-claude-rules.md` 가 active SSOT cross-ref → 사용자/메인 Claude 실제 read 시 broken link. 패치 필요.
+  2. *(채택)* **#151 후속 hotfix PR (`fix/issue151_followup_path_refs`)** — Story 2.5 검증 누수 정정. 5개 파일 9건 갱신 + 동반 로그 갱신.
+- **Decision**: 옵션 2. Epic 2 검증 기준의 한계 (`(../docs/X.md)` 만 검증) 노출 — 향후 폴더 이동 시 `(../X.md)` 같은 relative depth 변종도 검증 정규식에 포함해야 함. 본 PR 에서는 직접 수정 없이 Follow-Up 으로 기록.
+- **Follow-Up**: 폴더 이동 회귀 검증 시 마크다운 링크 정규식을 `\((\.\./)+(docs/)?(orchestration|handoff-matrix|loop-procedure)\.md\)` 형태로 확장 검토 (별도 작업, scope 외).
+
 ### DCN-CHG-20260506-13
 - **Date**: 2026-05-06
 - **Rationale**: Story 2.5 (#161) — Epic 2 (Story 2.1~2.4) 에서 파일 이동은 완료됐으나 전체 저장소의 구 경로 참조 (~138 occurrence) 가 남아 있음. agents/ footers, commands/ 본문, harness/agent_boundary.py DCNESS_INFRA_PATTERNS, tests, CLAUDE.md/README.md/AGENTS.md, scripts/hooks/.github 주석 등 모든 영역에서 깨진 링크 상태.

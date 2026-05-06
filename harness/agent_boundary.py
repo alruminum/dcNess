@@ -1,4 +1,4 @@
-"""agent_boundary.py — sub-agent 경로 접근 강제 (`docs/handoff-matrix.md` §4 SSOT).
+"""agent_boundary.py — sub-agent 경로 접근 강제 (`docs/plugin/handoff-matrix.md` §4 SSOT).
 
 본 모듈은 PreToolUse(Edit/Write/Read/Bash) 훅이 호출하여 활성 sub-agent 의 path
 접근을 차단한다. handoff-matrix.md §4.1~§4.5 의 spec 을 코드로 강제 (DCN-CHG-20260501-01).

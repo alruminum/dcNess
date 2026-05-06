@@ -8,10 +8,10 @@
 dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 *직접 read* 하는 md) 는 **파일당 300줄 cap**. 초과 시 책임 분리 축으로 split.
 
 **대상 파일 (예시)**:
-- `docs/loop-procedure.md` (loop mechanics SSOT)
+- `docs/plugin/loop-procedure.md` (loop mechanics SSOT)
 - `docs/plugin/skill-guidelines.md` (skill 가이드라인)
 - `docs/internal/self-guidelines.md` (본 가이드라인)
-- `docs/orchestration.md` (loop spec SSOT — DCN-CHG-20260505-03 후 cap 500 예외)
+- `docs/plugin/orchestration.md` (loop spec SSOT — DCN-CHG-20260505-03 후 cap 500 예외)
 - `commands/*.md` (skill prompt)
 - `agents/**/*.md` (agent prompt)
 
