@@ -20,6 +20,23 @@
 
 ## Records
 
+### DCN-CHG-20260506-12
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only, ci
+- **Files Changed**:
+  - `docs/process/governance.md` → `docs/internal/governance.md` (git mv + 내부 ref 6곳 갱신)
+  - `docs/process/main-claude-rules.md` → `docs/internal/main-claude-rules.md` (git mv + 내부 ref 4곳 갱신)
+  - `docs/process/document_update_record.md` → `docs/internal/document_update_record.md` (git mv + 본 항목 추가)
+  - `docs/process/change_rationale_history.md` → `docs/internal/change_rationale_history.md` (git mv + 새 항목 추가)
+  - `docs/process/document_impact_matrix.md` → `docs/internal/document_impact_matrix.md` (git mv)
+  - `docs/process/branch-protection-setup.md` → `docs/internal/branch-protection-setup.md` (git mv)
+  - `docs/process/branch-surface-tracking.md` → `docs/internal/branch-surface-tracking.md` (git mv)
+  - `scripts/check_document_sync.mjs` — RECORD/RATIONALE 상수 `docs/process/` → `docs/internal/` (기능 갱신)
+  - `docs/internal/document_update_record.md` (본 항목)
+  - `docs/internal/change_rationale_history.md` (Why)
+  - `PROGRESS.md` (ci change)
+- **Summary**: Story 2.4 (#160) — dcness self 거버넌스 7개를 `docs/process/` → `docs/internal/` 로 git mv (history 보존). `docs/process/` 폴더 비움 완료. `check_document_sync.mjs` RECORD/RATIONALE 상수 경로 갱신 (functional). 외부 인용처 (~138 occurrence) 는 Story 2.5 (#161) 일괄 처리.
+
 ### DCN-CHG-20260506-11
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only, agent

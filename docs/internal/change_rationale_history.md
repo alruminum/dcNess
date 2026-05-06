@@ -18,6 +18,15 @@
 
 ## Records
 
+### DCN-CHG-20260506-12
+- **Date**: 2026-05-06
+- **Rationale**: Story 2.4 (#160) — Epic 2 docs 폴더 분리의 3번째 파일 이동 단계. `docs/process/` 에 dcness self 거버넌스 7개 (governance / main-claude-rules / document_update_record / change_rationale_history / document_impact_matrix / branch-protection-setup / branch-surface-tracking) 가 남아 있음. `check_document_sync.mjs` 의 RECORD/RATIONALE 상수가 `docs/process/` 를 하드코딩 — 이동 후 게이트 작동 불가 상태 즉시 수정 필요.
+- **Alternatives**:
+  1. *Story 2.5 (참조 일괄 갱신) 와 합치기* — 파일 이동 + 전체 참조 갱신을 한 PR 로. 검증 부담 급증 + 게이트 RECORD/RATIONALE 경로 미수정 시 커밋 자체 불가. 분리가 단순.
+  2. *(채택)* **별도 PR: git mv 7개 + 게이트 상수 2개 즉시 갱신** — 이동 완료 후 게이트 정상 작동 확보. 외부 인용처 (~138 occurrence) 는 Story 2.5 일괄 처리.
+- **Decision**: 옵션 2. `git mv` 7개 후 `check_document_sync.mjs` RECORD/RATIONALE 즉시 갱신. governance.md + main-claude-rules.md 내부 ref 갱신. 외부 인용처 (agents/ / commands/ / scripts 주석 / hooks/ / CLAUDE.md / README.md) 는 Story 2.5 (#161).
+- **Follow-Up**: Story 2.5 (#161) — 전체 저장소 참조 경로 일괄 갱신 (~138 occurrence). `docs/process/` 경로 0건 확인 후 Epic 2 완료.
+
 ### DCN-CHG-20260506-11
 - **Date**: 2026-05-06
 - **Rationale**: 본 세션 (2026-05-06) 다른 sub-session 이 Story 2.2 (#158) PR #181 생성 후 머지 안 하고 멈춤. `CLAUDE.md` §5 step 8 (`gh pr merge`) 명시에도 불구하고. 룰 문서 안 모호한 "사용자 승인 → squash merge" (handoff-matrix 110, orchestration 60) 가 인간 사용자 수동 머지 대기로 오역되는 root cause. 또한 `regular merge` 정착 후 `loop-procedure.md` 안 `--squash` 잔재 2 곳 + `CLAUDE.md` line 92 자기모순 (line 168 "squash 금지" 와 충돌).

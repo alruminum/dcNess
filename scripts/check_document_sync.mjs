@@ -110,14 +110,14 @@ if (tokens.size === 0) {
 const violations = [];
 
 // (a) 모든 변경: WHAT 로그 필수
-const RECORD = 'docs/process/document_update_record.md';
+const RECORD = 'docs/internal/document_update_record.md';
 if (!files.includes(RECORD)) {
   violations.push(`missing: ${RECORD} (any governed change requires WHAT log)`);
 }
 
 // (b) heavy 카테고리: WHY 로그 필수
 const HEAVY = ['spec', 'agent', 'harness', 'hooks', 'ci'];
-const RATIONALE = 'docs/process/change_rationale_history.md';
+const RATIONALE = 'docs/internal/change_rationale_history.md';
 if (HEAVY.some(t => tokens.has(t)) && !files.includes(RATIONALE)) {
   violations.push(`missing: ${RATIONALE} (heavy categories require WHY log)`);
 }
