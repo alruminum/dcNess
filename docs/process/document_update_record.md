@@ -20,6 +20,25 @@
 
 ## Records
 
+### DCN-CHG-20260506-09
+- **Date**: 2026-05-06
+- **Change-Type**: docs-only, agent
+- **Files Changed**:
+  - `docs/plugin/prose-only-principle.md` (신규 — Prose-Only 원칙 현행 SSOT, ≤100줄)
+  - `docs/archive/status-json-mutate-pattern.md` (이동 — 원본 proposal 보존)
+  - `docs/status-json-mutate-pattern.md` (삭제 — archive 로 git mv)
+  - `agents/architect.md`, `agents/designer.md`, `agents/engineer.md`, `agents/plan-reviewer.md`, `agents/pr-reviewer.md`, `agents/product-planner.md`, `agents/qa.md`, `agents/security-reviewer.md`, `agents/test-engineer.md`, `agents/ux-architect.md`, `agents/validator.md`, `agents/design-critic.md` (footer 링크 갱신, 12개)
+  - `docs/orchestration.md` (3곳 인용 갱신)
+  - `docs/handoff-matrix.md` (3곳 인용 갱신)
+  - `docs/process/main-claude-rules.md` (2곳 인용 갱신)
+  - `CLAUDE.md` (3곳 인용 갱신)
+  - `AGENTS.md` (3곳 인용 갱신)
+  - `README.md` (2곳 인용 갱신)
+  - `docs/process/document_update_record.md` (본 항목)
+  - `docs/process/change_rationale_history.md`
+  - `PROGRESS.md`
+- **Summary**: Story 2.2 (#158) — `docs/status-json-mutate-pattern.md` (444줄) 핵심 원리 추출 → `docs/plugin/prose-only-principle.md` (58줄 SSOT) 신규 + 원본 `docs/archive/` 이동. agents/ 12개 footer + 기타 인용처 25곳 갱신.
+
 ### DCN-CHG-20260506-08
 - **Date**: 2026-05-06
 - **Change-Type**: harness, docs-only

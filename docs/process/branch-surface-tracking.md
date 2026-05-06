@@ -134,4 +134,4 @@ dcness 의 베팅:
 - `docs/process/document_update_record.md` `DCN-CHG-20260430-03` — 본 문서 신규 entry
 - `docs/process/change_rationale_history.md` `DCN-CHG-20260430-03` — 채택 동기 + RWH 진단 인용 + 행동 결정
 - `docs/archive/migration-decisions.md` §7 — RWH 사다리 카탈로그 + dcness 한계 명시 (역사 자료)
-- `docs/status-json-mutate-pattern.md` §2.5 — proposal 5 원칙 (룰 순감소 / catastrophic-prevention 등)
+- `docs/plugin/prose-only-principle.md` §2 — Anti-Pattern 5원칙 (룰 순감소 / catastrophic-prevention 등)

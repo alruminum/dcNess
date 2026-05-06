@@ -10,14 +10,14 @@
 
 ## 0. 정체성 — 강제하는 것 / 강제 안 하는 것
 
-> **🔴 대 원칙** (`docs/status-json-mutate-pattern.md` §2.5 / `docs/orchestration.md` §0 직접 인용):
+> **🔴 대 원칙** (`docs/plugin/prose-only-principle.md` §1 / `docs/orchestration.md` §0 직접 인용):
 > **harness 가 강제하는 것은 단 2가지 — (1) 작업 순서, (2) 접근 영역. 그 외 모두 agent 자율.**
 
 - **작업 순서** = 시퀀스 (validator → engineer → pr-reviewer 등) + retry 정책
 - **접근 영역** = file path 경계 (agent-boundary ALLOW / READ_DENY) + 외부 시스템 mutation 차단 (push, gh issue, plugin 디렉토리)
 - **출력 형식 / handoff 형식 / preamble 구조 / marker / status JSON / Flag / 모든 형식적 강제 = agent 자율**. harness 가 강제하지 않는다.
 
-dcness SSOT (orchestration / handoff-matrix / loop-procedure / skill-guidelines / self-guidelines / 본 문서) 는 위 2개 강제 영역만 정의. 형식 강제 (마커 / status JSON / Flag) 는 `status-json-mutate-pattern.md` 에 의해 폐기 — 본 문서 안에서도 그 어휘는 사용하지 않는다.
+dcness SSOT (orchestration / handoff-matrix / loop-procedure / skill-guidelines / self-guidelines / 본 문서) 는 위 2개 강제 영역만 정의. 형식 강제 (마커 / status JSON / Flag) 는 `docs/plugin/prose-only-principle.md` 에 의해 폐기 — 본 문서 안에서도 그 어휘는 사용하지 않는다.
 
 ### 적용 — 메인 Claude 의 자율 보존 책임
 

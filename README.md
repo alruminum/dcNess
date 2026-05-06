@@ -2,7 +2,7 @@
 
 > **Status**: `0.1.0-alpha` — Phase 1~3 완료 · Plugin 배포 dry-run 예정
 > **Origin**: [`alruminum/realworld-harness`](https://github.com/alruminum/realworld-harness) fork-and-refactor
-> **Spec**: [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) (Prose-Only Pattern)
+> **Spec**: [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) (Prose-Only 원칙)
 
 Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함정 회피 5원칙** 기반.
 
@@ -153,7 +153,8 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 
 | 문서 | 역할 |
 |---|---|
-| [`docs/status-json-mutate-pattern.md`](docs/status-json-mutate-pattern.md) | proposal — Prose-Only Pattern (Goal / Mechanism / Phase / Risks / Plugin 전환 절차) |
+| [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) | Prose-Only 원칙 현행 SSOT (대 원칙 + Anti-Pattern 5원칙) |
+| [`docs/archive/status-json-mutate-pattern.md`](docs/archive/status-json-mutate-pattern.md) | Prose-Only 원전 proposal (Phase 분할 / Risks / Plugin 전환 절차) (역사 자료) |
 | [`docs/archive/migration-decisions.md`](docs/archive/migration-decisions.md) | 모듈 PRESERVE / DISCARD / REFACTOR 분류 (역사 자료) |
 | [`docs/process/governance.md`](docs/process/governance.md) | Document Sync SSOT |
 | [`docs/process/document_update_record.md`](docs/process/document_update_record.md) | WHAT 로그 (Task-ID 별 변경 파일) |

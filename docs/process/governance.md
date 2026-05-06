@@ -12,7 +12,7 @@
 
 ## 1. 정체성 정합
 
-본 거버넌스는 `docs/status-json-mutate-pattern.md` §10/§11 정합:
+본 거버넌스는 `docs/archive/status-json-mutate-pattern.md` §10/§11 정합:
 - 메인 Claude 직접 작업 모드 (architect/validator/engineer 위임 강제 없음)
 - 본 거버넌스 시스템만 도입 (RWHarness 가드 미적용)
 - 함정 회피 5원칙(§2.5) 준수: 룰 순감소, 강제 vs 권고 분리, agent 자율성, 흐름 강제 최소, hook 추가 전 측정

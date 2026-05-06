@@ -1,6 +1,6 @@
 # Plugin 배포 Dry-Run 가이드
 
-> 규칙 정의: 본 가이드는 `docs/status-json-mutate-pattern.md` §12 (RWHarness → 신규 Plugin 전환 절차) 의 *적용 운영 가이드*.
+> 규칙 정의: 본 가이드는 `docs/archive/status-json-mutate-pattern.md` §12 (RWHarness → 신규 Plugin 전환 절차) 의 *적용 운영 가이드*.
 > Origin: `DCN-CHG-20260429-24` (Phase 3 종결 + dry-run 인프라 정리).
 
 ## 0. 목적

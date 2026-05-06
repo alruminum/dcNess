@@ -1,7 +1,7 @@
 # Migration Decisions — RWHarness → dcNess
 
 > **Status**: ACTIVE
-> **Origin**: `docs/status-json-mutate-pattern.md` §11.2 framework 적용
+> **Origin**: `docs/archive/status-json-mutate-pattern.md` §11.2 framework 적용
 > **Bootstrap**: DCN-CHG-20260429-05
 > **Scope**: RWHarness 의 어느 모듈을 dcNess 로 가져올지 / 폐기할지 / 리팩터할지 module-level 결정 기록
 
@@ -168,9 +168,9 @@ dcNess 는 RWHarness 와 다른 *모드* 다. 분류 전 다음 전제 박는다
 
 ## 6. 참조
 
-- `docs/status-json-mutate-pattern.md` §11.2 — framework 출처
-- `docs/status-json-mutate-pattern.md` §11.4 — 도입할 것 / 도입 안 할 것 / 안전망
-- `docs/status-json-mutate-pattern.md` §12 — RWHarness → 신규 Plugin 전환 절차
+- `docs/archive/status-json-mutate-pattern.md` §11.2 — framework 출처
+- `docs/archive/status-json-mutate-pattern.md` §11.4 — 도입할 것 / 도입 안 할 것 / 안전망
+- `docs/archive/status-json-mutate-pattern.md` §12 — RWHarness → 신규 Plugin 전환 절차
 - `docs/process/governance.md` — Task-ID + Document Sync 룰
 - `~/project/RWHarness` — 분류 대상 코드베이스
 
