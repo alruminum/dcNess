@@ -1,5 +1,5 @@
 {
-  "description": "dcNess — 컨베이어 인프라 훅 (SessionStart sid + PreToolUse Agent catastrophic-gate + Edit/Write/Read/Bash file-guard + PostToolUse Agent post-clear + PostToolUse Edit/Write/Read/Bash post-file-op-trace)",
+  "description": "dcNess — 컨베이어 인프라 훅 (SessionStart sid + PreToolUse Agent catastrophic-gate + Edit/Write/Read/Bash/mcp__.* file-guard + PostToolUse Agent post-clear + PostToolUse Edit/Write/Read/Bash/mcp__.* post-file-op-trace)",
   "hooks": {
     "SessionStart": [
       {
@@ -24,7 +24,7 @@
         ]
       },
       {
-        "matcher": "Edit|Write|NotebookEdit|Read|Bash",
+        "matcher": "Edit|Write|NotebookEdit|Read|Bash|mcp__.*",
         "hooks": [
           {
             "type": "command",
@@ -46,7 +46,7 @@
         ]
       },
       {
-        "matcher": "Edit|Write|NotebookEdit|Read|Bash",
+        "matcher": "Edit|Write|NotebookEdit|Read|Bash|mcp__.*",
         "hooks": [
           {
             "type": "command",

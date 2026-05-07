@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# dcNess file-guard 훅 — PreToolUse Edit/Write/Read/Bash agent_boundary 강제
+# dcNess file-guard 훅 — PreToolUse Edit/Write/Read/Bash/mcp__.* agent_boundary 강제 + trace
 #
-# 트리거: Claude Code PreToolUse event, tool=Edit|Write|Read|Bash
+# 트리거: Claude Code PreToolUse event, tool=Edit|Write|NotebookEdit|Read|Bash|mcp__.*
+# mcp__* 도구는 boundary 검사 skip (file_path 인자 부재) + trace pre append 만 — #255 W5 정합.
 # stdin: CC payload (sessionId + tool_name + tool_input)
 # 동작: harness/hooks.py 의 handle_pretooluse_file_op 호출
 #
