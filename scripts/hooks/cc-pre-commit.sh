@@ -42,7 +42,9 @@ resolve_naming_script() {
   return 1
 }
 
-case "$COMMAND" in
+CMD_FIRST_LINE=$(printf '%s' "$COMMAND" | head -1)
+
+case "$CMD_FIRST_LINE" in
   *"git commit"*)
     cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}" 2>/dev/null || exit 0
     current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
