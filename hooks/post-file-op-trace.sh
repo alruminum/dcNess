@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# dcNess post-file-op-trace 훅 — PostToolUse Edit/Write/Read/Bash sub 행동 trace
-# (DCN-CHG-20260501-11)
+# dcNess post-file-op-trace 훅 — PostToolUse Edit/Write/Read/Bash/mcp__.* sub 행동 trace
+# (DCN-CHG-20260501-11 + #255 W5 정합)
 #
-# 트리거: Claude Code PostToolUse event, tool=Edit|Write|NotebookEdit|Read|Bash
+# 트리거: Claude Code PostToolUse event, tool=Edit|Write|NotebookEdit|Read|Bash|mcp__.*
 # stdin: CC payload (sessionId + tool_name + tool_input + tool_response)
 # 동작: harness/hooks.py 의 handle_posttooluse_file_op 호출 — 활성 sub-agent 가
 #       있을 때만 agent-trace.jsonl 에 post phase 1줄 append.
