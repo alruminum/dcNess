@@ -1,25 +1,24 @@
 """eval_agentevals.py — AgentEvals 기반 dcNess 하네스 평가.
 
-두 가지를 측정:
-  1. Enum 추출 정확도 (interpret_signal heuristic)
-     — 합성 prose 변형 × (agent, mode) 조합 → precision / recall
-  2. Trajectory 일치도 (loop 시퀀스 검증)
-     — .steps.jsonl 형식의 step 시퀀스 → AgentEvals trajectory_match
+세 가지를 측정:
+  1. Enum 추출 정확도 — 합성 prose (synthetic)
+  2. Enum 추출 정확도 — 실제 run 데이터 (real)
+  3. Trajectory 일치도 (loop 시퀀스 검증)
 
 실행:
     # venv 준비 (최초 1회)
     python3 -m venv /tmp/dcness-eval-env
     /tmp/dcness-eval-env/bin/pip install agentevals
 
-    # eval 실행
-    /tmp/dcness-eval-env/bin/python tests/eval_agentevals.py
-
-    # 또는 agentevals 가 이미 설치된 환경에서
-    python tests/eval_agentevals.py
+    # 실제 데이터 포함 실행 (자장 프로젝트)
+    /tmp/dcness-eval-env/bin/python tests/eval_agentevals.py \\
+        --real-data /Users/dc.kim/project/jajang/.claude/harness-state \\
+        --html --open
 """
 from __future__ import annotations
 
 import json
+import re
 import sys
 import textwrap
 from dataclasses import dataclass
@@ -210,7 +209,109 @@ def run_enum_accuracy_eval() -> dict:
     }
 
 
-# ── 2. Trajectory 일치도 평가 ─────────────────────────────────────────────
+# ── 2. Real Data Eval (실제 run 데이터) ──────────────────────────────────────
+
+def _normalize_mode(mode: Optional[str]) -> str:
+    """IMPL_RETRY_1 → IMPL 등 retry suffix 제거."""
+    if mode is None:
+        return "DEFAULT"
+    return re.sub(r"_RETRY_\d+$", "", mode)
+
+
+def _build_enum_catalog(harness_root: Path) -> dict[str, list[str]]:
+    """모든 .steps.jsonl 에서 (agent/base_mode) → 관찰된 enum 목록 구축."""
+    catalog: dict[str, set[str]] = {}
+    for jsonl in harness_root.rglob(".steps.jsonl"):
+        for line in jsonl.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            key = f"{rec['agent']}/{_normalize_mode(rec.get('mode'))}"
+            enum = rec.get("enum", "")
+            if enum:
+                catalog.setdefault(key, set()).add(enum)
+    return {k: sorted(v) for k, v in catalog.items()}
+
+
+def run_real_data_eval(harness_root: Path) -> dict:
+    """실제 .steps.jsonl + prose 파일로 interpret_signal 정확도 측정."""
+    catalog = _build_enum_catalog(harness_root)
+
+    per_agent: dict[str, dict] = {}
+    skipped_no_prose = 0
+    skipped_no_file = 0
+
+    for jsonl in sorted(harness_root.rglob(".steps.jsonl")):
+        run_id = jsonl.parent.name
+        for line in jsonl.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            prose_file = rec.get("prose_file")
+            if not prose_file:
+                skipped_no_prose += 1
+                continue
+
+            prose_path = Path(prose_file)
+            if not prose_path.exists():
+                skipped_no_file += 1
+                continue
+
+            agent = rec["agent"]
+            mode = rec.get("mode")
+            base_mode = _normalize_mode(mode)
+            key = f"{agent}/{base_mode}"
+            expected = rec.get("enum", "")
+            if not expected:
+                continue
+
+            allowed = catalog.get(key, [expected])
+            prose = prose_path.read_text(encoding="utf-8")
+
+            ak = key
+            if ak not in per_agent:
+                per_agent[ak] = {"total": 0, "correct": 0, "ambiguous": 0, "errors": []}
+
+            per_agent[ak]["total"] += 1
+
+            try:
+                got = interpret_signal(prose, allowed)
+                ok = got == expected
+                if ok:
+                    per_agent[ak]["correct"] += 1
+                else:
+                    per_agent[ak]["errors"].append(
+                        f"  run={run_id} expected={expected!r} got={got!r}"
+                    )
+            except MissingSignal as e:
+                per_agent[ak]["ambiguous"] += 1
+                per_agent[ak]["errors"].append(
+                    f"  run={run_id} expected={expected!r} → AMBIGUOUS({e.reason})"
+                )
+
+    total   = sum(v["total"]   for v in per_agent.values())
+    correct = sum(v["correct"] for v in per_agent.values())
+    ambiguous = sum(v["ambiguous"] for v in per_agent.values())
+
+    return {
+        "total": total,
+        "correct": correct,
+        "ambiguous": ambiguous,
+        "accuracy": correct / total if total else 0.0,
+        "skipped_no_prose": skipped_no_prose,
+        "skipped_no_file": skipped_no_file,
+        "per_agent": per_agent,
+    }
+
+
+# ── 3. Trajectory 일치도 평가 ─────────────────────────────────────────────
 
 def _step_to_message(agent: str, mode: Optional[str], enum: str, idx: int) -> ChatCompletionMessage:
     """dcNess step → AgentEvals OpenAI-style assistant message."""
@@ -408,7 +509,7 @@ def _bar(ratio: float, width: int = 20) -> str:
     return "█" * filled + "░" * (width - filled)
 
 
-def build_html_report(enum_report: dict, traj_report: dict) -> str:
+def build_html_report(enum_report: dict, traj_report: dict, real_report: Optional[dict] = None) -> str:
     """eval 결과를 HTML 리포트로 변환."""
     from datetime import datetime
 
@@ -421,9 +522,10 @@ def build_html_report(enum_report: dict, traj_report: dict) -> str:
     spc = traj_report["superset_correct"]
     sbc = traj_report["subset_correct"]
 
+    real_pass  = (real_report["accuracy"] >= 0.90) if real_report else True
     enum_pass  = acc >= 0.90
     traj_pass  = sc == ts and spc == ts and sbc == ts
-    overall    = "PASS" if (enum_pass and traj_pass) else "FAIL"
+    overall    = "PASS" if (enum_pass and real_pass and traj_pass) else "FAIL"
     ov_color   = "#22c55e" if overall == "PASS" else "#ef4444"
 
     def pct(n, d):
@@ -476,6 +578,60 @@ def build_html_report(enum_report: dict, traj_report: dict) -> str:
           <td style="padding:6px 12px">{badge(r['subset_ok'],  r['subset_got'])}</td>
         </tr>"""
 
+    # real data section HTML
+    real_section_html = ""
+    if real_report:
+        ra  = real_report["accuracy"]
+        rt  = real_report["total"]
+        rc  = real_report["correct"]
+        rab = real_report["ambiguous"]
+        rbar_color = "#22c55e" if ra >= 0.9 else ("#f59e0b" if ra >= 0.7 else "#ef4444")
+        real_agent_rows = ""
+        for ak, v in sorted(real_report["per_agent"].items()):
+            n, c, ab = v["total"], v["correct"], v["ambiguous"]
+            r = c / n if n else 0
+            bw = int(r * 100)
+            bc = "#22c55e" if r == 1.0 else ("#f59e0b" if r >= 0.7 else "#ef4444")
+            errs_html = ""
+            if v["errors"]:
+                errs_html = "<ul style='margin:4px 0 0 16px;color:#ef4444;font-size:11px'>"
+                for e in v["errors"][:3]:
+                    errs_html += f"<li>{e.strip()}</li>"
+                if len(v["errors"]) > 3:
+                    errs_html += f"<li>... 외 {len(v['errors'])-3}건</li>"
+                errs_html += "</ul>"
+            real_agent_rows += f"""
+            <tr>
+              <td style="padding:6px 12px;font-family:monospace;font-size:13px">{ak}</td>
+              <td style="padding:6px 12px;text-align:center">{c}/{n}</td>
+              <td style="padding:6px 12px;text-align:center;color:#6b7280">{ab}</td>
+              <td style="padding:6px 16px">
+                <div style="background:#e5e7eb;border-radius:4px;height:14px;width:160px;overflow:hidden">
+                  <div style="background:{bc};height:100%;width:{bw}%"></div>
+                </div>
+              </td>
+              <td style="padding:6px 12px;font-weight:600;color:{bc}">{pct(c,n)}</td>
+              <td style="padding:6px 12px">{errs_html}</td>
+            </tr>"""
+        real_section_html = f"""
+<div class="card">
+  <div class="card-head"><h2>2. Enum 추출 정확도 — 실제 run 데이터 (자장 프로젝트)</h2></div>
+  <div class="summary-grid">
+    <div class="stat"><div class="num" style="color:{rbar_color}">{pct(rc,rt)}</div><div class="lbl">실제 데이터 정확도</div></div>
+    <div class="stat"><div class="num">{rc}/{rt}</div><div class="lbl">평가된 step 수<br><span style="font-size:10px;color:#94a3b8">prose_file 있는 레코드</span></div></div>
+    <div class="stat"><div class="num" style="color:{'#ef4444' if rab>0 else '#22c55e'}">{rab}</div><div class="lbl">Ambiguous<br><span style="font-size:10px;color:#94a3b8">(heuristic 탐지 실패)</span></div></div>
+  </div>
+  <table>
+    <thead><tr><th>Agent / Mode</th><th>정확/전체</th><th>모호</th><th>정확도 바</th><th>정확도</th><th>오류</th></tr></thead>
+    <tbody>{real_agent_rows}</tbody>
+  </table>
+  <div style="padding:12px 20px;font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9">
+    skip: prose_file 없음 {real_report['skipped_no_prose']}건 / 파일 미존재 {real_report['skipped_no_file']}건
+  </div>
+</div>"""
+
+    traj_section_num = "3" if real_report else "2"
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return f"""<!DOCTYPE html>
 <html lang="ko">
@@ -515,7 +671,7 @@ def build_html_report(enum_report: dict, traj_report: dict) -> str:
 </div>
 
 <div class="card">
-  <div class="card-head"><h2>1. Enum 추출 정확도 (interpret_signal heuristic)</h2></div>
+  <div class="card-head"><h2>1. Enum 추출 정확도 — 합성 데이터 (interpret_signal heuristic)</h2></div>
   <div class="summary-grid">
     <div class="stat"><div class="num" style="color:#22c55e">{pct(correct_e,total_e)}</div><div class="lbl">전체 정확도</div></div>
     <div class="stat"><div class="num">{correct_e}/{total_e}</div><div class="lbl">케이스 (agent/mode × 변형)</div></div>
@@ -527,8 +683,10 @@ def build_html_report(enum_report: dict, traj_report: dict) -> str:
   </table>
 </div>
 
+{real_section_html}
+
 <div class="card">
-  <div class="card-head"><h2>2. Trajectory 일치도 (루프 시퀀스 검증)</h2></div>
+  <div class="card-head"><h2>{traj_section_num}. Trajectory 일치도 (루프 시퀀스 검증)</h2></div>
   <div class="summary-grid">
     <div class="stat"><div class="num" style="color:{'#22c55e' if sc==ts else '#ef4444'}">{sc}/{ts}</div><div class="lbl">strict 예측 정확</div></div>
     <div class="stat"><div class="num" style="color:{'#22c55e' if spc==ts else '#ef4444'}">{spc}/{ts}</div><div class="lbl">superset 예측 정확<br><span style="font-size:10px;color:#94a3b8">(필수 단계 누락 탐지)</span></div></div>
@@ -546,7 +704,7 @@ def build_html_report(enum_report: dict, traj_report: dict) -> str:
 </html>"""
 
 
-def print_report(enum_report: dict, traj_report: dict) -> None:
+def print_report(enum_report: dict, traj_report: dict, real_report: Optional[dict] = None) -> None:
     print("\n" + "=" * 60)
     print("  dcNess Harness Eval — AgentEvals 기반")
     print("=" * 60)
@@ -570,8 +728,31 @@ def print_report(enum_report: dict, traj_report: dict) -> None:
         for err in v["errors"]:
             print(f"    {err}")
 
+    # ── Real Data Enum 정확도 ──
+    if real_report:
+        print("\n\n### 2. Enum 추출 정확도 — 실제 run 데이터 (자장 프로젝트)\n")
+        ra = real_report["accuracy"]
+        rt = real_report["total"]
+        rc = real_report["correct"]
+        rab = real_report["ambiguous"]
+        print(f"  전체: {rc}/{rt}  {_bar(ra)}  {ra*100:.1f}%")
+        print(f"  Ambiguous (heuristic 탐지 실패): {rab}건")
+        print(f"  prose_file 없어 skip: {real_report['skipped_no_prose']}건")
+        print(f"  파일 존재하지 않아 skip: {real_report['skipped_no_file']}건")
+        print()
+        print(f"  {'Agent/Mode':<40} {'정확':<8} {'전체':<8} {'모호':<8} {'정확도'}")
+        print(f"  {'-'*40} {'-'*8} {'-'*8} {'-'*8} {'-'*8}")
+        for ak, v in sorted(real_report["per_agent"].items()):
+            n, c, ab = v["total"], v["correct"], v["ambiguous"]
+            r = c / n if n else 0
+            mark = "✓" if r == 1.0 else ("△" if r >= 0.7 else "✗")
+            print(f"  {ak:<40} {c:<8} {n:<8} {ab:<8} {r*100:.0f}% {mark}")
+            for err in v["errors"][:3]:  # 오류 최대 3건만 표시
+                print(f"    {err}")
+
     # ── Trajectory 일치도 ──
-    print("\n\n### 2. Trajectory 일치도 (루프 시퀀스 검증)\n")
+    traj_section_num = "3" if real_report else "2"
+    print(f"\n\n### {traj_section_num}. Trajectory 일치도 (루프 시퀀스 검증)\n")
     ts  = traj_report["total_scenarios"]
     sc  = traj_report["strict_correct"]
     spc = traj_report["superset_correct"]
@@ -597,12 +778,15 @@ def print_report(enum_report: dict, traj_report: dict) -> None:
     print("\n" + "=" * 60)
 
     # 종합 판정
-    enum_pass = acc >= 0.90
-    traj_pass = sc == ts and spc == ts and sbc == ts
-    overall = "PASS" if (enum_pass and traj_pass) else "FAIL"
+    enum_pass  = acc >= 0.90
+    real_pass  = (real_report["accuracy"] >= 0.90) if real_report else True
+    traj_pass  = sc == ts and spc == ts and sbc == ts
+    overall    = "PASS" if (enum_pass and real_pass and traj_pass) else "FAIL"
     print(f"\n  종합 판정: {overall}")
     if not enum_pass:
-        print(f"    - Enum 정확도 {acc*100:.1f}% < 90% 기준치")
+        print(f"    - Enum 정확도 (합성) {acc*100:.1f}% < 90%")
+    if not real_pass:
+        print(f"    - Enum 정확도 (실제) {real_report['accuracy']*100:.1f}% < 90%")
     if not traj_pass:
         print(f"    - Trajectory 예측 불일치 존재")
     print()
@@ -615,19 +799,33 @@ if __name__ == "__main__":
     parser.add_argument("--html", metavar="PATH", nargs="?", const="eval_report.html",
                         help="HTML 리포트 출력 경로 (기본: eval_report.html)")
     parser.add_argument("--open", action="store_true", help="생성 후 브라우저 자동 오픈")
+    parser.add_argument("--real-data", metavar="HARNESS_ROOT",
+                        help="실제 run 데이터 경로 (예: /path/to/project/.claude/harness-state)")
     args = parser.parse_args()
 
-    print("Enum 추출 정확도 평가 중...")
+    print("Enum 추출 정확도 평가 중 (합성 데이터)...")
     enum_report = run_enum_accuracy_eval()
+
+    real_report = None
+    if args.real_data:
+        harness_root = Path(args.real_data)
+        if not harness_root.exists():
+            print(f"[WARN] --real-data 경로 없음: {harness_root}")
+        else:
+            print(f"실제 run 데이터 평가 중 ({harness_root})...")
+            real_report = run_real_data_eval(harness_root)
 
     print("Trajectory 일치도 평가 중...")
     traj_report = run_trajectory_eval()
 
-    print_report(enum_report, traj_report)
+    print_report(enum_report, traj_report, real_report)
 
     if args.html is not None:
         out = Path(args.html)
-        out.write_text(build_html_report(enum_report, traj_report), encoding="utf-8")
+        out.write_text(
+            build_html_report(enum_report, traj_report, real_report),
+            encoding="utf-8",
+        )
         print(f"HTML 리포트 저장: {out.resolve()}")
         if args.open:
             subprocess.run(["open", str(out.resolve())], check=False)
