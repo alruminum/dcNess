@@ -146,6 +146,27 @@ DIP 사용 조건 (남용 금지):
 
 **구현 순서**: 의존성 기반 모듈 구현 순서 + 이유 (전제조건 관계).
 
+**impl 목차 (Story → impl 매핑 + 의존 순서)**: 본 epic 의 stories.md 각 Story 를 어떤 impl 파일들로 분해할지 표 형식 산출. 각 impl 파일 본문은 후속 architect MODULE_PLAN × N 가 채움 — 본 단계는 *목록 + 매핑 + 의존* 까지만.
+
+| NN | impl 파일명 | 대응 Story | depth | 의존 (선행 impl) | 1줄 요약 |
+|----|-------------|-----------|-------|------------------|---------|
+| 01 | 01-theme-tokens.md | (공통 / 듀얼 모드 시) | simple | — | 디자인 토큰 |
+| 02 | 02-foo.md | Story 1 | std | 01 | foo 모듈 |
+| ... |
+
+규칙:
+- `NN` = 에픽 내 독립 순번 (전역 누적 X)
+- `<slug>` = kebab-case 1줄 요약
+- depth = `simple` / `std` / `deep`
+- 의존 = 선행 impl 의 NN 번호 (없으면 `—`)
+- 한 task = engineer 가 한 번 루프로 구현 가능한 단위 (파일 1~3 개 생성/수정 범위)
+- 분할 단위 정합 = 본 spec 의 §모듈 분할 3 정합 기준 (테스트 단위 / 의존 묶음 / SRP) 그대로 적용
+- 듀얼 모드 (UI 컴포넌트 + `docs/design.md` 의 components 섹션 미정의) 시 `01-theme-tokens.md` 강제 신설 — 다른 UI impl 보다 앞 순번. 이후 모든 UI impl `의존` 컬럼에 `01` 명시. 근거: 디자인 시안 도착 후 토큰값만 patch 하면 컴포넌트 갈아엎기 0.
+
+산출물:
+- 본 표는 `docs/architecture.md` (또는 epic 별 별도 파일) 에 `## impl 목차` 섹션으로 박음
+- 본 표가 *MODULE_PLAN × N* 의 입력. 메인 Claude 가 표 행 N 개를 순회하며 각 행마다 architect MODULE_PLAN 1번 호출.
+
 **기술 리스크**: 리스크 항목 + 완화 방법.
 
 **NFR 목표** (해당 없는 항목은 "N/A — 이유" 명시):

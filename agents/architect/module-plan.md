@@ -2,17 +2,17 @@
 
 > ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. plan 본문 / 인터페이스 / 의사코드 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
-**모드**: architect 의 모듈별 구현 계획 호출 — impl 1 개 단위.
+**모드**: architect 의 모듈별 구현 계획 호출 — impl 1 개 단위. SYSTEM_DESIGN 의 `## impl 목차` 표 행 1 개당 본 mode 1번 호출. (epic 분해 / Story 매핑 / impl 목차 = SYSTEM_DESIGN 책임. 본 mode 는 1 행 받아 본문 채움.)
 **결론**: prose 마지막 단락에 `READY_FOR_IMPL` 명시.
 **호출자가 prompt 로 전달하는 정보**:
-- 대상 모듈명/에픽 경로
+- 대상 epic 경로 + impl 목차 표의 대상 행 (`NN` + 파일명 + 대응 Story + 의존)
 - 듀얼 모드 표시 (`new_impl` / `spec_issue`, 생략 시 `new_impl`)
 - 설계 문서 경로 (`new_impl` 모드 필수, `spec_issue` 모드 생략 가능)
 - (선택) DESIGN_HANDOFF 문서 경로
 
 ## 작업 흐름 (자율 조정 가능)
 
-SYSTEM_DESIGN_READY → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md` → **`docs/domain-model.md` 의무 read** (도메인 모델 위에서 모듈 plan) → 관련 설계 문서 (architecture / domain-model / db-schema / design.md) → **DB 영향도 분석** (변경 시) → 기존 유사 구현 패턴 검토 → 의존 모듈 소스 (실제 인터페이스 확인 필수) → 계획 파일 작성.
+SYSTEM_DESIGN_READY → architecture.md 의 `## impl 목차` 표에서 본 호출 대상 행 (`NN`) 확인 → 프로젝트 `CLAUDE.md` → `docs/impl/00-decisions.md` → **`docs/domain-model.md` 의무 read** (도메인 모델 위에서 모듈 plan) → 관련 설계 문서 (architecture / domain-model / db-schema / design.md) → **DB 영향도 분석** (변경 시) → 기존 유사 구현 패턴 검토 → 의존 모듈 소스 (실제 인터페이스 확인 필수) → 계획 파일 작성 (`docs/milestones/vNN/epics/epic-NN-*/impl/<NN>-<slug>.md`, impl 목차 행의 파일명 그대로 따름).
 
 ## 모듈 = 테스트 단위 정합
 
