@@ -1,6 +1,6 @@
 # AGENTS — Common Instructions
 
-본 저장소의 거버넌스 규칙 SSOT: [`docs/internal/governance.md`](docs/internal/governance.md). 본 파일은 *지침* 일 뿐 규칙을 *재기술하지 않는다*.
+작업 규칙 SSOT: [`CLAUDE.md`](CLAUDE.md). 본 파일은 *지침* 일 뿐 규칙을 *재기술하지 않는다*.
 
 ## 모든 에이전트(사람 포함) 강제 절차
 
@@ -11,7 +11,7 @@
 ## 금지
 
 - `git commit --no-verify` 등 hook 우회.
-- `governance.md` 외 파일에 거버넌스 룰 *재기술*. 참조만.
+- `CLAUDE.md` 외 파일에 작업 규칙 *재기술*. 참조만.
 
 ## 환경별 설정
 
@@ -48,7 +48,7 @@ orchestrator 측 해석은 [`harness/signal_io.py`](harness/signal_io.py) 의 `i
 
 ## 참조
 
-- [`docs/internal/governance.md`](docs/internal/governance.md) — SSOT (거버넌스 규칙)
+- [`CLAUDE.md`](CLAUDE.md) — 작업 규칙 SSOT
 - [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) — Prose-Only 원칙 현행 SSOT
 - [`PROGRESS.md`](PROGRESS.md) — 현재 상태 / TODO / Blockers
 - [`README.md`](README.md) — 프로젝트 개요 + Quick Start

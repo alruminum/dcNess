@@ -135,7 +135,7 @@ EOF
 # 다음 단계 후보 (사용자 결정 대기)
 - /init-dcness skill (enable/disable)
 - /ux skill (Pencil MCP 의존)
-- governance §2.2 commands/ 카테고리 추가
+- commands/ 카테고리 추가
 - worktree 도입 (옵션 C: keyword 트리거)
 - manual smoke (실 claude 에서 /qa /quick 검증)
 

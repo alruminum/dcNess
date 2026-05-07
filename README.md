@@ -32,7 +32,6 @@ Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함
 | Signal I/O 모듈 | [`harness/signal_io.py`](harness/signal_io.py) | 29 단위 테스트 통과 (round-trip / path 화이트리스트 / 휴리스틱 / DI swap) |
 | Validator agent docs | [`agents/validator.md`](agents/validator.md) + [`agents/validator/*.md`](agents/validator) (5 모드) | prose writing guide (결론 + 이유) |
 | Plugin manifest | [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) + [marketplace.json](.claude-plugin/marketplace.json) | 다른 플러그인과 공존 가능 (`name=dcness`) |
-| Governance | [`docs/internal/governance.md`](docs/internal/governance.md) | Document Sync 게이트 SSOT |
 | CI workflows | [`.github/workflows/`](.github/workflows) | 3 종 (document-sync / python-tests / plugin-manifest) |
 
 자세한 현황: [`PROGRESS.md`](PROGRESS.md)
@@ -42,7 +41,7 @@ Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함
 ### 의존성
 
 - Python 3.11+ (테스트 실행)
-- Node.js 20+ (governance 게이트)
+- Node.js 20+ (git-naming 게이트)
 - 외부 패키지 0 (표준 라이브러리만 — heuristic-only 정착으로 anthropic SDK 의존 0)
 
 ### 셋업
@@ -113,7 +112,7 @@ except MissingSignal as e:
 
 ## 거버넌스 (필수)
 
-본 저장소의 모든 변경은 [`docs/internal/governance.md`](docs/internal/governance.md) 에 따른다 (SSOT).
+본 저장소의 모든 변경은 [`CLAUDE.md`](CLAUDE.md) 에 따른다 (SSOT).
 
 - **게이트**: main-block + git-naming + pytest (pre-commit hook 자동 실행)
 - **branch → PR → merge** 필수. main 직접 push 금지.
@@ -155,7 +154,6 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 | [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) | Prose-Only 원칙 현행 SSOT (대 원칙 + Anti-Pattern 5원칙) |
 | [`docs/archive/status-json-mutate-pattern.md`](docs/archive/status-json-mutate-pattern.md) | Prose-Only 원전 proposal (Phase 분할 / Risks / Plugin 전환 절차) (역사 자료) |
 | [`docs/archive/migration-decisions.md`](docs/archive/migration-decisions.md) | 모듈 PRESERVE / DISCARD / REFACTOR 분류 (역사 자료) |
-| [`docs/internal/governance.md`](docs/internal/governance.md) | 거버넌스 SSOT (현행 — Task-ID/WHAT/WHY 시스템 폐기 후 슬림) |
 | [`docs/archive/document_update_record.md`](docs/archive/document_update_record.md) | (frozen) 옛 WHAT 로그 — 현재는 GitHub PR/issue/git log 가 SSOT |
 | [`docs/archive/change_rationale_history.md`](docs/archive/change_rationale_history.md) | (frozen) 옛 WHY 로그 — 현재는 PR description/이슈 thread/commit body 가 SSOT |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태 / TODO / Blockers |
