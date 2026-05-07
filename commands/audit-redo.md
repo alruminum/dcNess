@@ -103,7 +103,7 @@ trace 패턴:
 위 Layer 1 적용이 N 회 (또는 N 프로젝트) 검증되면 `agents/architect/module-plan.md` system prompt 영구 patch 제안:
 > "MODULE_PLAN 산출 시 engineer 가 즉시 구현 가능한 수준 — 인터페이스 시그니처 (타입) + 핵심 로직 의사코드 강제."
 
-→ PR 작성 후 governance §2.2 `agent` Change-Type 으로 머지.
+→ PR 작성 후 머지.
 ```
 
 ### Step 5 — 후속 액션 권고 (1-3 줄)

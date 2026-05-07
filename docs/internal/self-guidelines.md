@@ -29,7 +29,7 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 **How to apply**:
 - 새 행동지침 md 작성 시 300줄 목표.
 - 기존 파일 라인 수 모니터링 — 초과 발견 시 split PR (별도 Task-ID).
-- split 시 cross-ref 양방향 + governance §2.2 doc-sync gate 양 파일 동시 update.
+- split 시 cross-ref 양방향 갱신.
 
 **현재 알려진 위반**: 없음. 이전 위반 (orchestration.md 540줄) 은 DCN-30-32 에서 handoff-matrix.md 분리로 해소 (각각 298 / 256 줄).
 

@@ -1,7 +1,6 @@
 # CLAUDE.md — dcNess 프로젝트 작업 지침
 
-> 본 파일은 메인 Claude (Claude Code) 가 dcNess 저장소에서 작업할 때의 지침이다.
-> 거버넌스 규칙은 [`docs/internal/governance.md`](docs/internal/governance.md) (SSOT) 에 있다 — 본 파일은 *재기술하지 않고 절차·링크만 박는다*.
+> 본 파일은 메인 Claude (Claude Code) 가 dcNess 저장소에서 작업할 때의 지침이다. 작업 규칙 SSOT.
 
 > 🔴 **[세션 시작 시 즉시 읽기 의무 — §3 문서 지도 참조]**
 
@@ -20,8 +19,8 @@
 
 - 본 dcness 저장소는 자기 자신에 `/init-dcness` 를 실행하지 **않는다**.
 - 따라서 dcness plug-in 의 규격(`stories.md` 강제 / `issue-lifecycle.md §1.1` 흐름 / `product-planner` 시퀀스 등) 에 **얽매이지 않는다**.
-- dcness 자체의 작업은 다음 4개만 따른다:
-  - `docs/internal/governance.md` (main-block + git-naming + pytest 게이트)
+- dcness 자체의 작업은 다음 3개만 따른다:
+  - 본 `CLAUDE.md` (작업 절차 + 게이트)
   - `docs/plugin/git-naming-spec.md` (브랜치·커밋·PR 네이밍)
   - GitHub 이슈 (필요 시 자유 형식, 메타-스토리·stories.md 불필요)
   - 본 CLAUDE.md
@@ -36,7 +35,7 @@
 
 - 외래어 (Caveats / Disclaimer / Note / TBD 등) 보다는 **명확한 한글** 사용. (예: "Caveats" → "주의사항" / "TBD" → "추후 결정")
 - 영어 약어가 더 정확한 곳(API / SDK / SSOT / PR / CI 등 산업 표준어)은 그대로 사용.
-- **`§` 기호는 명확하게 사용** — `§N`, `§N.M` 형식. 어디서 인용했는지 **반드시 명시** (예: `governance.md §2.3` / `self-guidelines.md §2`).
+- **`§` 기호는 명확하게 사용** — `§N`, `§N.M` 형식. 어디서 인용했는지 **반드시 명시** (예: `CLAUDE.md §2` / `self-guidelines.md §2`).
 - 단순히 "위 섹션" / "아래 참조" 같은 모호한 표현 X — 항상 `파일명 §번호` 박을 것.
 
 ### 0.5 추가한 기능은 반드시 배포 경로에도 포함
@@ -61,8 +60,6 @@
 
 ## 1. 작업 절차 (모든 변경 공통)
 
-> SSOT: [`docs/internal/governance.md`](docs/internal/governance.md).
-
 1. **수정 작업**.
 2. **commit 직전**: git pre-commit hook 자동 게이트 (main-block + pytest).
 3. **branch → PR → regular merge** (직접 `main` push 금지). CI PASS 후 메인이 즉시 머지 — *사용자 수동 승인 대기 X*.
@@ -83,7 +80,6 @@
 |---|---|
 | [`docs/plugin/dcness-rules.md`](docs/plugin/dcness-rules.md) §1 | **대원칙** — harness 강제 2가지 / 파일 경로 표기 MUST / 진행 불가 처리 MUST |
 | [`docs/internal/self-guidelines.md`](docs/internal/self-guidelines.md) | dcness 자체 작업 룰 — 300줄 cap / 실존 검증 dcness 특화 안티패턴 |
-| [`docs/internal/governance.md`](docs/internal/governance.md) | 거버넌스 SSOT — 게이트 룰 |
 | [`docs/plugin/git-naming-spec.md`](docs/plugin/git-naming-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
 
 ### 작업 시 읽기 (lazy — 해당 작업 직전에만)

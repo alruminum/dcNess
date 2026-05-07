@@ -228,7 +228,6 @@ DCNESS_INFRA_PATTERNS = [
     r'(^|/)docs/plugin/orchestration\.md$',
     r'(^|/)docs/plugin/handoff-matrix\.md$',
     r'(^|/)docs/plugin/loop-procedure\.md$',
-    r'(^|/)docs/internal/governance\.md$',
     r'(^|/)docs/(plugin/dcness-rules|internal/self-guidelines)\.md$',
     r'(^|/)scripts/(setup_branch_protection|analyze_metrics)\.mjs$',
 ]

@@ -29,4 +29,4 @@ Part of #N
 - [ ] 회귀 검증
 
 ---
-규칙 정의: [`docs/internal/governance.md`](../docs/internal/governance.md) (SSOT)
+규칙 정의: [`CLAUDE.md`](../CLAUDE.md) (SSOT)
