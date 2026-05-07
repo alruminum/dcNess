@@ -160,19 +160,21 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 
 | 시점 | stage | 포함 파일 | 커밋 메시지 예 |
 |---|---|---|---|
-| MODULE_PLAN READY_FOR_IMPL 직후 | docs | `docs/impl/NN.md` 등 | `docs: impl plan <task-slug>` |
+| (default) test-engineer 시작 직전 / (fallback) MODULE_PLAN READY_FOR_IMPL 직후 | docs | `docs/impl/NN.md` (default 면 이미 정식 위치, fallback 이면 새로 작성됨) | `docs: impl plan <task-slug>` |
 | TESTS_WRITTEN 직후 | tests | `src/tests/**`, `*.test.*` | `test: tests for <task-slug>` |
 | CODE_VALIDATION PASS 직후 | src | `src/**`, stories.md 등 | `feat/fix/chore: <task-slug>` |
 | LGTM 직후 | — (merge) | 새 커밋 없음 | — |
 
+> default 모드 = task 파일이 이미 정식 위치에 있음 (feature-build-loop §4.2 Step 7 MODULE_PLAN × N 산출물). branch 새로 만들고 *기존* `docs/impl/NN-*.md` 를 stage 만 하는 commit (변경 0 일 수도 있으니 `git add -A docs/impl/` 로 의도 표시 + commit). fallback 모드 = 위치 부재 → MODULE_PLAN 1번 호출 → 새로 작성된 파일을 stage.
+
 ### commit 골격
 
 ```bash
-# commit1 (MODULE_PLAN 직후) — 브랜치 최초 생성
+# commit1 (default = test-engineer 시작 직전 / fallback = MODULE_PLAN READY_FOR_IMPL 직후) — 브랜치 최초 생성
 BRANCH="<prefix>/<task-slug>"
 git checkout -b "$BRANCH" main
-git add docs/impl/NN-*.md          # 플랜 문서
-git commit -m "docs: impl plan <task-slug>"
+git add docs/impl/NN-*.md          # 플랜 문서 (default 시 변경 없음 — 정식 위치 stage 만)
+git commit --allow-empty -m "docs: impl plan <task-slug>"  # default 일 때 변경 없으면 --allow-empty
 "$HELPER" record-stage-commit docs  # stage_commits.docs 기록
 
 # commit2 (TESTS_WRITTEN 직후)
@@ -345,7 +347,7 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 
 ### 7.1 catastrophic 룰 정합
 
-[`orchestration.md`](orchestration.md) §2.3 4룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (validator → pr-reviewer 직전 PASS / engineer 직전 plan READY / TASK_DECOMPOSE 직전 DESIGN_REVIEW_PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
+[`orchestration.md`](orchestration.md) §2.3 4룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (validator → pr-reviewer 직전 PASS / engineer 직전 `READY_FOR_IMPL` enum / feature-build-loop §4.2 Step 7 (MODULE_PLAN × N) 진입 직전 DESIGN_REVIEW_PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
 
 > Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (loop-catalog.md 폐기, 8 → 7 SSOT).
 

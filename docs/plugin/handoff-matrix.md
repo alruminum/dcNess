@@ -36,21 +36,22 @@
 | `UX_REFINE_READY` | 사용자 승인 → designer SCREEN |
 | `UX_FLOW_ESCALATE` | 사용자 (escalate) |
 
-### 1.4 architect (master, 7 mode)
+### 1.4 architect (master, 6 mode)
 
 | Mode | 결론 | 다음 trigger |
 |---|---|---|
-| SYSTEM_DESIGN | `SYSTEM_DESIGN_READY` | architect TASK_DECOMPOSE |
-| TASK_DECOMPOSE | `READY_FOR_IMPL` | impl 루프 (architect MODULE_PLAN per impl) |
-| MODULE_PLAN | `READY_FOR_IMPL` | validator PLAN_VALIDATION |
+| SYSTEM_DESIGN | `SYSTEM_DESIGN_READY` (산출물에 `## impl 목차` 표 포함) | validator DESIGN_VALIDATION |
+| MODULE_PLAN | `READY_FOR_IMPL` | (feature-build-loop 안) impl 목차 다음 행 → MODULE_PLAN 재호출 / 마지막 행이면 feature-build-loop 종료 → impl-task-loop 진입 / (impl-task-loop fallback) test-engineer |
 | SPEC_GAP | `SPEC_GAP_RESOLVED` | engineer 재진입 |
 | SPEC_GAP | `PRODUCT_PLANNER_ESCALATION_NEEDED` | product-planner |
 | SPEC_GAP | `TECH_CONSTRAINT_CONFLICT` | 사용자 (escalate) |
-| TECH_EPIC | `SYSTEM_DESIGN_READY` | architect TASK_DECOMPOSE |
+| TECH_EPIC | `SYSTEM_DESIGN_READY` | validator DESIGN_VALIDATION |
 | LIGHT_PLAN | `LIGHT_PLAN_READY` | engineer simple |
 | DOCS_SYNC | `DOCS_SYNCED` | (완료) |
 | DOCS_SYNC | `SPEC_GAP_FOUND` | architect SPEC_GAP |
 | DOCS_SYNC | `TECH_CONSTRAINT_CONFLICT` | 사용자 |
+
+> Note: 옛 TASK_DECOMPOSE mode 폐기 (issue #247). 가치 4 자리 (Story → impl 매핑 / NN-slug 명명 / 의존 순서 / outline) 는 SYSTEM_DESIGN 의 `## impl 목차` 표로 흡수. impl 파일 본문 detail 은 MODULE_PLAN × N 가 채움.
 
 ### 1.5 engineer
 
@@ -85,23 +86,22 @@
 | `VARIANTS_ALL_REJECTED` | designer 재진입 (round < 3) |
 | `UX_REDESIGN_SHORTLIST` | ux-architect UX_REFINE (round ≥ 3) |
 
-### 1.9 validator (5 mode 펼침)
+### 1.9 validator (4 mode 펼침)
 
 | Mode | 결론 | 다음 trigger |
 |---|---|---|
-| PLAN_VALIDATION | `PASS` | test-engineer |
-| PLAN_VALIDATION | `FAIL` | architect MODULE_PLAN 재진입 |
-| PLAN_VALIDATION | `SPEC_MISSING` | product-planner / architect SPEC_GAP |
 | CODE_VALIDATION | `PASS` | pr-reviewer |
 | CODE_VALIDATION | `FAIL` | engineer 재시도 (attempt < 3) |
 | CODE_VALIDATION | `SPEC_MISSING` | architect SPEC_GAP |
-| DESIGN_VALIDATION | `DESIGN_REVIEW_PASS` | architect TASK_DECOMPOSE |
+| DESIGN_VALIDATION | `DESIGN_REVIEW_PASS` | architect MODULE_PLAN × N (impl 목차 첫 행부터 순차) |
 | DESIGN_VALIDATION | `DESIGN_REVIEW_FAIL` | architect SYSTEM_DESIGN 재진입 (cycle 한도 2) |
 | DESIGN_VALIDATION | `DESIGN_REVIEW_ESCALATE` | 사용자 위임 |
 | UX_VALIDATION | `PASS` | architect SYSTEM_DESIGN |
 | UX_VALIDATION | `FAIL` | ux-architect 재진입 |
 | BUGFIX_VALIDATION | `PASS` | pr-reviewer |
 | BUGFIX_VALIDATION | `FAIL` | engineer 재시도 |
+
+> Note: 옛 PLAN_VALIDATION mode 폐기 (issue #247). 컨베이어 동작은 `orchestration.md §4.3 task_list` 기준이고, 그 task_list 에 PLAN_VALIDATION step 이 *원래부터* 빠져있어서 (drift) 사실상 default-skip 중이었음. spec / 동작 정합 회복.
 
 ### 1.10 pr-reviewer
 
@@ -136,7 +136,7 @@
 | 항목 | 한도 | 초과 시 |
 |---|---|---|
 | engineer attempt (TESTS_FAIL → 재시도) | 3 | `IMPLEMENTATION_ESCALATE` |
-| engineer split (IMPL_PARTIAL → 재호출, DCN-30-34) | 3 | `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — architect TASK_DECOMPOSE 재진입 권고) |
+| engineer split (IMPL_PARTIAL → 재호출, DCN-30-34) | 3 | `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — architect SYSTEM_DESIGN 재진입 권고 / impl 목차 분할 재검토) |
 | engineer SPEC_GAP_FOUND → architect.spec-gap → engineer 재진입 | 2 | `IMPLEMENTATION_ESCALATE` |
 | validator FAIL → 직전 agent 재진입 | (validator 종속) | 직전 agent 의 retry 한도에 흡수 |
 | design THREE_WAY VARIANTS_ALL_REJECTED 라운드 | 3 | `UX_REDESIGN_SHORTLIST` (ux-architect REFINE) |
@@ -147,7 +147,6 @@
 `.attempts.json` 형식 (예시):
 ```json
 {
-  "plan_validation": 1,
   "code_validation": 2,
   "spec_gap": 1,
   "design_round": 0
@@ -187,10 +186,10 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 | Agent | Mode | 직접 호출 허용 | 비고 |
 |---|---|---|---|
-| architect | SYSTEM_DESIGN, TASK_DECOMPOSE, TECH_EPIC, LIGHT_PLAN, DOCS_SYNC | ✅ | 메인 직접 |
-| architect | MODULE_PLAN, SPEC_GAP | ❌ | impl_driver / plan_driver 경유 |
+| architect | SYSTEM_DESIGN, TECH_EPIC, LIGHT_PLAN, DOCS_SYNC | ✅ | 메인 직접 |
+| architect | MODULE_PLAN, SPEC_GAP | ❌ | impl_driver / plan_driver 경유 (feature-build-loop §4.2 Step 7 의 MODULE_PLAN × N 도 컨베이어 경유) |
 | validator | DESIGN_VALIDATION, UX_VALIDATION | ✅ | 메인 직접 |
-| validator | PLAN_VALIDATION, CODE_VALIDATION, BUGFIX_VALIDATION | ❌ | 루프 경유 |
+| validator | CODE_VALIDATION, BUGFIX_VALIDATION | ❌ | 루프 경유 |
 | 그 외 11 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, design-critic, security-reviewer, product-planner, test-engineer, plan-reviewer 모두 메인 직접 |
 | engineer | — | ❌ | impl_driver 경유 필수 |
 
