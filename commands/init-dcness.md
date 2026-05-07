@@ -106,7 +106,14 @@ cp "$PLUGIN_ROOT/scripts/hooks/post-checkout" "$PROJECT_ROOT/.git/hooks/post-che
 chmod +x "$PROJECT_ROOT/.git/hooks/post-checkout"
 echo "[dcness] .git/hooks/post-checkout 갱신 (thin shim → plugin SSOT 호출)"
 
-# 2. legacy 정리 안내 — 옛 cp 패턴 잔재 제거 권고
+# 3. pre-push hook (thin shim) — always-overwrite
+#    push 전 브랜치명 형식 검증 — local PASS / 원격 CI FAIL mismatch 회귀 차단 (#255 W4)
+#    main 직접 push 차단 + 브랜치명 위반 차단 둘 다 수행.
+cp "$PLUGIN_ROOT/scripts/hooks/pre-push" "$PROJECT_ROOT/.git/hooks/pre-push"
+chmod +x "$PROJECT_ROOT/.git/hooks/pre-push"
+echo "[dcness] .git/hooks/pre-push 갱신 (thin shim → plugin SSOT 호출, 브랜치명 검증 + main push 차단)"
+
+# 4. legacy 정리 안내 — 옛 cp 패턴 잔재 제거 권고
 if [ -f "$PROJECT_ROOT/scripts/check_git_naming.mjs" ]; then
   echo "[dcness] NOTE — scripts/check_git_naming.mjs 가 사용자 repo 에 잔존. 이제 plugin SSOT 에서 호출하므로 제거 권장:"
   echo "         git rm scripts/check_git_naming.mjs"
