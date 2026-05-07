@@ -678,6 +678,16 @@ class MissingSelfVerifyTests(unittest.TestCase):
         wastes = detect_wastes([s])
         self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
 
+    def test_skipped_for_polish_done(self):
+        # #252 — POLISH 짧은 정리 보고는 본문 자체가 검증. anchor 강제 잉여.
+        s = self._engineer_step(
+            prose_full="## POLISH — earphone 헬퍼 추출\n중복 제거. 테스트 34 passed.",
+            enum="POLISH_DONE",
+        )
+        s.mode = "POLISH"
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
 
 if __name__ == "__main__":
     unittest.main()

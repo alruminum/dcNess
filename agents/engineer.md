@@ -118,6 +118,8 @@ impl 에 `## Design Ref` 섹션 있거나 DESIGN_HANDOFF 패키지 직접 받은
 
 prose 결과 끝에 *자가 검증 섹션* + 검증 결과 인용 의무. **anchor 자율** — `## 자가 검증` / `## Verification` / `## 검증` / `## 수용 기준 검증` / `## Self-Verify` 등 자기 판단. heading 에 `검증` / `verification` / `self-verify` 단어가 포함되면 OK. substance (실측 명령 + 결과 수치 인용) 만 의무.
 
+**POLISH 제외 (#252)** — POLISH 결과 prose 는 짧은 정리 보고 (테스트 N passed / 변경 범위) 본문 자체가 검증 substance. heading anchor 강제는 잉여 형식 — `MISSING_SELF_VERIFY` 검출 대상 아님. IMPL_DONE / IMPL_PARTIAL 만 anchor 의무.
+
 *어느 명령을 쓸지도 자율* — grep / ls / Read / Bash / WebFetch 등. 메인이 결과 신뢰 가능하도록 근거 박힘.
 
 예시 (어느 한 패턴 채택):

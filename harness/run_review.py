@@ -553,10 +553,12 @@ def detect_wastes(
 
     # MISSING_SELF_VERIFY (DCN-CHG-20260430-38) — engineer prose 에 self-verify anchor 부재.
     # DCN-30-34 의무 (anchor 자율, substance 의무) 회귀 검출. prose_full 부재 시 skip.
+    # POLISH_DONE 은 제외 (#252) — POLISH 결과 prose 는 짧은 정리 보고 (테스트 N passed 본문 서술)
+    # 자체가 검증 substance. heading anchor 강제는 잉여 형식 + 회귀 false positive.
     for s in steps:
         if s.agent != "engineer":
             continue
-        if s.enum not in ("IMPL_DONE", "IMPL_PARTIAL", "POLISH_DONE"):
+        if s.enum not in ("IMPL_DONE", "IMPL_PARTIAL"):
             continue
         if not s.prose_full:
             continue
