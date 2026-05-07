@@ -96,6 +96,11 @@ Part of #N
 2. (작업 + 커밋)
 3. git push -u origin {브랜치명}
 4. gh pr create --title "..." --body "..."
-5. gh pr merge   # regular merge — 커밋 히스토리 보존 (squash 금지)
+5. gh pr merge --auto                      # regular merge (squash 금지) — CI PASS 후 자동 머지
+   gh pr checks <PR_NUMBER> --watch        # MUST: CI 완료까지 대기, 결과 확인 후 다음 진행
 6. git checkout main && git pull
 ```
+
+- **CI 대기 MUST**: `gh pr merge --auto` 직후 반드시 `gh pr checks <PR_NUMBER> --watch` 실행.
+  CI 결과 확인 전 다음 작업 진행 금지. `<PR_NUMBER>` 는 `gh pr create` 출력에서 확인.
+- **CI FAIL 시**: 머지 취소 — 원인 파악 후 수정 커밋 → 재검증.

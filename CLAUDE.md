@@ -128,13 +128,15 @@ python3 -m unittest tests.test_signal_io -v   # 단일 모듈
 4. git commit -m "..."                      # hook 자동 게이트 (main-block + pytest)
 5. git push -u origin {브랜치명}
 6. gh pr create --title "..." --body "..."  # git-naming-spec §4~§5 템플릿
-7. gh pr merge                              # regular merge (squash 금지)
+7. gh pr merge --auto                       # regular merge (squash 금지) — CI PASS 후 자동 머지
+   gh pr checks <PR_NUMBER> --watch         # MUST: CI 완료까지 대기, 결과 확인 후 다음 진행
 8. git checkout main && git pull
 ```
 
 - **main 직접 commit/push 금지**. 항상 branch → PR → regular merge.
 - **squash merge 금지** — 커밋별 히스토리 보존 목적.
 - **branch 는 merge 후에도 삭제하지 않는다**.
+- **CI 대기 MUST**: `gh pr merge --auto` 직후 반드시 `gh pr checks <PR_NUMBER> --watch` 실행 — CI 결과 확인 전 다음 작업 진행 금지. CI FAIL 시 머지 취소 후 원인 수정.
 
 ## 6. 환경변수
 
