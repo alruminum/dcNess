@@ -1,0 +1,18 @@
+#!/bin/sh
+# dcNess pre-push hook
+#
+# 설치:
+#   cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+#
+# 게이트:
+#   main 직접 push 차단 (force push 포함)
+
+while read local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "ERROR: main 직접 push 금지. branch → PR → merge 절차를 따르세요." >&2
+    echo "  gh pr create --title '...' --body '...'" >&2
+    exit 1
+  fi
+done
+
+exit 0
