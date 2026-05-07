@@ -1,0 +1,20 @@
+name: 'dcness pr-body close-keyword validation'
+description: 'Validate PR body contains issue auto-close keyword (Closes/Fixes/Resolves #N) or explicit Document-Exception-PR-Close marker.'
+inputs:
+  body:
+    description: 'PR body text to validate'
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Validate PR body close keyword
+      shell: bash
+      env:
+        PR_BODY: ${{ inputs.body }}
+      run: |
+        printf '%s' "$PR_BODY" | node "${{ github.action_path }}/../../../scripts/check_pr_body.mjs" --stdin
