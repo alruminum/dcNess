@@ -239,7 +239,7 @@ flowchart LR
 - `DESIGN_REVIEW_FAIL` → architect:SYSTEM_DESIGN 재진입 (cycle ≤ 2)
 - `DESIGN_REVIEW_ESCALATE` → 사용자 위임
 
-**sub_cycles**: 위 분기에서 재호출 시 step 이름 컨벤션 = `<agent>-RETRY-<n>` (별도 begin/end-step 1쌍, DCN-30-25).
+**sub_cycles**: 위 분기에서 재호출 시 동일 `<agent> <MODE>` 로 별도 begin/end-step 1쌍 (DCN-30-25). occurrence 카운터가 파일명 충돌을 자동 처리 — `dcness-rules.md §3.4`.
 
 ### 4.3 `impl-task-loop` 풀스펙
 
@@ -269,19 +269,19 @@ flowchart LR
 | 6 | pr-reviewer | `LGTM,CHANGES_REQUESTED` |
 
 **분기**:
-- `IMPL_PARTIAL` → engineer:IMPL-SPLIT-<n> 재호출 (split < 3, 새 context window — DCN-30-34). 초과 시 `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — architect TASK_DECOMPOSE 재진입 권고).
-- `SPEC_GAP_FOUND` → architect:SPEC_GAP cycle (≤ 2) → engineer 재진입
-- `TESTS_FAIL` → engineer:IMPL-RETRY-<n> (attempt < 3, 초과 → `IMPLEMENTATION_ESCALATE`)
-- `SPEC_MISSING` → architect:SPEC_GAP
+- `IMPL_PARTIAL` → engineer IMPL 재호출 (split < 3, 새 context window — DCN-30-34). 초과 시 `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — architect TASK_DECOMPOSE 재진입 권고).
+- `SPEC_GAP_FOUND` → architect SPEC_GAP cycle (≤ 2) → engineer 재진입
+- `TESTS_FAIL` → engineer IMPL 재시도 (attempt < 3, 초과 → `IMPLEMENTATION_ESCALATE`)
+- `SPEC_MISSING` → architect SPEC_GAP
 - `TECH_CONSTRAINT_CONFLICT` / `IMPLEMENTATION_ESCALATE` → 사용자 위임
-- `CHANGES_REQUESTED` → engineer:POLISH-<n> cycle (≤ 2)
-- `validator:FAIL` → engineer:IMPL-RETRY-<n>
+- `CHANGES_REQUESTED` → engineer POLISH cycle (≤ 2)
+- `validator FAIL` → engineer IMPL 재시도
 
-**sub_cycles**:
-- `architect:SPEC_GAP` (engineer/test-engineer SPEC_GAP_FOUND 시) — allowed_enums = `SPEC_GAP_RESOLVED,PRODUCT_PLANNER_ESCALATION_NEEDED,TECH_CONSTRAINT_CONFLICT`
-- `engineer:POLISH-<n>` (CHANGES_REQUESTED 시, ≤ 2) — allowed_enums = `POLISH_DONE,IMPLEMENTATION_ESCALATE`
-- `engineer:IMPL-RETRY-<n>` (TESTS_FAIL/FAIL 시, attempt < 3) — engineer:IMPL 동일
-- `engineer:IMPL-SPLIT-<n>` (IMPL_PARTIAL 시, split < 3, DCN-30-34) — engineer:IMPL 동일. prose 의 `## 남은 작업` 컨텍스트로 진입.
+**sub_cycles** (재호출 시 begin-step 은 동일 `<agent> <MODE>` 사용 — occurrence 카운터가 `<agent>-<MODE>-N.md` 자동 처리. `dcness-rules.md §3.4`):
+- `architect SPEC_GAP` (engineer/test-engineer SPEC_GAP_FOUND 시) — allowed_enums = `SPEC_GAP_RESOLVED,PRODUCT_PLANNER_ESCALATION_NEEDED,TECH_CONSTRAINT_CONFLICT`
+- `engineer POLISH` (CHANGES_REQUESTED 시, ≤ 2 회) — allowed_enums = `POLISH_DONE,IMPLEMENTATION_ESCALATE`
+- `engineer IMPL` 재시도 (TESTS_FAIL/FAIL 시, attempt < 3) — engineer IMPL 동일
+- `engineer IMPL` split (IMPL_PARTIAL 시, split < 3, DCN-30-34) — engineer IMPL 동일. prose 의 `## 남은 작업` 컨텍스트로 진입.
 
 **state-aware skip** (DCN-CHG-30-13): task 파일 끝에 `MODULE_PLAN_READY` 마커 박혀있으면 Step 2 (architect:MODULE_PLAN) skip — TaskUpdate completed("skipped") + task 파일 자체를 `<RUN_DIR>/architect-MODULE_PLAN.md` 로 복사. catastrophic §2.3.3 통과용.
 
