@@ -1,0 +1,42 @@
+#!/bin/sh
+# post-checkout hook — 브랜치 생성/전환 시 브랜치명 형식 즉시 경고
+# 규칙: docs/plugin/git-naming-spec.md §1 (SSOT)
+#
+# 설치:
+#   cp scripts/hooks/post-checkout .git/hooks/post-checkout && chmod +x .git/hooks/post-checkout
+#
+# post-checkout 은 git 이 exit code 를 무시 — 경고 출력 후 exit 0 (체크아웃 취소 없음)
+# 브랜치 생성 직후 이름이 잘못됐음을 알리고 git branch -m 으로 수정하도록 유도.
+
+CHECKOUT_TYPE=$3  # 1=branch checkout, 0=file checkout
+[ "$CHECKOUT_TYPE" != "1" ] && exit 0
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+case "$BRANCH" in main|master|HEAD|develop) exit 0 ;; esac
+
+resolve_plugin_script() {
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs" ]; then
+    echo "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs"
+    return 0
+  fi
+  cache_dir="${HOME}/.claude/plugins/cache/dcness/dcness"
+  if [ -d "$cache_dir" ]; then
+    latest=$(ls -1 "$cache_dir" 2>/dev/null | sort -V | tail -1)
+    if [ -n "$latest" ] && [ -f "$cache_dir/$latest/scripts/check_git_naming.mjs" ]; then
+      echo "$cache_dir/$latest/scripts/check_git_naming.mjs"
+      return 0
+    fi
+  fi
+  legacy="$(git rev-parse --show-toplevel 2>/dev/null)/scripts/check_git_naming.mjs"
+  [ -f "$legacy" ] && echo "$legacy" && return 0
+  return 1
+}
+
+SCRIPT_PATH=$(resolve_plugin_script)
+[ -z "$SCRIPT_PATH" ] && exit 0
+
+node "$SCRIPT_PATH" --branch "$BRANCH" || {
+  echo "  → 지금 바로 수정: git branch -m <올바른-브랜치명>" >&2
+  echo "  → 예) fix/issue32_desc  /  fix/issue32_45_desc  /  docs/desc" >&2
+}
+exit 0

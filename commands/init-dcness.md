@@ -100,6 +100,12 @@ cp "$PLUGIN_ROOT/scripts/hooks/commit-msg" "$PROJECT_ROOT/.git/hooks/commit-msg"
 chmod +x "$PROJECT_ROOT/.git/hooks/commit-msg"
 echo "[dcness] .git/hooks/commit-msg 갱신 (thin shim → plugin SSOT 호출)"
 
+# 2. post-checkout hook (thin shim) — always-overwrite
+#    브랜치 생성/전환 직후 브랜치명 형식 검증 (위반 시 경고 + git branch -m 안내)
+cp "$PLUGIN_ROOT/scripts/hooks/post-checkout" "$PROJECT_ROOT/.git/hooks/post-checkout"
+chmod +x "$PROJECT_ROOT/.git/hooks/post-checkout"
+echo "[dcness] .git/hooks/post-checkout 갱신 (thin shim → plugin SSOT 호출)"
+
 # 2. legacy 정리 안내 — 옛 cp 패턴 잔재 제거 권고
 if [ -f "$PROJECT_ROOT/scripts/check_git_naming.mjs" ]; then
   echo "[dcness] NOTE — scripts/check_git_naming.mjs 가 사용자 repo 에 잔존. 이제 plugin SSOT 에서 호출하므로 제거 권장:"

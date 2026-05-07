@@ -9,6 +9,7 @@
 |---|---|---|
 | 기능 구현 | `feature/epic{N}_story{N}_{desc}` | `feature/epic3_story2_create_mcp_server` |
 | 버그픽스 | `fix/issue{N}_{desc}` | `fix/issue32_duplicate_touch` |
+| 버그픽스 (복수 이슈) | `fix/issue{N}_{M}_{desc}` | `fix/issue32_45_duplicate_touch` |
 | 문서 | `docs/{desc}` | `docs/update_api_spec` |
 
 - `{desc}`: 소문자 + `_` 구분자. 공백·특수문자 금지.

@@ -109,6 +109,7 @@ node scripts/check_document_sync.mjs
 cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 cp scripts/hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
 cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+cp scripts/hooks/post-checkout .git/hooks/post-checkout && chmod +x .git/hooks/post-checkout
 
 # 하네스 단위 테스트 실행
 python3 -m unittest discover -s tests -v

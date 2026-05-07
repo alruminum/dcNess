@@ -11,7 +11,7 @@
  * exit 1: 위반
  */
 
-const BRANCH_RE = /^(feature\/epic\d+_story\d+_.+|fix\/issue\d+_.+|docs\/.+)$/;
+const BRANCH_RE = /^(feature\/epic\d+_story\d+_.+|fix\/issue\d+(?:_\d+)*_.+|docs\/.+)$/;
 const TITLE_RE  = /^(\[epic\d+\]\[story\d+\]|\[issue-\d+\]|\[docs\]) .+/;
 
 const args = process.argv.slice(2);
@@ -28,7 +28,8 @@ if (mode === '--branch') {
     console.error(`[git-naming] FAIL — 브랜치명 형식 위반: "${value}"`);
     console.error('  허용 패턴:');
     console.error('    feature/epic{N}_story{N}_{desc}');
-    console.error('    fix/issue{N}_{desc}');
+    console.error('    fix/issue{N}_{desc}          (단일 이슈)');
+    console.error('    fix/issue{N}_{M}_{desc}      (복수 이슈)');
     console.error('    docs/{desc}');
     process.exit(1);
   }
