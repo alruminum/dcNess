@@ -40,3 +40,7 @@ inner = `impl-task-loop` (orchestration §4.3) per task.
 ## 한계
 - task 의존성 자동 판단 X (v1 = 무조건 직렬, SD impl 목차 순서 / list 순서 = 의존 표현)
 - multi-task resume 미구현 — caveat 후 재실행 시 처음부터 (단 commit 된 task 는 정식 위치 + 파일 존재 자동 검출 → default 모드 = test-engineer 직진)
+
+## 안티패턴 (회귀 방지)
+- ❌ task N 개를 `Bash run_in_background=true` 로 동시 spawn 후 `pgrep` / `ps -p` / `tail` 로 ScheduleWakeup polling — v1 spec = 직렬. 메인이 wake 하면서 누적 컨텍스트 cache_read 비용 폭주 ([#216](https://github.com/alruminum/dcNess/issues/216) — pre-dcness RWH 시기 사례 \$1,531 / 단일 세션). ScheduleWakeup tool 가이드 (default 1200~1800s, 270s 금지) 도 동일 권고.
+- ❌ 단일 세션에 8 task 누적 진행 — 컨텍스트 4M+ 토큰까지 부풀어 모든 후속 wake 가 거대 cache_read. task 단위 새 세션 + `/smart-compact` resume 권장.
