@@ -123,11 +123,11 @@ class WriteAllowedInfraPatternBlockTests(unittest.TestCase):
             )
             self.assertIsNotNone(reason)
 
-    def test_engineer_blocked_on_skill_guidelines(self):
+    def test_engineer_blocked_on_dcness_rules(self):
         with tempfile.TemporaryDirectory() as td:
             cwd = Path(td)
             reason = check_write_allowed(
-                "engineer", "docs/plugin/skill-guidelines.md", cwd=cwd
+                "engineer", "docs/plugin/dcness-rules.md", cwd=cwd
             )
             self.assertIsNotNone(reason)
 

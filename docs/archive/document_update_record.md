@@ -1747,11 +1747,11 @@
 - **Date**: 2026-05-06
 - **Change-Type**: docs-only, harness
 - **Files Changed**:
-  - `docs/plugin/skill-guidelines.md` (신규 — skill cross-cutting 룰)
+  - `docs/plugin/dcness-rules.md` (신규 — skill cross-cutting 룰, #217 이전 이름 dcness-rules)
   - `docs/internal/self-guidelines.md` (신규 — dcness self 협업 룰)
   - `docs/process/dcness-guidelines.md` (삭제 — 위 두 파일로 분할)
   - `harness/agent_boundary.py` (DCNESS_INFRA_PATTERNS 경로 갱신)
-  - `tests/test_agent_boundary.py` (신규 2 케이스: skill-guidelines / self-guidelines 차단)
+  - `tests/test_agent_boundary.py` (신규 2 케이스: dcness-rules / self-guidelines 차단)
   - `docs/loop-procedure.md` (3곳 참조 갱신)
   - `docs/orchestration.md` (2곳 참조 갱신)
   - `docs/handoff-matrix.md` (2곳 참조 갱신)

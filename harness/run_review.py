@@ -576,7 +576,7 @@ def detect_wastes(
             agent="main",
             detail=f"메인 self-correction 패턴 {len(sed_hits)}회 — 추측 진단 → 사용자 알림 → "
                    f"실측 시 0 발견 → 정정. 첫 발췌: {sed_hits[0][:120]}...",
-            fix="skill-guidelines.md §10 self-verify 원칙 (DCN-30-35) — Bash sed/awk 후 "
+            fix="dcness-rules.md §10 self-verify 원칙 — Bash sed/awk 후 "
                 "*전·후* 실측 의무 (git diff --stat / 결과 grep). 글로벌 ~/.claude/CLAUDE.md "
                 "제1룰 정합.",
         ))

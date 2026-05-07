@@ -2606,14 +2606,14 @@
   - §12 self-verify 는 skill 진행 시에도 dcness 자체 작업 시에도 동일 적용되므로 양쪽에 포함.
 - **Alternatives**:
   1. *그대로 유지* — self-only 룰이 외부 활성화 프로젝트 사용자에게 noise. 기각.
-  2. *skill-guidelines.md 만 분리, dcness-guidelines.md 유지 (self 포함)* — 기존 파일 잔재로 인용처 혼란. 기각.
-  3. *(채택)* **완전 분할**: `docs/plugin/skill-guidelines.md` (외부 배포) + `docs/internal/self-guidelines.md` (내부) + 원본 삭제.
+  2. *dcness-rules.md 만 분리, dcness-guidelines.md 유지 (self 포함)* — 기존 파일 잔재로 인용처 혼란. 기각.
+  3. *(채택)* **완전 분할**: `docs/plugin/dcness-rules.md` (외부 배포) + `docs/internal/self-guidelines.md` (내부) + 원본 삭제.
 - **Decision**:
   - 옵션 3 채택. §0.1 (300줄 cap) → self §1. §8/§9 TBD → 이슈 삭제. §10~§13 → skill §8~§11 (renumber). §12 → skill §10 + self §2 양쪽.
-  - `harness/agent_boundary.py` DCNESS_INFRA_PATTERNS: `docs/process/(governance|dcness-guidelines)` → `docs/process/governance` + `docs/(plugin/skill-guidelines|internal/self-guidelines)` 분리.
+  - `harness/agent_boundary.py` DCNESS_INFRA_PATTERNS: `docs/process/(governance|dcness-guidelines)` → `docs/process/governance` + `docs/(plugin/dcness-rules|internal/self-guidelines)` 분리.
   - `hooks/session-start.sh` 경로 + 확인 토큰 갱신 (`§13` → `§11`).
 - **Follow-Up**:
-  - Story 2.3 (#159) 에서 `docs/plugin/skill-guidelines.md` 를 `docs/plugin/` 폴더 이동 대상에 포함 확인.
+  - Story 2.3 (#159) 에서 `docs/plugin/dcness-rules.md` 를 `docs/plugin/` 폴더 이동 대상에 포함 확인.
   - Story 2.5 (#161) 에서 agents/ 파일 내 `dcness-guidelines` 잔여 참조 확인 (현재 없음, 검증 완료).
 
 ### DCN-CHG-20260506-16
