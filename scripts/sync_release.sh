@@ -15,7 +15,7 @@ EXCLUDE_PATHS=(
     "PROGRESS.md"
     "CLAUDE.md"
     "scripts/sync_release.sh"
-    "scripts/sync_local_plugin.sh"
+    ".claude-plugin/marketplace.json"
     ".github/workflows/python-tests.yml"
     ".github/workflows/release-sync.yml"
     ".claude"
