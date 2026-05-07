@@ -136,12 +136,12 @@ EOF
 - /init-dcness skill (enable/disable)
 - /ux skill (Pencil MCP 의존)
 - commands/ 카테고리 추가
-- worktree 도입 (옵션 C: keyword 트리거)
+- ~~worktree 도입~~ → 옵션 D 채택 완료 — 행동형 skill 진입 시 EnterWorktree 기본 켜짐, 거부 표현 시에만 건너뜀 (loop-procedure §1.1)
 - manual smoke (실 claude 에서 /qa /quick 검증)
 
 # 미해결 의논거리
-- worktree 도입 — 옵션 C (keyword) vs D (default opt-out) ?
-- sid fallback 처리 (worktree 진입 시 main repo .claude/ 와 어떻게 cross-ref) ?
+- ~~worktree 옵션 C vs D~~ → **D 채택 완료** (#255 정합). 행동형 skill 기본 켜짐, 거부 표현 정규식 `워크트리\s*(빼|없|말)`
+- sid 대체 처리 (worktree 진입 시 main repo .claude/ 와 어떻게 cross-ref) → γ resolution 으로 해결 (`harness/session_state.py:_default_base`, 5 tests PASS)
 
 # 컨텍스트
 - 핵심: harness/session_state.py, harness/hooks.py, hooks/*.sh, commands/*.md

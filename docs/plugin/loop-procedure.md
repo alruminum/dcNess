@@ -16,15 +16,19 @@ skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`orchestration.md`
 
 ---
 
-## 1. Step 0 — worktree (선택) + begin-run
+## 1. Step 0 — worktree + begin-run
 
-### 1.1 worktree 분기
+### 1.1 worktree 분기 (기본 켜짐)
 
-발화에 `worktree` / `wt` / `격리` / `isolate` 키워드 시 진입:
+**모든 행동형 skill (`/quick` `/impl` `/impl-loop` `/product-plan`) 진입 시 EnterWorktree 자동 호출**. 동시 다중 세션 충돌 회피 + 메인 working tree 보호.
 
 ```
 EnterWorktree(name="<skill>-{ts_short}")
 ```
+
+**거부 표현 시에만 건너뜀** — 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 (예: "워크트리 빼고", "워크트리 없이", "워크트리 말고") 시 EnterWorktree 호출 0, 일반 cwd 그대로 진행.
+
+수동 `git worktree add` 우회 금지 — CC permission 시스템이 EnterWorktree 만 자동 권한 처리. 수동 워크트리는 sub-agent Write 거부 회귀 (#255 W1).
 
 종료 시 squash 흡수 검사 후 자동:
 

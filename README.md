@@ -142,8 +142,8 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 | `/audit-redo` | redo-log + agent-trace 결합 분석 — (sub, mode) 별 redo 빈도 + Layer 1/2 개선 후보 제안 |
 
 행동형 skill (`/quick` `/product-plan` `/impl` `/impl-loop`) 공통:
-- yolo keyword (`yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서`) 검출 시 CLARITY/AMBIGUOUS/ESCALATE 자동 폴백 (catastrophic 룰은 hard safety)
-- worktree keyword (`worktree` / `wt` / `격리` / `isolate`) 검출 시 EnterWorktree 격리
+- yolo keyword (`yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서`) 검출 시 CLARITY/AMBIGUOUS/ESCALATE 자동 대체 (catastrophic 룰은 hard safety)
+- **워크트리 기본 켜짐** — 진입 시 자동 EnterWorktree. 거부 표현 정규식 `워크트리\s*(빼|없|말)` (예: "워크트리 빼고") 매치 시에만 건너뜀
 
 읽기형 skill (`/qa` `/smart-compact` `/efficiency` `/run-review` `/audit-redo`) 은 keyword 무관 (read-only 분석).
 

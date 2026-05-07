@@ -83,6 +83,8 @@
 | agent 접근 권한 (Write/Read 경계) | [`handoff-matrix.md`](handoff-matrix.md) | §4 |
 | yolo 모드 / worktree 격리 상세 | [`loop-procedure.md`](loop-procedure.md) | §3.3 yolo / §1.1 worktree |
 
+**워크트리 기본 켜짐 (#255 정합)**: 행동형 skill (`/quick` `/impl` `/impl-loop` `/product-plan`) 진입 시 자동으로 EnterWorktree 호출. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` (예: "워크트리 빼고", "워크트리 없이", "워크트리 말고") 매치 시에만 건너뜀. 수동 `git worktree add` 우회 금지 — CC permission 시스템이 EnterWorktree 만 sub-agent 권한 자동 처리. 자세히 = `loop-procedure.md §1.1`.
+
 skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure, loop spec 은 orchestration §4.
 
 ## 3. 에이전트 루프 개요

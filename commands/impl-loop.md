@@ -31,6 +31,9 @@ inner = `impl-task-loop` (orchestration §4.3) per task.
 ## 사전 read (skill 진입 즉시)
 `docs/plugin/loop-procedure.md` + `docs/plugin/orchestration.md` §4.3 + §4.10 + `docs/plugin/handoff-matrix.md` + `docs/plugin/issue-lifecycle.md` read 후 진행.
 
+## 워크트리 (기본 켜짐)
+Skill 진입 시 *outer* 단계에서 자동 `EnterWorktree(name="impl-loop-{ts_short}")` 1회. 모든 inner task 가 같은 워크트리 안에서 진행. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
+
 ## Pre-flight gate (각 task 진입 직전)
 [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §6 매치 강제 — 부모 epic stories.md 의 epic/story 이슈 매치 부재 시 해당 task STOP + 사용자 보고. silent skip 금지.
 
