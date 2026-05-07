@@ -2,7 +2,7 @@
 
 > **Status**: ACTIVE
 > **Scope**: dcness 8 loop 의 *공통 실행 절차* SSOT — Step 0~8 mechanics. 메인 Claude 가 skill 트리거 또는 직접 발화로 루프 시작 시 본 문서를 컨베이어 매뉴얼처럼 따른다.
-> **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) + 시퀀스 mini-graph + 결정표 = [`orchestration.md`](orchestration.md) §2~§4. cross-cutting 룰 (echo / yolo / worktree / AMBIGUOUS) = [`dcness-rules.md`](dcness-rules.md).
+> **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) + 시퀀스 mini-graph + 결정표 = [`orchestration.md`](orchestration.md) §2~§4. 에이전트 호출 결과 echo + 세션 주입 강조 룰 = [`dcness-rules.md`](dcness-rules.md).
 
 ---
 
@@ -20,7 +20,24 @@ skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`orchestration.md`
 
 ### 1.1 worktree 분기
 
-발화에 `worktree` / `wt` / `격리` / `isolate` 키워드 시 진입. 상세 = guidelines §7.
+발화에 `worktree` / `wt` / `격리` / `isolate` 키워드 시 진입:
+
+```
+EnterWorktree(name="<skill>-{ts_short}")
+```
+
+종료 시 squash 흡수 검사 후 자동:
+
+```bash
+UNMERGED_DIFF=$(git diff "main..$WORKTREE_BRANCH" -- ':^.claude' 2>/dev/null)
+if [ -z "$UNMERGED_DIFF" ]; then
+  ExitWorktree(action="remove", discard_changes=true)
+else
+  ExitWorktree(action="keep")
+fi
+```
+
+자세히 = [`../archive/conveyor-design.md`](../archive/conveyor-design.md) §13.
 
 ### 1.2 begin-run
 
@@ -82,11 +99,31 @@ PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
 | `*_ESCALATE` (hard) | 사용자 위임 (escalate) |
 | `*_ESCALATE` (soft) / `CLARITY_INSUFFICIENT` | 비-yolo: 사용자 위임 / yolo: `auto-resolve` |
 | `CHANGES_REQUESTED` | engineer POLISH cycle (≤2) |
-| `AMBIGUOUS` | guidelines §6 cascade (재호출 1회 → 사용자 위임) |
+| `AMBIGUOUS` | 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS 시 사용자 위임 (enum 후보 + prose 발췌) |
 | `DESIGN_REVIEW_FAIL` / `UX_FAIL` | 직전 architect/ux-architect 재진입 (cycle ≤2) |
 | `PRODUCT_PLAN_UPDATED` | plan-reviewer skip → ux-architect 직행 |
 
-cycle 한도 = orchestration.md §5. yolo 매핑 = guidelines §5 + helper `auto-resolve` JSON.
+cycle 한도 = orchestration.md §5.
+
+### yolo 모드
+
+발화에 `yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서` 키워드 시 ON.
+
+| 상황 | 비-yolo | yolo |
+|---|---|---|
+| `CLARITY_INSUFFICIENT` / `*_ESCALATE` (soft) / `AMBIGUOUS` | 사용자 위임 | `auto-resolve` 적용 |
+| `SPEC_GAP_FOUND` | 사용자 위임 | architect SPEC_GAP cycle (≤2) |
+| `TESTS_FAIL` / validator FAIL | 재시도 (≤3) | 동일 |
+| `IMPL_PARTIAL` | engineer 재호출 (split ≤ 3) | 동일 — 새 context window |
+| `CHANGES_REQUESTED` | 사용자 위임 | engineer POLISH (cycle ≤2) |
+| Step 7 caveat (NICE TO HAVE only, MUST FIX 0) | 사용자 위임 | 7a 자동 |
+| catastrophic 룰 | hard safety | hard safety (yolo 우회 X) |
+
+```bash
+RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
+# JSON: {"action":..., "hint":..., "next_enum":...}
+# unmapped 시 yolo 도 사용자 위임 fallback
+```
 
 ---
 

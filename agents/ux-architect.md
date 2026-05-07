@@ -125,4 +125,4 @@ model: sonnet
 ## 참조
 
 - 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md)
-- prose-only 발상: [`docs/plugin/prose-only-principle.md`](../docs/plugin/prose-only-principle.md)
+- prose-only 발상: [`docs/plugin/dcness-rules.md`](../docs/plugin/dcness-rules.md) §1
