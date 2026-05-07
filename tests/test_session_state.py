@@ -1808,6 +1808,129 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         self.assertFalse(payload["has_must_fix"])
         self.assertEqual(len(payload["steps"]), 5)
 
+    def test_finalize_run_must_fix_resolved_by_polish_lgtm(self) -> None:
+        """#272 W4 — pr-reviewer CHANGES_REQUESTED → POLISH → pr-reviewer LGTM 시
+        has_must_fix=False (sticky 미발생). latest-per-role 평가 회귀."""
+        from harness.session_state import (
+            _cli_finalize_run, _append_step_status,
+            run_dir, _clear_default_base_cache, write_pid_session,
+            write_pid_current_run, get_cc_pid_via_ppid_chain,
+        )
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+
+        repo = Path(self._tmp.name) / "repo-mustfix"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+
+        cc_pid = get_cc_pid_via_ppid_chain()
+        if cc_pid is None:
+            self.skipTest("cc_pid 추출 불가 — CI 환경 의존")
+        sid = "smoke-mustfix-sid"
+        rid = "run-abcd1234"
+        write_pid_session(cc_pid, sid)
+        run_dir(sid, rid, create=True)
+        write_pid_current_run(cc_pid, rid)
+
+        # /quick 전형 시퀀스 — pr-reviewer CHANGES_REQUESTED → engineer POLISH →
+        # pr-reviewer LGTM. 첫 pr-reviewer prose 에 MUST FIX 포함.
+        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok", Path("/dev/null"))
+        _append_step_status(
+            sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY", "ok", Path("/dev/null")
+        )
+        _append_step_status(
+            sid, rid, "engineer", "IMPL", "IMPL_DONE", "first attempt", Path("/dev/null")
+        )
+        _append_step_status(
+            sid, rid, "validator", "BUGFIX_VALIDATION", "PASS", "verified",
+            Path("/dev/null"),
+        )
+        _append_step_status(
+            sid, rid, "pr-reviewer", None, "CHANGES_REQUESTED",
+            "## MUST FIX\n- 1번 항목 고치자\n", Path("/dev/null"),
+        )
+        _append_step_status(
+            sid, rid, "engineer", "POLISH", "POLISH_DONE", "fixed", Path("/dev/null"),
+        )
+        _append_step_status(
+            sid, rid, "pr-reviewer", None, "LGTM",
+            "## 결론\nLGTM\nMUST FIX 없음\n", Path("/dev/null"),
+        )
+
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_finalize_run(SimpleNamespace())
+        self.assertEqual(rc, 0)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload["step_count"], 7)
+        # latest pr-reviewer = LGTM (must_fix=False) → has_must_fix False 여야 함
+        self.assertFalse(
+            payload["has_must_fix"],
+            msg="POLISH 후 LGTM 으로 해소된 must_fix 가 sticky 됨 (#272 W4 회귀)",
+        )
+        self.assertFalse(payload["has_ambiguous"])
+
+    def test_finalize_run_must_fix_unresolved_still_sticky(self) -> None:
+        """final pr-reviewer 가 여전히 CHANGES_REQUESTED 면 has_must_fix True."""
+        from harness.session_state import (
+            _cli_finalize_run, _append_step_status,
+            run_dir, _clear_default_base_cache, write_pid_session,
+            write_pid_current_run, get_cc_pid_via_ppid_chain,
+        )
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+
+        repo = Path(self._tmp.name) / "repo-mustfix-unres"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+
+        cc_pid = get_cc_pid_via_ppid_chain()
+        if cc_pid is None:
+            self.skipTest("cc_pid 추출 불가 — CI 환경 의존")
+        sid = "smoke-mustfix2-sid"
+        rid = "run-abcd5678"
+        write_pid_session(cc_pid, sid)
+        run_dir(sid, rid, create=True)
+        write_pid_current_run(cc_pid, rid)
+
+        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok", Path("/dev/null"))
+        _append_step_status(
+            sid, rid, "engineer", "IMPL", "IMPL_DONE", "ok", Path("/dev/null")
+        )
+        _append_step_status(
+            sid, rid, "pr-reviewer", None, "CHANGES_REQUESTED",
+            "## MUST FIX\n- 미해소 항목\n", Path("/dev/null"),
+        )
+
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_finalize_run(SimpleNamespace())
+        self.assertEqual(rc, 0)
+        payload = json.loads(out.getvalue())
+        # 후속 LGTM 이 없으니 latest pr-reviewer = CHANGES_REQUESTED → must_fix True
+        self.assertTrue(payload["has_must_fix"])
+
+    def test_latest_step_per_role(self) -> None:
+        """_latest_step_per_role — 같은 (agent, mode) 의 마지막 발생만 반환 (#272 W4)."""
+        from harness.session_state import _latest_step_per_role
+        steps = [
+            {"agent": "engineer", "mode": "IMPL", "must_fix": False},
+            {"agent": "pr-reviewer", "mode": None, "must_fix": True, "enum": "CHANGES_REQUESTED"},
+            {"agent": "engineer", "mode": "POLISH", "must_fix": False},
+            {"agent": "pr-reviewer", "mode": None, "must_fix": False, "enum": "LGTM"},
+        ]
+        latest = _latest_step_per_role(steps)
+        # engineer:IMPL, engineer:POLISH 는 다른 mode → 둘 다 살아남음.
+        # pr-reviewer:None 은 마지막 (LGTM, must_fix=False) 만.
+        self.assertEqual(len(latest), 3)
+        pr = next(s for s in latest if s["agent"] == "pr-reviewer")
+        self.assertEqual(pr["enum"], "LGTM")
+        self.assertFalse(pr["must_fix"])
+
     def test_auto_resolve_ux_escalate(self) -> None:
         from harness.session_state import _cli_auto_resolve
         from io import StringIO

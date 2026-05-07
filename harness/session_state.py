@@ -1382,6 +1382,24 @@ def _append_step_status(
         f.write(line)
 
 
+def _latest_step_per_role(steps: list) -> list:
+    """`steps` 의 같은 (agent, mode) 쌍 중 *마지막* entry 만 골라 반환 (#272 W4).
+
+    POLISH/retry 사이클 완료 후 LGTM 으로 해소된 must_fix 가 has_must_fix 에 sticky
+    되는 문제 해결용. 최신 step 만 봄으로써 step #N 이 CHANGES_REQUESTED → step #M
+    이 LGTM 이면 latest = LGTM (must_fix=False) 로 평가.
+
+    입력 순서 (시간 순) 유지 — 같은 키 마지막 발생.
+    """
+    out: dict = {}
+    for s in steps:
+        if not isinstance(s, dict):
+            continue
+        key = (s.get("agent"), s.get("mode"))
+        out[key] = s
+    return list(out.values())
+
+
 def _read_steps_jsonl(sid: str, rid: str) -> list:
     """`.steps.jsonl` 전체 읽기. 파일 없으면 빈 리스트."""
     target = _steps_jsonl_path(sid, rid)
@@ -1423,8 +1441,12 @@ def _cli_finalize_run(args: Any) -> int:
         print(json.dumps({"error": "sid/rid 미해결"}), file=sys.stderr)
         return 1
     steps = _read_steps_jsonl(sid, rid)
-    has_ambiguous = any(s.get("enum") == "AMBIGUOUS" for s in steps)
-    has_must_fix = any(s.get("must_fix") for s in steps)
+    # #272 W4 — has_must_fix sticky on LGTM 수정. POLISH/retry 로 해소된 must_fix 가
+    # sticky 로 남아 LGTM final step 임에도 caveat 진입했음. 같은 (agent, mode) 의
+    # *마지막* 발생만 평가해서 후속 step 에서 해소된 신호를 정합 처리.
+    latest_steps = _latest_step_per_role(steps)
+    has_ambiguous = any(s.get("enum") == "AMBIGUOUS" for s in latest_steps)
+    has_must_fix = any(s.get("must_fix") for s in latest_steps)
 
     # DCN-CHG-20260430-25: --expected-steps 검증 — skill 이 정상 시퀀스 step 수
     # 명시 시 .steps.jsonl row count 미만이면 stderr WARN. /impl-loop 자기검증.

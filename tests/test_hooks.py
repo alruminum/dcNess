@@ -1152,6 +1152,93 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         self.assertEqual(rc, 0)
         self.assertEqual(read_redos(self.sid, self.rid, base_dir=self.base), [])
 
+    def test_agent_id_fallback_only_on_subtype_match(self):
+        """#272 W3 — payload agent_id 비어있고 trace 의 마지막 entry 가 *다른* sub
+        의 것이면 폴백 사용 X. redo_log 의 agent_id 가 직전 step 으로 오기록되는
+        문제 회귀."""
+        # trace 에 engineer 의 흔적만 있음 (직전 step). 이제 pr-reviewer Agent 가
+        # 호출됐고 (prose-only 라 자기 file-op trace 없음), payload agent_id 비어있음.
+        for tool in ["Read", "Edit", "Bash"]:
+            trace_append(self.sid, self.rid, {
+                "phase": "pre", "agent_id": "aid-engineer",
+                "agent": "engineer", "tool": tool,
+            }, base_dir=self.base)
+        rc = handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "pr-reviewer"},
+                # agent_id 비어있음
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        redos = read_redos(self.sid, self.rid, base_dir=self.base)
+        if redos:
+            # trace 마지막 agent="engineer" ≠ sub_type="pr-reviewer"
+            # → target_aid 폴백 안 됨 → ""
+            self.assertNotEqual(
+                redos[0].get("agent_id"), "aid-engineer",
+                msg="직전 sub 의 agent_id 가 폴백으로 박혔음 (#272 W3 회귀)",
+            )
+
+    def test_agent_id_fallback_uses_matching_subtype(self):
+        """#272 W3 회귀 — trace 의 마지막 entry agent 가 sub_type 과 *일치* 하면 폴백 사용."""
+        # 직전 다른 sub 의 trace + 같은 sub_type (pr-reviewer) 의 trace 둘 다.
+        for aid, agent, tool in [
+            ("aid-engineer", "engineer", "Edit"),
+            ("aid-engineer", "engineer", "Bash"),
+            ("aid-pr1", "pr-reviewer", "Read"),
+            ("aid-pr1", "pr-reviewer", "Read"),
+        ]:
+            trace_append(self.sid, self.rid, {
+                "phase": "pre", "agent_id": aid, "agent": agent, "tool": tool,
+            }, base_dir=self.base)
+        rc = handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "pr-reviewer"},
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        redos = read_redos(self.sid, self.rid, base_dir=self.base)
+        # 폴백 → aid-pr1 (sub_type 일치하는 마지막)
+        self.assertEqual(redos[0]["agent_id"], "aid-pr1")
+        self.assertEqual(redos[0]["sub"], "pr-reviewer")
+
+    def test_prose_only_subtype_not_promised_write(self):
+        """#272 W1 — prose-only sub (qa) 는 promised_write anomaly 발화 X."""
+        for tool in ["Read", "Read", "Read"]:
+            trace_append(self.sid, self.rid, {
+                "phase": "pre", "agent_id": "aid-qa",
+                "agent": "qa", "tool": tool,
+            }, base_dir=self.base)
+        rc = handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid,
+                "agent_id": "aid-qa",
+                "tool_name": "Agent",
+                "tool_input": {
+                    "subagent_type": "qa",
+                    "prompt": "분석 작성해줘",
+                },
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        redos = read_redos(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(redos[0]["decision"], "PASS")
+        # prose-only anomaly 발화 X
+        self.assertFalse(
+            any("prose-only" in a for a in redos[0]["anomalies"]),
+            msg="prose-only 화이트리스트 미적용 (#272 W1 회귀)",
+        )
+
 
 # ---------------------------------------------------------------------------
 # DCN-CHG-20260501-15 — PostToolUse Agent prose auto-staging
@@ -1305,6 +1392,54 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self.assertEqual(rc, 0)
         expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
         self.assertFalse(expected.exists())
+
+    def test_no_current_step_emits_diagnostic_stderr(self) -> None:
+        """#272 W2 / #273 W1 — silent fail 제거. current_step 부재 시 stderr 진단 로그.
+
+        post-agent-clear.sh 가 stderr → /tmp/dcness-hook-stderr.log 보존이라
+        다음 run 에서 외부 환경 (jajang) staging 미동작 원인 진단 가능.
+        """
+        import io
+        import contextlib
+
+        prose = "## 결론\nPASS\n"
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            rc = handle_posttooluse_agent(
+                stdin_data=self._payload_with_prose("qa", "qa", None, prose),
+                cc_pid=self.cc_pid,
+                base_dir=self.base,
+            )
+        self.assertEqual(rc, 0)
+        stderr = buf.getvalue()
+        self.assertIn("[hook prose stage]", stderr)
+        self.assertIn("current_step 부재", stderr)
+
+    def test_unrecognized_tool_response_emits_shape_diagnostic(self) -> None:
+        """#272 W2 — tool_response 형식 미스매치 시 stderr 에 형식 정보 출력."""
+        import io
+        import contextlib
+
+        self._set_current_step("qa", None)
+        # CC 가 다른 형식 보낼 가능성 — list of dict 인데 "type" 이 "text" 아닌 경우
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            rc = handle_posttooluse_agent(
+                stdin_data={
+                    "sessionId": self.sid,
+                    "tool_name": "Agent",
+                    "tool_input": {"subagent_type": "qa"},
+                    "tool_response": [{"type": "tool_result", "content": "x"}],
+                },
+                cc_pid=self.cc_pid,
+                base_dir=self.base,
+            )
+        self.assertEqual(rc, 0)
+        stderr = buf.getvalue()
+        self.assertIn("[hook prose stage]", stderr)
+        self.assertIn("prose 추출 실패", stderr)
+        # 형식 정보 포함 — 외부 환경 디버그용
+        self.assertIn("item0_type=tool_result", stderr)
 
     def test_occurrence_increments_on_repeat(self) -> None:
         import json
