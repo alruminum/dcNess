@@ -31,5 +31,8 @@ description: 작은 버그픽스·코드 정리를 한 줄로 받아 light path 
 ## 사전 read (skill 진입 즉시)
 `docs/plugin/loop-procedure.md` + `docs/plugin/orchestration.md` §4.5 + `docs/plugin/handoff-matrix.md` read 후 진행.
 
+## 워크트리 (기본 켜짐)
+Step 0 진입 시 자동 `EnterWorktree(name="quick-{ts_short}")`. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
+
 ## 절차
 [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.5 (`quick-bugfix-loop` 풀스펙) 따름. 본 파일은 input 명세 + 라우팅만.
