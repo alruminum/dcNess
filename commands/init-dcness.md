@@ -164,6 +164,52 @@ GitHub Actions 에서 git-naming 강제 원하는지 묻는다.
 [dcness] CI 활성화 — 머지 후 push 시 다음 PR 부터 발화
 ```
 
+#### 4. PR body close-keyword 게이트 — 사용자 선택 (옵션)
+
+GitHub Actions 에서 PR body `Closes #N` 키워드 강제 원하는지 묻는다.
+
+```
+[dcness] GitHub Actions CI 에서 PR body close-keyword 강제할까요?
+  - PR open / edit / sync 시마다 PR body 에 `Closes #N` (또는 Fixes/Resolves) 1+ 매치 강제
+  - 본 프로젝트는 regular merge → commit message 안 Closes 만으론 issue auto-close 안 됨 (PR body 만 인식)
+  - 예외 우회: PR body 에 `Document-Exception-PR-Close: <사유>` line 박으면 통과
+  - 본 thin yml 1개만 사용자 repo 에 깔리고, 검증 본체는 alruminum/dcNess composite action 호출
+  - issue lifecycle 강제 안 하면 n
+(Y/n)
+```
+
+- **Y**: 다음 thin yml 을 `$PROJECT_ROOT/.github/workflows/pr-body-validation.yml` 로 *always-overwrite*:
+
+  ```yaml
+  name: pr-body-validation
+  on:
+    pull_request:
+      branches: [main]
+      types: [opened, synchronize, reopened, edited]
+  permissions:
+    contents: read
+    pull-requests: read
+  jobs:
+    pr-body:
+      name: PR body close-keyword gate
+      runs-on: ubuntu-latest
+      steps:
+        - uses: alruminum/dcNess/.github/actions/pr-body@main
+          with:
+            body: ${{ github.event.pull_request.body }}
+  ```
+
+  - 사용자 repo 에 mjs / 검증 로직 본체 cp 0 — 모두 dcNess repo composite action 안.
+  - 머지 후 push → 다음 PR 부터 CI 자동 발화.
+
+- **n**: skip. issue auto-close 는 메인 Claude 자율 (회귀 위험 — 본 게이트 권장).
+
+출력 예시 (Y 선택):
+```
+[dcness] .github/workflows/pr-body-validation.yml 갱신 (composite action 호출)
+[dcness] PR body close-keyword 게이트 활성화
+```
+
 ### Step 2.7 — design.md SSOT awareness
 
 dcness plug-in 의 디자인 시스템 SSOT 는 `docs/design.md` (Google `design.md` 공식 spec 채택). plug-in agents (designer / ux-architect / engineer / validator/code-validation 등) 가 UI 작업 시 read 한다. 활성화 프로젝트가 UI 를 다루면 본 SSOT 를 인지/활용해야 plug-in 룰이 완전 작동.
