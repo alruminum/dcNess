@@ -408,6 +408,144 @@ def _bar(ratio: float, width: int = 20) -> str:
     return "█" * filled + "░" * (width - filled)
 
 
+def build_html_report(enum_report: dict, traj_report: dict) -> str:
+    """eval 결과를 HTML 리포트로 변환."""
+    from datetime import datetime
+
+    acc = enum_report["accuracy"]
+    total_e = enum_report["total"]
+    correct_e = enum_report["correct"]
+
+    ts = traj_report["total_scenarios"]
+    sc  = traj_report["strict_correct"]
+    spc = traj_report["superset_correct"]
+    sbc = traj_report["subset_correct"]
+
+    enum_pass  = acc >= 0.90
+    traj_pass  = sc == ts and spc == ts and sbc == ts
+    overall    = "PASS" if (enum_pass and traj_pass) else "FAIL"
+    ov_color   = "#22c55e" if overall == "PASS" else "#ef4444"
+
+    def pct(n, d):
+        return f"{n/d*100:.1f}%" if d else "—"
+
+    def badge(ok: bool, match: bool) -> str:
+        if ok:
+            color = "#22c55e" if match else "#6b7280"
+            label = "✓ MATCH" if match else "✓ MISS"
+        else:
+            color = "#ef4444"
+            label = "✗ MATCH" if match else "✗ MISS"
+        return f'<span style="background:{color};color:#fff;padding:2px 8px;border-radius:4px;font-size:12px">{label}</span>'
+
+    # per-agent rows
+    agent_rows = ""
+    for ak, v in sorted(enum_report["per_agent"].items()):
+        n, c = v["total"], v["correct"]
+        r = c / n if n else 0
+        bar_w = int(r * 100)
+        bar_color = "#22c55e" if r == 1.0 else ("#f59e0b" if r >= 0.7 else "#ef4444")
+        errors_html = ""
+        if v["errors"]:
+            errors_html = "<ul style='margin:4px 0 0 16px;color:#ef4444;font-size:12px'>"
+            for e in v["errors"]:
+                errors_html += f"<li>{e.strip()}</li>"
+            errors_html += "</ul>"
+        agent_rows += f"""
+        <tr>
+          <td style="padding:6px 12px;font-family:monospace;font-size:13px">{ak}</td>
+          <td style="padding:6px 12px;text-align:center">{c}/{n}</td>
+          <td style="padding:6px 16px">
+            <div style="background:#e5e7eb;border-radius:4px;height:14px;width:160px;overflow:hidden">
+              <div style="background:{bar_color};height:100%;width:{bar_w}%"></div>
+            </div>
+          </td>
+          <td style="padding:6px 12px;font-weight:600;color:{bar_color}">{pct(c,n)}</td>
+          <td style="padding:6px 12px">{errors_html}</td>
+        </tr>"""
+
+    # trajectory rows
+    traj_rows = ""
+    for r in traj_report["results"]:
+        traj_rows += f"""
+        <tr>
+          <td style="padding:6px 12px;font-family:monospace;font-size:13px">{r['name']}</td>
+          <td style="padding:6px 12px;font-size:11px;color:#6b7280">{r['reference']}</td>
+          <td style="padding:6px 12px">{badge(r['strict_ok'],  r['strict_got'])}</td>
+          <td style="padding:6px 12px">{badge(r['superset_ok'], r['superset_got'])}</td>
+          <td style="padding:6px 12px">{badge(r['subset_ok'],  r['subset_got'])}</td>
+        </tr>"""
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>dcNess Harness Eval Report</title>
+<style>
+  body {{ font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f8fafc; margin:0; padding:32px; color:#1e293b }}
+  h1   {{ font-size:22px; font-weight:700; margin-bottom:4px }}
+  .sub {{ color:#64748b; font-size:13px; margin-bottom:32px }}
+  .card {{ background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:28px; overflow:hidden }}
+  .card-head {{ padding:16px 20px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:12px }}
+  .card-head h2 {{ font-size:15px; font-weight:600; margin:0 }}
+  .summary-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:20px }}
+  .stat {{ background:#f8fafc; border-radius:8px; padding:16px 20px; text-align:center }}
+  .stat .num {{ font-size:28px; font-weight:700 }}
+  .stat .lbl {{ font-size:12px; color:#64748b; margin-top:4px }}
+  table {{ width:100%; border-collapse:collapse }}
+  thead tr {{ background:#f8fafc }}
+  th {{ padding:8px 12px; text-align:left; font-size:12px; font-weight:600; color:#64748b; border-bottom:1px solid #e2e8f0 }}
+  tbody tr:hover {{ background:#fafafa }}
+  .overall {{ display:inline-block; font-size:22px; font-weight:800; color:{ov_color}; padding:8px 24px; border:3px solid {ov_color}; border-radius:8px }}
+</style>
+</head>
+<body>
+<h1>dcNess Harness Eval Report</h1>
+<div class="sub">AgentEvals 기반 — {now}</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>종합 판정</h2>
+  </div>
+  <div style="padding:20px">
+    <div class="overall">{overall}</div>
+    {"" if overall=="PASS" else f'<p style="color:#ef4444;margin-top:12px">{"Enum 정확도 미달 " if not enum_pass else ""}{"Trajectory 예측 불일치 존재" if not traj_pass else ""}</p>'}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>1. Enum 추출 정확도 (interpret_signal heuristic)</h2></div>
+  <div class="summary-grid">
+    <div class="stat"><div class="num" style="color:#22c55e">{pct(correct_e,total_e)}</div><div class="lbl">전체 정확도</div></div>
+    <div class="stat"><div class="num">{correct_e}/{total_e}</div><div class="lbl">케이스 (agent/mode × 변형)</div></div>
+    <div class="stat"><div class="num">{enum_report['ambiguous_ok']}</div><div class="lbl">Ambiguous 올바르게 탐지</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Agent / Mode</th><th>정확/전체</th><th>정확도 바</th><th>정확도</th><th>오류</th></tr></thead>
+    <tbody>{agent_rows}</tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>2. Trajectory 일치도 (루프 시퀀스 검증)</h2></div>
+  <div class="summary-grid">
+    <div class="stat"><div class="num" style="color:{'#22c55e' if sc==ts else '#ef4444'}">{sc}/{ts}</div><div class="lbl">strict 예측 정확</div></div>
+    <div class="stat"><div class="num" style="color:{'#22c55e' if spc==ts else '#ef4444'}">{spc}/{ts}</div><div class="lbl">superset 예측 정확<br><span style="font-size:10px;color:#94a3b8">(필수 단계 누락 탐지)</span></div></div>
+    <div class="stat"><div class="num" style="color:{'#22c55e' if sbc==ts else '#ef4444'}">{sbc}/{ts}</div><div class="lbl">subset 예측 정확<br><span style="font-size:10px;color:#94a3b8">(이탈 단계 탐지)</span></div></div>
+  </div>
+  <table>
+    <thead><tr><th>시나리오</th><th>레퍼런스 루프</th><th>strict</th><th>superset</th><th>subset</th></tr></thead>
+    <tbody>{traj_rows}</tbody>
+  </table>
+  <div style="padding:12px 20px;font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9">
+    strict: 순서+내용 완전 일치 &nbsp;|&nbsp; superset: actual ⊇ reference (필수 단계 누락 탐지) &nbsp;|&nbsp; subset: actual ⊆ reference (이탈 단계 탐지)
+  </div>
+</div>
+</body>
+</html>"""
+
+
 def print_report(enum_report: dict, traj_report: dict) -> None:
     print("\n" + "=" * 60)
     print("  dcNess Harness Eval — AgentEvals 기반")
@@ -471,6 +609,14 @@ def print_report(enum_report: dict, traj_report: dict) -> None:
 
 
 if __name__ == "__main__":
+    import argparse, subprocess, os
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--html", metavar="PATH", nargs="?", const="eval_report.html",
+                        help="HTML 리포트 출력 경로 (기본: eval_report.html)")
+    parser.add_argument("--open", action="store_true", help="생성 후 브라우저 자동 오픈")
+    args = parser.parse_args()
+
     print("Enum 추출 정확도 평가 중...")
     enum_report = run_enum_accuracy_eval()
 
@@ -478,3 +624,10 @@ if __name__ == "__main__":
     traj_report = run_trajectory_eval()
 
     print_report(enum_report, traj_report)
+
+    if args.html is not None:
+        out = Path(args.html)
+        out.write_text(build_html_report(enum_report, traj_report), encoding="utf-8")
+        print(f"HTML 리포트 저장: {out.resolve()}")
+        if args.open:
+            subprocess.run(["open", str(out.resolve())], check=False)
