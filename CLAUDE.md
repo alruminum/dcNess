@@ -96,6 +96,8 @@
 | [`scripts/check_python_tests.sh`](scripts/check_python_tests.sh) | pytest 게이트 구현 참조 시 |
 | [`scripts/hooks/pre-commit`](scripts/hooks/pre-commit) | git pre-commit hook 수정 시 |
 | [`scripts/hooks/cc-pre-commit.sh`](scripts/hooks/cc-pre-commit.sh) | Claude Code PreToolUse hook 수정 시 |
+| [`docs/internal/plugin-release.md`](docs/internal/plugin-release.md) | 플러그인 릴리즈·버전 배포 요청 시 — 순서·태그·주의사항 |
+| [`docs/internal/release-notes.md`](docs/internal/release-notes.md) | 릴리즈 노트 기록 — 버전별 커밋 범위·변경 요약 |
 
 ## 4. 개발 명령어
 
