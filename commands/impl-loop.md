@@ -1,6 +1,6 @@
 ---
 name: impl-loop
-description: impl task list (architect TASK_DECOMPOSE 산출물) 를 순차 자동 chain 으로 처리하는 스킬. 사용자가 "전부 구현", "/impl-loop", "task 다 돌려", "epic 전체 구현", "/product-plan 후 자동", "끝까지 구현" 등을 말할 때 반드시 이 스킬을 사용한다. 각 task 마다 /impl 의 정식 루프 실행 + clean run 만 자동 진행 + caveat 시 사용자 위임. /product-plan 종료 후 N 개 task 한 번에 처리하고 싶을 때.
+description: impl task list (feature-build-loop §4.2 Step 7 architect MODULE_PLAN × N 산출물) 를 순차 자동 chain 으로 처리하는 스킬. 사용자가 "전부 구현", "/impl-loop", "task 다 돌려", "epic 전체 구현", "/product-plan 후 자동", "끝까지 구현" 등을 말할 때 반드시 이 스킬을 사용한다. 각 task 마다 /impl 의 정식 루프 실행 + clean run 만 자동 진행 + caveat 시 사용자 위임. /product-plan 종료 후 N 개 task 한 번에 처리하고 싶을 때.
 ---
 
 # Impl Loop Skill
@@ -38,5 +38,5 @@ inner = `impl-task-loop` (orchestration §4.3) per task.
 [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.3 (inner) + §4.10 (chain 정책) 따름.
 
 ## 한계
-- task 의존성 자동 판단 X (v1 = 무조건 직렬, list 순서 = 의존 표현)
-- multi-task resume 미구현 — caveat 후 재실행 시 처음부터 (단 commit 된 task 는 `MODULE_PLAN_READY` 자가 검출로 Step 2 skip)
+- task 의존성 자동 판단 X (v1 = 무조건 직렬, SD impl 목차 순서 / list 순서 = 의존 표현)
+- multi-task resume 미구현 — caveat 후 재실행 시 처음부터 (단 commit 된 task 는 정식 위치 + 파일 존재 자동 검출 → default 모드 = test-engineer 직진)

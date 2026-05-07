@@ -1,6 +1,8 @@
 # Plan Validation
 
-**모드**: validator 의 계획 검증 호출. architect 가 작성한 impl 계획 파일이 구현에 착수하기에 충분한지 검증. 구현 루프 진입 전 공통 게이트.
+> ⚠️ **DEPRECATED (issue #247)** — orchestration §4.3 의 컨베이어 task_list 가 본 mode 를 *호출하지 않음*. 어느 진입 경로 (feature-build-loop / impl-task-loop / quick-bugfix-loop / qa-triage / ux-design-stage / direct-impl-loop) 도 본 mode 로 라우팅하지 않음. agent prompt 와 harness infra (`harness/hooks.py` HARNESS_ONLY_AGENTS, `harness/run_review.py` mode list, tests) 는 호환을 위해 보존. detail 검증 자리는 engineer/test-engineer SPEC_GAP_FOUND 사후 catch 로 대체.
+
+**모드**: validator 의 계획 검증 호출 (deprecated). architect 가 작성한 impl 계획 파일이 구현에 착수하기에 충분한지 검증.
 **결론**: prose 마지막 단락에 `PLAN_VALIDATION_PASS` / `PLAN_VALIDATION_FAIL` / `PLAN_VALIDATION_ESCALATE` 중 하나 명시.
 **호출자가 prompt 로 전달하는 정보**: impl 계획 파일 경로, 실행 식별자.
 
