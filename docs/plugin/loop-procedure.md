@@ -105,6 +105,33 @@ PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
 
 cycle 한도 = orchestration.md §5.
 
+### 3.3.1 retry / POLISH 분기 시 task 재활용 (MUST)
+
+위 표의 **재시도 / 재호출 / cycle / POLISH** 분기로 진입할 때, 신규 `TaskCreate` 금지 — *기존 task 를 `in_progress` 로 되돌린다*.
+
+| 분기 | 재활용 대상 task | 행동 |
+|---|---|---|
+| `TESTS_FAIL` → engineer 재시도 | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
+| `CHANGES_REQUESTED` → engineer POLISH | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
+| POLISH 후 pr-reviewer 재실행 | 직전 pr-reviewer task | `TaskUpdate(<task>, in_progress)` |
+| `IMPL_PARTIAL` → engineer 재호출 | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
+| `DESIGN_REVIEW_FAIL` → architect 재진입 | 직전 architect task | `TaskUpdate(<task>, in_progress)` |
+| `UX_FAIL` → ux-architect 재진입 | 직전 ux-architect task | `TaskUpdate(<task>, in_progress)` |
+| `AMBIGUOUS` 재호출 1회 | 직전 동일 agent task | `TaskUpdate(<task>, in_progress)` |
+| `SPEC_GAP_FOUND` → architect SPEC_GAP | 신규 task (다른 agent/mode) | `TaskCreate` 가능 |
+
+이유: retry / POLISH 는 *동일 step 의 재실행*. 신규 TaskCreate 시 같은 step 이 task list 에 중복 등장 → 진행 추적 오염. cycle 카운터는 step occurrence (`<agent>[-<MODE>]-N.md`) 로 보존되므로 task 는 1개로 유지.
+
+**MUST 순서** (retry / POLISH 진입 시):
+
+```
+TaskUpdate(<기존 task>, in_progress)   # 신규 TaskCreate 금지
+"$HELPER" begin-step <agent> [<MODE>]   # occurrence 자동 증가 → -N.md
+Agent(...)
+ENUM=$("$HELPER" end-step ...)
+TaskUpdate(<기존 task>, completed)
+```
+
 ### yolo 모드
 
 발화에 `yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서` 키워드 시 ON.

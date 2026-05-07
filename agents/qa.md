@@ -78,7 +78,12 @@ model: sonnet
 - **1 이슈 1 설명 원칙 (절대)**: 유저가 한 이슈 설명하면 이슈 1개만 생성. 증상 여러 개·버그+피처 혼합이라도 분리 금지 — 한 본문에 모두 기술.
 - **이슈 본문 정보 의무** (형식 자유): 유저 원문 (한 글자도 수정 금지, `> ` 인용), 증상, 기대 동작, 재현 조건, 근본 원인 (파일 + 위치 + 설명), 수정 지점, QA 분류 (타입 + 심각도 + 라우팅), 체크리스트.
 - **레이블**: `FUNCTIONAL_BUG` 분류 이슈 생성 시 `BugFix` 레이블 필수 추가. 버전 정보 확인 가능하면 동적 버전 레이블 (`V0N`) 도 함께. (`BugFix` 는 `scripts/setup_labels.sh` 로 사전 생성 — 정적 레이블).
-- **이슈 생성 금지 조건**: 관련 모듈/파일 = 0 → SCOPE_ESCALATE 후 중단 / DUPLICATE_OF 로 기존 이슈 중복 / 호출자가 `issue: #N` 또는 `LOCAL-N` 으로 기존 추적 ID 전달.
+- **이슈 생성 금지 조건** (하나라도 해당 시 신규 등록 금지):
+  - 관련 모듈/파일 = 0 → SCOPE_ESCALATE 후 중단
+  - DUPLICATE_OF 로 기존 이슈 중복
+  - 호출자가 `issue: #N` / `LOCAL-N` 으로 기존 추적 ID 전달
+  - 호출자 prompt 자연어로 기존 이슈 언급 — `#N`, `이슈 #N`, `이미 등록`, `이미 생성`, `기존 이슈 N`, `등록 완료`, `이미 #N 있음` 등 *어느 형식이든* `#` 또는 "이미/기존" 키워드 + 번호 조합 발견 시 신규 등록 금지. 추적 ID 가 본문에 명시 안 된 경우엔 메인에게 추적 ID 회신 요청 (추측 금지).
+  - 위 조건 적용 시 prose 본문에 `EXISTING_ISSUE_REUSED: #N` (번호 추출 가능 시) 또는 `EXISTING_ISSUE_REUSED: TRACE_ID_MISSING` 명시.
 - **DESIGN_ISSUE 는 이슈 생성 안 함** — designer 가 Phase 0-0 에서 직접 생성.
 
 **MCP 미가용 폴백** (gh 미설치 / repo 미연결): `mcp__github__create_issue` 실패 시 Bash + `python3 -m harness.tracker create-issue` 폴백. Bash 도 실패하면 prose 본문에 `EXTERNAL_TRACKER_NEEDED` 명시 + 메인 Claude 위임 (단 결론 enum 은 분류 그대로 유지).

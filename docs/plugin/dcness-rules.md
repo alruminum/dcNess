@@ -170,12 +170,23 @@ REDO 판단 신호: 결과가 질문에 제대로 답하지 못함 / 같은 tool
 
 ## 3.4 step 명명 규칙
 
-같은 에이전트를 재호출할 때 begin/end-step 쌍의 이름:
+begin/end-step 은 `agent mode` **두 개 인자** 형식만 허용:
 
-| 상황 | 이름 패턴 |
-|---|---|
-| POLISH 사이클 | `engineer:POLISH-1`, `engineer:POLISH-2` |
-| TESTS_FAIL 재시도 | `engineer:IMPL-RETRY-1`, `engineer:IMPL-RETRY-2` |
+```bash
+"$HELPER" begin-step <agent> [<MODE>]
+"$HELPER" end-step   <agent> [<MODE>] --allowed-enums "..."
+```
+
+- `agent` — 소문자·하이픈만 (`^[a-z][a-z0-9-]{0,63}$`)
+- `mode` — 대문자·숫자·언더스코어만 (`^[A-Z][A-Z0-9_]{0,63}$`)
+
+**콜론 표기 금지** — `"engineer:POLISH-1"` 형식은 `_validate_agent` 거부 → prose 미기록. 같은 에이전트를 재호출할 때 동일 mode 를 반복 사용하면 occurrence 카운터가 파일명 충돌을 자동 처리한다:
+
+| 상황 | begin/end-step | 생성 파일 |
+|---|---|---|
+| POLISH 1회 | `begin-step engineer POLISH` | `engineer-POLISH.md` |
+| POLISH 2회 | `begin-step engineer POLISH` | `engineer-POLISH-1.md` |
+| IMPL 재시도 | `begin-step engineer IMPL` | `engineer-IMPL-1.md` |
 
 재호출마다 별도 begin/end-step 1쌍 필수.
 
