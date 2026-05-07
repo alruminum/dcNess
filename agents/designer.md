@@ -6,7 +6,7 @@ description: >
   THREE_WAY: design-critic 심사 → 유저 PICK.
   유저 확정 후 DESIGN_HANDOFF 패키지 출력. 코드 구현은 engineer.
   prose 결과 + 결론 enum emit.
-tools: Read, Glob, Grep, Write, Bash, mcp__pencil__get_editor_state, mcp__pencil__open_document, mcp__pencil__batch_get, mcp__pencil__batch_design, mcp__pencil__get_screenshot, mcp__pencil__get_guidelines, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__snapshot_layout, mcp__pencil__export_nodes, mcp__pencil__replace_all_matching_properties, mcp__pencil__search_all_unique_properties, mcp__github__create_issue, mcp__github__update_issue
+tools: Read, Glob, Grep, Write, Bash, mcp__pencil__get_editor_state, mcp__pencil__open_document, mcp__pencil__batch_get, mcp__pencil__batch_design, mcp__pencil__get_screenshot, mcp__pencil__get_guidelines, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__snapshot_layout, mcp__pencil__export_nodes, mcp__pencil__replace_all_matching_properties, mcp__pencil__search_all_unique_properties, mcp__github__update_issue
 model: sonnet
 ---
 
@@ -59,9 +59,9 @@ model: sonnet
 
 ## 수행 흐름 (자율 조정 가능)
 
-### Phase 0 — 이슈 생성 + 컨텍스트 + 캔버스 (모든 모드)
+### Phase 0 — 컨텍스트 + 캔버스 (모든 모드)
 
-- **추적 이슈** (`skip_issue_creation` 없으면): `python3 -m harness.tracker create-issue --title "[design] {target} {ux_goal}" --label UI --milestone {…}`. 백엔드 자동 선택 (gh / Local 폴백). 결과 ID (`#N` 또는 `LOCAL-N`) 를 DESIGN_HANDOFF 에 포함. (`UI` 는 `scripts/setup_labels.sh` 로 사전 생성 — 정적 레이블. 에픽/버전 레이블 있으면 추가).
+- **추적 이슈**: 메인 Claude 가 designer 호출 *전* 미리 생성 후 issue ID 를 designer 에 입력으로 전달. designer 자체는 issue 생성 권한 X — `mcp__github__create_issue` 권한 미부여 (#255 D1 정합 — 의도 외 mutation 차단). designer 는 입력받은 issue 에 `mcp__github__update_issue` 로 코멘트만 추가 가능.
 - **Pencil 읽기**: `get_editor_state` → `batch_get` (디자인시스템 노드 + 대상 화면 노드) → `get_screenshot` 베이스라인.
 - **디자인 가이드 읽기**: `docs/ux-flow.md` 의 `## 0. 디자인 가이드` 섹션 우선. `docs/design.md` 있으면 Read (미존재 시 silent skip).
 - **외부 레퍼런스**: 유저 명시 요청 또는 SCREEN_THREE_WAY 심층 모드에서만 WebSearch/WebFetch.
