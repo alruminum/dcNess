@@ -37,7 +37,7 @@ resolve_naming_script() {
       echo "$cache_dir/$latest/scripts/check_git_naming.mjs"; return 0
     fi
   fi
-  legacy="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}/scripts/check_git_naming.mjs"
+  legacy="$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-}")/scripts/check_git_naming.mjs"
   [ -f "$legacy" ] && echo "$legacy" && return 0
   return 1
 }
@@ -46,7 +46,11 @@ CMD_FIRST_LINE=$(printf '%s' "$COMMAND" | head -1)
 
 case "$CMD_FIRST_LINE" in
   *"git commit"*)
-    cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}" 2>/dev/null || exit 0
+    # cwd 의 git toplevel 우선 — 워크트리 안에서는 워크트리 top, 메인이면 메인 top (#268).
+    # CLAUDE_PROJECT_DIR 우선 시 워크트리 안 commit 이 메인 main 브랜치로 오인 차단됨.
+    TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null)
+    [ -z "$TOPLEVEL" ] && TOPLEVEL="${CLAUDE_PROJECT_DIR:-}"
+    cd "$TOPLEVEL" 2>/dev/null || exit 0
     current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
     if [ "$current_branch" = "main" ]; then
       echo "ERROR: main 직접 commit 금지. branch 만든 후 commit + PR." >&2
