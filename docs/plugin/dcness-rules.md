@@ -3,17 +3,23 @@
 > dcness plugin 활성 프로젝트 (`init-dcness` 등록) 의 매 세션에 SessionStart 훅이 본 내용을 system-reminder 로 inject. CC 자동 인지.
 > 룰 추가 시 본 파일에만 append — skill 들은 cross-ref 만.
 
-## 0. 루프 SSOT
+## 1. 라우팅 가이드
 
-dcness 의 8 loop 운영은 **2 SSOT** 분담 (지금 읽지 말 것 — skill 진입 시 사전 read 안내):
-- loop-procedure doc — *공통 실행 절차* (Step 0~8 mechanics — worktree / begin-run / TaskCreate / agent 호출 / Step 4.5 stories sync / finalize-run / clean 7a / caveat 7b / auto-review)
-- orchestration doc §4 — *8 loop 행별 풀스펙* (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles).
+세션 시작 시 이 테이블 외 추가 read 하지 말 것 — skill 트리거 시 해당 skill 파일의 `## 사전 read` 섹션이 정확한 경로와 섹션 번호를 안내한다.
 
-**세션 시작 시 이 두 doc 을 읽지 말 것.** skill 트리거 시 해당 skill 파일의 `## 사전 read` 섹션이 정확한 경로와 섹션 번호를 안내한다.
+| 상황 | 읽어야 할 문서 | 섹션 |
+|---|---|---|
+| 루프 진입 / 시퀀스 결정 | [`orchestration.md`](orchestration.md) | §3 mini-graph + §4 해당 loop |
+| Step 0~8 실행 절차 | [`loop-procedure.md`](loop-procedure.md) | 전체 |
+| agent 호출 분기 / retry / escalate 한도 | [`handoff-matrix.md`](handoff-matrix.md) | §1~§3 |
+| agent 접근 권한 (Write/Read 경계) | [`handoff-matrix.md`](handoff-matrix.md) | §4 |
+| 실존 검증 룰 전문 + 안티패턴 | [`../internal/main-claude-rules.md`](../internal/main-claude-rules.md) | §1 |
+| Karpathy 4원칙 전문 + agent 매핑 | [`../internal/main-claude-rules.md`](../internal/main-claude-rules.md) | §3 |
+| dcness 자체 작업 룰 (300줄 cap 등) | [`../internal/self-guidelines.md`](../internal/self-guidelines.md) | 전체 |
 
-skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure doc, loop spec 은 orchestration §4.
+skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure, loop spec 은 orchestration §4.
 
-## 1. 가시성 룰 — MUST
+## 2. 가시성 룰 — MUST
 
 매 Agent 호출 후 메인이 prose 5~12줄 의무 echo. 의무 템플릿:
 
@@ -47,21 +53,9 @@ skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure doc, loo
 - ❌ "토큰 아끼려" 결론만 echo
 - ❌ 다음 Agent 호출 직전 echo (늦음 — end-step 직후 즉시)
 
-## 2. Step 기록 룰
+## 3. Step 기록 룰
 
-Agent 호출 1회 = `helper begin-step` + `helper end-step` 1쌍 의무.
-
-### 메인 의무 시퀀스 (모든 sub-agent 호출에 동일)
-
-```
-"$HELPER" begin-step <agent> [<MODE>]    ← 의무 (skip 금지)
-Agent(subagent_type=<agent>, ...)         ← prose 받음
-RUN_DIR=$("$HELPER" run-dir)
-PROSE_PATH="$RUN_DIR/.prose-staging/<step>.md"
-# 메인이 prose 를 위 경로에 Write
-ENUM=$("$HELPER" end-step <agent> [<MODE>] ...)  ← 의무 (skip 금지)
-# 가시성 룰 의무 echo
-```
+Agent 호출 1회 = `helper begin-step` + `helper end-step` 1쌍 의무. 표준 시퀀스는 [`loop-procedure.md`](loop-procedure.md) §3.1.
 
 ### POLISH / 재호출 step 이름 컨벤션
 
@@ -82,12 +76,11 @@ ENUM=$("$HELPER" end-step <agent> [<MODE>] ...)  ← 의무 (skip 금지)
 - **step count WARN**: `finalize-run --expected-steps N` row count 미달 → stderr WARN
 - 자동 보정 X — 메인이 사후 인지 + `/run-review` 진단
 
-## 3. 루프 종료 시 `/run-review` 의무
+## 4. run-review (opt-out fallback)
 
-`/quick` / `/impl` / `/impl-loop` / `/product-plan` 모든 skill 의 Step 7 (finalize-run + clean commit/PR) **직후 의무**:
+> primary path = `finalize-run --auto-review` ([`loop-procedure.md`](loop-procedure.md) §5.1). 본 섹션은 사용자가 `--auto-review` 를 명시 opt-out 한 경우의 fallback.
 
 ```bash
-# Step 7 commit/PR 끝난 후
 python3 -m harness.run_review --run-id "$RUN_ID" --repo "$(pwd)"
 ```
 
@@ -96,11 +89,9 @@ python3 -m harness.run_review --run-id "$RUN_ID" --repo "$(pwd)"
 "$(dirname "$HELPER")/dcness-review" --run-id "$RUN_ID" --repo "$(pwd)"
 ```
 
-- 잘한 점 + 잘못한 점 + per-Agent metrics 즉시 인지
-- 회귀 (THINKING_LOOP / ECHO_VIOLATION / PLACEHOLDER_LEAK 등) 자동 발화
 - skip 금지 — 사용자 보고 *전* 1회 의무
 
-## 4. 결과 출력 룰 — Bash collapsed 회피
+## 5. 결과 출력 룰 — Bash collapsed 회피
 
 `/run-review` 또는 임의 Bash 명령의 stdout 을 **텍스트 응답으로 character-for-character 복사**:
 
@@ -112,9 +103,7 @@ python3 -m harness.run_review --run-id "$RUN_ID" --repo "$(pwd)"
   - 자체 해석 ("핵심은~", "정리하면~") 본문 사이 삽입
 - 리포트 *끝* 별도 줄에서 코멘트 1~3줄은 허용
 
-근거: RWHarness 패턴 정합 + 가시성 룰 §1 정신 동일.
-
-## 5. yolo 모드
+## 6. yolo 모드
 
 발화에 `yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서` keyword 시 ON.
 
@@ -134,13 +123,13 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 # unmapped 시 yolo 도 사용자 위임 fallback
 ```
 
-## 6. AMBIGUOUS cascade
+## 7. AMBIGUOUS cascade
 
 `end-step` stdout = `AMBIGUOUS` 시:
 1. 재호출 1회 (결론 enum 명시 요청)
 2. 재호출도 AMBIGUOUS → 사용자 위임 (enum 후보 + prose 발췌)
 
-## 7. worktree 격리
+## 8. worktree 격리
 
 발화에 `worktree` / `wt` / `격리` / `isolate` keyword 시:
 
@@ -161,55 +150,16 @@ fi
 
 자세히 = `docs/archive/conveyor-design.md` §13.
 
-## 8. 권한/툴 부족 시 사용자 요청
+## 9. 권한/툴 부족 시 사용자 요청
 
 목표 달성에 가용 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게:
 - (a) 무엇이 부족
 - (b) 왜 필요
 - (c) 어떻게 얻을 수 있는지
 
-명시 요청 후 사용자 권한 부여 받고 진행. (Karpathy 원칙 1 정합 — surface assumptions)
+명시 요청 후 사용자 권한 부여 받고 진행.
 
-## 9. Karpathy 4 원칙 (참조)
-
-agent 별 적용:
-- **원칙 1** — Think Before (가정 명시 / 다중 해석 / push back / 명확화) — product-planner / qa / 전 agent
-- **원칙 2** — Simplicity First (요청 외 기능 X, 추상화 X) — architect / engineer
-- **원칙 3** — Surgical Changes (요청한 것만, 인접 코드 X) — engineer / pr-reviewer
-- **원칙 4** — Goal-Driven Execution (검증 가능 success criteria) — test-engineer / validator
-
-각 agent prompt 에 적합한 원칙 박혀있음 (`agents/*.md` 참조).
-
-## 10. 진단/제안 self-verify 원칙 (글로벌 제1룰 정합)
-
-> 출처: `~/.claude/CLAUDE.md` "제1 룰 — 제안 전 *실존 검증* 절대 강제". 글로벌 룰을 dcness skill 진행 컨텍스트에 SessionStart 훅 자동 inject 로 재인용.
-
-### 룰 (MUST)
-
-모든 사용자-facing 진단 / 제안 *제출 전*:
-- 등장하는 파일 경로 / 함수명 / CLI 옵션 → `grep` / `ls` / `Read` 실측 후 단언
-- 등장하는 테스트 결과 / 숫자 / 변경 규모 → 명령 실행 후 인용
-- 추측 표현 (`아마`, `보통`, `대략`, `~ 정도`) 금지
-
-위반 패턴 발견 시 즉시 검증 단계로 되돌아가 사실 확인 후 재구성.
-
-### 자율 보존
-
-*검증 방법은 자율* — grep / ls / Read / Bash / 외부 docs WebFetch 중 자기 판단. 형식 강제 X. 추측 금지 + 실측 후 단언만 강제.
-
-### 안티패턴
-
-❌ "벌써 30개 파일 변환됐을 것" — 실측 안 함 → 잘못된 숫자
-❌ "보통 jest config 는 X 키 쓰니까" — 학습 데이터 의존 → hallucination (예: `setupFilesAfterFramework`)
-❌ "이 함수 (대략) 어디 있을 것" — grep 안 함 → 잘못된 경로
-❌ engineer 보고 즉시 신뢰 → 실측 안 함 (`agents/engineer.md` § 자가 검증 echo 의무 와 짝)
-❌ Bash `sed -i` / `awk -i` / 광역 변환 후 *전·후* 실측 누락 — 변경 결과 의무 검증 (방법 자율: `git diff --stat` / 결과 grep / Read 등).
-
-### 효과
-
-실측 없는 추측 진단 회귀 방지. agent 측 self-verify echo (`agents/engineer.md` 자가 검증 섹션) 와 짝 — agent 가 인용 + 메인이 그 명령 직접 실행해 verify.
-
-## 11. 감시자 Hat (권고)
+## 10. 감시자 Hat (권고)
 
 builder + 감시자 두 hat. **감시자 우선**.
 

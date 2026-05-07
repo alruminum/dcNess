@@ -105,7 +105,7 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 | [`docs/plugin/orchestration.md`](../plugin/orchestration.md) | 시퀀스 mini-graph + **8 loop 행별 풀스펙** (entry / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles) | 신규 작업 시 진입 경로 결정 + loop 진입 시 풀스펙 read |
 | [`docs/plugin/handoff-matrix.md`](../plugin/handoff-matrix.md) | agent 측 강제 영역 (결정표 / Retry / Escalate / 접근 권한) | agent 호출 분기 / 한도 결정 시 |
 | [`docs/plugin/loop-procedure.md`](../plugin/loop-procedure.md) | Step 0~8 mechanics (worktree → begin-run → TaskCreate → begin-step → Agent → end-step → finalize-run --auto-review) | 매 컨베이어 진행 |
-| [`docs/plugin/dcness-rules.md`](../plugin/dcness-rules.md) | cross-cutting 룰 (echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy 참조 / **§10 self-verify 원칙**) | 모든 dcness skill 진행 시 |
+| [`docs/plugin/dcness-rules.md`](../plugin/dcness-rules.md) | **라우팅 가이드** (작업별 참조 문서 테이블) + cross-cutting 운영 룰 (echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청) | 모든 dcness skill 진행 시 |
 | [`docs/internal/self-guidelines.md`](self-guidelines.md) | dcness self 협업 룰 (300줄 cap / §2 self-verify) | dcness 자체 작업 시 |
 
 ### 2.3 거버넌스
@@ -121,7 +121,7 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 
 1. **매 Agent 호출 후 prose 5~12줄 의무 echo** (가시성 §1, dcness-rules.md)
 2. **begin-step / end-step 1:1 의무** (Step 기록 §2)
-3. **추측 금지 + 실측 후 단언** (dcness-rules.md §10 / self-guidelines.md §2 / 본 문서 §1 정합)
+3. **추측 금지 + 실측 후 단언** (본 문서 §1 / self-guidelines.md §2 정합 — 전문은 본 문서 §1)
 4. **finalize-run 시 `--auto-review` flag 의무** (loop-procedure §5.1)
 
 ### 2.5 sub-agent path 보호 (DCN-CHG-20260501-01)

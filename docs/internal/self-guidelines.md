@@ -35,7 +35,7 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 
 ## 2. 진단/제안 self-verify 원칙 (DCN-30-35, 글로벌 제1룰 정합)
 
-> dcness 자체 작업에도 동일 적용. 외부 skill 진행 시와 공유 — `docs/plugin/dcness-rules.md` §10 참조.
+> dcness 자체 작업에도 동일 적용. 외부 skill 진행 시와 공유 — [`docs/internal/main-claude-rules.md`](main-claude-rules.md) §1 참조.
 
 ### 룰 (MUST)
 
