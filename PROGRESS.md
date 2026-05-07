@@ -23,7 +23,7 @@
   - **Story 2.4** (`DCN-CHG-20260506-12`): dcness self 거버넌스 7개를 `docs/process/` → `docs/internal/` git mv. `check_document_sync.mjs` RECORD/RATIONALE 상수 경로 갱신. `docs/process/` 폴더 비움 완료.
   - **Story 2.3** (`DCN-CHG-20260506-10`): 외부 배포 SSOT 7개 → `docs/plugin/` git mv.
   - **Story 2.2** (`DCN-CHG-20260506-09`): `docs/status-json-mutate-pattern.md` (444줄) 핵심 추출 → `docs/plugin/prose-only-principle.md` (58줄 SSOT) 신규 + 원본 `docs/archive/` 이동. agents/ 12개 footer + 기타 인용처 25곳 갱신.
-  - **Story 2.1** (`DCN-CHG-20260506-06`): `docs/process/dcness-guidelines.md` 분할 → `docs/plugin/skill-guidelines.md` (skill 룰) + `docs/internal/self-guidelines.md` (self 룰). §8/§9 TBD → 이슈 #174/#175. 인용처 17곳 갱신. harness INFRA_PATTERNS 경로 갱신 + 신규 테스트 2케이스.
+  - **Story 2.1** (`DCN-CHG-20260506-06`): `docs/process/dcness-guidelines.md` 분할 → `docs/plugin/dcness-rules.md` (skill 룰) + `docs/internal/self-guidelines.md` (self 룰). §8/§9 TBD → 이슈 #174/#175. 인용처 17곳 갱신. harness INFRA_PATTERNS 경로 갱신 + 신규 테스트 2케이스.
 
 - **🧹 Epic 1 — 외부 배포물 정리 (#150)** (`DCN-CHG-20260506-02` ~ `-05`):
   - **Story 1.1** (`-02`): `.claude-plugin/`, `commands/`, `README.md` RWHarness 고유명사 13건 제거 (표기 "선행 하네스" 통일)

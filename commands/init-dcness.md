@@ -88,7 +88,7 @@ fi
 
 브랜치명·커밋·PR 제목 형식 위반을 로컬과 (선택적으로) CI 양쪽에서 자동 차단한다.
 
-> **#198 정정**: mjs / skill-guidelines.md 는 사용자 repo 에 cp 안 한다 — plugin SSOT 직접 호출. commit-msg hook 만 thin shim 으로 always-overwrite 한다 (`.git/hooks/` 위치 강제 + plugin 업데이트 자동 갱신).
+> **#198 정정**: mjs / dcness-rules.md 는 사용자 repo 에 cp 안 한다 — plugin SSOT 직접 호출. commit-msg hook 만 thin shim 으로 always-overwrite 한다 (`.git/hooks/` 위치 강제 + plugin 업데이트 자동 갱신).
 
 ```bash
 PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)"
@@ -253,7 +253,7 @@ dcness plug-in 의 디자인 시스템 SSOT 는 `docs/design.md` (Google `design
 git-naming 강제 (Step 2.6 완료 시):
 - 로컬: .git/hooks/commit-msg (thin shim) — 커밋 제목 형식 위반 차단. 본체 로직 plugin SSOT 안.
 - CI (사용자 선택): .github/workflows/git-naming-validation.yml — composite action 호출 1줄
-- skill-guidelines.md / check_git_naming.mjs 는 사용자 repo cp 안 함 — plugin SSOT 직접 호출 (#198)
+- dcness-rules.md / check_git_naming.mjs 는 사용자 repo cp 안 함 — plugin SSOT 직접 호출 (#198)
 
 design.md SSOT (Step 2.7 완료 시):
 - CLAUDE.md 매트릭스에 docs/design.md 행 등록 (UI 작업 시 read 후보)

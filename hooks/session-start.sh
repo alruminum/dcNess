@@ -41,20 +41,20 @@ python3 -m harness.hooks session-start --cc-pid "$CC_PID"
 # Read 도구는 절대 경로만 허용 — CLAUDE_PROJECT_DIR 로 절대 경로 구성.
 PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
-# skill-guidelines.md 는 plugin SSOT — 사용자 repo cp 폐지 (#198 OMC 식 thin shim).
-# Plugin path 우선 → cache lookup fallback → legacy 사용자 repo 경로 (마이그레이션 호환).
+# dcness-rules.md 는 plugin SSOT — 사용자 repo cp 폐지 (#198 OMC 식 thin shim).
+# Plugin path 우선 → cache lookup fallback → legacy 사용자 repo 경로.
 resolve_guidelines_path() {
-  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/docs/plugin/skill-guidelines.md" ]; then
-    echo "${CLAUDE_PLUGIN_ROOT}/docs/plugin/skill-guidelines.md"; return 0
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/docs/plugin/dcness-rules.md" ]; then
+    echo "${CLAUDE_PLUGIN_ROOT}/docs/plugin/dcness-rules.md"; return 0
   fi
   cache_dir="${HOME}/.claude/plugins/cache/dcness/dcness"
   if [ -d "$cache_dir" ]; then
     latest=$(ls -1 "$cache_dir" 2>/dev/null | sort -V | tail -1)
-    if [ -n "$latest" ] && [ -f "$cache_dir/$latest/docs/plugin/skill-guidelines.md" ]; then
-      echo "$cache_dir/$latest/docs/plugin/skill-guidelines.md"; return 0
+    if [ -n "$latest" ] && [ -f "$cache_dir/$latest/docs/plugin/dcness-rules.md" ]; then
+      echo "$cache_dir/$latest/docs/plugin/dcness-rules.md"; return 0
     fi
   fi
-  legacy="${PROJ}/docs/plugin/skill-guidelines.md"
+  legacy="${PROJ}/docs/plugin/dcness-rules.md"
   [ -f "$legacy" ] && echo "$legacy" && return 0
   return 1
 }
@@ -86,7 +86,7 @@ Read 도구로 다음 파일을 *지금 바로* 호출한다 (절대 경로):
 ### STEP 2: 확인 토큰 출력 [스킵 불가]
 
 읽은 후 첫 응답의 **첫 줄**에 반드시 다음 토큰을 출력한다:
-  [skill-guidelines 로드 완료 — §11 감시자 Hat 장착]
+  [dcness-rules 로드 완료 — §11 감시자 Hat 장착]
 
 이 토큰 없이 응답 = 즉시 룰 위반 (유저가 즉시 확인 가능).
 
