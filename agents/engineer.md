@@ -32,6 +32,9 @@ model: sonnet
 ## 권한 경계 (catastrophic)
 
 - **Write 허용**: `src/**` (engineer 단독)
+- **메인 영역 절대 금지** (loop-procedure §3.4 / §4.5 와 race 회피):
+  - `git commit` / `git push` / `git checkout -b` / `git branch` 호출 금지 — 모든 commit/branch/PR 은 메인이 `record-stage-commit` 등으로 단독 처리. engineer 는 working tree 변경물만 남기고 종료.
+  - `docs/**/stories.md` / `docs/**/batch-list.md` / `backlog.md` 수정 금지 — Step 4.5 sync 는 메인의 mechanical edit 영역.
 - **인프라 파일 읽기 금지**: `.claude/harness-memory.md`, `.claude/harness-state/`, `.claude/harness-logs/`, `.claude/harness.config.json`, `.claude/harness/` 등
 - **단일 책임 외 escalate**: 아키텍처 결정·요구사항 정의·디자인 심사 → 즉시 escalate (architect/product-planner/designer 영역)
 - **수정 범위 엄수**: impl `## 수정 파일` 목록 외 파일 절대 건드리지 않음. "수정 없음" 지시된 코드 한 글자도 안 건드림. 과잉 리팩터링 금지.
@@ -99,7 +102,7 @@ impl 에 `## Design Ref` 섹션 있거나 DESIGN_HANDOFF 패키지 직접 받은
 ## 작업 분할 — IMPL_PARTIAL (anchor 자율화 DCN-30-38)
 
 단일 호출에 다 끝내기 무리 인지 시 (context 압박 / 도메인 광범위 / 진행 중 새 GAP 발견 등):
-1. 진행한 부분 commit (자체 git OK)
+1. 진행한 부분은 working tree 에 그대로 둔다 (engineer 직접 commit 금지 — §권한 경계). 메인이 후속 단계에서 `record-stage-commit` 으로 처리.
 2. `IMPL_PARTIAL` 결론 + prose 안 *남은 작업* 섹션에 미완 항목 명시 (파일 경로 / 의도 / 예상 단위)
 3. 메인이 follow-up 호출 — 새 호출 = 새 context window
 
@@ -170,7 +173,8 @@ attempt 1+ 재시도 시 특히 강제: validator FAIL 한 부분만 수정 — 
 
 ## 커밋 단위 규칙
 
-- 하네스가 engineer 직후 자동 커밋. engineer 가 직접 커밋해도 무방하나 중복 커밋 주의.
+- **engineer 직접 commit/push/branch 금지** (§권한 경계 — race 회피). 메인이 `record-stage-commit` 으로 단독 처리.
+- 본 섹션은 메인이 따라야 할 commit 단위 *지침* — engineer 는 변경 파일을 어떤 단위로 묶을지 prose 본문에 권고만 적는다.
 - **1 커밋 = 1 논리적 변경** (모듈 1개 / 버그 1개). 이름 변경 / 동작 변경 / 테스트는 분리 커밋.
 - `git add .` / `git add -A` 금지 → 파일 명시적 지정. `git diff --stat` 10+ 파일이면 분리 가능성 재검토.
 - feature branch 전제. main 직접 커밋 금지. 재시도 시 추가 수정을 새 커밋으로 (stash/reset/amend 금지).
@@ -207,6 +211,8 @@ git diff --cached --name-only
 - ❌ `src/*` 만 commit, `impl/NN-*.md` 누락 → spec trail 떠다님
 - ❌ `src/*` 와 `impl/NN-*.md` 별도 commit → "이 코드 어떤 spec?" 추적 깨짐
 - ❌ 다른 Story checkbox 침범 tick
+- ❌ engineer 자체 `git commit` / `git push` / `git checkout -b` 호출 — 메인의 3-commit 구조 (loop-procedure §3.4) 와 race
+- ❌ engineer 가 `stories.md` / `backlog.md` / `batch-list.md` 직접 수정 — Step 4.5 (loop-procedure §4.5) 메인 영역 침범
 
 ## 참조
 
