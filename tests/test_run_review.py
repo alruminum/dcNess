@@ -646,6 +646,17 @@ class MissingSelfVerifyTests(unittest.TestCase):
         wastes = detect_wastes([s])
         self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
 
+    def test_acceptance_criteria_anchor_passes(self):
+        # issue #249 — `## 수용 기준 검증` 같이 heading 에 "검증" 포함된 변형도 통과해야 함.
+        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## 수용 기준 검증\n- grep 0줄 ✓\n")
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
+    def test_self_verification_anchor_passes(self):
+        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## Self Verification\noutput\n")
+        wastes = detect_wastes([s])
+        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
     def test_skipped_when_no_prose_full(self):
         # prose_full 부재 시 skip (parse 실패 case 등)
         s = self._engineer_step(prose_full="")
