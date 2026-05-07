@@ -38,6 +38,16 @@
 **파일 경로 표기 — MUST**: 파일을 언급할 때는 반드시 클릭 가능한 풀 경로로 쓴다. 파일명 뒤에 공백을 둬야 링크가 깨지지 않는다.
 - ❌ `dcness-rules.md 에서 확인` → ✅ `docs/plugin/dcness-rules.md 에서 확인`
 
+**채널별 형식 분기 — MUST**: 같은 경로라도 채널에 따라 형식이 다르다. 혼용 시 한쪽이 깨진다.
+
+| 채널 | 형식 | 이유 |
+|---|---|---|
+| 메인 Claude → 사용자 채팅 응답 (CC 터미널) | 평문 백틱: `` `docs/plugin/dcness-rules.md` `` | CC 가 경로로 인식 → cmd-click 시 에디터에서 열림 |
+| 도큐 본문 (`CLAUDE.md` / `docs/**` / `agents/**` / `commands/**`) | 마크다운 링크: `` [`docs/plugin/dcness-rules.md`](docs/plugin/dcness-rules.md) `` | GitHub 웹 + 에디터 preview 호환 |
+| GitHub 이슈 / PR 본문 | 마크다운 링크 동일 | GitHub 웹 렌더링 |
+
+❌ **사용자 채팅에 마크다운 링크 금지** — `[text](path)` 의 target 을 CC 가 URL 로 처리해 상대 URL `path` 를 브라우저로 열려고 시도 → "찾을 수 없음" 실패.
+
 **진행 불가 시 — MUST**: 도구·권한·정보 부족으로 목표 달성이 불가할 때 추측 진행하지 않고 사용자에게 명시 요청:
 - (a) 무엇이 부족한지
 - (b) 왜 필요한지
