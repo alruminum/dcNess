@@ -4,6 +4,19 @@
 
 ---
 
+## v0.2.5 (2026-05-07)
+
+**커밋 범위**: `8d097b4..6612db0`  
+**핵심 변경**: 루프 종료 후 finalize-run 강제 안전망 + REVIEW_READY 신호
+
+- `loop-procedure.md §3.3`: advance enum 마지막 step → 사용자 대기 없이 즉시 Step 7 명시 (issue-240)
+- `loop-procedure.md §5.1`: 트리거 명시 + end-run 안전망 설명 추가
+- `session_state.py _cli_finalize_run`: `finalized_at` 플래그 저장 + review → `review.md` 파일 저장 + stderr `[REVIEW_READY]` 신호
+- `session_state.py _cli_end_run`: `finalized_at` 없으면 자동 `finalize-run --auto-review` 실행
+- `dcness-rules.md`: 파일 경로 채널별 형식 분기 룰 추가 (CC 채팅 = 평문 백틱, 도큐 = 마크다운 링크)
+
+---
+
 ## v0.2.4 (2026-05-07)
 
 **커밋 범위**: `0fb69df..6038ceb`  
