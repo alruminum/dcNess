@@ -25,7 +25,7 @@ GitHub object 형식(`{"source": "github", "repo": "...", "ref": "release"}`)은
 # 1. 브랜치 생성
 git checkout -b docs/release_{버전}_{설명} main
 
-# 2. 버전 bump
+# 2. 버전 올리기
 #    .claude-plugin/plugin.json     "version" 필드
 #    .claude-plugin/marketplace.json "metadata.version" 필드
 
