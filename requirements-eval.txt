@@ -1,1 +1,1 @@
-agentevals>=0.0.9
+deepeval>=2.0.0
