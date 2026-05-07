@@ -15,6 +15,11 @@
 - `session_state.py _cli_end_run`: `finalized_at` 없으면 자동 `finalize-run --auto-review` 실행
 - `dcness-rules.md`: 파일 경로 채널별 형식 분기 룰 추가 (CC 채팅 = 평문 백틱, 도큐 = 마크다운 링크)
 
+**업데이트**:
+```sh
+claude plugin update dcness@dcness
+```
+
 ---
 
 ## v0.2.4 (2026-05-07)
