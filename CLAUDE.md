@@ -3,19 +3,7 @@
 > 본 파일은 메인 Claude (Claude Code) 가 dcNess 저장소에서 작업할 때의 지침이다.
 > 거버넌스 규칙은 [`docs/internal/governance.md`](docs/internal/governance.md) (SSOT) 에 있다 — 본 파일은 *재기술하지 않고 절차·링크만 박는다*.
 
-> 🔴 **[필수 — 본 프로젝트 작업 *직전* read 의무]**
->
-> 본 CLAUDE.md 와 동일 레벨 강제로 다음 문서 *반드시 read*:
->
-> 👉 **[`docs/internal/main-claude-rules.md`](docs/internal/main-claude-rules.md)** — 메인 Claude 행동 룰 SSOT
->
-> 내용:
-> - §0 **대원칙** — 강제 = (1) 작업 순서 + (2) 접근 영역. 그 외 agent 자율.
-> - §1 **실존 검증 강제** (제1룰)
-> - §2 **dcness 인프라** (300줄 cap / 5 SSOT / 거버넌스 / 핵심 강제 룰 4 / sub-agent path 보호)
-> - §3 **Karpathy 4 원칙 전문**
->
-> SessionStart inject 작동 안 해도 본 문서 read 로 룰 인지 보장. 미인지 진행 = 룰 위반.
+> 🔴 **[세션 시작 시 즉시 읽기 의무 — §3 문서 지도 참조]**
 
 ## 0. 프로젝트 정체성
 
@@ -48,7 +36,7 @@
 
 - 외래어 (Caveats / Disclaimer / Note / TBD 등) 보다는 **명확한 한글** 사용. (예: "Caveats" → "주의사항" / "TBD" → "추후 결정")
 - 영어 약어가 더 정확한 곳(API / SDK / SSOT / PR / CI 등 산업 표준어)은 그대로 사용.
-- **`§` 기호는 명확하게 사용** — `§N`, `§N.M` 형식. 어디서 인용했는지 **반드시 명시** (예: `governance.md §2.3` / `main-claude-rules.md §0`).
+- **`§` 기호는 명확하게 사용** — `§N`, `§N.M` 형식. 어디서 인용했는지 **반드시 명시** (예: `governance.md §2.3` / `self-guidelines.md §2`).
 - 단순히 "위 섹션" / "아래 참조" 같은 모호한 표현 X — 항상 `파일명 §번호` 박을 것.
 
 ### 0.5 추가한 기능은 반드시 배포 경로에도 포함
@@ -65,7 +53,7 @@
 
 ### 0.6 모드 (위 0.1~0.5 정체성 위에서)
 
-- **목적**: RWHarness fork-and-refactor — Prose-Only 원칙 결정론 + 4 기둥 정합 + 함정 회피 5원칙 (`docs/plugin/prose-only-principle.md` §2).
+- **목적**: RWHarness fork-and-refactor — Prose-Only 원칙 결정론 + 4 기둥 정합 + 함정 회피 5원칙.
 - **모드**: **메인 Claude 직접 작업** (`docs/archive/status-json-mutate-pattern.md` §10 / §11.4 정합).
   - architect / validator / engineer 위임 강제 **없음**.
   - RWHarness 가드 미적용 환경. **단** Document Sync 거버넌스만 강제.
@@ -93,7 +81,8 @@
 
 | 파일 | 역할 |
 |---|---|
-| [`docs/internal/main-claude-rules.md`](docs/internal/main-claude-rules.md) | 🔴 **메인 Claude 행동 룰 SSOT** — 실존 검증 / dcness 인프라 / Karpathy 4 원칙 |
+| [`docs/plugin/dcness-rules.md`](docs/plugin/dcness-rules.md) §1 | **대원칙** — harness 강제 2가지 / 파일 경로 표기 MUST / 진행 불가 처리 MUST |
+| [`docs/internal/self-guidelines.md`](docs/internal/self-guidelines.md) | dcness 자체 작업 룰 — 300줄 cap / 실존 검증 dcness 특화 안티패턴 |
 | [`docs/internal/governance.md`](docs/internal/governance.md) | 거버넌스 SSOT — 게이트 룰 |
 | [`docs/plugin/git-naming-spec.md`](docs/plugin/git-naming-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
 
@@ -102,7 +91,6 @@
 | 파일 | 언제 읽나 |
 |---|---|
 | [`docs/plugin/design.md`](docs/plugin/design.md) | 디자인 시스템 SSOT 변경 / plug-in agent 디자인 룰 영향 작업 시 |
-| [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) | Prose-Only 원칙 (대 원칙 + Anti-Pattern) 확인 시 |
 | [`docs/archive/status-json-mutate-pattern.md`](docs/archive/status-json-mutate-pattern.md) | 하네스 Phase 분할 / 전환 절차 원전 참조 시 (역사 자료) |
 | [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) | 오케스트레이션 로직(시퀀스·retry·escalate) 수정 시 |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태·TODO·Blockers 확인 시 |

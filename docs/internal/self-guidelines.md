@@ -33,18 +33,28 @@ dcness 행동지침 문서 (메인 Claude 또는 sub-agent 가 의사결정 시 
 
 **현재 알려진 위반**: 없음. 이전 위반 (orchestration.md 540줄) 은 DCN-30-32 에서 handoff-matrix.md 분리로 해소 (각각 298 / 256 줄).
 
-## 2. 진단/제안 self-verify 원칙 (DCN-30-35, 글로벌 제1룰 정합)
+## 2. 진단/제안 self-verify 원칙 (글로벌 제1룰 정합)
 
-> dcness 자체 작업에도 동일 적용. 외부 skill 진행 시와 공유 — [`docs/internal/main-claude-rules.md`](main-claude-rules.md) §1 참조.
+> 글로벌 `~/.claude/CLAUDE.md` 제1룰이 SSOT. 본 절은 dcness 컨텍스트 특화 추가분.
 
 ### 룰 (MUST)
 
 모든 사용자-facing 진단 / 제안 *제출 전*:
 - 등장하는 파일 경로 / 함수명 / CLI 옵션 → `grep` / `ls` / `Read` 실측 후 단언
 - 등장하는 테스트 결과 / 숫자 / 변경 규모 → 명령 실행 후 인용
+- Bash `sed -i` / `awk -i` / 광역 변환 후 *전·후* 실측 필수 (`git diff --stat` 또는 결과 grep)
+- 자기 박은 hook / inject / 자동화 도입 시 *실 작동 검증 후* 후속 PR 진행
+- CI 결과 확인 — "local PASS" 만으로 머지 금지
 - 추측 표현 (`아마`, `보통`, `대략`, `~ 정도`) 금지
 
 위반 패턴 발견 시 즉시 검증 단계로 되돌아가 사실 확인 후 재구성.
+
+### dcness 특화 안티패턴
+
+❌ Bash sed/awk 후 "X개 fix" 즉시 단언 — 전·후 실측 없이 숫자 인용  
+❌ engineer 보고 즉시 신뢰 — end-step echo 읽고 실측 후 평가  
+❌ 자기 박은 SessionStart inject 작동 가정 → 실측 없이 후속 PR 진행  
+❌ CI 결과 확인 안 함 → "earlier tests passed" 단언  
 
 ### 자율 보존
 
