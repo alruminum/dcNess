@@ -945,7 +945,12 @@ def _cli_end_run(args: Any) -> int:
                 "[session_state] finalize-run 미호출 감지 — auto-running finalize-run --auto-review",
                 file=sys.stderr,
             )
-            _fake = _ap.Namespace(expected_steps=None, auto_review=True, accumulate=False)
+            _fake = _ap.Namespace(
+                expected_steps=None,
+                auto_review=True,
+                accumulate=False,
+                no_accumulate=False,
+            )
             _cli_finalize_run(_fake)
     except Exception as exc:
         print(f"[session_state] end-run finalize guard FAIL — {exc}", file=sys.stderr)
@@ -1491,9 +1496,17 @@ def _cli_finalize_run(args: Any) -> int:
                 file=sys.stderr,
             )
 
-    # DCN-CHG-20260502-02: --accumulate — redo-log + WASTE/GOOD findings →
-    # .claude/loop-insights/<agent>[-<mode>].md 에 누적 (프로젝트 레벨 학습).
-    if getattr(args, "accumulate", False):
+    # DCN-CHG-20260502-02 + issue #225: --accumulate — redo-log + WASTE/GOOD
+    # findings → .claude/loop-insights/<agent>[-<mode>].md 에 누적 (프로젝트
+    # 레벨 학습).
+    # issue #225: --auto-review 켜진 경우 자동 accumulate (review 와 학습 누적
+    # = 동일 라이프사이클). --no-accumulate 로 명시 opt-out 가능.
+    _explicit_accumulate = getattr(args, "accumulate", False)
+    _auto_accumulate = (
+        getattr(args, "auto_review", False)
+        and not getattr(args, "no_accumulate", False)
+    )
+    if _explicit_accumulate or _auto_accumulate:
         print()
         print("--- loop-insights accumulate ---")
         try:
@@ -1713,7 +1726,13 @@ def _build_arg_parser() -> Any:
     p_fr.add_argument(
         "--accumulate",
         action="store_true",
-        help="redo-log + WASTE/GOOD → .claude/loop-insights/<agent>.md 누적 (DCN-CHG-20260502-02)",
+        help="redo-log + WASTE/GOOD → .claude/loop-insights/<agent>.md 누적 (DCN-CHG-20260502-02). issue #225: --auto-review 켜지면 자동 발동 — 본 flag 명시 호출은 --auto-review 없는 환경에서만 의미.",
+    )
+    p_fr.add_argument(
+        "--no-accumulate",
+        action="store_true",
+        dest="no_accumulate",
+        help="--auto-review 자동 accumulate 비활성 (issue #225). 명시 opt-out 시에만 사용.",
     )
     p_fr.set_defaults(func=_cli_finalize_run)
 

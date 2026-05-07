@@ -257,6 +257,7 @@ echo "$STATUS"
 - review 결과는 `<run_dir>/review.md` 에 저장 + stderr 로 `[REVIEW_READY]` 신호 출력. 메인 Claude 가 guidelines §4 따라 세션에 그대로 출력.
 - **`end-run` 안전망**: `finalize-run` 미호출 상태로 `end-run` 실행 시 자동으로 `finalize-run --auto-review` 대신 실행.
 - `--auto-review` 생략 시 (사용자 명시 opt-out) — `dcness-review --run-id $RUN_ID --repo $(pwd)` 수동 호출 의무 (guidelines §3).
+- **loop-insights 자동 누적** (issue #225): `--auto-review` 가 켜지면 동일 라이프사이클로 `redo-log` + WASTE/GOOD findings → `.claude/loop-insights/<agent>[-<mode>].md` 누적. 다음 run 의 `begin-step` 이 자동 read & 주입. 명시 opt-out 시 `--no-accumulate` 추가.
 
 ### 5.2 STATUS JSON 구조
 
