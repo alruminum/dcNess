@@ -8,16 +8,12 @@
   },
   "metadata": {
     "description": "dcNess — prose-only 결정론 + 메타 LLM 해석 + 함정 회피 5원칙. release 브랜치 배포 (docs/internal/ · docs/archive/ 미포함).",
-    "version": "0.2.2"
+    "version": "0.2.3"
   },
   "plugins": [
     {
       "name": "dcness",
-      "source": {
-        "source": "github",
-        "repo": "alruminum/dcNess",
-        "ref": "release"
-      },
+      "source": "./",
       "description": "Prose-only harness — agent 자유 prose emit, harness 가 메타 LLM 으로 결론 해석. 형식 강제 사다리 폐기.",
       "category": "development",
       "tags": [
