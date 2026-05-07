@@ -4,6 +4,16 @@
 
 ---
 
+## v0.2.4 (2026-05-07)
+
+**커밋 범위**: `0fb69df..6038ceb`  
+**핵심 변경**: PostToolUse prose 추출 전면 실패 수정
+
+- PostToolUse hook 에서 tool_response 가 list 포맷일 때 prose 추출 전면 실패하던 버그 수정 (issue-232)
+- `plugin-release.md` 'bump' → '버전 올리기' 표현 개선
+
+---
+
 ## v0.2.3 (2026-05-07)
 
 **커밋 범위**: `bfd500d..0fb69df`  
