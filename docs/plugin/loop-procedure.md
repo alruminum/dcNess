@@ -327,12 +327,20 @@ worktree 진입 시 squash 흡수 검사 후 `ExitWorktree(action="<keep|remove>
 
 ⚠️ Caveat: <has_ambiguous / has_must_fix / unexpected enum / sensitive untracked>
 
-커밋/PR 진행할까요? (branch → PR → regular merge 자동)
+📝 메모리 candidate (#149):
+- <caveat 발생 사유의 회고 — feedback / project type 후보. 다음 세션 회귀 방지용>
+- <waste finding 의 반복 패턴 (예: ECHO_VIOLATION 2회+, MISSING_SELF_VERIFY 등)>
+- <pr-reviewer NICE TO HAVE 중 자주 등장하는 항목>
+- 후보 없음 시 "없음" 1줄
+
+커밋/PR 진행할까요? (branch → PR → regular merge 자동) + 메모리 저장 진행?
 ```
 
 worktree 처리도 사용자 결정.
 
-**yolo 시**: `has_must_fix == false` + enum unexpected 만 (CHANGES_REQUESTED 1건 등) → 자동 7a 시도. `has_must_fix` 또는 `has_ambiguous` true → yolo 도 7b.
+**메모리 candidate 의무 (#149)**: caveat 발생 = 회귀 방지 신호. prose 본문에만 적고 끝내면 다음 세션에서 동일 caveat 재발. 메인은 위 양식의 *📝 메모리 candidate* 섹션을 *반드시* emit (없으면 "없음" 명시) — 사용자가 저장 여부 결정. 양식 없이 7b 보고 종료 = 룰 위반. 7a (clean) 도 review report 의 waste finding 이 있으면 같은 양식 적용.
+
+**yolo 시**: `has_must_fix == false` + enum unexpected 만 (CHANGES_REQUESTED 1건 등) → 자동 7a 시도. `has_must_fix` 또는 `has_ambiguous` true → yolo 도 7b. yolo 라도 메모리 candidate 양식은 emit (사용자 위임 X — 본인이 저장 후 진행).
 
 ---
 

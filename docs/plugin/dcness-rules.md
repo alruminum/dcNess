@@ -69,6 +69,12 @@
 - 대상: `agents/**/*.md` / `commands/*.md` / `docs/plugin/*.md`
 - 대상 외: `PROGRESS.md` / `docs/archive/**` / 코드 / spec
 
+**Step 7 회고 → 메모리 저장 의무 — MUST (#149)**: caveat (7b) 또는 review report 의 waste finding 등 회귀 신호가 있으면 *메모리 candidate* 를 보고 양식 안에 emit + 사용자에게 저장 여부 묻기. prose 본문에만 적고 종료 = 룰 위반 (다음 세션 회귀 발생).
+- 양식 + 의무 디테일 = [`loop-procedure.md`](loop-procedure.md) §5.5
+- 후보 type: `feedback` (반복 실수 / 안티패턴) / `project` (현 작업의 결정 / 제약)
+- 후보 0 일 때도 "없음" 1줄 명시 — 양식 자체 생략 X
+- yolo 라도 메모리 candidate 양식은 emit (yolo = 사용자 결정 위임 우회 *아님* — 본인이 자율 저장 후 진행)
+
 ---
 
 ## 2. 라우팅 가이드
