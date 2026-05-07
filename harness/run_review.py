@@ -99,11 +99,11 @@ DCNESS_AGENT_NAMES = set(EXPECTED_AGENT_BUDGETS.keys())
 
 # DCN-CHG-20260430-38: engineer self-verify echo anchor 옵션 (DCN-30-34 강제 → DCN-30-38 자율화).
 # prose 끝에 *어느 한 anchor* 라도 있으면 통과. 형식 자율 + substance 의무.
+# heading 라인에 검증 / verification / self-verify 단어가 *포함* 되면 매칭 (issue #249 — `## 수용 기준 검증` 같은 변형 허용).
 SELF_VERIFY_ANCHORS = [
-    r"^\s*#{1,6}\s*자가\s*검증",
-    r"^\s*#{1,6}\s*검증",
-    r"^\s*#{1,6}\s*verification",
-    r"^\s*#{1,6}\s*self[-\s]?verify",
+    r"^\s*#{1,6}[^\n]*검증",
+    r"^\s*#{1,6}[^\n]*verification",
+    r"^\s*#{1,6}[^\n]*self[-\s]?verify",
 ]
 
 
@@ -568,7 +568,8 @@ def detect_wastes(
                 agent="engineer",
                 detail=f"engineer step {s.idx} ({s.enum}) prose 에 자가 검증 anchor 부재 — "
                        f"DCN-30-34 의무 (anchor 자율: `## 자가 검증` / `## Verification` / "
-                       f"`## 검증` / `## Self-Verify` 등).",
+                       f"`## 검증` / `## 수용 기준 검증` / `## Self-Verify` 등 — heading 에 "
+                       f"검증/verification/self-verify 단어 포함하면 OK).",
                 fix="agents/engineer.md § 자가 검증 echo 의무 — prose 끝에 anchor 추가 + "
                     "실측 명령 + 결과 수치 인용. substance (검증 결과) 만 의무.",
             ))

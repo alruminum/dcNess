@@ -113,7 +113,7 @@ impl 에 `## Design Ref` 섹션 있거나 DESIGN_HANDOFF 패키지 직접 받은
 
 ## 자가 검증 echo 의무 (anchor 자율화 DCN-30-38)
 
-prose 결과 끝에 *자가 검증 섹션* + 검증 결과 인용 의무. **anchor 자율** — `## 자가 검증` / `## Verification` / `## 검증` / `## Self-Verify` 등 자기 판단. substance (실측 명령 + 결과 수치 인용) 만 의무.
+prose 결과 끝에 *자가 검증 섹션* + 검증 결과 인용 의무. **anchor 자율** — `## 자가 검증` / `## Verification` / `## 검증` / `## 수용 기준 검증` / `## Self-Verify` 등 자기 판단. heading 에 `검증` / `verification` / `self-verify` 단어가 포함되면 OK. substance (실측 명령 + 결과 수치 인용) 만 의무.
 
 *어느 명령을 쓸지도 자율* — grep / ls / Read / Bash / WebFetch 등. 메인이 결과 신뢰 가능하도록 근거 박힘.
 
