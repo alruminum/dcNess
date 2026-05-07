@@ -508,10 +508,12 @@ def handle_posttooluse_agent(
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
 
     # prose auto-staging — tool_response → run_dir 에 저장, current_step.prose_file 기록
+    # silent except 제거 (#272 W2 / #273 W1) — staging 미동작 진단 가능하게 단계별
+    # stderr DEBUG. post-agent-clear.sh 가 stderr → /tmp/dcness-hook-stderr.log 보존.
     if rid:
+        prose_text = ""
+        raw_response = stdin_data.get("tool_response")
         try:
-            raw_response = stdin_data.get("tool_response")
-            prose_text = ""
             if isinstance(raw_response, list):
                 # CC Agent PostToolUse 실제 포맷: [{"type": "text", "text": "..."}]
                 for block in raw_response:
@@ -522,23 +524,64 @@ def handle_posttooluse_agent(
                 prose_text = str(raw_response.get("text", "") or "")
             elif isinstance(raw_response, str):
                 prose_text = raw_response
+        except Exception as e:  # noqa: BLE001
+            print(
+                f"[hook prose stage] tool_response 파싱 예외: "
+                f"{type(e).__name__}: {e}",
+                file=sys.stderr,
+            )
 
-            if prose_text.strip():
+        if not prose_text.strip():
+            # 형식 미스매치 진단 정보 — 다음 run 에서 외부 환경 디버그 가능
+            if isinstance(raw_response, dict):
+                _shape = f"dict keys={list(raw_response.keys())[:5]}"
+            elif isinstance(raw_response, list):
+                _shape = f"list len={len(raw_response)}"
+                if raw_response and isinstance(raw_response[0], dict):
+                    _shape += f" item0_keys={list(raw_response[0].keys())[:5]}"
+                    _shape += f" item0_type={raw_response[0].get('type', '?')}"
+            elif isinstance(raw_response, str):
+                _shape = f"str len={len(raw_response)}"
+            else:
+                _shape = f"type={type(raw_response).__name__}"
+            print(
+                f"[hook prose stage] prose 추출 실패 — staging skip. {_shape}",
+                file=sys.stderr,
+            )
+        else:
+            try:
                 live_data = read_live(sid, base_dir=base_dir) or {}
                 active = live_data.get("active_runs", {}) or {}
                 slot = active.get(rid, {}) if isinstance(active, dict) else {}
-                cur_step = slot.get("current_step") if isinstance(slot, dict) else None
+                cur_step = (
+                    slot.get("current_step") if isinstance(slot, dict) else None
+                )
 
-                if isinstance(cur_step, dict):
+                if not isinstance(cur_step, dict):
+                    print(
+                        f"[hook prose stage] current_step 부재 (rid={rid[:8]}…) — "
+                        f"begin-step 호출 누락 의심. staging skip.",
+                        file=sys.stderr,
+                    )
+                else:
                     step_agent = cur_step.get("agent")
                     step_mode = cur_step.get("mode") or None
-
-                    if step_agent:
+                    if not step_agent:
+                        print(
+                            "[hook prose stage] current_step.agent 비어있음 — "
+                            "staging skip.",
+                            file=sys.stderr,
+                        )
+                    else:
                         from harness.signal_io import write_prose as _write_prose
-                        from harness.session_state import _count_step_occurrences as _count_occ
+                        from harness.session_state import (
+                            _count_step_occurrences as _count_occ,
+                        )
 
                         base = session_dir(sid, base_dir=base_dir) / "runs"
-                        occ = _count_occ(sid, rid, step_agent, step_mode, base_dir=base_dir)
+                        occ = _count_occ(
+                            sid, rid, step_agent, step_mode, base_dir=base_dir
+                        )
                         prose_path = _write_prose(
                             step_agent, rid, prose_text,
                             mode=step_mode, base_dir=base, occurrence=occ,
@@ -550,8 +593,11 @@ def handle_posttooluse_agent(
                         active = dict(active)
                         active[rid] = slot
                         update_live(sid, base_dir=base_dir, active_runs=active)
-        except Exception:  # noqa: BLE001 — silent, hook 본 흐름 방해 X
-            pass
+            except Exception as e:  # noqa: BLE001
+                print(
+                    f"[hook prose stage] write 예외: {type(e).__name__}: {e}",
+                    file=sys.stderr,
+                )
 
     # rid 활성 시만 histogram + redo_log
     eval_result = None
@@ -559,10 +605,22 @@ def handle_posttooluse_agent(
     if rid:
         try:
             from harness.agent_trace import histogram as _trace_hist
-            from harness.agent_trace import last_agent_id as _trace_last
+            from harness.agent_trace import read_all as _trace_read
             from harness.sub_eval import evaluate_sub, format_histogram
 
-            target_aid = sub_agent_id or _trace_last(sid, rid, base_dir=base_dir)
+            # #272 W3 — agent_id 폴백 안전성. 기존 _trace_last 폴백은 sub_type 검증 X
+            # 이라 직전 step (예: engineer) 의 agent_id 가 잘못 박혔다. 이제 trace 의
+            # 마지막 entry agent 가 *현재 sub_type 과 일치할 때만* 폴백 사용.
+            target_aid = sub_agent_id
+            if not target_aid:
+                _entries = _trace_read(sid, rid, base_dir=base_dir)
+                _short_sub = (sub_type or "").split(":")[-1] if sub_type else ""
+                for _e in reversed(_entries):
+                    _aid = _e.get("agent_id", "") or ""
+                    _eagent = (_e.get("agent", "") or "").split(":")[-1]
+                    if _aid and (not _short_sub or _eagent == _short_sub):
+                        target_aid = _aid
+                        break
             hist = _trace_hist(sid, rid, agent_id=target_aid or None, base_dir=base_dir)
             if hist:
                 histogram_str = format_histogram(hist)
@@ -570,7 +628,9 @@ def handle_posttooluse_agent(
                 prompt_hint = ""
                 if isinstance(tool_input, dict):
                     prompt_hint = str(tool_input.get("prompt", "") or "")[:500]
-                eval_result = evaluate_sub(hist, sub_prompt_hint=prompt_hint)
+                eval_result = evaluate_sub(
+                    hist, sub_prompt_hint=prompt_hint, sub_type=sub_type,
+                )
 
                 # redo_log 자동 append — 보수적 자동 결정. 메인이 별도 1줄로 덮어쓰기 가능.
                 try:
