@@ -92,7 +92,9 @@
 |---|---|
 | [`docs/plugin/design.md`](docs/plugin/design.md) | 디자인 시스템 SSOT 변경 / plug-in agent 디자인 룰 영향 작업 시 |
 | [`docs/archive/status-json-mutate-pattern.md`](docs/archive/status-json-mutate-pattern.md) | 하네스 Phase 분할 / 전환 절차 원전 참조 시 (역사 자료) |
-| [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) | 오케스트레이션 로직(시퀀스·retry·escalate) 수정 시 |
+| [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) | 시퀀스 mini-graph + 8 loop 풀스펙 — 루프 진입 경로·분기 수정 시 |
+| [`docs/plugin/handoff-matrix.md`](docs/plugin/handoff-matrix.md) | agent 호출 분기 / retry / escalate 한도 / 접근 권한 경계 수정 시 |
+| [`docs/plugin/loop-procedure.md`](docs/plugin/loop-procedure.md) | Step 0~8 mechanics (begin-run → begin-step → Agent → end-step → finalize-run) 수정 시 |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태·TODO·Blockers 확인 시 |
 | [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 수정 시 |
 | [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) | PR 체크리스트 확인 시 |
