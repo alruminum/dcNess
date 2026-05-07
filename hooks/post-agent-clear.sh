@@ -24,6 +24,6 @@ python3 -m harness.session_state is-active >/dev/null 2>&1 || exit 0
 
 CC_PID=$PPID
 
-# stdout (JSON) 그대로 통과시킴 — stderr 만 silence.
-python3 -m harness.hooks posttooluse-agent --cc-pid "$CC_PID" 2>/dev/null || true
+# stdout (JSON) 그대로 통과시킴 — stderr 는 /tmp 에 보존 (디버그용).
+python3 -m harness.hooks posttooluse-agent --cc-pid "$CC_PID" 2>>/tmp/dcness-hook-stderr.log || true
 exit 0

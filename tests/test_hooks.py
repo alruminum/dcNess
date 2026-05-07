@@ -1142,7 +1142,7 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
             "tool_input": {
                 "subagent_type": sub_type,
             },
-            "tool_response": {"type": "text", "text": prose},
+            "tool_response": [{"type": "text", "text": prose}],
         }
 
     def _set_current_step(self, agent: str, mode: Optional[str]) -> None:
@@ -1195,6 +1195,60 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self._set_current_step("qa", None)
         rc = handle_posttooluse_agent(
             stdin_data=self._payload_with_prose("qa", "qa", None, "   "),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertFalse(expected.exists())
+
+    def test_tool_response_dict_format_fallback(self) -> None:
+        """dict 포맷 ({\"text\": ...}) 하위호환 — CC 포맷 변경 전 방어."""
+        self._set_current_step("qa", None)
+        prose = "## 결론\nPASS\n"
+        rc = handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "qa"},
+                "tool_response": {"type": "text", "text": prose},
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertTrue(expected.exists())
+        self.assertEqual(expected.read_text(encoding="utf-8"), prose)
+
+    def test_tool_response_string_format_fallback(self) -> None:
+        """string 포맷 하위호환."""
+        self._set_current_step("qa", None)
+        prose = "## 결론\nPASS\n"
+        rc = handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "qa"},
+                "tool_response": prose,
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertTrue(expected.exists())
+
+    def test_tool_response_empty_list_no_staging(self) -> None:
+        """빈 list → prose 없음."""
+        self._set_current_step("qa", None)
+        rc = handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "qa"},
+                "tool_response": [],
+            },
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )

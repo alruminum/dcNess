@@ -507,12 +507,18 @@ def handle_posttooluse_agent(
 
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
 
-    # prose auto-staging — tool_response.text → run_dir 에 저장, current_step.prose_file 기록
+    # prose auto-staging — tool_response → run_dir 에 저장, current_step.prose_file 기록
     if rid:
         try:
-            raw_response = stdin_data.get("tool_response") or {}
+            raw_response = stdin_data.get("tool_response")
             prose_text = ""
-            if isinstance(raw_response, dict):
+            if isinstance(raw_response, list):
+                # CC Agent PostToolUse 실제 포맷: [{"type": "text", "text": "..."}]
+                for block in raw_response:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        prose_text = str(block.get("text", "") or "")
+                        break
+            elif isinstance(raw_response, dict):
                 prose_text = str(raw_response.get("text", "") or "")
             elif isinstance(raw_response, str):
                 prose_text = raw_response
