@@ -196,6 +196,14 @@ def find_run_dir(sessions_root: Path, run_id: Optional[str], use_latest: bool) -
         for rd in list_runs(sessions_root):
             if rd.name == run_id:
                 return rd
+        # .steps.jsonl 없는 run 도 직접 탐색 (prose staging 실패 등 부분 완료 run)
+        for sid_dir in sessions_root.iterdir():
+            runs_dir = sid_dir / "runs"
+            if not runs_dir.is_dir():
+                continue
+            cand = runs_dir / run_id
+            if cand.is_dir():
+                return cand
         return None
     if use_latest:
         runs = list_runs(sessions_root)
