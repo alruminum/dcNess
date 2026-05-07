@@ -35,7 +35,7 @@
 
 - 외래어 (Caveats / Disclaimer / Note / TBD 등) 보다는 **명확한 한글** 사용. (예: "Caveats" → "주의사항" / "TBD" → "추후 결정")
 - 영어 약어가 더 정확한 곳(API / SDK / SSOT / PR / CI 등 산업 표준어)은 그대로 사용.
-- **`§` 기호는 명확하게 사용** — `§N`, `§N.M` 형식. 어디서 인용했는지 **반드시 명시** (예: `CLAUDE.md §2` / `self-guidelines.md §2`).
+- **`§` 기호는 명확하게 사용** — `§N`, `§N.M` 형식. 어디서 인용했는지 **반드시 명시** (예: `CLAUDE.md §2` / `dcness-rules.md §1`).
 - 단순히 "위 섹션" / "아래 참조" 같은 모호한 표현 X — 항상 `파일명 §번호` 박을 것.
 
 ### 0.5 추가한 기능은 반드시 배포 경로에도 포함
@@ -79,7 +79,6 @@
 | 파일 | 역할 |
 |---|---|
 | [`docs/plugin/dcness-rules.md`](docs/plugin/dcness-rules.md) §1 | **대원칙** — harness 강제 2가지 / 파일 경로 표기 MUST / 진행 불가 처리 MUST |
-| [`docs/internal/self-guidelines.md`](docs/internal/self-guidelines.md) | dcness 자체 작업 룰 — 300줄 cap / 실존 검증 dcness 특화 안티패턴 |
 | [`docs/plugin/git-naming-spec.md`](docs/plugin/git-naming-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
 
 ### 작업 시 읽기 (lazy — 해당 작업 직전에만)

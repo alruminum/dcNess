@@ -45,6 +45,20 @@
 
 사용자 권한 부여 받은 후 진행.
 
+**실존 검증 — MUST**: 제안·계획·솔루션 제출 전 등장하는 모든 항목을 실제로 검증한다.
+- 파일 경로 → `Read` / `ls` 실존 확인
+- 함수·모듈 → `grep` 실재 확인
+- CLI 옵션 → `--help` 또는 직접 실행
+- 테스트·빌드 결과 → 명령 실행 후 인용
+- 자기 박은 hook / inject → 실 작동 검증 후 후속 PR
+- CI 결과 — "local PASS" 만으로 머지 금지
+
+추측 표현 (`아마`, `보통`, `대략`) 금지. 위반 발견 시 즉시 검증 후 재구성.
+
+**행동지침 md 300줄 cap — MUST**: 메인 Claude / agent 가 의사결정 시 직접 read 하는 md 는 파일당 300줄 이내. 초과 시 책임 분리 축으로 split (`orchestration.md` 만 500줄 예외).
+- 대상: `agents/**/*.md` / `commands/*.md` / `docs/plugin/*.md`
+- 대상 외: `PROGRESS.md` / `docs/archive/**` / 코드 / spec
+
 ---
 
 ## 2. 라우팅 가이드
@@ -57,8 +71,6 @@
 | Step 0~8 실행 절차 | [`loop-procedure.md`](loop-procedure.md) | 전체 |
 | agent 호출 분기 / retry / escalate 한도 | [`handoff-matrix.md`](handoff-matrix.md) | §1~§3 |
 | agent 접근 권한 (Write/Read 경계) | [`handoff-matrix.md`](handoff-matrix.md) | §4 |
-| 실존 검증 룰 + dcness 특화 안티패턴 | [`../internal/self-guidelines.md`](../internal/self-guidelines.md) | §2 |
-| dcness 자체 작업 룰 (300줄 cap 등) | [`../internal/self-guidelines.md`](../internal/self-guidelines.md) | §1 |
 | yolo 모드 / worktree 격리 상세 | [`loop-procedure.md`](loop-procedure.md) | §3.3 yolo / §1.1 worktree |
 
 skill 들은 input 정형화 + Loop 추천만, 절차는 loop-procedure, loop spec 은 orchestration §4.
