@@ -5,14 +5,56 @@
 #   cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
 #
 # 게이트:
-#   main 직접 push 차단 (force push 포함)
+#   1. main 직접 push 차단 (force push 포함)
+#   2. 브랜치명 git-naming-spec 형식 검증 — local PASS / 원격 CI FAIL mismatch 회귀 차단 (#255 W4)
+#
+# 규칙: docs/plugin/git-naming-spec.md §1 (SSOT)
+
+resolve_plugin_script() {
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs" ]; then
+    echo "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs"
+    return 0
+  fi
+  cache_dir="${HOME}/.claude/plugins/cache/dcness/dcness"
+  if [ -d "$cache_dir" ]; then
+    latest=$(ls -1 "$cache_dir" 2>/dev/null | sort -V | tail -1)
+    if [ -n "$latest" ] && [ -f "$cache_dir/$latest/scripts/check_git_naming.mjs" ]; then
+      echo "$cache_dir/$latest/scripts/check_git_naming.mjs"
+      return 0
+    fi
+  fi
+  legacy="$(git rev-parse --show-toplevel 2>/dev/null)/scripts/check_git_naming.mjs"
+  [ -f "$legacy" ] && echo "$legacy" && return 0
+  return 1
+}
+
+SCRIPT_PATH=$(resolve_plugin_script)
 
 while read local_ref local_sha remote_ref remote_sha; do
+  # 1. main 직접 push 차단
   if [ "$remote_ref" = "refs/heads/main" ]; then
     echo "ERROR: main 직접 push 금지. branch → PR → merge 절차를 따르세요." >&2
     echo "  gh pr create --title '...' --body '...'" >&2
     exit 1
   fi
+
+  # 2. 브랜치명 검증 — refs/heads/<name> 추출
+  case "$remote_ref" in
+    refs/heads/*)
+      BRANCH="${remote_ref#refs/heads/}"
+      # main / master / HEAD / develop 면 skip (이미 main 차단 별도)
+      case "$BRANCH" in main|master|HEAD|develop) continue ;; esac
+
+      if [ -n "$SCRIPT_PATH" ]; then
+        if ! node "$SCRIPT_PATH" --branch "$BRANCH" >&2; then
+          echo "ERROR: 브랜치명 형식 위반 — push 차단 (#255 W4 정합)." >&2
+          echo "  로컬에서 수정: git branch -m <올바른-브랜치명>" >&2
+          echo "  허용 패턴 = docs/plugin/git-naming-spec.md §1" >&2
+          exit 1
+        fi
+      fi
+      ;;
+  esac
 done
 
 exit 0
