@@ -92,7 +92,7 @@ PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
 
 | ENUM | 처리 |
 |------|------|
-| advance enum (catalog 행의 `advance` 컬럼) | 다음 step |
+| advance enum (catalog 행의 `advance` 컬럼) | 다음 step 있으면 진행 / **마지막 step이면 사용자 대기 없이 즉시 Step 7** |
 | `SPEC_GAP_FOUND` | architect SPEC_GAP cycle (≤2) 또는 사용자 위임 |
 | `TESTS_FAIL` / validator `FAIL` | engineer 재시도 (attempt < 3) |
 | `SPEC_MISSING` | architect SPEC_GAP |
@@ -242,15 +242,19 @@ BACKLOG_FILE="$(dirname $(dirname $EPIC_DIR))/../backlog.md"
 
 ### 5.1 finalize-run --auto-review 호출 (DCN-30-27 자동 트리거)
 
+> **트리거**: 마지막 step advance enum 확인 직후 사용자 대기 없이 즉시 호출 — 루프 종류 무관.
+
 ```bash
 STATUS=$("$HELPER" finalize-run --expected-steps <N> --auto-review)
 "$HELPER" end-run
 echo "$STATUS"
 ```
 
-`<N>` = catalog 행 `expected_steps` 컬럼. `--auto-review` 가 in-process 로 `harness.run_review` 호출 → review 리포트가 STATUS JSON 뒤에 chained 됨. 메인 Claude 가 guidelines §4 따라 stdout character-for-character echo (Bash collapsed 회피).
+`<N>` = catalog 행 `expected_steps` 컬럼. `--auto-review` 가 in-process 로 `harness.run_review` 호출 → review 리포트가 STATUS JSON 뒤에 chained 됨.
 
-`--auto-review` 생략 시 (사용자 명시 opt-out) — `dcness-review --run-id $RUN_ID --repo $(pwd)` 수동 호출 의무 (guidelines §3).
+- review 결과는 `<run_dir>/review.md` 에 저장 + stderr 로 `[REVIEW_READY]` 신호 출력. 메인 Claude 가 guidelines §4 따라 세션에 그대로 출력.
+- **`end-run` 안전망**: `finalize-run` 미호출 상태로 `end-run` 실행 시 자동으로 `finalize-run --auto-review` 대신 실행.
+- `--auto-review` 생략 시 (사용자 명시 opt-out) — `dcness-review --run-id $RUN_ID --repo $(pwd)` 수동 호출 의무 (guidelines §3).
 
 ### 5.2 STATUS JSON 구조
 

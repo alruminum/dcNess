@@ -933,6 +933,23 @@ def _cli_end_run(args: Any) -> int:
     if not sid or not rid:
         print("[session_state] sid/rid 미해결", file=sys.stderr)
         return 1
+
+    # finalize-run 미호출 시 자동 실행 — 모델이 Step 7 건너뛴 경우 안전망.
+    try:
+        import argparse as _ap
+        _live = read_live(sid)
+        _active = _live.get("active_runs", {}) if _live else {}
+        _slot = _active.get(rid, {}) if isinstance(_active, dict) else {}
+        if not _slot.get("finalized_at"):
+            print(
+                "[session_state] finalize-run 미호출 감지 — auto-running finalize-run --auto-review",
+                file=sys.stderr,
+            )
+            _fake = _ap.Namespace(expected_steps=None, auto_review=True, accumulate=False)
+            _cli_finalize_run(_fake)
+    except Exception as exc:
+        print(f"[session_state] end-run finalize guard FAIL — {exc}", file=sys.stderr)
+
     complete_run(sid, rid)
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
@@ -1425,6 +1442,18 @@ def _cli_finalize_run(args: Any) -> int:
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
 
+    # finalized_at 플래그 — end-run 이 미호출 감지용.
+    try:
+        _live = read_live(sid)
+        _active = _live.get("active_runs", {}) if _live else {}
+        if isinstance(_active, dict) and rid in _active:
+            _slot = dict(_active[rid])
+            _slot["finalized_at"] = _now_iso()
+            _active[rid] = _slot
+            update_live(sid, active_runs=_active)
+    except Exception:
+        pass
+
     # DCN-CHG-20260430-29: --auto-review flag — in-process /run-review chained.
     # 메인 Claude 가 finalize-run 호출만 하면 review 자동 piggy-back. 의도적 skip 불가.
     # SessionEnd 훅 reject (cross-session run false positive 우려).
@@ -1432,11 +1461,29 @@ def _cli_finalize_run(args: Any) -> int:
         print()
         print("--- /run-review (auto) ---")
         try:
+            import io
             from harness import run_review as _rv  # lazy import (test mock 용이)
-            _rv.main(["--run-id", rid, "--repo", str(Path.cwd())])
-        except SystemExit:
-            # argparse sys.exit — 정상 케이스. 무시.
-            pass
+            _buf = io.StringIO()
+            _old_stdout = sys.stdout
+            sys.stdout = _buf
+            try:
+                _rv.main(["--run-id", rid, "--repo", str(Path.cwd())])
+            except SystemExit:
+                pass
+            finally:
+                sys.stdout = _old_stdout
+            review_text = _buf.getvalue()
+            if review_text:
+                print(review_text)
+                try:
+                    review_path = run_dir(sid, rid) / "review.md"
+                    review_path.write_text(review_text, encoding="utf-8")
+                    print(
+                        f"[REVIEW_READY] {review_path} — 위 리뷰를 세션에 그대로 출력할 것 (dcness-rules §4)",
+                        file=sys.stderr,
+                    )
+                except Exception:
+                    pass
         except Exception as exc:
             print(
                 f"[session_state] AUTO_REVIEW_FAIL — {type(exc).__name__}: {exc}. "
