@@ -41,6 +41,16 @@ gh pr merge {번호} --merge
 # 5. main pull 후 태그 박기
 git checkout main && git pull
 git tag v{버전} && git push origin v{버전}
+
+# 6. 사용자 업데이트 가이드 출력
+echo "---"
+echo "v{버전} 업데이트 가이드"
+echo ""
+echo "  claude plugin update dcness@dcness"
+echo ""
+echo "문제 발생 시:"
+echo "  claude plugin uninstall dcness@dcness && claude plugin install dcness@dcness"
+echo "---"
 ```
 
 ## 4. 릴리즈 후 사용자 검증 방법
