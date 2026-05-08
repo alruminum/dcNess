@@ -4,6 +4,51 @@
 
 ---
 
+## v0.2.7 (2026-05-08)
+
+**커밋 범위**: `1cff44a..(다음 태그)`
+**핵심 변경**: enum 시스템 폐기 → prose-only routing 전환 (epic #280)
+
+- **이슈 #281** — `harness/routing_telemetry.py` 신규. PostToolUse Agent 훅이
+  매 sub 종료 시 prose tail (1200자 cap) 을 `.metrics/routing-decisions.jsonl`
+  에 1줄 append. 메인이 사용자 위임할 때는 CLI `record-cascade --reason ...`.
+  enum heuristic-calls.jsonl 의 prose-only 후속 — 회귀 검증용 raw baseline.
+- **이슈 #282** — `docs/plugin/handoff-matrix.md §1` 의 enum 표 12 종을
+  자연어 routing 가이드로 재포맷. agent 별 가능한 결론 *유형* + 권장 다음
+  처리 흐름을 prose 로 서술. §2 retry / §3 escalate / §4 권한은 보존.
+- **이슈 #283** — 22 agent 파일 (12 master + 5 architect sub-mode + 5
+  validator sub-mode) 의 enum 표를 자연어 가이드로 환원. frontmatter
+  description / leading prose / "## 결론 enum" 표 모두 "결론 + 권장 다음
+  단계 자연어 명시" 로 통일. 기존 enum 단어는 *예시 권장 표현* 으로 보존.
+- **이슈 #284** — `harness/interpret_strategy.py` telemetry write 코드
+  제거 (`.metrics/heuristic-calls.jsonl` 신규 기록 0). `_cli_end_step` 의
+  `--allowed-enums` optional. 미지정 시 prose-only mode (stdout
+  `PROSE_LOGGED`). legacy `--allowed-enums` 호출은 호환 보존.
+  `dcness-rules.md §3.3` / `loop-procedure.md §3.1` prose-only mode 권장
+  으로 갱신.
+- **이슈 #285** — 배포 경로 검증. 본 epic 모든 변경은 plug-in 본체 (배포
+  경로 1) 안. `claude plugin update` 로 자동 전파. init-dcness 가 사용자
+  repo 로 복사하는 인프라 (배포 경로 2) 변경 없음. 사용자용 SSOT 문서
+  (배포 경로 3) 는 plug-in cache 안 — 자동 갱신.
+
+**전환 모델 (정착 후)**:
+1. agent 가 prose 마지막 단락에 *어떤 결과로 끝났는지 + 메인이 누구를
+   부르는 게 적절한지* 자유 표현.
+2. 메인 Claude 가 prose + handoff-matrix.md §1 자연어 가이드 보고 routing.
+3. `routing-decisions.jsonl` raw 누적 → 회고 분석 (#281).
+4. 결정 못 하면 `routing_telemetry record-cascade` 후 사용자 위임.
+
+**업데이트**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 활성화 프로젝트는 plug-in update 만으로 자동 적용. init-dcness 재실행
+불필요. 외부 활성화 프로젝트 동작 확인은 사용자가 일반 작업 진행 중 자연스
+럽게 검증 (특별한 검증 절차 없음).
+
+---
+
 ## v0.2.6 (2026-05-08)
 
 **커밋 범위**: `09e537f..c69e28a`
