@@ -4,6 +4,38 @@
 
 ---
 
+## v0.2.8 (2026-05-09)
+
+**커밋 범위**: `4926adf..(다음 태그)`
+**핵심 변경**: helper picker semver 정렬 — 가장 오래된 cache 선택 회귀 수정 (이슈 #293)
+
+- **이슈 #293** — helper 진입 패턴 `ls -d ${CLAUDE_PLUGIN_ROOT:-.../dcness/dcness/*} | head -1`
+  이 알파벳 순 정렬로 *가장 오래된* cache (예: 6 버전 환경에서 0.2.2) 선택. v0.2.7
+  의 prose-only mode (이슈 #284 정착) 에 도달 못 해 0.2.2 의 enum-required mode +
+  옛 휴리스틱 강제. jajang run-f0c23053 실측에서 휴리스틱 FP 2건 발생 (validator
+  prose "0 FAIL" → enum=FAIL 오추출 / pr-reviewer "MUST FIX 없음 + NICE TO HAVE
+  4건" → must_fix=true 오판정). 4 파일 (총 9 occurrences) 의 picker glob 패턴
+  `head -1` → `sort -V | tail -1` 교체:
+  - `docs/plugin/loop-procedure.md` (1)
+  - `commands/run-review.md` (1)
+  - `commands/init-dcness.md` (5)
+  - `commands/efficiency.md` (2)
+
+**영향**:
+- v0.2.7 의 prose-only mode 가 picker 가 옛 cache 강제로 도달 못 했던 회귀 수정.
+- 본 v0.2.8 부터는 picker 가 항상 최신 semver 선택 → prose-only mode 자연 활용.
+- cache 다중 버전 환경 (`claude plugin update` 누적) 에서 모두 영향.
+
+**업데이트**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 cache 가 0.2.7 이 아닌 옛 버전을 picker 강제하던 환경 (jajang 실측 사례) 은
+본 업데이트 후 정상화.
+
+---
+
 ## v0.2.7 (2026-05-08)
 
 **커밋 범위**: `1cff44a..(다음 태그)`
