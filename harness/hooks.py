@@ -652,6 +652,22 @@ def handle_posttooluse_agent(
                         active = dict(active)
                         active[rid] = slot
                         update_live(sid, base_dir=base_dir, active_runs=active)
+
+                        # issue #281 — prose-only routing 회귀 검증 telemetry.
+                        # 매 agent 종료 시 prose tail 보존. enum heuristic-calls.jsonl
+                        # 와 분리된 별도 파일 (.metrics/routing-decisions.jsonl).
+                        try:
+                            from harness.routing_telemetry import record_agent_call
+                            record_agent_call(
+                                sub=step_agent,
+                                prose=prose_text,
+                                mode=step_mode,
+                                tool_use_id=stdin_data.get("tool_use_id", "") or "",
+                                run_id=rid,
+                                session_id=sid,
+                            )
+                        except Exception:  # noqa: BLE001 — silent, hook 본 흐름 보호
+                            pass
             except Exception as e:  # noqa: BLE001
                 print(
                     f"[hook prose stage] write 예외: {type(e).__name__}: {e}",
