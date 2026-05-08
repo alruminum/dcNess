@@ -316,6 +316,22 @@ def handle_pretooluse_agent(
         except (OSError, ValueError):
             pass  # 실패해도 Agent 호출은 통과 — 식별만 누락.
 
+    # #272 W3 진짜 fix — PreToolUse Agent 의 tool_use_id + 시작 시각을 박아
+    # PostToolUse Agent 가 *시각 범위* 로 sub 의 trace 정확히 식별 (agent_id 폴백
+    # 위험 제거). CC docs: tool_use_id 가 PreToolUse↔PostToolUse 매칭 키.
+    if rid and subagent:
+        tuid = stdin_data.get("tool_use_id", "") or ""
+        if tuid:
+            try:
+                from harness.session_state import set_pending_agent
+                set_pending_agent(
+                    sid, rid,
+                    tool_use_id=tuid, sub_type=subagent, mode=(mode or None),
+                    base_dir=base_dir,
+                )
+            except (OSError, ValueError):
+                pass  # 실패해도 Agent 호출 통과 — histogram 폴백 의존.
+
     return 0
 
 
@@ -602,28 +618,42 @@ def handle_posttooluse_agent(
     # rid 활성 시만 histogram + redo_log
     eval_result = None
     histogram_str = ""
+    pending_match = ""
     if rid:
         try:
-            from harness.agent_trace import histogram as _trace_hist
-            from harness.agent_trace import read_all as _trace_read
+            from harness.agent_trace import histogram_since as _trace_hist_since
+            from harness.session_state import clear_pending_agent
             from harness.sub_eval import evaluate_sub, format_histogram
 
-            # #272 W3 — agent_id 폴백 안전성. 기존 _trace_last 폴백은 sub_type 검증 X
-            # 이라 직전 step (예: engineer) 의 agent_id 가 잘못 박혔다. 이제 trace 의
-            # 마지막 entry agent 가 *현재 sub_type 과 일치할 때만* 폴백 사용.
-            target_aid = sub_agent_id
-            if not target_aid:
-                _entries = _trace_read(sid, rid, base_dir=base_dir)
-                _short_sub = (sub_type or "").split(":")[-1] if sub_type else ""
-                for _e in reversed(_entries):
-                    _aid = _e.get("agent_id", "") or ""
-                    _eagent = (_e.get("agent", "") or "").split(":")[-1]
-                    if _aid and (not _short_sub or _eagent == _short_sub):
-                        target_aid = _aid
-                        break
-            hist = _trace_hist(sid, rid, agent_id=target_aid or None, base_dir=base_dir)
-            if hist:
-                histogram_str = format_histogram(hist)
+            # #272 W3 진짜 fix — pending_agent.started_at *이후* trace = 그 sub 의
+            # 행동. agent_id 폴백 제거 (오기록 원인). tool_use_id 매칭으로 정합 검증.
+            tuid_now = stdin_data.get("tool_use_id", "") or ""
+            pending = clear_pending_agent(sid, rid, base_dir=base_dir)
+            since_ts = ""
+            if isinstance(pending, dict):
+                since_ts = pending.get("started_at", "") or ""
+                # tool_use_id 매칭 검증 — drift 시 stderr WARN (silent fallback X)
+                pending_tuid = pending.get("tool_use_id", "") or ""
+                if tuid_now and pending_tuid and tuid_now != pending_tuid:
+                    print(
+                        f"[hook agent-id] tool_use_id 불일치: pending="
+                        f"{pending_tuid[:12]}… post={tuid_now[:12]}… — "
+                        f"PreToolUse Agent ↔ PostToolUse Agent 매칭 실패. "
+                        f"trace 시각 범위 폴백 사용.",
+                        file=sys.stderr,
+                    )
+                    pending_match = "drift"
+                else:
+                    pending_match = "ok"
+
+            # 시각 범위 기반 histogram. since_ts 없으면 (PreToolUse 미발화 시나리오)
+            # 빈 dict — 폴백 안 함 (오기록 < 빈 데이터 원칙).
+            hist = (
+                _trace_hist_since(sid, rid, since_ts, base_dir=base_dir)
+                if since_ts else {}
+            )
+            if hist or sub_type:
+                histogram_str = format_histogram(hist) if hist else "(none)"
                 # prompt hint — sub 호출 prompt 일부 (Write/Edit 약속 검출용)
                 prompt_hint = ""
                 if isinstance(tool_input, dict):
@@ -632,17 +662,22 @@ def handle_posttooluse_agent(
                     hist, sub_prompt_hint=prompt_hint, sub_type=sub_type,
                 )
 
-                # redo_log 자동 append — 보수적 자동 결정. 메인이 별도 1줄로 덮어쓰기 가능.
+                # redo_log 자동 append. agent_id 박지 X (CC docs 상 PostToolUse Agent
+                # 메인 컨텍스트엔 부재 가능). tool_use_id 가 정확한 매칭 키.
                 try:
                     from harness.redo_log import append as _redo_append
                     _redo_append(sid, rid, {
                         "auto": True,
-                        "agent_id": target_aid,
+                        "tool_use_id": tuid_now or (
+                            pending.get("tool_use_id", "")
+                            if isinstance(pending, dict) else ""
+                        ),
                         "sub": sub_type,
                         "decision": eval_result["decision"],
                         "tool_uses": eval_result["tool_uses"],
                         "histogram": hist,
                         "anomalies": eval_result["anomalies"],
+                        "match": pending_match,
                     }, base_dir=base_dir)
                 except Exception:  # noqa: BLE001 — silent, hook 본 흐름 방해 X
                     pass

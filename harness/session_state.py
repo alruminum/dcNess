@@ -71,6 +71,8 @@ __all__ = [
     "update_live",
     "start_run",
     "update_current_step",
+    "set_pending_agent",
+    "clear_pending_agent",
     "complete_run",
     "cleanup_stale_runs",
     "is_project_active",
@@ -536,6 +538,69 @@ def update_current_step(
     slot["last_confirmed_at"] = now
     active[run_id] = slot
     update_live(session_id, base_dir=base_dir, active_runs=active)
+
+
+def set_pending_agent(
+    session_id: str,
+    run_id: str,
+    *,
+    tool_use_id: str,
+    sub_type: str,
+    mode: Optional[str] = None,
+    base_dir: Optional[Path] = None,
+) -> None:
+    """`active_runs[run_id].pending_agent` 갱신 — PreToolUse Agent 시점.
+
+    PostToolUse Agent 가 *시각 범위* 로 sub trace 를 식별 (#272 W3 진짜 fix).
+    기존 `agent_id` 폴백은 sub 가 file-op 안 한 경우 직전 step 의 ID 가 들어와
+    오기록 (#272 W3) — CC docs 상 PostToolUse Agent (메인 컨텍스트) 에 agent_id
+    가 *없을 수 있음*. `tool_use_id` (PreToolUse↔PostToolUse 매칭 키) + 시작 시각
+    으로 정확히 식별.
+
+    Args:
+        tool_use_id: CC PreToolUse Agent payload 의 tool_use_id (필수)
+        sub_type: subagent_type (검증/디버그용)
+        mode: 옵션 mode hint
+    """
+    if not tool_use_id:
+        return  # tool_use_id 없으면 매칭 불가 — 폴백 의존 (시각 범위 X)
+    live = read_live(session_id, base_dir=base_dir) or {}
+    active = live.get("active_runs", {})
+    if not isinstance(active, dict) or run_id not in active:
+        return  # idempotent — run 미시작 케이스 (컨베이어 외부 Agent 호출)
+    slot = dict(active[run_id])
+    slot["pending_agent"] = {
+        "tool_use_id": tool_use_id,
+        "sub_type": sub_type or "",
+        "mode": mode or None,
+        "started_at": _now_iso(),
+    }
+    active = dict(active)
+    active[run_id] = slot
+    update_live(session_id, base_dir=base_dir, active_runs=active)
+
+
+def clear_pending_agent(
+    session_id: str,
+    run_id: str,
+    *,
+    base_dir: Optional[Path] = None,
+) -> Optional[Dict[str, Any]]:
+    """`active_runs[run_id].pending_agent` 제거 + 직전 값 반환.
+
+    PostToolUse Agent 가 호출. 반환값으로 sub_type / started_at / tool_use_id
+    검증 → trace 시각 범위 집계 + tool_use_id 매칭.
+    """
+    live = read_live(session_id, base_dir=base_dir) or {}
+    active = live.get("active_runs", {})
+    if not isinstance(active, dict) or run_id not in active:
+        return None
+    slot = dict(active[run_id])
+    pending = slot.pop("pending_agent", None)
+    active = dict(active)
+    active[run_id] = slot
+    update_live(session_id, base_dir=base_dir, active_runs=active)
+    return pending if isinstance(pending, dict) else None
 
 
 def complete_run(

@@ -70,6 +70,21 @@ class EvaluateSubTests(unittest.TestCase):
         self.assertEqual(result["decision"], "REDO_SUSPECT")
         self.assertTrue(any(f"< {MIN_TOOL_USES}" in a for a in result["anomalies"]))
 
+    def test_prose_only_sub_skips_min_tool_uses(self):
+        # #272 W1 보완 — prose-only sub 는 file-op 0건도 정상.
+        for sub in ("pr-reviewer", "qa", "validator"):
+            with self.subTest(sub=sub):
+                result = evaluate_sub({}, sub_type=sub)
+                self.assertEqual(
+                    result["decision"], "PASS",
+                    msg=f"{sub} → {result} (prose-only file-op 0 도 정상)",
+                )
+
+    def test_engineer_below_min_still_fires(self):
+        # 일반 sub 는 file-op 1건 미만 시 anomaly 유지
+        result = evaluate_sub({"Read": 1}, sub_type="engineer")
+        self.assertEqual(result["decision"], "REDO_SUSPECT")
+
     def test_redo_repeat_read(self):
         # Read 임계 15
         result = evaluate_sub({"Read": REPEAT_TOOL_THRESHOLDS["Read"]})

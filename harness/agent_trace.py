@@ -36,7 +36,10 @@ from typing import Any, Dict, List, Optional
 from harness.session_state import run_dir
 
 
-__all__ = ["append", "read_all", "tail", "histogram", "last_agent_id", "TRACE_NAME"]
+__all__ = [
+    "append", "read_all", "tail", "histogram", "histogram_since",
+    "last_agent_id", "TRACE_NAME",
+]
 
 
 TRACE_NAME = "agent-trace.jsonl"
@@ -131,6 +134,39 @@ def histogram(
         if entry.get("phase") != "pre":
             continue
         if agent_id is not None and entry.get("agent_id") != agent_id:
+            continue
+        tool = entry.get("tool", "") or "?"
+        counts[tool] = counts.get(tool, 0) + 1
+    return counts
+
+
+def histogram_since(
+    session_id: str,
+    run_id: str,
+    since_ts: str,
+    *,
+    base_dir: Optional[Path] = None,
+) -> Dict[str, int]:
+    """`since_ts` (ISO8601) *이후* pre phase 의 tool 카운트 (#272 W3 진짜 fix).
+
+    PreToolUse Agent 시각 ~ PostToolUse Agent 시각 사이 trace = 그 sub 의 행동.
+    `agent_id` 폴백 (직전 step 오기록 위험) 대신 *시각 범위* 로 정확히 매칭.
+
+    Args:
+        since_ts: ISO8601 UTC ("2026-05-08T01:23:45Z"). 이 시각 *이상* 의 entry 포함.
+
+    Returns:
+        {"Read": 4, ...}. since_ts 빈 문자열이면 빈 dict (안전 폴백 X — 호출자가
+        시각 범위 보장).
+    """
+    if not since_ts:
+        return {}
+    counts: Dict[str, int] = {}
+    for entry in read_all(session_id, run_id, base_dir=base_dir):
+        if entry.get("phase") != "pre":
+            continue
+        ts = entry.get("ts", "") or ""
+        if not ts or ts < since_ts:
             continue
         tool = entry.get("tool", "") or "?"
         counts[tool] = counts.get(tool, 0) + 1
