@@ -86,8 +86,15 @@ def evaluate_sub(
     total = sum(histogram.values())
     anomalies: List[str] = []
 
-    # 룰 1 — 너무 적은 호출
-    if total < MIN_TOOL_USES:
+    sub_short = (sub_type or "").split(":", 1)[0].lower()
+    # plugin-namespaced (e.g. "dcness:qa") 와 short ("qa") 양쪽 호환
+    if ":" in (sub_type or ""):
+        sub_short = sub_type.split(":")[-1].lower()
+    is_prose_only = sub_short in PROSE_ONLY_AGENTS
+
+    # 룰 1 — 너무 적은 호출. prose-only sub 는 file-op 0건도 정상 (#272 W1 보완) —
+    # 예: pr-reviewer 가 메인 컨텍스트에서 prose 검토만 하고 file-op 안 한 경우.
+    if total < MIN_TOOL_USES and not is_prose_only:
         anomalies.append(f"tool_uses={total} (< {MIN_TOOL_USES})")
 
     # 룰 2 — 도구별 차등 임계 초과 반복
@@ -97,11 +104,6 @@ def evaluate_sub(
             anomalies.append(f"{tool}×{count} (≥ {threshold} 반복)")
 
     # 룰 3 — prompt 에 Write/Edit 약속 vs 실제 0건 (prose-only agent 제외)
-    sub_short = (sub_type or "").split(":", 1)[0].lower()
-    # plugin-namespaced (e.g. "dcness:qa") 와 short ("qa") 양쪽 호환
-    if ":" in (sub_type or ""):
-        sub_short = sub_type.split(":")[-1].lower()
-    is_prose_only = sub_short in PROSE_ONLY_AGENTS
     if not is_prose_only:
         write_edit = histogram.get("Write", 0) + histogram.get("Edit", 0)
         hint_lower = (sub_prompt_hint or "").lower()

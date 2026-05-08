@@ -1061,21 +1061,41 @@ class PostToolUseFileOpTests(_PreToolBase):
 
 
 class PostToolUseAgentHistogramTests(_PreToolBase):
-    """sub 종료 후 trace 집계 → redo_log 자동 append + stdout 메시지."""
+    """sub 종료 후 trace 집계 → redo_log 자동 append + stdout 메시지.
 
-    def _seed_trace(self, agent_id: str, tools: list) -> None:
+    #272 W3 진짜 fix — agent_id 폴백 제거. PreToolUse Agent 의 set_pending_agent
+    + 시각 범위 매칭 (tool_use_id 검증) 으로 정확한 sub 식별.
+    """
+
+    def _simulate_pre(
+        self, sub_type: str, *, tool_use_id: str = "toolu_test_default",
+        mode=None,
+    ) -> None:
+        """PreToolUse Agent 시점 시뮬레이션 — set_pending_agent 박음."""
+        from harness.session_state import set_pending_agent
+        set_pending_agent(
+            self.sid, self.rid,
+            tool_use_id=tool_use_id, sub_type=sub_type, mode=mode,
+            base_dir=self.base,
+        )
+
+    def _seed_trace(self, sub_type: str, tools: list) -> None:
+        """sub 내부 file-op trace — set_pending_agent *후* 호출돼야 시각 범위 매칭."""
         for tool in tools:
             trace_append(self.sid, self.rid, {
-                "phase": "pre", "agent_id": agent_id, "tool": tool,
+                "phase": "pre", "agent": sub_type, "tool": tool,
             }, base_dir=self.base)
             trace_append(self.sid, self.rid, {
-                "phase": "post", "agent_id": agent_id, "tool": tool,
+                "phase": "post", "agent": sub_type, "tool": tool,
             }, base_dir=self.base)
 
-    def _post_payload(self, sub_type: str, agent_id: str, prompt: str = "") -> dict:
+    def _post_payload(
+        self, sub_type: str, *, tool_use_id: str = "toolu_test_default",
+        prompt: str = "",
+    ) -> dict:
         return {
             "sessionId": self.sid,
-            "agent_id": agent_id,
+            "tool_use_id": tool_use_id,
             "tool_name": "Agent",
             "tool_input": {
                 "subagent_type": sub_type,
@@ -1084,9 +1104,10 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         }
 
     def test_pass_auto_redo_log(self):
-        self._seed_trace("aid-engineer", ["Read", "Read", "Write", "Bash"])
+        self._simulate_pre("engineer")
+        self._seed_trace("engineer", ["Read", "Read", "Write", "Bash"])
         rc = handle_posttooluse_agent(
-            stdin_data=self._post_payload("engineer", "aid-engineer"),
+            stdin_data=self._post_payload("engineer"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -1097,11 +1118,14 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         self.assertTrue(redos[0]["auto"])
         self.assertEqual(redos[0]["sub"], "engineer")
         self.assertEqual(redos[0]["tool_uses"], 4)
+        # tool_use_id 매칭 검증
+        self.assertEqual(redos[0]["match"], "ok")
 
     def test_redo_suspect_on_low_calls(self):
-        self._seed_trace("aid-x", ["Read"])
+        self._simulate_pre("architect")
+        self._seed_trace("architect", ["Read"])
         rc = handle_posttooluse_agent(
-            stdin_data=self._post_payload("architect", "aid-x"),
+            stdin_data=self._post_payload("architect"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -1112,11 +1136,11 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
 
     def test_redo_suspect_on_prose_only(self):
         # Read 만 4번 + Write 0건. prompt 에 "create file" 약속.
-        self._seed_trace("aid-arch", ["Read", "Read", "Read", "Read"])
+        self._simulate_pre("architect")
+        self._seed_trace("architect", ["Read", "Read", "Read", "Read"])
         rc = handle_posttooluse_agent(
             stdin_data=self._post_payload(
-                "architect", "aid-arch",
-                prompt="create the impl plan file at docs/foo.md"
+                "architect", prompt="create the impl plan file at docs/foo.md",
             ),
             cc_pid=self.cc_pid,
             base_dir=self.base,
@@ -1131,9 +1155,10 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
             self.sid, base_dir=self.base,
             active_agent="engineer", active_mode="IMPL",
         )
-        self._seed_trace("aid-engineer", ["Read", "Bash"])
+        self._simulate_pre("engineer", mode="IMPL")
+        self._seed_trace("engineer", ["Read", "Bash"])
         rc = handle_posttooluse_agent(
-            stdin_data=self._post_payload("engineer", "aid-engineer"),
+            stdin_data=self._post_payload("engineer"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -1143,90 +1168,89 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         self.assertNotIn("active_mode", live)
 
     def test_no_trace_no_redo_log(self):
-        # trace 비어있으면 자동 redo_log 미추가, hook 본 흐름만.
+        # PreToolUse 안 박혔고 trace 비어있으면 → since_ts="" → hist={} → eval
+        # 발화 안 함 (sub_type 도 없으므로). 자동 redo_log 미추가.
         rc = handle_posttooluse_agent(
-            stdin_data=self._post_payload("engineer", "aid-empty"),
+            stdin_data={"sessionId": self.sid, "tool_name": "Agent"},
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
         self.assertEqual(read_redos(self.sid, self.rid, base_dir=self.base), [])
 
-    def test_agent_id_fallback_only_on_subtype_match(self):
-        """#272 W3 — payload agent_id 비어있고 trace 의 마지막 entry 가 *다른* sub
-        의 것이면 폴백 사용 X. redo_log 의 agent_id 가 직전 step 으로 오기록되는
-        문제 회귀."""
-        # trace 에 engineer 의 흔적만 있음 (직전 step). 이제 pr-reviewer Agent 가
-        # 호출됐고 (prose-only 라 자기 file-op trace 없음), payload agent_id 비어있음.
-        for tool in ["Read", "Edit", "Bash"]:
-            trace_append(self.sid, self.rid, {
-                "phase": "pre", "agent_id": "aid-engineer",
-                "agent": "engineer", "tool": tool,
-            }, base_dir=self.base)
+    def test_prior_step_trace_excluded(self):
+        """#272 W3 진짜 회귀 — 직전 step (engineer) 의 trace 가 *다음* sub 의
+        histogram 에 새지 않음. 시각 범위 매칭의 핵심."""
+        # 직전 engineer 가 file-op 다수 했음 (이미 끝남)
+        self._seed_trace("engineer", ["Read", "Edit", "Edit", "Bash"])
+        # 시각 진행 보장 — _now_iso 1초 단위라 sleep 1.1s 면 충분
+        import time
+        time.sleep(1.1)
+        # 이제 메인이 pr-reviewer (prose-only) 호출 — PreToolUse Agent 박음
+        self._simulate_pre("pr-reviewer", tool_use_id="toolu_pr1")
+        # pr-reviewer 가 file-op 안 함 (prose-only)
         rc = handle_posttooluse_agent(
-            stdin_data={
-                "sessionId": self.sid,
-                "tool_name": "Agent",
-                "tool_input": {"subagent_type": "pr-reviewer"},
-                # agent_id 비어있음
-            },
+            stdin_data=self._post_payload("pr-reviewer", tool_use_id="toolu_pr1"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
         redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        if redos:
-            # trace 마지막 agent="engineer" ≠ sub_type="pr-reviewer"
-            # → target_aid 폴백 안 됨 → ""
-            self.assertNotEqual(
-                redos[0].get("agent_id"), "aid-engineer",
-                msg="직전 sub 의 agent_id 가 폴백으로 박혔음 (#272 W3 회귀)",
-            )
-
-    def test_agent_id_fallback_uses_matching_subtype(self):
-        """#272 W3 회귀 — trace 의 마지막 entry agent 가 sub_type 과 *일치* 하면 폴백 사용."""
-        # 직전 다른 sub 의 trace + 같은 sub_type (pr-reviewer) 의 trace 둘 다.
-        for aid, agent, tool in [
-            ("aid-engineer", "engineer", "Edit"),
-            ("aid-engineer", "engineer", "Bash"),
-            ("aid-pr1", "pr-reviewer", "Read"),
-            ("aid-pr1", "pr-reviewer", "Read"),
-        ]:
-            trace_append(self.sid, self.rid, {
-                "phase": "pre", "agent_id": aid, "agent": agent, "tool": tool,
-            }, base_dir=self.base)
-        rc = handle_posttooluse_agent(
-            stdin_data={
-                "sessionId": self.sid,
-                "tool_name": "Agent",
-                "tool_input": {"subagent_type": "pr-reviewer"},
-            },
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 0)
-        redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        # 폴백 → aid-pr1 (sub_type 일치하는 마지막)
-        self.assertEqual(redos[0]["agent_id"], "aid-pr1")
+        # pr-reviewer 의 histogram 에는 직전 engineer trace 가 *반영 안 됨*.
+        # prose-only 라 file-op 0건이 정상.
         self.assertEqual(redos[0]["sub"], "pr-reviewer")
+        self.assertEqual(redos[0]["histogram"], {},
+            msg="직전 engineer trace 가 pr-reviewer histogram 으로 새어들어옴 (#272 W3)")
+        self.assertEqual(redos[0]["tool_use_id"], "toolu_pr1")
+        self.assertEqual(redos[0]["match"], "ok")
+
+    def test_tool_use_id_drift_logged(self):
+        """tool_use_id 가 PreToolUse 와 PostToolUse 사이 다르면 stderr WARN."""
+        import io
+        import contextlib
+        self._simulate_pre("engineer", tool_use_id="toolu_pre")
+        self._seed_trace("engineer", ["Read", "Edit"])
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            rc = handle_posttooluse_agent(
+                stdin_data=self._post_payload(
+                    "engineer", tool_use_id="toolu_post_DIFFERENT",
+                ),
+                cc_pid=self.cc_pid,
+                base_dir=self.base,
+            )
+        self.assertEqual(rc, 0)
+        stderr = buf.getvalue()
+        self.assertIn("[hook agent-id]", stderr)
+        self.assertIn("tool_use_id 불일치", stderr)
+        redos = read_redos(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(redos[0]["match"], "drift")
+
+    def test_pending_agent_cleared_after_post(self):
+        """PostToolUse Agent 후 live.json.active_runs[rid].pending_agent 제거."""
+        from harness.session_state import read_live as _rl
+        self._simulate_pre("engineer", tool_use_id="toolu_x")
+        live = _rl(self.sid, base_dir=self.base)
+        slot = live.get("active_runs", {}).get(self.rid, {})
+        self.assertIn("pending_agent", slot)
+        self._seed_trace("engineer", ["Read"])
+        handle_posttooluse_agent(
+            stdin_data=self._post_payload("engineer", tool_use_id="toolu_x"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        live2 = _rl(self.sid, base_dir=self.base)
+        slot2 = live2.get("active_runs", {}).get(self.rid, {})
+        self.assertNotIn("pending_agent", slot2)
 
     def test_prose_only_subtype_not_promised_write(self):
         """#272 W1 — prose-only sub (qa) 는 promised_write anomaly 발화 X."""
-        for tool in ["Read", "Read", "Read"]:
-            trace_append(self.sid, self.rid, {
-                "phase": "pre", "agent_id": "aid-qa",
-                "agent": "qa", "tool": tool,
-            }, base_dir=self.base)
+        self._simulate_pre("qa", tool_use_id="toolu_qa")
+        self._seed_trace("qa", ["Read", "Read", "Read"])
         rc = handle_posttooluse_agent(
-            stdin_data={
-                "sessionId": self.sid,
-                "agent_id": "aid-qa",
-                "tool_name": "Agent",
-                "tool_input": {
-                    "subagent_type": "qa",
-                    "prompt": "분석 작성해줘",
-                },
-            },
+            stdin_data=self._post_payload(
+                "qa", tool_use_id="toolu_qa", prompt="분석 작성해줘",
+            ),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
