@@ -3,7 +3,7 @@
 > ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. plan 본문 / 인터페이스 / 의사코드 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 모듈별 구현 계획 호출 — impl 1 개 단위. SYSTEM_DESIGN 의 `## impl 목차` 표 행 1 개당 본 mode 1번 호출. (epic 분해 / Story 매핑 / impl 목차 = SYSTEM_DESIGN 책임. 본 mode 는 1 행 받아 본문 채움.)
-**결론**: prose 마지막 단락에 `READY_FOR_IMPL` 명시.
+**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. 권장 표현 (형식 강제 X): `READY_FOR_IMPL` (다음 impl 목차 행 / 마지막 행이면 impl-task-loop 진입 권고).
 **호출자가 prompt 로 전달하는 정보**:
 - 대상 epic 경로 + impl 목차 표의 대상 행 (`NN` + 파일명 + 대응 Story + 의존)
 - 듀얼 모드 표시 (`new_impl` / `spec_issue`, 생략 시 `new_impl`)

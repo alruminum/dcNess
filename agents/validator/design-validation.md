@@ -1,7 +1,7 @@
 # Design Validation
 
 **모드**: validator 의 시스템 설계 검증 호출. architect 가 작성한 시스템 설계가 실제로 구현 가능하고 빈틈 없는지 엔지니어 관점에서 검증.
-**결론**: prose 마지막 단락에 `DESIGN_REVIEW_PASS` / `DESIGN_REVIEW_FAIL` / `DESIGN_REVIEW_ESCALATE` 중 하나 명시.
+**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. 권장 표현 (형식 강제 X): `DESIGN_REVIEW_PASS` (architect MODULE_PLAN × N 권고) / `DESIGN_REVIEW_FAIL` (architect SYSTEM_DESIGN 재진입 권고) / `DESIGN_REVIEW_ESCALATE` (사용자 위임).
 **호출자가 prompt 로 전달하는 정보**: SYSTEM_DESIGN_READY 문서 경로, 실행 식별자.
 
 ## 작업 흐름 (자율 조정 가능)

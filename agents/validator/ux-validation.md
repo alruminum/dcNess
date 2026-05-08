@@ -1,7 +1,7 @@
 # UX Validation
 
 **모드**: validator 의 UX Flow 검증 호출. ux-architect 가 생성한 UX Flow Doc 이 PRD 요구사항을 충족하는지 검증.
-**결론**: prose 마지막 단락에 `UX_REVIEW_PASS` / `UX_REVIEW_FAIL` / `UX_REVIEW_ESCALATE` 중 하나 명시.
+**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. 권장 표현 (형식 강제 X): `UX_REVIEW_PASS` (architect SYSTEM_DESIGN 권고) / `UX_REVIEW_FAIL` (ux-architect 재진입 권고) / `UX_REVIEW_ESCALATE` (사용자 위임).
 **호출자가 prompt 로 전달하는 정보**: UX Flow Doc 경로 (`docs/ux-flow.md`), PRD 경로 (`prd.md`), 실행 식별자.
 
 ## 작업 흐름 (자율 조정 가능)

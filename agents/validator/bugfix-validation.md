@@ -1,7 +1,7 @@
 # Bugfix Validation
 
 **모드**: validator 의 경량 버그 수정 검증 호출. 수정이 원인을 해결하고 회귀를 발생시키지 않았는지 검증. Code Validation 의 경량 버전 — 전체 스펙 일치 대신 *수정 범위만* 검증.
-**결론**: prose 마지막 단락에 `BUGFIX_PASS` / `BUGFIX_FAIL` 중 하나 명시.
+**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. 권장 표현 (형식 강제 X): `BUGFIX_PASS` (pr-reviewer 권고) / `BUGFIX_FAIL` (engineer 재시도 권고).
 **호출자가 prompt 로 전달하는 정보**: bugfix impl 경로, 수정 소스 경로, (선택) 테스트 실행 결과, 실행 식별자.
 
 ## 작업 흐름 (자율 조정 가능)
