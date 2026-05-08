@@ -1,168 +1,22 @@
-"""test_sub_eval — DCN-CHG-20260501-13.
+"""test_sub_eval — 자율 친화 재설계 (#272 W1).
 
-Coverage matrix:
-    evaluate_sub:
-        - 정상 PASS — 적당한 호출 수 + 다양한 tool
-        - REDO_SUSPECT: tool_uses 0 (아예 안 함)
-        - REDO_SUSPECT: tool_uses 1 (< MIN_TOOL_USES)
-        - REDO_SUSPECT: 도구별 차등 임계 초과 반복 (#272/#273 baseline 반영)
-        - REDO_SUSPECT: prompt 에 Write 약속 + Write+Edit 0건 (prose-only)
-        - prompt hint 없으면 prose-only 검사 skip
-        - prose-only sub_type (qa/validator/pr-reviewer …) 시 promised_write 검사 skip
-        - 다중 anomaly 한 번에 검출
+기존 anomaly 룰 (임계값 / prose-only 화이트리스트 / promised_write) 자체 제거 →
+hook 은 *raw 측정 데이터* 만 inject. 메인 LLM 이 dcness-rules.md §3.3 보고 자율 판단.
 
-    format_histogram:
-        - 빈 dict → "(none)"
-        - 정렬된 짧은 문자열
+Coverage:
+    format_histogram — raw 데이터 포맷 (자율 친화 inject 의 핵심)
+    summarize_input_repeats — 같은 input 반복 카운트 (raw 신호)
+    format_input_repeats — inject 한 줄 포맷
 """
 from __future__ import annotations
 
 import unittest
 
 from harness.sub_eval import (
-    MIN_TOOL_USES,
-    PROSE_ONLY_AGENTS,
-    REPEAT_TOOL_THRESHOLDS,
-    REPEAT_TOOL_THRESHOLD_DEFAULT,
-    evaluate_sub,
     format_histogram,
+    format_input_repeats,
+    summarize_input_repeats,
 )
-
-
-class EvaluateSubTests(unittest.TestCase):
-    def test_pass_normal(self):
-        result = evaluate_sub({"Read": 4, "Bash": 2, "Write": 1})
-        self.assertEqual(result["decision"], "PASS")
-        self.assertEqual(result["anomalies"], [])
-        self.assertEqual(result["tool_uses"], 7)
-
-    def test_pass_realistic_architect_baseline(self):
-        # #273 W1 — architect MODULE_PLAN 정상 패턴 (Read×8 Bash×5 Write×1 Edit×2)
-        result = evaluate_sub(
-            {"Read": 8, "Bash": 5, "Write": 1, "Edit": 2},
-            sub_type="architect",
-        )
-        self.assertEqual(result["decision"], "PASS", msg=result)
-
-    def test_pass_realistic_engineer_baseline(self):
-        # #273 W1 — engineer IMPL 정상 패턴 (Read×6 Edit×6 Bash×2)
-        result = evaluate_sub(
-            {"Read": 6, "Edit": 6, "Bash": 2},
-            sub_type="engineer",
-        )
-        self.assertEqual(result["decision"], "PASS", msg=result)
-
-    def test_pass_realistic_pr_reviewer_baseline(self):
-        # #272 W1 — pr-reviewer prose-only 정상 (Read×5)
-        result = evaluate_sub(
-            {"Read": 5},
-            sub_type="pr-reviewer",
-        )
-        self.assertEqual(result["decision"], "PASS", msg=result)
-
-    def test_redo_zero_calls(self):
-        result = evaluate_sub({})
-        self.assertEqual(result["decision"], "REDO_SUSPECT")
-        self.assertTrue(any("tool_uses=0" in a for a in result["anomalies"]))
-
-    def test_redo_below_min(self):
-        result = evaluate_sub({"Read": 1})
-        self.assertEqual(result["decision"], "REDO_SUSPECT")
-        self.assertTrue(any(f"< {MIN_TOOL_USES}" in a for a in result["anomalies"]))
-
-    def test_prose_only_sub_skips_min_tool_uses(self):
-        # #272 W1 보완 — prose-only sub 는 file-op 0건도 정상.
-        for sub in ("pr-reviewer", "qa", "validator"):
-            with self.subTest(sub=sub):
-                result = evaluate_sub({}, sub_type=sub)
-                self.assertEqual(
-                    result["decision"], "PASS",
-                    msg=f"{sub} → {result} (prose-only file-op 0 도 정상)",
-                )
-
-    def test_engineer_below_min_still_fires(self):
-        # 일반 sub 는 file-op 1건 미만 시 anomaly 유지
-        result = evaluate_sub({"Read": 1}, sub_type="engineer")
-        self.assertEqual(result["decision"], "REDO_SUSPECT")
-
-    def test_redo_repeat_read(self):
-        # Read 임계 15
-        result = evaluate_sub({"Read": REPEAT_TOOL_THRESHOLDS["Read"]})
-        self.assertEqual(result["decision"], "REDO_SUSPECT")
-        self.assertTrue(any("Read" in a and "반복" in a for a in result["anomalies"]))
-
-    def test_redo_repeat_edit(self):
-        # Edit 임계 12
-        result = evaluate_sub({"Edit": REPEAT_TOOL_THRESHOLDS["Edit"]})
-        self.assertEqual(result["decision"], "REDO_SUSPECT")
-        self.assertTrue(any("Edit" in a for a in result["anomalies"]))
-
-    def test_redo_repeat_unknown_tool_uses_default(self):
-        # 미정의 도구는 default 임계 적용
-        result = evaluate_sub({"Foo": REPEAT_TOOL_THRESHOLD_DEFAULT})
-        self.assertEqual(result["decision"], "REDO_SUSPECT")
-
-    def test_under_threshold_read_passes(self):
-        # Read 14 < 15 → PASS
-        result = evaluate_sub({"Read": REPEAT_TOOL_THRESHOLDS["Read"] - 1})
-        self.assertEqual(result["decision"], "PASS", msg=result)
-
-    def test_redo_prose_only_no_sub_type(self):
-        # sub_type 미명시 → 폴백으로 promised_write 검사 진행
-        result = evaluate_sub(
-            {"Read": 4, "Bash": 1},
-            sub_prompt_hint="Write the implementation plan to docs/foo.md",
-        )
-        self.assertEqual(result["decision"], "REDO_SUSPECT")
-        self.assertTrue(any("prose-only" in a for a in result["anomalies"]))
-
-    def test_prose_only_agent_skips_promised_write_check(self):
-        # #272 W1 — qa 는 prose-only. Write 약속 prompt + Write+Edit 0건이 정상.
-        for sub in ("qa", "validator", "pr-reviewer", "design-critic"):
-            with self.subTest(sub=sub):
-                result = evaluate_sub(
-                    {"Read": 4, "Bash": 1},
-                    sub_prompt_hint="Write your validation report",
-                    sub_type=sub,
-                )
-                self.assertEqual(result["decision"], "PASS", msg=f"{sub} → {result}")
-
-    def test_prose_only_agent_namespaced(self):
-        # plugin-namespaced (e.g. "dcness:qa") 도 prose-only 처리
-        result = evaluate_sub(
-            {"Read": 4},
-            sub_prompt_hint="작성해줘",
-            sub_type="dcness:qa",
-        )
-        self.assertEqual(result["decision"], "PASS", msg=result)
-
-    def test_engineer_promised_write_still_fires(self):
-        # engineer 는 prose-only X — Write 약속 후 0건이면 anomaly
-        result = evaluate_sub(
-            {"Read": 4},
-            sub_prompt_hint="구현 코드 작성",
-            sub_type="engineer",
-        )
-        self.assertEqual(result["decision"], "REDO_SUSPECT")
-
-    def test_no_hint_no_prose_check(self):
-        # 같은 histogram 이지만 hint 없으면 PASS
-        result = evaluate_sub({"Read": 4, "Bash": 1}, sub_prompt_hint="")
-        self.assertEqual(result["decision"], "PASS")
-
-    def test_korean_hint_detected(self):
-        result = evaluate_sub(
-            {"Read": 3},
-            sub_prompt_hint="impl 파일 작성해줘",
-            sub_type="engineer",
-        )
-        self.assertEqual(result["decision"], "REDO_SUSPECT")
-
-    def test_prose_only_agents_constant(self):
-        # 화이트리스트 회귀 방지 — 핵심 prose-only agent 누락 X
-        for sub in ("qa", "validator", "pr-reviewer", "design-critic",
-                    "security-reviewer", "plan-reviewer"):
-            self.assertIn(sub, PROSE_ONLY_AGENTS)
 
 
 class FormatHistogramTests(unittest.TestCase):
@@ -173,6 +27,73 @@ class FormatHistogramTests(unittest.TestCase):
         s = format_histogram({"Read": 4, "Bash": 2, "Write": 0})
         # sorted alphabetical
         self.assertEqual(s, "Bash:2 Read:4 Write:0")
+
+
+class SummarizeInputRepeatsTests(unittest.TestCase):
+    """같은 input 반복 — 메인 자율 판단용 raw 신호.
+
+    *동일 파일* Read 5번 vs *다른 파일 5개* Read 5번 — 후자는 정상, 전자는 의심.
+    임계 hardcode 안 함. 메인이 보고 알아서 판단.
+    """
+
+    def test_empty(self):
+        self.assertEqual(summarize_input_repeats([]), [])
+
+    def test_below_min_count_excluded(self):
+        # min_count=2 default — 1번만 나온 input 은 noise
+        entries = [
+            {"phase": "pre", "input": "src/Foo.tsx"},
+            {"phase": "pre", "input": "src/Bar.tsx"},
+        ]
+        self.assertEqual(summarize_input_repeats(entries), [])
+
+    def test_repeated_input_counted(self):
+        entries = [
+            {"phase": "pre", "input": "src/Foo.tsx"},
+            {"phase": "pre", "input": "src/Foo.tsx"},
+            {"phase": "pre", "input": "src/Foo.tsx"},
+            {"phase": "pre", "input": "src/Bar.tsx"},
+        ]
+        result = summarize_input_repeats(entries)
+        self.assertEqual(result, [("src/Foo.tsx", 3)])
+
+    def test_post_phase_excluded(self):
+        # post entry 는 pre 와 짝 — 중복 카운트 회피
+        entries = [
+            {"phase": "pre", "input": "src/Foo.tsx"},
+            {"phase": "post", "input": "src/Foo.tsx"},  # skip
+            {"phase": "pre", "input": "src/Foo.tsx"},
+        ]
+        result = summarize_input_repeats(entries)
+        self.assertEqual(result, [("src/Foo.tsx", 2)])
+
+    def test_top_n_limit(self):
+        entries = []
+        for inp in ["a", "b", "c", "d"]:
+            entries.extend([{"phase": "pre", "input": inp}] * 3)
+        result = summarize_input_repeats(entries, top_n=2)
+        self.assertEqual(len(result), 2)
+
+    def test_descending_count_order(self):
+        entries = (
+            [{"phase": "pre", "input": "low"}] * 2
+            + [{"phase": "pre", "input": "high"}] * 5
+            + [{"phase": "pre", "input": "mid"}] * 3
+        )
+        result = summarize_input_repeats(entries)
+        self.assertEqual([k for k, _ in result], ["high", "mid", "low"])
+
+
+class FormatInputRepeatsTests(unittest.TestCase):
+    def test_empty(self):
+        self.assertEqual(format_input_repeats([]), "")
+
+    def test_one(self):
+        self.assertEqual(format_input_repeats([("foo.py", 4)]), "foo.py ×4")
+
+    def test_multiple(self):
+        s = format_input_repeats([("a.py", 5), ("b.py", 3)])
+        self.assertEqual(s, "a.py ×5, b.py ×3")
 
 
 if __name__ == "__main__":
