@@ -1103,7 +1103,9 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
             },
         }
 
-    def test_pass_auto_redo_log(self):
+    def test_redo_log_records_measurement_only(self):
+        """#272 W1 자율 친화 — redo_log 는 *측정 데이터만*. decision/anomalies 필드 X
+        (메인이 직접 판단해서 박을 때만 그 필드 들어감)."""
         self._simulate_pre("engineer")
         self._seed_trace("engineer", ["Read", "Read", "Write", "Bash"])
         rc = handle_posttooluse_agent(
@@ -1114,14 +1116,17 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         self.assertEqual(rc, 0)
         redos = read_redos(self.sid, self.rid, base_dir=self.base)
         self.assertEqual(len(redos), 1)
-        self.assertEqual(redos[0]["decision"], "PASS")
         self.assertTrue(redos[0]["auto"])
         self.assertEqual(redos[0]["sub"], "engineer")
         self.assertEqual(redos[0]["tool_uses"], 4)
-        # tool_use_id 매칭 검증
         self.assertEqual(redos[0]["match"], "ok")
+        # 자율 영역 — hook 이 박지 않는 필드
+        self.assertNotIn("decision", redos[0])
+        self.assertNotIn("anomalies", redos[0])
 
-    def test_redo_suspect_on_low_calls(self):
+    def test_low_call_no_anomaly_inject(self):
+        """#272 W1 자율 친화 — file-op 1건 같은 케이스도 hook 이 결정 X.
+        메인 LLM 이 dcness-rules.md §3.3 보고 자율 판단."""
         self._simulate_pre("architect")
         self._seed_trace("architect", ["Read"])
         rc = handle_posttooluse_agent(
@@ -1131,24 +1136,24 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
         redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        self.assertEqual(redos[0]["decision"], "REDO_SUSPECT")
-        self.assertTrue(redos[0]["anomalies"])
+        # hook 의 anomalies/decision X — 측정만
+        self.assertNotIn("decision", redos[0])
+        self.assertEqual(redos[0]["histogram"], {"Read": 1})
 
-    def test_redo_suspect_on_prose_only(self):
-        # Read 만 4번 + Write 0건. prompt 에 "create file" 약속.
+    def test_high_repeat_no_decision_inject(self):
+        """Read×20 같은 다중 호출도 hook 결정 X — 임계값 hardcode 없음."""
         self._simulate_pre("architect")
-        self._seed_trace("architect", ["Read", "Read", "Read", "Read"])
+        self._seed_trace("architect", ["Read"] * 20)
         rc = handle_posttooluse_agent(
-            stdin_data=self._post_payload(
-                "architect", prompt="create the impl plan file at docs/foo.md",
-            ),
+            stdin_data=self._post_payload("architect"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
         redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        self.assertEqual(redos[0]["decision"], "REDO_SUSPECT")
-        self.assertTrue(any("prose-only" in a for a in redos[0]["anomalies"]))
+        # 임계값 박지 X — 그냥 measurement
+        self.assertNotIn("decision", redos[0])
+        self.assertEqual(redos[0]["tool_uses"], 20)
 
     def test_clears_active_agent_still_works(self):
         update_live(
@@ -1243,8 +1248,10 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         slot2 = live2.get("active_runs", {}).get(self.rid, {})
         self.assertNotIn("pending_agent", slot2)
 
-    def test_prose_only_subtype_not_promised_write(self):
-        """#272 W1 — prose-only sub (qa) 는 promised_write anomaly 발화 X."""
+    def test_prose_only_subtype_no_decision_inject(self):
+        """#272 W1 자율 친화 — prose-only sub 든 일반 sub 든 hook 은 결정 박지 X.
+        화이트리스트 자체가 *우리가 박은 룰* 이라 자율 영역 침해. 본 fix 후 룰 자체
+        제거 — 메인이 dcness-rules §3.3 보고 자율 판단."""
         self._simulate_pre("qa", tool_use_id="toolu_qa")
         self._seed_trace("qa", ["Read", "Read", "Read"])
         rc = handle_posttooluse_agent(
@@ -1256,12 +1263,10 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
         redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        self.assertEqual(redos[0]["decision"], "PASS")
-        # prose-only anomaly 발화 X
-        self.assertFalse(
-            any("prose-only" in a for a in redos[0]["anomalies"]),
-            msg="prose-only 화이트리스트 미적용 (#272 W1 회귀)",
-        )
+        # hook 결정 X — 측정만
+        self.assertNotIn("decision", redos[0])
+        self.assertNotIn("anomalies", redos[0])
+        self.assertEqual(redos[0]["tool_uses"], 3)
 
 
 # ---------------------------------------------------------------------------

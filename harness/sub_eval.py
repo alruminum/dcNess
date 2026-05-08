@@ -1,124 +1,30 @@
-"""sub_eval — sub completion 자동 평가 (DCN-CHG-20260501-13).
+"""sub_eval — sub 측정 데이터 (DCN-CHG-20260501-13, 자율 친화 재설계 #272).
 
-PostToolUse Agent hook 가 sub 종료 시 trace 집계 → tool histogram + anomaly 검출
-→ additionalContext inject + redo_log 자동 append.
+PostToolUse Agent hook 가 sub 종료 시 trace 집계 → tool histogram + 같은 input
+반복 카운트 → additionalContext inject. *결정 X — raw data 만*.
 
-jajang 메인 자기 진단 반영 (DCN-CHG-20260501-13 plan):
-    - 룰 추가 < surface 개선 (능동 retrieval → push)
-    - 매번 reminder = theater. anomaly 시에만 발화
-    - redo_log 권고 → 인프라 자동화
+dcness-rules.md §1 정합 (가이드레일만, 메인 LLM 자율 판단):
+    - 임계값 hardcode X (Read 15 같은 우리 가정 박지 X)
+    - "REDO_SUSPECT" 자동 결정 X (메인이 dcness-rules §3.3 가이드 보고 자율)
+    - 화이트리스트 / 약속-실측 검사 X (룰 박을수록 자율 침해)
 
-Anomaly 룰 (보수적):
-    - tool_uses < 2 — sub 가 거의 일 안 함
-    - 도구별 차등 임계 초과 반복 — 뻘짓 의심 (실측 baseline 반영, #272/#273)
-    - prompt 에 Write/Edit 약속했는데 Write+Edit 0건 — prose-only
-      단 prose-only agent (qa/validator/pr-reviewer 등) 는 promised_write 검사 자체
-      미적용 (false positive 다발 — #272 W1).
+이전 (PR #274 시점) anomaly 룰 (임계 차등 / prose-only 화이트리스트 /
+promised_write) 은 *결정을 hook 에 박는* 패턴이라 자율 영역 침해 — false positive
+4/5 step 매번 메인이 echo 부담 (#272 W1 보고). 본 재설계는 hook 의 책임을
+*가이드레일/측정* 으로 한정.
 
-자동 결정:
-    - PASS — anomaly 없음
-    - REDO_SUSPECT — anomaly 1+ 검출. 메인이 봐서 재정의 가능.
+API 정합 — 기존 호출자 (`harness/hooks.py`) 는 raw measurement 만 사용.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 
 __all__ = [
-    "evaluate_sub",
     "format_histogram",
-    "REPEAT_TOOL_THRESHOLD",
-    "REPEAT_TOOL_THRESHOLDS",
-    "PROSE_ONLY_AGENTS",
+    "format_input_repeats",
+    "summarize_input_repeats",
 ]
-
-
-# 도구별 차등 임계 (#272/#273 실측 — 정상 architect Read×8 / engineer Edit×6~10
-# / pr-reviewer Read×5 / test-engineer Read×5 모두 false positive 였다).
-# 의미: "같은 도구 N+ 반복" 신호는 *자연스러운 다중 파일 read* 가 아니라
-# *동일 파일 동일 작업 무의미 반복* 을 잡는 것. 자연 baseline 반영해 상향.
-REPEAT_TOOL_THRESHOLDS: Dict[str, int] = {
-    "Read": 15,    # 다중 파일 탐색 / 인접 컨텍스트 자연
-    "Edit": 12,    # 단일 파일 multi-section + 다중 파일
-    "Bash": 10,    # 다중 검증 명령 자연 (test + grep + build)
-    "Write": 8,
-    "Glob": 10,
-    "Grep": 10,
-}
-REPEAT_TOOL_THRESHOLD_DEFAULT = 12
-
-# 호환용 export — 외부 import 안전. 도구 미지정 시 default 와 동일.
-REPEAT_TOOL_THRESHOLD = REPEAT_TOOL_THRESHOLD_DEFAULT
-MIN_TOOL_USES = 2
-
-# prose-only agent — handoff-matrix.md §4.1 ALLOW_MATRIX 상 src 쓰기 권한 X.
-# Write/Edit 0건이 *정상*. promised_write false positive 차단 (#272 W1).
-PROSE_ONLY_AGENTS = frozenset({
-    "qa",
-    "validator",
-    "pr-reviewer",
-    "design-critic",
-    "security-reviewer",
-    "plan-reviewer",
-})
-
-
-def evaluate_sub(
-    histogram: Dict[str, int],
-    *,
-    sub_prompt_hint: str = "",
-    sub_type: str = "",
-) -> Dict[str, Any]:
-    """histogram + 옵션 prompt hint + sub_type 기반 자동 평가.
-
-    Args:
-        histogram: agent_trace.histogram 결과 — {"Read": 4, "Bash": 2, ...}
-        sub_prompt_hint: sub 호출 prompt 의 일부 (Write/Edit 약속 검출용). 미사용 가능.
-        sub_type: subagent_type. PROSE_ONLY_AGENTS 검사용. 미지정 시 폴백 검사.
-
-    Returns:
-        {
-            "decision": "PASS" | "REDO_SUSPECT",
-            "anomalies": [str, ...],  # 발견된 anomaly 목록
-            "tool_uses": int,  # 총 호출 수
-        }
-    """
-    total = sum(histogram.values())
-    anomalies: List[str] = []
-
-    sub_short = (sub_type or "").split(":", 1)[0].lower()
-    # plugin-namespaced (e.g. "dcness:qa") 와 short ("qa") 양쪽 호환
-    if ":" in (sub_type or ""):
-        sub_short = sub_type.split(":")[-1].lower()
-    is_prose_only = sub_short in PROSE_ONLY_AGENTS
-
-    # 룰 1 — 너무 적은 호출. prose-only sub 는 file-op 0건도 정상 (#272 W1 보완) —
-    # 예: pr-reviewer 가 메인 컨텍스트에서 prose 검토만 하고 file-op 안 한 경우.
-    if total < MIN_TOOL_USES and not is_prose_only:
-        anomalies.append(f"tool_uses={total} (< {MIN_TOOL_USES})")
-
-    # 룰 2 — 도구별 차등 임계 초과 반복
-    for tool, count in histogram.items():
-        threshold = REPEAT_TOOL_THRESHOLDS.get(tool, REPEAT_TOOL_THRESHOLD_DEFAULT)
-        if count >= threshold:
-            anomalies.append(f"{tool}×{count} (≥ {threshold} 반복)")
-
-    # 룰 3 — prompt 에 Write/Edit 약속 vs 실제 0건 (prose-only agent 제외)
-    if not is_prose_only:
-        write_edit = histogram.get("Write", 0) + histogram.get("Edit", 0)
-        hint_lower = (sub_prompt_hint or "").lower()
-        promised_write = any(
-            kw in hint_lower for kw in ("write", "edit", "create", "작성", "생성")
-        )
-        if promised_write and write_edit == 0 and total > 0:
-            anomalies.append("prompt 에 Write/Edit 약속, 실제 0건 (prose-only 의심)")
-
-    decision = "REDO_SUSPECT" if anomalies else "PASS"
-    return {
-        "decision": decision,
-        "anomalies": anomalies,
-        "tool_uses": total,
-    }
 
 
 def format_histogram(histogram: Dict[str, int]) -> str:
@@ -130,3 +36,44 @@ def format_histogram(histogram: Dict[str, int]) -> str:
     if not histogram:
         return "(none)"
     return " ".join(f"{tool}:{count}" for tool, count in sorted(histogram.items()))
+
+
+def summarize_input_repeats(
+    trace_entries: List[Dict[str, Any]],
+    *,
+    top_n: int = 3,
+    min_count: int = 2,
+) -> List[Tuple[str, int]]:
+    """trace pre entry 의 `input` 필드 (file_path / command 요약) 반복 카운트.
+
+    "같은 도구 N 반복" 만 봐선 정상 다중 파일 read 와 비정상 *동일 파일* 반복을
+    구분 X. 같은 input 반복 = 의미 있는 신호 (raw data) — 메인이 보고 자율 판단.
+
+    Args:
+        trace_entries: agent_trace.read_all 결과 (또는 시각 범위 필터링된 subset).
+        top_n: 반환 항목 수 상한.
+        min_count: 이 카운트 미만은 제외 (signal-to-noise).
+
+    Returns:
+        [(input, count), ...] 카운트 내림차순. min_count 미만 제외, top_n 상한.
+    """
+    counts: Dict[str, int] = {}
+    for entry in trace_entries:
+        if entry.get("phase") != "pre":
+            continue
+        inp = str(entry.get("input", "") or "").strip()
+        if not inp:
+            continue
+        counts[inp] = counts.get(inp, 0) + 1
+    return sorted(
+        ((k, v) for k, v in counts.items() if v >= min_count),
+        key=lambda x: -x[1],
+    )[:top_n]
+
+
+def format_input_repeats(repeats: List[Tuple[str, int]]) -> str:
+    """summarize_input_repeats 결과 → inject 용 한 줄. 빈 리스트 → ""."""
+    if not repeats:
+        return ""
+    parts = [f"{inp} ×{n}" for inp, n in repeats]
+    return ", ".join(parts)

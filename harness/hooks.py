@@ -658,24 +658,30 @@ def handle_posttooluse_agent(
                     file=sys.stderr,
                 )
 
-    # rid 활성 시만 histogram + redo_log
-    eval_result = None
+    # rid 활성 시만 측정 inject + redo_log auto append
+    # #272 W1 자율 친화 재설계 — hook 은 *raw 측정 데이터* 만 inject.
+    # "REDO_SUSPECT" 같은 결정 X. 임계값 X. prose-only 화이트리스트 X.
+    # 메인 LLM 이 dcness-rules.md §3.3 가이드 보고 자율 판단.
     histogram_str = ""
+    input_repeats_str = ""
     pending_match = ""
+    hist: Dict[str, int] = {}
+    trace_subset: list = []
     if rid:
         try:
             from harness.agent_trace import histogram_since as _trace_hist_since
+            from harness.agent_trace import read_all as _trace_read
             from harness.session_state import clear_pending_agent
-            from harness.sub_eval import evaluate_sub, format_histogram
+            from harness.sub_eval import (
+                format_histogram, format_input_repeats, summarize_input_repeats,
+            )
 
-            # #272 W3 진짜 fix — pending_agent.started_at *이후* trace = 그 sub 의
-            # 행동. agent_id 폴백 제거 (오기록 원인). tool_use_id 매칭으로 정합 검증.
+            # #272 W3 — pending_agent.started_at 이후 trace = 그 sub 의 행동.
             tuid_now = stdin_data.get("tool_use_id", "") or ""
             pending = clear_pending_agent(sid, rid, base_dir=base_dir)
             since_ts = ""
             if isinstance(pending, dict):
                 since_ts = pending.get("started_at", "") or ""
-                # tool_use_id 매칭 검증 — drift 시 stderr WARN (silent fallback X)
                 pending_tuid = pending.get("tool_use_id", "") or ""
                 if tuid_now and pending_tuid and tuid_now != pending_tuid:
                     print(
@@ -689,24 +695,23 @@ def handle_posttooluse_agent(
                 else:
                     pending_match = "ok"
 
-            # 시각 범위 기반 histogram. since_ts 없으면 (PreToolUse 미발화 시나리오)
-            # 빈 dict — 폴백 안 함 (오기록 < 빈 데이터 원칙).
             hist = (
                 _trace_hist_since(sid, rid, since_ts, base_dir=base_dir)
                 if since_ts else {}
             )
+            # 같은 input 반복 — 메인 자율 판단용 raw 신호 (다중 파일 vs 동일 파일 구분)
+            if since_ts:
+                trace_subset = [
+                    e for e in _trace_read(sid, rid, base_dir=base_dir)
+                    if e.get("ts", "") >= since_ts
+                ]
+                input_repeats = summarize_input_repeats(trace_subset)
+                input_repeats_str = format_input_repeats(input_repeats)
+
             if hist or sub_type:
                 histogram_str = format_histogram(hist) if hist else "(none)"
-                # prompt hint — sub 호출 prompt 일부 (Write/Edit 약속 검출용)
-                prompt_hint = ""
-                if isinstance(tool_input, dict):
-                    prompt_hint = str(tool_input.get("prompt", "") or "")[:500]
-                eval_result = evaluate_sub(
-                    hist, sub_prompt_hint=prompt_hint, sub_type=sub_type,
-                )
-
-                # redo_log 자동 append. agent_id 박지 X (CC docs 상 PostToolUse Agent
-                # 메인 컨텍스트엔 부재 가능). tool_use_id 가 정확한 매칭 키.
+                # redo_log auto append — *측정 데이터만*. decision/anomalies 필드 X
+                # (자율 영역). 메인이 직접 판단해서 박을 때만 decision 들어감.
                 try:
                     from harness.redo_log import append as _redo_append
                     _redo_append(sid, rid, {
@@ -716,10 +721,9 @@ def handle_posttooluse_agent(
                             if isinstance(pending, dict) else ""
                         ),
                         "sub": sub_type,
-                        "decision": eval_result["decision"],
-                        "tool_uses": eval_result["tool_uses"],
+                        "tool_uses": sum(hist.values()),
                         "histogram": hist,
-                        "anomalies": eval_result["anomalies"],
+                        "input_repeats": input_repeats_str,
                         "match": pending_match,
                     }, base_dir=base_dir)
                 except Exception:  # noqa: BLE001 — silent, hook 본 흐름 방해 X
@@ -733,16 +737,12 @@ def handle_posttooluse_agent(
     except (OSError, ValueError):
         pass
 
-    # additionalContext 작성 — 정상이면 짧은 줄, anomaly 시 강조
+    # additionalContext — *raw 측정 데이터* + 가이드 1줄. 결정 메시지 X.
+    # 메인 LLM 이 dcness-rules.md §3.3 가이드 (REDO 판단 신호) 보고 자율 판단.
     if histogram_str:
-        if eval_result and eval_result["decision"] == "REDO_SUSPECT":
-            ctx = (
-                f"[감시자 hook] sub={sub_type or '?'} tool histogram: {histogram_str}\n"
-                f"⚠️ anomaly 감지: {'; '.join(eval_result['anomalies'])}\n"
-                f"메인 판단 권고 — REDO_SAME / REDO_BACK / REDO_DIFF 검토 (auto-redo-log 기록됨)"
-            )
-        else:
-            ctx = f"[감시자 hook] sub={sub_type or '?'} tool histogram: {histogram_str} (PASS)"
+        ctx = f"[감시자 hook] sub={sub_type or '?'} tool histogram: {histogram_str}"
+        if input_repeats_str:
+            ctx += f"\n같은 input 반복: {input_repeats_str}"
 
         try:
             output = {
