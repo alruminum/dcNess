@@ -1,7 +1,7 @@
 # Code Validation
 
 **모드**: validator 의 코드 검증 호출. 구현 코드가 impl 계획과 일치하고 의존성 규칙을 지키며 시니어 관점 품질 기준을 충족하는지 검증.
-**결론**: prose 마지막 단락에 `PASS` / `FAIL` / `SPEC_MISSING` 중 하나 명시.
+**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. 권장 표현 (형식 강제 X): `PASS` (pr-reviewer 권고) / `FAIL` (engineer 재시도 권고) / `SPEC_MISSING` (architect SPEC_GAP 권고).
 **호출자가 prompt 로 전달하는 정보**: impl 계획 파일 경로, 구현 파일 경로 목록, 실행 식별자.
 
 ## 작업 흐름 (자율 조정 가능)

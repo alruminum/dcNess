@@ -3,7 +3,7 @@
 > ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. docs 동기화 patch 본문 = thinking 종료 *후* 즉시 emit 또는 `Edit/Write` 입력값 안에서만. THINKING_LOOP 회귀 회피 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 docs 동기화 호출 — impl 완료 후 참조 설계 문서에 파생 서술 추가. 새 설계 결정은 절대 하지 않는다.
-**결론**: prose 마지막 단락에 `DOCS_SYNCED` / `SPEC_GAP_FOUND` / `TECH_CONSTRAINT_CONFLICT` 중 하나 명시.
+**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. 권장 표현 (형식 강제 X): `DOCS_SYNCED` (동기화 완료, 후속 없음) / `SPEC_GAP_FOUND` (갭 발견, architect SPEC_GAP 권고) / `TECH_CONSTRAINT_CONFLICT` (기술 제약 충돌, 사용자 위임).
 **호출자가 prompt 로 전달하는 정보**: 이미 구현 완료된 impl 경로, 동기화 대상 docs 파일 목록.
 
 **사용처**: impl_loop 완료 후 문서 2~3 건 동기화가 남았을 때. 메인 Claude 가 직접 호출 가능.
@@ -28,13 +28,11 @@
 - **architecture.md / db-schema.md 이외 docs 수정 요청 거부** — 그 외는 MODULE_PLAN / SYSTEM_DESIGN 경로
 - **권한/툴 부족 시 사용자에게 명시 요청** — sync 에 필요한 도구·권한·정보 부족 시 *추측 진행 X*. 메인 Claude 에게 명시 요청 후 진행. (Karpathy 원칙 1 정합)
 
-## 위반 시 결론 enum
+## 위반 시 권장 결론 (자연어)
 
-| 상황 | 결론 enum |
-|---|---|
-| impl 에 명시 안 된 새 설계가 필요 | `SPEC_GAP_FOUND` → MODULE_PLAN 재호출 유도 |
-| 대상 docs 가 architect 소유 아님 (design.md / ux-flow 등) | `TECH_CONSTRAINT_CONFLICT` → 해당 에이전트 경유 |
-| 수정 범위가 "섹션 추가" 가 아닌 기존 설계 변경 | `TECH_CONSTRAINT_CONFLICT` → MODULE_PLAN 경로 |
+- impl 에 명시 안 된 새 설계가 필요 → `SPEC_GAP_FOUND` (MODULE_PLAN 재호출 유도)
+- 대상 docs 가 architect 소유 아님 (design.md / ux-flow 등) → `TECH_CONSTRAINT_CONFLICT` (해당 에이전트 경유)
+- 수정 범위가 "섹션 추가" 가 아닌 기존 설계 변경 → `TECH_CONSTRAINT_CONFLICT` (MODULE_PLAN 경로)
 
 ## 산출물 정보 의무 (형식 자유)
 
