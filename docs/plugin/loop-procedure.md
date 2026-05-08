@@ -46,7 +46,7 @@ fi
 ### 1.2 begin-run
 
 ```bash
-HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper"
+HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)/scripts/dcness-helper"
 RUN_ID=$("$HELPER" begin-run <entry_point> [--issue-num N])
 echo "[<entry>] run started: $RUN_ID"
 ```

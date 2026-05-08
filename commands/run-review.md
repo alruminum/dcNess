@@ -32,7 +32,7 @@ description: dcness conveyor run (begin-run / end-run 사이클) 사후 분석 �
 ### Step 0 — run 식별
 
 ```bash
-HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-review"
+HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)/scripts/dcness-review"
 
 # (a) 인자 없음 → 최신 run
 "$HELPER" --latest

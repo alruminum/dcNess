@@ -38,7 +38,7 @@ analyze_sessions (Python) → JSON 리포트
 본 skill 은 분석 도구라 *run 등록 의무 없음*. 단 `.steps.jsonl` 추적 원하면:
 
 ```bash
-HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-helper"
+HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)/scripts/dcness-helper"
 RUN_ID=$("$HELPER" begin-run efficiency)
 echo "[efficiency] run started: $RUN_ID"
 ```
@@ -48,7 +48,7 @@ skip 해도 무방.
 ### Step 1 — 분석 + 대시보드 (단일 명령)
 
 ```bash
-DCEFF="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | head -1)/scripts/dcness-efficiency"
+DCEFF="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)/scripts/dcness-efficiency"
 "$DCEFF" full --repo "$(pwd)" --out-dir /tmp/dcness-efficiency
 ```
 
