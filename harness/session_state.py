@@ -1315,13 +1315,29 @@ def _cli_end_step(args: Any) -> int:
             print("[session_state] empty prose (hook staged)", file=sys.stderr)
             return 1
 
-    allowed = [s.strip() for s in args.allowed_enums.split(",") if s.strip()]
-    if not allowed:
-        print("[session_state] empty --allowed-enums", file=sys.stderr)
-        return 1
+    # 이슈 #284 — `--allowed-enums` optional. 미지정 / 빈 값 = prose-only mode
+    # (휴리스틱 추출 호출 zero, telemetry 기록 zero — issue #284 acceptance).
+    allowed_raw = (args.allowed_enums or "").strip()
+    allowed = [s.strip() for s in allowed_raw.split(",") if s.strip()] if allowed_raw else []
 
     agent_label = args.agent if not mode else f"{args.agent}:{mode}"
 
+    if not allowed:
+        # Prose-only mode — 메인 Claude 가 prose 직접 읽고 routing 결정.
+        # stdout 은 sentinel "PROSE_LOGGED" 로 통일 — 외부 skill 이 enum 기대 없는
+        # 경우용. 메인은 이 출력 무시하고 prose 자체를 routing 입력으로.
+        print("PROSE_LOGGED")
+        print(f"[{agent_label} = PROSE_LOGGED]", file=sys.stderr)
+        summary = _extract_prose_summary(prose)
+        if summary:
+            print(summary, file=sys.stderr)
+        _append_step_status(
+            sid, rid, args.agent, mode, "PROSE_LOGGED", prose, prose_path,
+        )
+        return 0
+
+    # legacy compat — 외부 skill 이 `--allowed-enums` 박은 경우 휴리스틱 호출 보존.
+    # interpret_strategy 의 신규 telemetry 기록은 이미 중단됨 (issue #284).
     try:
         enum = interpret_with_fallback(prose, allowed)
     except MissingSignal as e:
@@ -1770,10 +1786,19 @@ def _build_arg_parser() -> Any:
     p_bs.add_argument("mode", nargs="?", default="")
     p_bs.set_defaults(func=_cli_begin_step)
 
-    p_es = sub.add_parser("end-step", help="prose 저장 + enum 추출 (stdout)")
+    p_es = sub.add_parser(
+        "end-step",
+        help="prose 저장 (issue #284 — `--allowed-enums` 미지정 시 prose-only mode)",
+    )
     p_es.add_argument("agent")
     p_es.add_argument("mode", nargs="?", default="")
-    p_es.add_argument("--allowed-enums", required=True, help="comma-separated")
+    p_es.add_argument(
+        "--allowed-enums", required=False, default="",
+        help=(
+            "comma-separated. legacy compat — 미지정 시 prose-only mode "
+            "(stdout=PROSE_LOGGED). 이슈 #284."
+        ),
+    )
     p_es.add_argument(
         "--prose-file", required=False, default=None,
         help="prose 본문 파일 경로 (미제공 시 hook auto-stage 경로 사용)",
