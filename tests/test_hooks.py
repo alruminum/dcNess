@@ -1439,13 +1439,70 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self.assertIn("[hook prose stage]", stderr)
         self.assertIn("current_step 부재", stderr)
 
-    def test_unrecognized_tool_response_emits_shape_diagnostic(self) -> None:
-        """#272 W2 — tool_response 형식 미스매치 시 stderr 에 형식 정보 출력."""
+    def test_robust_extraction_alt_type_recovers(self) -> None:
+        """#272 W2 진짜 fix — list of dict 인데 type 이 'text' 아닌 'tool_result'
+        같은 변형도 robust 추출. issue-232 1차 fix 가 type=='text' 한 형식만 본
+        한계 회복."""
+        self._set_current_step("qa", None)
+        prose = "## 결론\nPASS\n"
+        rc = handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "qa"},
+                "tool_response": [{"type": "tool_result", "content": prose}],
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertTrue(expected.exists(), msg="content 키 변형도 추출돼야 함")
+        self.assertEqual(expected.read_text(encoding="utf-8"), prose)
+
+    def test_robust_extraction_nested_dict(self) -> None:
+        """nested dict 구조 — `{"result": {"text": prose}}` 같은 wrapping 도 cover."""
+        self._set_current_step("qa", None)
+        prose = "## 결론\nFUNCTIONAL_BUG\n"
+        rc = handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "qa"},
+                "tool_response": {"result": {"text": prose}, "meta": {"n": 1}},
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertTrue(expected.exists(), msg="nested dict 도 추출돼야 함")
+        self.assertEqual(expected.read_text(encoding="utf-8"), prose)
+
+    def test_robust_extraction_value_key(self) -> None:
+        """`value` 키 변형 — 일부 SDK 가 사용."""
+        self._set_current_step("qa", None)
+        prose = "## 결론\nLGTM\n"
+        rc = handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "qa"},
+                "tool_response": {"value": prose},
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        self.assertTrue(expected.exists())
+
+    def test_unextractable_emits_diagnostic_stderr(self) -> None:
+        """robust extraction 이 *진짜* 못 뽑는 경우 — 텍스트 키 전무한 metadata 만."""
         import io
         import contextlib
 
         self._set_current_step("qa", None)
-        # CC 가 다른 형식 보낼 가능성 — list of dict 인데 "type" 이 "text" 아닌 경우
         buf = io.StringIO()
         with contextlib.redirect_stderr(buf):
             rc = handle_posttooluse_agent(
@@ -1453,7 +1510,8 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
                     "sessionId": self.sid,
                     "tool_name": "Agent",
                     "tool_input": {"subagent_type": "qa"},
-                    "tool_response": [{"type": "tool_result", "content": "x"}],
+                    # text-like 키 (text/content/value/output) 전무 + 모든 값이 비-문자열
+                    "tool_response": [{"type": "tool_result", "exit_code": 0}],
                 },
                 cc_pid=self.cc_pid,
                 base_dir=self.base,
@@ -1461,7 +1519,7 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self.assertEqual(rc, 0)
         stderr = buf.getvalue()
         self.assertIn("[hook prose stage]", stderr)
-        self.assertIn("prose 추출 실패", stderr)
+        self.assertIn("robust extraction 실패", stderr)
         # 형식 정보 포함 — 외부 환경 디버그용
         self.assertIn("item0_type=tool_result", stderr)
 
@@ -1487,6 +1545,102 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
             session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "engineer-1.md"
         )
         self.assertTrue(expected.exists())
+
+
+class ExtractProseTextTests(unittest.TestCase):
+    """#272 W2 — _extract_prose_text robust 매트릭스."""
+
+    def test_str(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(_extract_prose_text("hello"), "hello")
+
+    def test_empty_str(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(_extract_prose_text(""), "")
+        self.assertEqual(_extract_prose_text("   "), "")
+
+    def test_dict_text_key(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(_extract_prose_text({"text": "hi"}), "hi")
+
+    def test_dict_content_key(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(_extract_prose_text({"content": "hi"}), "hi")
+
+    def test_dict_value_key(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(_extract_prose_text({"value": "hi"}), "hi")
+
+    def test_dict_text_priority_over_content(self):
+        from harness.hooks import _extract_prose_text
+        # text 가 우선
+        self.assertEqual(
+            _extract_prose_text({"text": "primary", "content": "secondary"}),
+            "primary",
+        )
+
+    def test_list_of_text_block(self):
+        from harness.hooks import _extract_prose_text
+        # CC 의 issue-232 시점 형식
+        self.assertEqual(
+            _extract_prose_text([{"type": "text", "text": "hi"}]), "hi",
+        )
+
+    def test_list_of_alt_block(self):
+        from harness.hooks import _extract_prose_text
+        # type 다른 변형도 cover
+        self.assertEqual(
+            _extract_prose_text([{"type": "tool_result", "content": "hi"}]), "hi",
+        )
+
+    def test_list_first_non_empty(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(
+            _extract_prose_text([{}, {"text": ""}, {"content": "found"}]),
+            "found",
+        )
+
+    def test_nested_dict(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(
+            _extract_prose_text({"result": {"text": "deep"}}), "deep",
+        )
+
+    def test_nested_list_dict(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(
+            _extract_prose_text({"data": [{"value": "x"}]}), "x",
+        )
+
+    def test_empty_dict(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(_extract_prose_text({}), "")
+
+    def test_empty_list(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(_extract_prose_text([]), "")
+
+    def test_none(self):
+        from harness.hooks import _extract_prose_text
+        self.assertEqual(_extract_prose_text(None), "")
+
+    def test_metadata_only(self):
+        from harness.hooks import _extract_prose_text
+        # text-like 키 전무 + 값들이 모두 비-문자열
+        self.assertEqual(
+            _extract_prose_text([{"type": "tool_result", "exit_code": 0}]),
+            "",
+        )
+
+    def test_depth_limit_no_crash(self):
+        from harness.hooks import _extract_prose_text
+        # 의도적으로 깊은 nesting — 무한 재귀 방어 검증
+        deep = {"a": "x"}
+        for _ in range(50):
+            deep = {"a": deep}
+        # depth 16 초과는 "" 반환 (crash X)
+        result = _extract_prose_text(deep)
+        self.assertIsInstance(result, str)
 
 
 if __name__ == "__main__":

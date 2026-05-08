@@ -83,6 +83,56 @@ def _append_trace_safe(
         pass
 
 
+# #272 W2 — prose robust extraction (어떤 nested 형식이든 first non-empty text)
+# CC PostToolUse Agent 의 tool_response 형식 이력:
+#   - 2026-05-01 도입 시 dict {"text": ...} 가정 (실측 X — 항상 fail)
+#   - 2026-05-07 issue-232 가 list[{"type":"text","text":...}] 1형식 추가
+#   - jajang #272/#273: 그래도 fail → 또 다른 nested 변형 추정
+# 본 헬퍼는 *모든 dict/list 변형* depth-first 탐색해 first non-empty text-like 값
+# 추출. CC schema 변동/undocumented format 대응. 후보 키 우선순위는 Anthropic
+# content block 관례 (text > content > value > output).
+_PROSE_TEXT_KEYS = ("text", "content", "value", "output")
+
+
+def _extract_prose_text(obj: Any, _depth: int = 0) -> str:
+    """tool_response → prose text. dict/list/str/nested 모두 robust.
+
+    탐색 정책:
+      - str: 그대로 반환 (strip 비어있으면 "")
+      - dict: 우선순위 키 (`_PROSE_TEXT_KEYS`) 의 string value 만 채택 →
+        그 다음 *dict/list value* 만 재귀 (string value 는 metadata 가능성
+        — type="tool_result" 같은 필드 prose 로 오인 차단)
+      - list: 각 item 재귀, first non-empty 반환
+      - 기타: ""
+
+    depth limit (16) — 무한 재귀 방어 (정상 payload 는 1~3 depth).
+    """
+    if _depth > 16:
+        return ""
+    if isinstance(obj, str):
+        return obj if obj.strip() else ""
+    if isinstance(obj, dict):
+        # 우선순위 키 — 직접 매칭 (string value 만 prose 로 채택)
+        for key in _PROSE_TEXT_KEYS:
+            v = obj.get(key)
+            if isinstance(v, str) and v.strip():
+                return v
+        # 그 외 — nested 컨테이너만 재귀 (string 값 = metadata 가능성, skip)
+        for v in obj.values():
+            if isinstance(v, (dict, list)):
+                r = _extract_prose_text(v, _depth + 1)
+                if r:
+                    return r
+        return ""
+    if isinstance(obj, list):
+        for item in obj:
+            r = _extract_prose_text(item, _depth + 1)
+            if r:
+                return r
+        return ""
+    return ""
+
+
 # orchestration.md §7.1 — 컨베이어 경유 필수 agent
 # (agent_name, mode_or_None) — None = 모든 mode 적용
 HARNESS_ONLY_AGENTS: tuple = (
@@ -524,31 +574,24 @@ def handle_posttooluse_agent(
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
 
     # prose auto-staging — tool_response → run_dir 에 저장, current_step.prose_file 기록
-    # silent except 제거 (#272 W2 / #273 W1) — staging 미동작 진단 가능하게 단계별
-    # stderr DEBUG. post-agent-clear.sh 가 stderr → /tmp/dcness-hook-stderr.log 보존.
+    # #272 W2 진짜 fix — robust extraction. 도입(2026-05-01) 시 dict 만 가정 → fail.
+    # issue-232 가 list[{type:"text",text:...}] 한 형식만 추가 → jajang 보고에서 또 fail.
+    # 이번엔 *어떤 nested 형식이든* first non-empty text 추출 (CC schema 변동·
+    # undocumented 변형 robust). 추출 실패 시에만 stderr 진단.
     if rid:
-        prose_text = ""
         raw_response = stdin_data.get("tool_response")
+        prose_text = ""
         try:
-            if isinstance(raw_response, list):
-                # CC Agent PostToolUse 실제 포맷: [{"type": "text", "text": "..."}]
-                for block in raw_response:
-                    if isinstance(block, dict) and block.get("type") == "text":
-                        prose_text = str(block.get("text", "") or "")
-                        break
-            elif isinstance(raw_response, dict):
-                prose_text = str(raw_response.get("text", "") or "")
-            elif isinstance(raw_response, str):
-                prose_text = raw_response
+            prose_text = _extract_prose_text(raw_response)
         except Exception as e:  # noqa: BLE001
             print(
-                f"[hook prose stage] tool_response 파싱 예외: "
+                f"[hook prose stage] tool_response 추출 예외: "
                 f"{type(e).__name__}: {e}",
                 file=sys.stderr,
             )
 
         if not prose_text.strip():
-            # 형식 미스매치 진단 정보 — 다음 run 에서 외부 환경 디버그 가능
+            # robust extraction 도 fail 한 진짜 예외 — 다음 진단용
             if isinstance(raw_response, dict):
                 _shape = f"dict keys={list(raw_response.keys())[:5]}"
             elif isinstance(raw_response, list):
@@ -561,7 +604,7 @@ def handle_posttooluse_agent(
             else:
                 _shape = f"type={type(raw_response).__name__}"
             print(
-                f"[hook prose stage] prose 추출 실패 — staging skip. {_shape}",
+                f"[hook prose stage] robust extraction 실패 — staging skip. {_shape}",
                 file=sys.stderr,
             )
         else:
