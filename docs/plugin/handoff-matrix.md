@@ -1,131 +1,126 @@
-# Handoff Matrix — Agent 결정 / Retry / Escalate / 권한
+# Handoff Matrix — Agent Routing 가이드 / Retry / Escalate / 권한
 
 > **Status**: ACTIVE
-> **Scope**: dcness 컨베이어의 *agent 측 강제 영역* SSOT — 결론 enum 별 다음 trigger / retry 한도 / escalate 카탈로그 / 접근 권한 (호출 / Write / Read / 인프라 패턴).
+> **Scope**: dcness 컨베이어의 *agent 측 강제 영역* SSOT — agent 결론 prose 를 보고 메인 Claude 가 다음 단계 결정할 때 참조하는 자연어 routing 가이드 / retry 한도 / escalate 카탈로그 / 접근 권한.
 > **Cross-ref**: 시퀀스 spec + 8 loop 행별 풀스펙 = [`orchestration.md`](orchestration.md) §2~§4. 절차 mechanics = [`loop-procedure.md`](loop-procedure.md).
 
 ---
 
-## 1. 결론 enum → 다음 agent trigger 결정표
+## 1. Agent 결론 → 다음 agent 결정 가이드 (자연어)
 
-> 13 agent (validator/architect 의 mode 펼침). 본 표가 [`orchestration.md`](orchestration.md) §2/§3 시퀀스의 *상세 분기 spec*.
+> agent 13 종 (validator / architect 는 mode 펼침). agent 가 자기 prose 에 결론 + 권장 다음 단계를 자유롭게 박는다. 메인 Claude 는 그 prose 와 본 가이드를 비교해 다음 호출을 결정한다. 본 가이드는 형식 강제가 아니라 *판단 보조*. 가능한 결론 표현은 agent 별로 다양 — 의미만 맞으면 OK ([`dcness-rules.md`](dcness-rules.md) §1 원칙 2 자율 정합).
+
+> **이슈 #280 정착 후 작동 모델**:
+> - agent 는 prose 마지막 단락에 *어떤 결과로 끝났는지 + 메인이 누구를 부르는 게 적절한지* 자기 언어로 명시.
+> - 메인은 prose + 본 §1 가이드만으로 routing 결정. enum 형식 검증 없음.
+> - prose 가 모호하거나 결론을 추출 못 하면 메인이 사용자에게 위임 (cascade — `harness/routing_telemetry.py:record_cascade`).
 
 ### 1.1 product-planner
 
-| 결론 | 다음 trigger |
-|---|---|
-| `PRODUCT_PLAN_READY` | plan-reviewer |
-| `CLARITY_INSUFFICIENT` | 사용자 (역질문) |
-| `PRODUCT_PLAN_CHANGE_DIFF` | plan-reviewer (변경 분만 재심사) |
-| `PRODUCT_PLAN_UPDATED` | ux-architect (변경 반영) |
-| `ISSUES_SYNCED` | (다음 단계 없음, 동기화 완료) |
+PRD 작성 / 변경 / 동기화 hub. 일반적으로 다음 4 결과 중 하나로 종료:
+
+- **PRD 신규 또는 변경안 준비 완료** → plan-reviewer 호출 (변경분만이면 review 도 변경분 한정).
+- **사용자 입력이 모호해 추가 질문 필요** → 사용자에게 역질문하고 응답 대기 (자동 진행 금지).
+- **변경된 PRD 가 UX 영향** → ux-architect 로 변경 반영.
+- **issue tracker 동기화 완료** → 후속 단계 없음.
 
 ### 1.2 plan-reviewer
 
-| 결론 | 다음 trigger |
-|---|---|
-| `PLAN_REVIEW_PASS` | ux-architect (UX_FLOW) |
-| `PLAN_REVIEW_CHANGES_REQUESTED` | product-planner 재진입 |
+PRD 심사. 두 가지 결과:
+
+- **PRD 승인** → 다음 단계는 ux-architect (UX_FLOW).
+- **PRD 변경 요청** → product-planner 재진입.
 
 ### 1.3 ux-architect
 
-| 결론 | 다음 trigger |
-|---|---|
-| `UX_FLOW_READY` | validator (UX_VALIDATION) |
-| `UX_FLOW_PATCHED` | validator (UX_VALIDATION, 변경 부분만) |
-| `UX_REFINE_READY` | 사용자 승인 → designer SCREEN |
-| `UX_FLOW_ESCALATE` | 사용자 (escalate) |
+UX Flow 정의 / 변경 / refine. 다음 4 결과:
 
-### 1.4 architect (master, 6 mode)
+- **UX Flow 신규 완성 / 변경분 patch 완료** → validator UX_VALIDATION.
+- **UI refine 완료 (기존 디자인 다듬기)** → 사용자 승인 후 designer SCREEN.
+- **Flow 정의 불가 (PRD 모순 등)** → escalate (사용자 위임).
 
-| Mode | 결론 | 다음 trigger |
-|---|---|---|
-| SYSTEM_DESIGN | `SYSTEM_DESIGN_READY` (산출물에 `## impl 목차` 표 포함) | validator DESIGN_VALIDATION |
-| MODULE_PLAN | `READY_FOR_IMPL` | (feature-build-loop 안) impl 목차 다음 행 → MODULE_PLAN 재호출 / 마지막 행이면 feature-build-loop 종료 → impl-task-loop 진입 / (impl-task-loop fallback) test-engineer |
-| SPEC_GAP | `SPEC_GAP_RESOLVED` | engineer 재진입 |
-| SPEC_GAP | `PRODUCT_PLANNER_ESCALATION_NEEDED` | product-planner |
-| SPEC_GAP | `TECH_CONSTRAINT_CONFLICT` | 사용자 (escalate) |
-| TECH_EPIC | `SYSTEM_DESIGN_READY` | validator DESIGN_VALIDATION |
-| LIGHT_PLAN | `LIGHT_PLAN_READY` | engineer simple |
-| DOCS_SYNC | `DOCS_SYNCED` | (완료) |
-| DOCS_SYNC | `SPEC_GAP_FOUND` | architect SPEC_GAP |
-| DOCS_SYNC | `TECH_CONSTRAINT_CONFLICT` | 사용자 |
+### 1.4 architect (6 mode hub)
+
+mode 별 처리 흐름:
+
+- **SYSTEM_DESIGN / TECH_EPIC** — 시스템 설계 산출 (`## impl 목차` 표 포함). 완료 시 validator DESIGN_VALIDATION.
+- **MODULE_PLAN** — impl 파일 detail 작성. 다음 단계는 컨텍스트:
+  - feature-build-loop 안 = impl 목차 다음 행 있으면 MODULE_PLAN 재호출, 마지막 행이면 loop 종료 → impl-task-loop 진입.
+  - impl-task-loop fallback = test-engineer.
+  - SPEC GAP 발견 시 architect SPEC_GAP, 기술 제약 충돌 시 escalate.
+- **SPEC_GAP** — gap 해소 시 engineer 재진입. PRD 변경 필요면 product-planner. 기술 제약 충돌이면 escalate.
+- **LIGHT_PLAN** — 가벼운 plan 완료 시 engineer (simple).
+- **DOCS_SYNC** — 문서 정합 동기화 완료 시 후속 없음. SPEC GAP 발견 시 architect SPEC_GAP, 기술 제약 충돌 시 escalate.
 
 > Note: 옛 TASK_DECOMPOSE mode 폐기 (issue #247). 가치 4 자리 (Story → impl 매핑 / NN-slug 명명 / 의존 순서 / outline) 는 SYSTEM_DESIGN 의 `## impl 목차` 표로 흡수. impl 파일 본문 detail 은 MODULE_PLAN × N 가 채움.
 
 ### 1.5 engineer
 
-| 결론 | 다음 trigger |
-|---|---|
-| `IMPL_DONE` | validator CODE_VALIDATION |
-| `IMPL_PARTIAL` | engineer 재호출 (split < 3, 새 context window — DCN-30-34) |
-| `SPEC_GAP_FOUND` | architect SPEC_GAP (attempt < 2) / escalate (attempt ≥ 2) |
-| `TESTS_FAIL` | engineer 재시도 (attempt < 3) / `IMPLEMENTATION_ESCALATE` (≥ 3) |
-| `IMPLEMENTATION_ESCALATE` | 사용자 |
-| `POLISH_DONE` | pr-reviewer (재호출) |
+구현 hub. 결과 종류:
+
+- **구현 완료 (기능 검증 가능)** → validator CODE_VALIDATION.
+- **부분 구현 (분량 초과로 split 필요)** → engineer 재호출 (split 한도 3, 새 context window — DCN-30-34).
+- **SPEC GAP 발견 (스펙 모호 / 부족)** → architect SPEC_GAP (attempt < 2). 한도 초과면 escalate.
+- **테스트 실패 (재구현 필요)** → engineer 재시도 (attempt < 3). 한도 초과면 escalate.
+- **POLISH 단계 마무리** → pr-reviewer 재호출.
+- **escalate** (구현 불가 / 한도 초과) → 사용자 위임.
 
 ### 1.6 test-engineer
 
-| 결론 | 다음 trigger |
-|---|---|
-| `TESTS_WRITTEN` | engineer (attempt 0 진입) |
-| `SPEC_GAP_FOUND` | architect SPEC_GAP |
+테스트 코드 선작성 (TDD). 결과:
+
+- **테스트 준비 완료** → engineer (attempt 0 진입).
+- **스펙 부족해 테스트 작성 불가** → architect SPEC_GAP.
 
 ### 1.7 designer
 
-| 결론 | 다음 trigger |
-|---|---|
-| `DESIGN_READY_FOR_REVIEW` | (THREE_WAY) design-critic / (ONE_WAY) 사용자 PICK |
-| `DESIGN_LOOP_ESCALATE` | 사용자 |
+UI variant 생성. 결과:
+
+- **variant 준비 완료** → THREE_WAY 면 design-critic, ONE_WAY 면 사용자 PICK.
+- **variant 생성 불가** → escalate (사용자 위임).
 
 ### 1.8 design-critic
 
-| 결론 | 다음 trigger |
-|---|---|
-| `VARIANTS_APPROVED` | 사용자 PICK → 다음 단계 (test 또는 impl) |
-| `VARIANTS_ALL_REJECTED` | designer 재진입 (round < 3) |
-| `UX_REDESIGN_SHORTLIST` | ux-architect UX_REFINE (round ≥ 3) |
+variant 심사. 결과:
 
-### 1.9 validator (4 mode 펼침)
+- **1+ variant 승인** → 사용자 PICK → 다음 단계 (test 또는 impl).
+- **모두 reject** → designer 재진입 (round < 3).
+- **3 round 누적 reject** → ux-architect UX_REFINE.
 
-| Mode | 결론 | 다음 trigger |
-|---|---|---|
-| CODE_VALIDATION | `PASS` | pr-reviewer |
-| CODE_VALIDATION | `FAIL` | engineer 재시도 (attempt < 3) |
-| CODE_VALIDATION | `SPEC_MISSING` | architect SPEC_GAP |
-| DESIGN_VALIDATION | `DESIGN_REVIEW_PASS` | architect MODULE_PLAN × N (impl 목차 첫 행부터 순차) |
-| DESIGN_VALIDATION | `DESIGN_REVIEW_FAIL` | architect SYSTEM_DESIGN 재진입 (cycle 한도 2) |
-| DESIGN_VALIDATION | `DESIGN_REVIEW_ESCALATE` | 사용자 위임 |
-| UX_VALIDATION | `PASS` | architect SYSTEM_DESIGN |
-| UX_VALIDATION | `FAIL` | ux-architect 재진입 |
-| BUGFIX_VALIDATION | `PASS` | pr-reviewer |
-| BUGFIX_VALIDATION | `FAIL` | engineer 재시도 |
+### 1.9 validator (4 mode)
+
+검증 전담. mode 별:
+
+- **CODE_VALIDATION** — PASS 시 pr-reviewer. FAIL 시 engineer 재시도 (attempt < 3). 스펙 부족 시 architect SPEC_GAP.
+- **DESIGN_VALIDATION** — 승인 시 architect MODULE_PLAN × N (impl 목차 첫 행부터 순차). FAIL 시 architect SYSTEM_DESIGN 재진입 (cycle 한도 2). escalate 시 사용자 위임.
+- **UX_VALIDATION** — PASS 시 architect SYSTEM_DESIGN. FAIL 시 ux-architect 재진입.
+- **BUGFIX_VALIDATION** — PASS 시 pr-reviewer. FAIL 시 engineer 재시도.
 
 > Note: 옛 PLAN_VALIDATION mode 폐기 (issue #247). 컨베이어 동작은 `orchestration.md §4.3 task_list` 기준이고, 그 task_list 에 PLAN_VALIDATION step 이 *원래부터* 빠져있어서 (drift) 사실상 default-skip 중이었음. spec / 동작 정합 회복.
 
 ### 1.10 pr-reviewer
 
-| 결론 | 다음 trigger |
-|---|---|
-| `LGTM` | regular merge 자동 (CI PASS + LGTM 후 메인이 즉시 머지) |
-| `CHANGES_REQUESTED` | engineer POLISH |
+merge 직전 코드 품질 심사:
+
+- **LGTM** → CI PASS 후 메인이 즉시 regular merge.
+- **변경 요청** → engineer POLISH 재호출.
 
 ### 1.11 qa
 
-| 결론 | 다음 trigger |
-|---|---|
-| `FUNCTIONAL_BUG` | architect LIGHT_PLAN |
-| `CLEANUP` | engineer 직접 (light) |
-| `DESIGN_ISSUE` | designer / ux-architect (REFINE) |
-| `KNOWN_ISSUE` | (종료) |
-| `SCOPE_ESCALATE` | 사용자 |
+이슈 분류 hub. 5 결과:
+
+- **기능 버그** → architect LIGHT_PLAN.
+- **간단 cleanup** → engineer 직접 (light).
+- **디자인 이슈** → designer 또는 ux-architect (REFINE).
+- **알려진 이슈** → 후속 없음.
+- **분류 불가 (escalate)** → 사용자 위임.
 
 ### 1.12 security-reviewer
 
-| 결론 | 다음 trigger |
-|---|---|
-| `SECURE` | (다음 단계 없음, 검증 완료) |
-| `VULNERABILITIES_FOUND` | engineer (수정 요청) |
+보안 감사. 두 결과:
+
+- **취약점 없음** → 후속 없음 (검증 완료).
+- **취약점 발견** → engineer 수정 요청.
 
 ---
 
@@ -255,5 +250,6 @@ RWHarness 4 신호 OR 정합:
 - [`loop-procedure.md`](loop-procedure.md) — Step 0~8 mechanics
 - [`dcness-rules.md`](dcness-rules.md) §1 — Prose-Only 원칙 현행 SSOT (대 원칙 + Anti-Pattern 5원칙)
 - [`../archive/status-json-mutate-pattern.md`](../archive/status-json-mutate-pattern.md) — Prose-Only 원전 proposal (역사 자료)
-- `agents/*.md` — 각 agent 의 결론 enum 출처
-- `harness/signal_io.py` / `harness/interpret_strategy.py` — enum 추출 인프라
+- `agents/*.md` — 각 agent 의 결론 prose 표현 가이드
+- `harness/routing_telemetry.py` — prose-only routing 회귀 검증 telemetry (이슈 #281)
+- `harness/signal_io.py` / `harness/interpret_strategy.py` — 옛 enum 추출 인프라 (이슈 #284 폐기 진행 중)
