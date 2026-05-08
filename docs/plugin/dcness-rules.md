@@ -124,10 +124,15 @@ begin-step 에서 전달된 INSIGHTS 가 있으면 prompt 에 포함.
 ## 3.3 end-step
 
 ```bash
+# prose-only mode (이슈 #284 정착 후 권장):
+"$HELPER" end-step <agent> [<MODE>]
+# legacy compat — 외부 skill 이 enum 추출 필요 시 (deprecated):
 ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>")
 ```
 
 **시점**: Agent 완료 직후 → TaskUpdate(completed) 전
+
+**prose-only mode (이슈 #284)**: `--allowed-enums` 미지정 시 stdout = `PROSE_LOGGED`. 메인 Claude 가 prose 자체 (`<run_dir>/<agent>[-<MODE>].md`) 를 직접 읽고 routing 결정 — `harness/handoff-matrix.md §1` 자연어 가이드 참조. 결정 못 하면 `harness.routing_telemetry record-cascade --reason "..."` 으로 cascade marker 박고 사용자 위임.
 
 ### 결과 echo + 평가 — MUST (5~12줄)
 
@@ -174,11 +179,13 @@ REDO 판단 신호: 결과가 질문에 제대로 답하지 못함 / 같은 tool
 □ 결론 enum + 평가 포함됐는가?
 ```
 
-### AMBIGUOUS 처리
+### AMBIGUOUS 처리 (legacy enum mode 한정)
 
-`end-step` stdout = `AMBIGUOUS` 시:
+`--allowed-enums` 박은 legacy 호출에서 `end-step` stdout = `AMBIGUOUS` 시:
 1. 재호출 1회 (결론 enum 명시 요청)
 2. 재호출도 AMBIGUOUS → 사용자 위임 (enum 후보 + prose 발췌)
+
+prose-only mode (이슈 #284 정착 후 권장) 에선 stdout = `PROSE_LOGGED` — AMBIGUOUS 자체 X. 메인이 prose 직접 읽고 결정 못 할 때만 `record-cascade` 로 cascade marker 박고 사용자 위임.
 
 ### helper 안전망 (자동 검출)
 
@@ -192,7 +199,7 @@ begin/end-step 은 `agent mode` **두 개 인자** 형식만 허용:
 
 ```bash
 "$HELPER" begin-step <agent> [<MODE>]
-"$HELPER" end-step   <agent> [<MODE>] --allowed-enums "..."
+"$HELPER" end-step   <agent> [<MODE>] [--allowed-enums "..."]
 ```
 
 - `agent` — 소문자·하이픈만 (`^[a-z][a-z0-9-]{0,63}$`)

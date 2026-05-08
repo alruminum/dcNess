@@ -1,18 +1,17 @@
-"""test_interpret_strategy — heuristic-only enum 추출 검증.
+"""test_interpret_strategy — issue #284 폐기 진행: telemetry 중단 검증.
 
-DCN-CHG-20260430-04: LLM fallback 폐기, heuristic-only 정착.
+이슈 #280 epic 정착 후 동작:
+    - `interpret_with_fallback` 휴리스틱 자체는 legacy 호환 (외부 skill `--allowed-enums`).
+    - 단 `.metrics/heuristic-calls.jsonl` 에 신규 append 0.
+    - prose-only routing telemetry 는 `harness/routing_telemetry.py` 가 대체 (#281).
 
 Coverage:
-    - heuristic_hit             : 휴리스틱 단일 매칭
-    - heuristic_ambiguous       : 휴리스틱 0/2+ hit → MissingSignal propagate
-    - heuristic_not_found       : 휴리스틱이 not_found 예외 propagate
-    - telemetry on/off          : DCNESS_LLM_TELEMETRY=0 시 기록 0
-    - allowed empty             : 즉시 ValueError
+    - heuristic 결과 자체는 legacy 호환 (PASS / AMBIGUOUS / not_found 동일).
+    - 모든 outcome 에서 heuristic-calls.jsonl 신규 기록 0 (이슈 #284 acceptance).
+    - allowed empty → ValueError.
 """
 from __future__ import annotations
 
-import json
-import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -32,7 +31,7 @@ class HeuristicHitTests(unittest.TestCase):
     def tearDown(self) -> None:
         self._td.cleanup()
 
-    def test_heuristic_hit_records_outcome(self) -> None:
+    def test_heuristic_hit_returns_enum(self) -> None:
         result = interpret_with_fallback(
             "## 결론\n\nPASS\n",
             ["PASS", "FAIL"],
@@ -40,67 +39,30 @@ class HeuristicHitTests(unittest.TestCase):
         )
         self.assertEqual(result, "PASS")
 
-        log = (self.tele / HEURISTIC_TELEMETRY_FILE).read_text(encoding="utf-8")
-        events = [json.loads(line) for line in log.strip().splitlines()]
-        self.assertEqual(len(events), 1)
-        self.assertEqual(events[0]["outcome"], "heuristic_hit")
-        self.assertEqual(events[0]["parsed"], "PASS")
-        self.assertEqual(events[0]["allowed"], ["PASS", "FAIL"])
+    def test_no_heuristic_calls_jsonl_written(self) -> None:
+        # 이슈 #284 acceptance — 어떤 outcome 에서도 신규 기록 0.
+        interpret_with_fallback("PASS", ["PASS"], telemetry_dir=self.tele)
+        try:
+            interpret_with_fallback(
+                "no enum here", ["PASS", "FAIL"], telemetry_dir=self.tele,
+            )
+        except MissingSignal:
+            pass
+        self.assertFalse((self.tele / HEURISTIC_TELEMETRY_FILE).exists())
 
 
 class HeuristicAmbiguousTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._td = TemporaryDirectory()
-        self.tele = Path(self._td.name)
-
-    def tearDown(self) -> None:
-        self._td.cleanup()
-
     def test_ambiguous_propagates_missing_signal(self) -> None:
         with self.assertRaises(MissingSignal) as ctx:
             interpret_with_fallback(
                 "no clear label here",
                 ["PASS", "FAIL"],
-                telemetry_dir=self.tele,
             )
         self.assertEqual(ctx.exception.reason, "ambiguous")
 
-        events = [
-            json.loads(line)
-            for line in (self.tele / HEURISTIC_TELEMETRY_FILE)
-            .read_text(encoding="utf-8")
-            .strip()
-            .splitlines()
-        ]
-        self.assertEqual(events[-1]["outcome"], "heuristic_ambiguous")
-
     def test_empty_prose_propagates_missing_signal(self) -> None:
-        # 빈 prose 도 휴리스틱이 ambiguous (no enum found) 로 처리
         with self.assertRaises(MissingSignal):
-            interpret_with_fallback(
-                "",
-                ["PASS", "FAIL"],
-                telemetry_dir=self.tele,
-            )
-
-
-class TelemetryToggleTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._td = TemporaryDirectory()
-        self.tele = Path(self._td.name)
-
-    def tearDown(self) -> None:
-        self._td.cleanup()
-        os.environ.pop("DCNESS_LLM_TELEMETRY", None)
-
-    def test_telemetry_disabled_via_env(self) -> None:
-        os.environ["DCNESS_LLM_TELEMETRY"] = "0"
-        interpret_with_fallback(
-            "PASS",
-            ["PASS"],
-            telemetry_dir=self.tele,
-        )
-        self.assertFalse((self.tele / HEURISTIC_TELEMETRY_FILE).exists())
+            interpret_with_fallback("", ["PASS", "FAIL"])
 
 
 class ValidationTests(unittest.TestCase):

@@ -2,8 +2,12 @@
 /**
  * dcNess 메타 LLM telemetry 분석기
  *
+ * [이슈 #284 폐기 진행] heuristic-calls.jsonl 신규 기록 0 — 누적 baseline 만 보존.
+ * 신규 prose-only routing telemetry 는 .metrics/routing-decisions.jsonl
+ * (`harness/routing_telemetry.py` — 이슈 #281).
+ *
  * 입력 파일 (기본 `.metrics/`):
- *   - heuristic-calls.jsonl   : interpret_with_fallback 의 매 호출 outcome
+ *   - heuristic-calls.jsonl   : interpret_with_fallback 의 매 호출 outcome (deprecated)
  *   - meta-llm-calls.jsonl    : haiku interpreter 가 실 호출한 케이스 (input/output_tokens, cost_usd)
  *
  * 출력: 콘솔 표 + (옵션) JSON 요약.

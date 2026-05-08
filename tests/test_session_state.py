@@ -1213,6 +1213,55 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "AMBIGUOUS")
 
+    def test_end_step_prose_only_mode_no_allowed_enums(self) -> None:
+        """이슈 #284 — `--allowed-enums` 미지정 시 prose-only mode (PROSE_LOGGED)."""
+        from harness.session_state import _cli_end_step, session_dir
+        from types import SimpleNamespace
+        prose_path = self.base / "tmp_prose.md"
+        prose_path.write_text(
+            "## 결론\n\n자유로운 자연어 prose. enum 없음. 메인이 직접 routing.\n",
+            encoding="utf-8",
+        )
+
+        from io import StringIO
+        from contextlib import redirect_stdout, redirect_stderr
+        out = StringIO()
+        err = StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = _cli_end_step(SimpleNamespace(
+                agent="qa",
+                mode="",
+                allowed_enums="",  # prose-only mode
+                prose_file=str(prose_path),
+            ))
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue().strip(), "PROSE_LOGGED")
+        # prose 자체는 저장됨 (메인이 직접 읽고 routing)
+        prose_md = session_dir(self.sid) / "runs" / self.rid / "qa.md"
+        self.assertTrue(prose_md.exists())
+        self.assertIn("자연어", prose_md.read_text(encoding="utf-8"))
+
+    def test_end_step_prose_only_mode_attribute_missing(self) -> None:
+        """`--allowed-enums` 자체 미정의 SimpleNamespace 도 prose-only mode."""
+        from harness.session_state import _cli_end_step
+        from types import SimpleNamespace
+        prose_path = self.base / "tmp_prose.md"
+        prose_path.write_text("any text\n", encoding="utf-8")
+
+        from io import StringIO
+        from contextlib import redirect_stdout
+        out = StringIO()
+        with redirect_stdout(out):
+            ns = SimpleNamespace(
+                agent="engineer",
+                mode="IMPL",
+                prose_file=str(prose_path),
+                allowed_enums=None,  # argparse default 시 빈 string, 명시 None 도 cover
+            )
+            rc = _cli_end_step(ns)
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue().strip(), "PROSE_LOGGED")
+
     def test_end_step_no_prose_file_uses_hook_staged(self) -> None:
         # DCN-CHG-20260501-15: --prose-file 미제공 시 live.json.current_step.prose_file 사용
         from harness.session_state import (

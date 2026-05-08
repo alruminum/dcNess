@@ -74,7 +74,8 @@ TaskCreate("<agent>: <mode 또는 짧은 설명>")
 TaskUpdate("<task>", in_progress)
 "$HELPER" begin-step <agent> [<MODE>]
 Agent(subagent_type="<agent>", mode="<MODE>", description="...")
-ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>")
+"$HELPER" end-step <agent> [<MODE>]   # prose-only mode (이슈 #284 정착 후 권장, stdout=PROSE_LOGGED)
+# legacy compat: ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>")
 # guidelines §1 의무 echo (5~12 줄)
 TaskUpdate("<task>", completed)
 ```
