@@ -298,66 +298,6 @@ dcness plug-in 의 디자인 시스템 SSOT 는 `docs/design.md` (Google `design
 
 이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.7 가 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 Step 2.7 발화. 본 안내는 dcness release note / README 에 별도 명시.
 
-### Step 2.8 — 초기 docs 폼 시드 (PRD / ARCHITECTURE / ADR)
-
-신규 프로젝트가 기획 논의 후 채워넣을 표준 placeholder 3종을 시드한다. *부재할 때만* 깔리며 (멱등), 이미 존재하면 skip — 사용자 작업물 보호.
-
-본 Step 은 **bash 자동화 X — 메인 Claude 가 절차 따라 사용자 응답 받고 진행**.
-
-용도:
-
-- `docs/PRD.md` — 목표 / 사용자 / 핵심 기능 / MVP 제외 / 수용 기준 / 디자인 방향
-- `docs/ARCHITECTURE.md` — 디렉토리 / 패턴 / 데이터 흐름 / 상태 관리 / 외부 의존성
-- `docs/ADR.md` — 철학 + 첫 ADR 자리 (placeholder 다수 박지 않음 — 억지 채움 방지)
-
-UI 폼은 Step 2.7 의 `docs/design.md` 가 담당 — 별도 `UI_GUIDE.md` 안 깐다.
-
-#### 1. 프로젝트 docs 디렉토리 확인
-
-```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
-mkdir -p "$PROJECT_ROOT/docs"
-```
-
-#### 2. 부재 파일 시드 (3개 각각 멱등)
-
-각 파일에 대해:
-
-```
-[dcness] docs/PRD.md 가 없습니다. 기획 논의 후 채울 placeholder 폼을 깔까요? (Y/n)
-```
-
-- 사용자 답변 받은 후에만 메인 Claude 가 plug-in 의 `templates/project-init/<FILE>.md` 를 사용자 repo `docs/<FILE>.md` 로 cp.
-- 이미 파일 존재 시 묻지 않고 `이미 존재 — skip` 출력.
-
-```bash
-PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)"
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
-
-for FILE in PRD.md ARCHITECTURE.md ADR.md; do
-  if [ -f "$PROJECT_ROOT/docs/$FILE" ]; then
-    echo "[dcness] docs/$FILE 이미 존재 — skip"
-  else
-    # 사용자 동의 (Y/n) 받은 후에만 cp 실행. 동의 없이 silent cp 금지.
-    cp "$PLUGIN_ROOT/templates/project-init/$FILE" "$PROJECT_ROOT/docs/$FILE"
-    echo "[dcness] docs/$FILE 시드 완료 — 기획 논의 후 채워넣으세요"
-  fi
-done
-```
-
-#### 3. 멱등 보장
-
-- 두 번 실행해도 추가 변경 없음 — 파일 있으면 skip.
-- 사용자가 \"n\" 답변 시 다음 호출 때 다시 묻되 사용자가 빠르게 \"n\" 가능.
-
-#### 4. 출처 / 갱신 의무
-
-본 Step 이 cp 하는 폼은 plug-in `templates/project-init/{PRD,ARCHITECTURE,ADR}.md` 가 SSOT. 폼 형식 변경 시 본 디렉토리에서 갱신 — 사용자 repo 의 기존 파일은 cp 대상 아니므로 자동 반영 안 됨 (사용자 작업물 보호 원칙).
-
-#### 5. 기존 활성화 프로젝트 — re-run 안내
-
-이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.8 이 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 Step 2.8 발화. 단 시드는 *부재 시만* 이라 기존 docs 가 있으면 skip — 안전.
-
 ### Step 3 — 사용자 안내
 
 ```
@@ -377,10 +317,6 @@ git-naming 강제 (Step 2.6 완료 시):
 design.md SSOT (Step 2.7 완료 시):
 - CLAUDE.md 매트릭스에 docs/design.md 행 등록 (UI 작업 시 read 후보)
 - (UI 프로젝트인 경우) docs/design.md minimal 템플릿 시드 — 컬러 / 타이포그래피 / 컴포넌트 토큰 채워 사용
-
-초기 docs 폼 시드 (Step 2.8 완료 시):
-- docs/PRD.md / ARCHITECTURE.md / ADR.md placeholder — 기획 논의 후 채워넣는 용도
-- 부재 시만 시드 (멱등) — 기존 파일은 보호
 
 사용 가능한 skill:
 - /qa  — 이슈 분류
