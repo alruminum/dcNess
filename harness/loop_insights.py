@@ -3,7 +3,12 @@
 각 루프 종료 시 redo-log + WASTE/GOOD findings → agent별 파일에 누적.
 begin-step 에서 읽어 메인 Claude 에게 주입.
 
-저장 위치: <cwd>/.claude/loop-insights/<agent>[-<mode>].md
+저장 위치: <main_repo_root>/.claude/loop-insights/<agent>[-<mode>].md
+
+worktree 진입 후에도 main repo root 기준으로 저장 — ExitWorktree(remove)
+시 누적분 손실 회피 (#306 개선점 5). main repo root 해석은
+`_resolve_project_root` (`session_state.py`) 의 git common-dir γ-resolution
+재사용. git 미설치 / 리포 아님 시 cwd 폴백.
 """
 from __future__ import annotations
 
@@ -14,6 +19,7 @@ from typing import Optional
 from harness import redo_log
 from harness import run_review as rv
 from harness.session_state import run_dir as get_run_dir
+from harness.session_state import _resolve_project_root
 
 
 __all__ = ["insights_path", "read", "append_findings", "append_from_run"]
@@ -21,11 +27,22 @@ __all__ = ["insights_path", "read", "append_findings", "append_from_run"]
 _INSIGHTS_DIR = Path(".claude") / "loop-insights"
 
 
+def _normalize_cwd(cwd: Path) -> Path:
+    """cwd 를 main repo root 로 정규화 (#306 개선점 5).
+
+    worktree 안 cwd 면 main repo root 반환. git 미사용 환경 폴백 시 cwd 자체.
+    """
+    try:
+        return _resolve_project_root(Path(cwd).resolve()).resolve()
+    except OSError:
+        return Path(cwd).resolve()
+
+
 def insights_path(
     agent: str, mode: Optional[str] = None, cwd: Path = Path(".")
 ) -> Path:
     name = agent if not mode else f"{agent}-{mode}"
-    return cwd / _INSIGHTS_DIR / f"{name}.md"
+    return _normalize_cwd(cwd) / _INSIGHTS_DIR / f"{name}.md"
 
 
 def read(

@@ -51,8 +51,16 @@ _PROSE_TAIL_LIMIT = 1200
 
 
 def _telemetry_path(base_dir: Optional[Path]) -> Path:
-    base = base_dir or (Path.cwd() / ".metrics")
-    return base / ROUTING_TELEMETRY_FILE
+    if base_dir is not None:
+        return base_dir / ROUTING_TELEMETRY_FILE
+    # worktree 안에서도 main repo root 기준으로 저장 — ExitWorktree(remove)
+    # 시 누적분 손실 회피 (#306 개선점 5). git 미사용 환경 폴백 시 cwd.
+    try:
+        from harness.session_state import _resolve_project_root
+        root = _resolve_project_root(Path.cwd().resolve()).resolve()
+    except (OSError, ImportError):
+        root = Path.cwd()
+    return root / ".metrics" / ROUTING_TELEMETRY_FILE
 
 
 def _ts() -> str:
