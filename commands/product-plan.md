@@ -31,8 +31,8 @@ description: 새 기능 / PRD 변경 / 큰 기획을 받아 product-planner → 
 ## 사전 read (skill 진입 즉시)
 `docs/plugin/loop-procedure.md` + `docs/plugin/orchestration.md` §2~§3 + §4.2 + `docs/plugin/handoff-matrix.md` read 후 진행.
 
-## 워크트리 (기본 켜짐)
-Step 0 진입 시 자동 `EnterWorktree(name="product-plan-{ts_short}")`. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
+## 워크트리 (X)
+`/product-plan` 은 워크트리 자동 진입 안 함. 기획·설계는 동시 다중 batch 충돌 회피 목적 부재 — 메인 working tree 에서 별 branch 따고 직접 진행. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
 
 ## 절차
 [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.2 (`feature-build-loop` 풀스펙) 따름. 본 파일은 input 명세 + 라우팅만.
