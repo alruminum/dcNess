@@ -152,3 +152,27 @@ MyApp 의 기본 색상은 보라색 계열이며 Material You 기반이다.
 ```
 
 > `init-dcness` 실행 시 본 예시를 프로젝트에 inline 으로 embed 한다.
+
+---
+
+## 8. AI 슬롭 안티패턴 (Don'ts)
+
+§4 본문 섹션 순서 표의 8번 "Do's and Don'ts" 위치에서 **Don'ts** 카탈로그. designer / engineer 가 UI 작업 시 본 항목 회피 의무 — 위반 시 validator code-validation 이 grep 으로 검출 후 보고 (강제 X, 경고).
+
+| 금지 사항 | 이유 |
+|-----------|------|
+| `backdrop-filter: blur()` (glass morphism) | AI 템플릿의 가장 흔한 징후. 도구 UI 라면 불필요한 장식 |
+| 배경 그라데이션 텍스트 (`gradient-text`) | AI 가 만든 SaaS 랜딩의 1번 특징. 가독성 저하 |
+| "Powered by AI" 배지 / "AI-driven" 카피 | 기능이 아니라 장식. 사용자 가치 0 |
+| `box-shadow` 글로우 애니메이션 (네온 글로우) | AI 슬롭의 강한 신호. 도구 답지 않음 |
+| 보라·인디고 브랜드 색상 ("AI = 보라색" 클리셰) | 프로젝트 정체성 부재 시 default 로 흘러가는 함정 |
+| 모든 카드에 동일한 `rounded-2xl` (균일 둥근 모서리) | 균일성은 템플릿 느낌. 위계 없음 |
+| 배경 gradient orb (`blur-3xl` 원형 / blob) | 모든 AI 랜딩 페이지에 있는 장식. 의미 0 |
+
+### 적용 원칙
+
+- **도구처럼 보여야 한다** — 마케팅 페이지가 아니라 매일 쓰는 대시보드. 화면 = 기능 전달, 장식 = 최소.
+- **위계 = 사이즈 + 굵기 + 간격** — 그라데이션 / 글로우 / blur 로 만들어진 위계 X. 본문 가독성이 우선.
+- **클리셰 회피** — 위 7 항목은 *AI가 만든 모든 SaaS* 의 공통 신호. 회피만 해도 80% 슬롭 회피.
+
+> 출처: jha0313/harness_framework `docs/UI_GUIDE.md` 의 안티패턴 표 dcness 정합 흡수 (이슈 #309).
