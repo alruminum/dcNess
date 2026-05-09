@@ -4,6 +4,31 @@
 
 ---
 
+## v0.2.9 (2026-05-09)
+
+**커밋 범위**: `156691f..(다음 태그)`
+**핵심 변경**: init-dcness 신규 프로젝트 초기 docs 폼 시드 (이슈 #296)
+
+- **이슈 #296** — `/init-dcness` 실행 시 `docs/PRD.md` / `docs/ARCHITECTURE.md` /
+  `docs/ADR.md` 3개 파일 시드 (부재 시만, 멱등). 사용자가 PRD 논의 후 채워넣을
+  표준 placeholder 제공 — 매 프로젝트마다 다른 형태로 시작하던 분산 해소.
+  - `templates/project-init/{PRD,ARCHITECTURE,ADR}.md` 신규.
+  - `commands/init-dcness.md` Step 2.8 추가 — 부재 시 사용자 동의 받고 cp.
+  - 짧고 placeholder 위주 (한 화면 내 완결).
+
+**배포 경로**: 본 변경은 init-dcness 가 사용자 repo 로 *복사·배포* 하는
+인프라 (배포 경로 2). 기존 활성화 프로젝트는 자동 적용 안 됨 — `/init-dcness`
+재실행 시 부재 파일만 시드 (멱등). 신규 프로젝트는 이번 release 부터 자동 시드.
+
+**업데이트**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 활성화 프로젝트에서 docs 폼 받고 싶으면 `/init-dcness` 재실행 (멱등).
+
+---
+
 ## v0.2.8 (2026-05-09)
 
 **커밋 범위**: `4926adf..(다음 태그)`
