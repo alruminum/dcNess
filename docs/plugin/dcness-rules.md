@@ -121,6 +121,18 @@ Agent(subagent_type=<agent>, mode=<MODE>, description="...")
 
 begin-step 에서 전달된 INSIGHTS 가 있으면 prompt 에 포함.
 
+### 호출 prompt 작성 — MUST
+
+**호출 직전 해당 agent.md §"호출자가 prompt 로 전달하는 정보" 항목 read 후 prompt 작성**. 항목에 명시된 정보를 누락 없이 prompt 에 박는다 (형식 자유 — 정보 명시 의무만).
+
+**worktree 활성 시 worktree 절대 경로 prompt 에 추가 명시 — MUST (모든 agent 공통)**:
+
+- cwd 가 `.claude/worktrees/<name>/` 안이면 sub-agent prompt 에 worktree 절대 경로 명시 (예: "현재 worktree: `/Users/.../.claude/worktrees/<name>/`")
+- sub-agent 의 file path read 는 worktree 경로 prefix 사용
+- main repo abs path (`/Users/.../project/<repo>/`) 사용 금지 — 머지 전 옛 코드 read 로 false positive 발생 (anthropics/claude-code#31546 / #48096 알려진 결함)
+
+근거: CC Task tool 에 cwd parameter 부재 (anthropics/claude-code#12748), subagent frontmatter cwd field 부재 (#31940) — sub-agent 가 자기 cwd 인지 불가. 메인 (호출자) 이 명시 책임.
+
 ## 3.3 end-step
 
 ```bash
