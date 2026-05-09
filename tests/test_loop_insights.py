@@ -213,5 +213,78 @@ class TestAppendFromRun(unittest.TestCase):
             self.assertEqual(modified, [])
 
 
+class TestWorktreeNormalization(unittest.TestCase):
+    """worktree 안 cwd → main repo root 정규화 (#306 개선점 5).
+
+    worktree 진입 후에도 loop-insights 가 main repo root 에 저장돼야 함.
+    ExitWorktree(remove) 시 누적분 손실 회피.
+    """
+
+    def test_insights_path_normalizes_worktree_to_main_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            main_root = Path(td) / "main"
+            worktree = main_root / ".claude" / "worktrees" / "wt1"
+            main_root.mkdir(parents=True)
+            worktree.mkdir(parents=True)
+
+            with patch(
+                "harness.loop_insights._resolve_project_root",
+                return_value=main_root,
+            ):
+                p = insights_path("engineer", "IMPL", cwd=worktree)
+
+            self.assertTrue(
+                str(p).startswith(str(main_root.resolve()) + os.sep),
+                f"insights_path={p} 가 main_root={main_root} 안이 아님",
+            )
+            self.assertIn(".claude/loop-insights", str(p))
+            self.assertNotIn("worktrees/wt1", str(p))
+
+    def test_append_findings_writes_to_main_root_not_worktree(self):
+        """append_findings 가 worktree cwd 받아도 main repo root 에 저장."""
+        with tempfile.TemporaryDirectory() as td:
+            main_root = Path(td) / "main"
+            worktree = main_root / ".claude" / "worktrees" / "wt1"
+            main_root.mkdir(parents=True)
+            worktree.mkdir(parents=True)
+
+            with patch(
+                "harness.loop_insights._resolve_project_root",
+                return_value=main_root,
+            ):
+                append_findings(
+                    "engineer", "IMPL",
+                    ["worktree path leak detected"], [],
+                    cwd=worktree,
+                )
+
+            worktree_path = worktree / ".claude" / "loop-insights" / "engineer-IMPL.md"
+            self.assertFalse(worktree_path.exists())
+
+            main_path = main_root / ".claude" / "loop-insights" / "engineer-IMPL.md"
+            self.assertTrue(main_path.exists())
+            self.assertIn("worktree path leak detected", main_path.read_text())
+
+    def test_read_resolves_from_main_root_after_worktree_remove(self):
+        """worktree 안에서 호출돼도 main_root 에서 read — ExitWorktree(remove) 후 영속성."""
+        with tempfile.TemporaryDirectory() as td:
+            main_root = Path(td) / "main"
+            worktree = main_root / ".claude" / "worktrees" / "wt1"
+            main_root.mkdir(parents=True)
+            worktree.mkdir(parents=True)
+
+            main_path = main_root / ".claude" / "loop-insights" / "architect.md"
+            main_path.parent.mkdir(parents=True)
+            main_path.write_text("# Loop Insights\ncontent X", encoding="utf-8")
+
+            with patch(
+                "harness.loop_insights._resolve_project_root",
+                return_value=main_root,
+            ):
+                result = read("architect", cwd=worktree)
+
+            self.assertIn("content X", result)
+
+
 if __name__ == "__main__":
     unittest.main()

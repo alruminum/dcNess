@@ -154,5 +154,44 @@ class CliTests(_Base):
         self.assertIn("위임", events[0]["reason"])
 
 
+class WorktreeNormalizationTests(unittest.TestCase):
+    """worktree 안 cwd → main repo root 정규화 (#306 개선점 5).
+
+    base_dir 미지정 시 _telemetry_path 가 main repo root 기준 `.metrics/` 사용.
+    ExitWorktree(remove) 후 누적분 손실 회피.
+    """
+
+    def test_default_path_uses_main_repo_root_when_in_worktree(self):
+        from unittest.mock import patch
+        from harness.routing_telemetry import _telemetry_path
+        with TemporaryDirectory() as td:
+            main_root = Path(td) / "main"
+            worktree = main_root / ".claude" / "worktrees" / "wt1"
+            main_root.mkdir(parents=True)
+            worktree.mkdir(parents=True)
+            with patch("pathlib.Path.cwd", return_value=worktree), \
+                 patch(
+                     "harness.session_state._resolve_project_root",
+                     return_value=main_root,
+                 ):
+                p = _telemetry_path(None)
+            self.assertTrue(
+                str(p).startswith(str(main_root.resolve()) + os.sep),
+                f"telemetry_path={p} 가 main_root={main_root} 안이 아님",
+            )
+            self.assertNotIn("worktrees/wt1", str(p))
+            self.assertIn(".metrics", str(p))
+            self.assertIn(ROUTING_TELEMETRY_FILE, str(p))
+
+    def test_explicit_base_dir_overrides(self):
+        """base_dir 명시 시 그대로 사용 (worktree 정규화 skip)."""
+        from harness.routing_telemetry import _telemetry_path
+        with TemporaryDirectory() as td:
+            explicit = Path(td) / "custom-metrics"
+            p = _telemetry_path(explicit)
+            self.assertEqual(p.parent, explicit)
+            self.assertEqual(p.name, ROUTING_TELEMETRY_FILE)
+
+
 if __name__ == "__main__":
     unittest.main()
