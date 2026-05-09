@@ -18,12 +18,14 @@ skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`orchestration.md`
 
 ## 1. Step 0 — worktree + begin-run
 
-### 1.1 worktree 분기 (기본 켜짐)
+### 1.1 worktree 분기 (impl 류 루프 한정)
 
-**모든 행동형 skill (`/quick` `/impl` `/impl-loop` `/product-plan`) 진입 시 EnterWorktree 자동 호출**. 동시 다중 세션 충돌 회피 + 메인 working tree 보호.
+**행동형 skill 중 *코드 변경 batch* (`/quick` `/impl` `/impl-loop` `/auto-loop`) 진입 시만 EnterWorktree 자동 호출**. 동시 다중 세션 충돌 회피 + 메인 working tree 보호.
+
+**`/product-plan` / 모듈 설계 / 문서·시드 작업은 워크트리 X** — 본 작업은 충돌 회피 목적 부재. 메인 working tree 에서 별 branch 따고 직접 진행.
 
 ```
-EnterWorktree(name="<skill>-{ts_short}")
+EnterWorktree(name="<skill>-{ts_short}")   # impl 류만
 ```
 
 **거부 표현 시에만 건너뜀** — 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 (예: "워크트리 빼고", "워크트리 없이", "워크트리 말고") 시 EnterWorktree 호출 0, 일반 cwd 그대로 진행.

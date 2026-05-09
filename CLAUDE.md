@@ -60,7 +60,7 @@
 
 ## 1. 작업 절차 (모든 변경 공통)
 
-0. **워크트리 기본 켜짐** — 모든 변경 작업 진입 시 자동 `EnterWorktree(name="<목적>-{ts_short}")`. 메인 working tree 보호 + 동시 다중 세션 충돌 회피. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 (예: "워크트리 빼고") 시에만 건너뜀. 수동 `git worktree add` 우회 금지 — CC permission 시스템이 EnterWorktree 만 sub-agent 권한 자동 처리.
+0. **워크트리 (impl 류 루프 한정)** — *코드 변경 batch* (`/impl` `/impl-loop` `/auto-loop` `/quick`) 진입 시만 자동 `EnterWorktree(name="<목적>-{ts_short}")`. 메인 working tree 보호 + 동시 다중 세션 충돌 회피. **`/product-plan` / 모듈 설계 / 문서·시드 작업은 워크트리 X** — 충돌 회피 목적 부재. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 (예: "워크트리 빼고") 시에만 건너뜀. 수동 `git worktree add` 우회 금지 — CC permission 시스템이 EnterWorktree 만 sub-agent 권한 자동 처리.
 1. **수정 작업**.
 2. **commit 직전**: git pre-commit hook 자동 게이트 (main-block + pytest).
 3. **branch → PR → regular merge** (직접 `main` push 금지). CI PASS 후 메인이 즉시 머지 — *사용자 수동 승인 대기 X*.
