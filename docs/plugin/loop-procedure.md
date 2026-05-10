@@ -239,6 +239,14 @@ git checkout main && git pull --ff-only 2>/dev/null || true
 
 `impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` / `impl-loop` 의 inner task 에 한정. engineer `IMPL_DONE` 직후, validator 진입 *전*. 메인 직접 mechanical edit (agent 위임 X — 도메인 외).
 
+> **범위 외 path 사용자 책임 (#292 root cause 일부)** — 본 Step 4.5 자동 sync 는 위 4 loop 한정. 다음 path 들은 *자동 sync 없음* — 메인이 별도 처리:
+>
+> - `/quick` (`quick-bugfix-loop`) — 작은 버그픽스 / cleanup 용. 일반적으로 stories.md task 와 직접 매핑 안 됨. 단 *드물게* stories.md task 를 다루는 경우 메인이 PR 머지 후 stories.md `[x]` 직접 박을 것.
+> - engineer 직접 호출 (skill 우회) / 메인 직접 commit — *사용자 우회 path*. dcness 룰 미적용 영역.
+> - **dcness 도입 *이전* 작업분** — 룰 도입 전 commit 들의 stories.md 잔재. 1회 backfill 이 정상 (예: jajang PR #232 패턴 — `gh issue list --state closed` 매핑 → unchecked task 일괄 `[x]`). 이후 path 가 정상화되면 drift 0 유지.
+>
+> drift 검출은 `/run-review` / `/audit-redo` 가 사후 안내 (현재 detector 부재 — 후속 추적).
+
 ### 4.5.1 epic 경로 추출
 
 ```bash
