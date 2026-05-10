@@ -1,0 +1,75 @@
+name: 'dcness TDD gate'
+description: |
+  Run full project test suite as a required status check before merge.
+  Phase 1 — node 프로젝트 한정 (vitest/jest/등 — package.json scripts.test 위임).
+  package manager 자동 검출 (pnpm-lock.yaml / yarn.lock / bun.lock(b) / 기본 npm).
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '20'
+runs:
+  using: composite
+  steps:
+    - name: Verify node project
+      shell: bash
+      run: |
+        if [ ! -f package.json ]; then
+          echo "::error::package.json 부재 — phase 1 TDD 게이트는 node 프로젝트 한정. 비-node 프로젝트는 본 workflow 제거 또는 후속 phase 대기." >&2
+          exit 1
+        fi
+        if [ -z "$(node -e "const p=require('./package.json'); process.stdout.write(p.scripts && p.scripts.test || '')" 2>/dev/null)" ]; then
+          echo "::error::package.json scripts.test 미정의 — TDD 게이트가 강제할 테스트 명령 부재. scripts.test 정의 후 재시도." >&2
+          exit 1
+        fi
+
+    - name: Detect package manager
+      id: pm
+      shell: bash
+      run: |
+        if [ -f pnpm-lock.yaml ]; then
+          echo "pm=pnpm" >> "$GITHUB_OUTPUT"
+        elif [ -f yarn.lock ]; then
+          echo "pm=yarn" >> "$GITHUB_OUTPUT"
+        elif [ -f bun.lockb ] || [ -f bun.lock ]; then
+          echo "pm=bun" >> "$GITHUB_OUTPUT"
+        else
+          echo "pm=npm" >> "$GITHUB_OUTPUT"
+        fi
+        echo "[tdd-gate] package manager: $(cat "$GITHUB_OUTPUT" | grep ^pm= | tail -1)"
+
+    - name: Setup pnpm
+      if: steps.pm.outputs.pm == 'pnpm'
+      uses: pnpm/action-setup@v3
+      with:
+        version: 9
+
+    - name: Setup Bun
+      if: steps.pm.outputs.pm == 'bun'
+      uses: oven-sh/setup-bun@v2
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ steps.pm.outputs.pm == 'bun' && '' || steps.pm.outputs.pm }}
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        case "${{ steps.pm.outputs.pm }}" in
+          pnpm) pnpm install --frozen-lockfile ;;
+          yarn) yarn install --frozen-lockfile ;;
+          bun)  bun install --frozen-lockfile ;;
+          *)    npm ci ;;
+        esac
+
+    - name: Run tests
+      shell: bash
+      run: |
+        case "${{ steps.pm.outputs.pm }}" in
+          pnpm) pnpm test ;;
+          yarn) yarn test ;;
+          bun)  bun test ;;
+          *)    npm test ;;
+        esac

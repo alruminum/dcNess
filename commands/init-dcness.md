@@ -358,6 +358,101 @@ done
 
 이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.8 이 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 Step 2.8 발화. 단 시드는 *부재 시만* 이라 기존 docs 가 있으면 skip — 안전.
 
+### Step 2.9 — TDD 게이트 (옵션, node 프로젝트 한정)
+
+GitHub Actions CI 에서 *PR 머지 전 풀 테스트 스위트 PASS 강제*. branch protection 의 `required status check` 에 등록되면 진짜 mechanical wall (admin 외 우회 불가) 가 됨. 산업 표준 3 단 enforcement (로컬 incremental → CI 풀 → branch protection) 중 *CI 풀* 단.
+
+> **배경 (#320 #1)**: jajang Epic 12 task 03 에서 plan §3.5 가 `useAuthStore 기존 (변경 X)` 명시했는데 engineer 가 selector 패턴으로 바꿔서 *기존* 26 테스트 깨짐. engineer 의 자체 테스트는 *새 테스트 파일만* 돌리고 풀 스위트 미실행 → cascade 발견 지연. CI 풀 테스트 게이트 + branch protection 으로 mechanical 차단.
+
+#### 1. node 프로젝트 검출
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ ! -f "$PROJECT_ROOT/package.json" ]; then
+  echo "[dcness] package.json 부재 — TDD 게이트 skip (phase 1 = node 한정)"
+  # Step 2.9 종료
+fi
+```
+
+비-node 프로젝트 (Python / Rust / Go 등) 는 phase 2 후속. 본 단계 silent skip.
+
+#### 2. 사용자 옵트인
+
+`package.json` 존재 시 사용자에게 묻는다.
+
+```
+[dcness] GitHub Actions CI 에서 TDD 게이트 강제할까요?
+  - PR 마다 풀 테스트 스위트 (`<pm> test`) 자동 실행 — 1건이라도 FAIL 시 PR 머지 차단 (branch protection 필요)
+  - package manager 자동 검출 (pnpm-lock.yaml / yarn.lock / bun.lock(b) / 기본 npm)
+  - `package.json` `scripts.test` 미정의면 본 게이트 fail (테스트 명령 정의 의무)
+  - 본 thin yml 1개만 사용자 repo 에 깔리고, 검증 본체는 alruminum/dcNess composite action 호출
+  - 로컬에서만 테스트 돌리고 CI 강제 원치 않으면 n
+(Y/n)
+```
+
+- **Y**: 다음 thin yml 을 `$PROJECT_ROOT/.github/workflows/tdd-gate.yml` 로 *always-overwrite* (이미 존재해도 갱신):
+
+  ```yaml
+  name: tdd-gate
+  on:
+    pull_request:
+      branches: [main]
+      types: [opened, synchronize, reopened]
+  permissions:
+    contents: read
+  jobs:
+    test:
+      name: TDD gate (full test suite)
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: alruminum/dcNess/.github/actions/tdd-gate@main
+  ```
+
+  - 사용자 repo 에 검증 로직 cp 0 — package manager 검출 / install / test 실행 전부 dcNess composite action 안.
+  - 사용자가 `@main` 대신 `@v1.2.3` 등 tag pin 으로 버전 고정 가능.
+  - 머지 후 push → 다음 PR 부터 CI 자동 발화.
+
+- **n**: skip. 로컬 hook + 사용자 자율로만 테스트 enforce. CI 우회 가능 — 회귀 위험 ↑.
+
+출력 예시 (Y 선택):
+```
+[dcness] .github/workflows/tdd-gate.yml 갱신 (composite action 호출)
+[dcness] TDD 게이트 활성화 — 머지 후 push 시 다음 PR 부터 발화
+```
+
+#### 3. branch protection 안내 (사용자 수동 실행 권유)
+
+CI workflow 깔린 것만으론 *PR 머지를 차단* 안 됨 — branch protection 의 `required status checks` 에 등록되어야 진짜 wall. 아래 명령 안내:
+
+```
+[dcness] TDD 게이트가 진짜 mechanical wall 이 되려면 GitHub Branch Protection 의 required status check 에 'TDD gate (full test suite)' 등록 필요.
+
+자동 설정 (admin 권한 시):
+  gh api -X PUT repos/<OWNER>/<REPO>/branches/main/protection \
+    -f required_status_checks.strict=true \
+    -f 'required_status_checks.contexts[]=TDD gate (full test suite)' \
+    -f enforce_admins=null \
+    -f required_pull_request_reviews=null \
+    -f restrictions=null
+
+또는 GitHub UI 에서: Settings → Branches → main → Edit → 'Require status checks to pass before merging' → 'TDD gate (full test suite)' 검색 후 추가
+
+(주의 — 첫 PR 1건 이상 CI 통과 후에만 GitHub 가 status check 후보 인식. 처음엔 PR 띄운 후 등록.)
+```
+
+본 안내는 *출력만* — 메인 Claude 가 사용자 권한 확인 후 자동 실행할지 사용자 결정에 위임 (admin 권한 가정 위험 회피).
+
+#### 4. 한계 (phase 1)
+
+- node 한정 — Python / Rust / Go 등 후속 phase 추가 예정.
+- 풀 스위트만 — incremental (`vitest --changed` / `jest --findRelatedTests`) 로컬 hook 은 phase 2.
+- branch protection 자동 설정 안 함 — admin 권한 가정 위험. 안내문만 출력.
+
+#### 5. 기존 활성화 프로젝트 — re-run 안내
+
+이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.9 가 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 발화.
+
 ### Step 3 — 사용자 안내
 
 ```
@@ -381,6 +476,11 @@ design.md SSOT (Step 2.7 완료 시):
 초기 docs 폼 시드 (Step 2.8 완료 시):
 - docs/PRD.md / ARCHITECTURE.md / ADR.md placeholder — 기획 논의 후 채워넣는 용도
 - 부재 시만 시드 (멱등) — 기존 파일은 보호
+
+TDD 게이트 (Step 2.9 완료 시 — node 프로젝트 한정):
+- .github/workflows/tdd-gate.yml — PR 마다 풀 테스트 스위트 강제 (composite action 호출)
+- branch protection 의 required status checks 등록은 사용자 수동 (안내문 출력)
+- 산업 표준 3 단 enforcement 중 *CI 풀* 단. 로컬 incremental + branch protection 결합으로 진짜 wall 완성 (#320 #1 root fix)
 
 사용 가능한 skill:
 - /qa  — 이슈 분류
