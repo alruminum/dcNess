@@ -149,6 +149,40 @@ class WasteDetectionTests(unittest.TestCase):
         kinds = {w.pattern for w in wastes}
         self.assertIn("RETRY_SAME_FAIL", kinds)
 
+    def test_retry_same_fail_prose_logged_skip(self):
+        """이슈 #302 #1 — PROSE_LOGGED 는 prose-only mode 정상 sentinel.
+        연속 발생해도 RETRY_SAME_FAIL false positive 안 됨."""
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="architect", mode="MODULE_PLAN",
+                       enum="PROSE_LOGGED", must_fix=False, prose_excerpt="task 01"),
+            StepRecord(idx=1, ts="t2", agent="architect", mode="MODULE_PLAN",
+                       enum="PROSE_LOGGED", must_fix=False, prose_excerpt="task 02"),
+            StepRecord(idx=2, ts="t3", agent="architect", mode="MODULE_PLAN",
+                       enum="PROSE_LOGGED", must_fix=False, prose_excerpt="task 03"),
+        ]
+        wastes = detect_wastes(steps)
+        kinds = {w.pattern for w in wastes}
+        self.assertNotIn("RETRY_SAME_FAIL", kinds,
+                         "PROSE_LOGGED 는 advance sentinel — 연속 발생해도 retry 아님")
+
+    def test_retry_same_fail_different_prose_skip(self):
+        """이슈 #302 #1 — 같은 enum 이라도 prose 내용이 다르면 다른 invocation (N task 순회 등).
+        retry 아님."""
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="engineer", mode="IMPL",
+                       enum="TESTS_FAIL", must_fix=False,
+                       prose_excerpt="task 01 첫 시도",
+                       prose_full="task 01 첫 시도\n실패 원인 A"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="IMPL",
+                       enum="TESTS_FAIL", must_fix=False,
+                       prose_excerpt="task 02 첫 시도",
+                       prose_full="task 02 첫 시도\n실패 원인 B"),
+        ]
+        wastes = detect_wastes(steps)
+        kinds = {w.pattern for w in wastes}
+        self.assertNotIn("RETRY_SAME_FAIL", kinds,
+                         "다른 task / 다른 prose = 다른 invocation, retry 아님")
+
     def test_echo_violation(self):
         # prose_full 이 짧을 때만 ECHO_VIOLATION (prose_excerpt 기준 X)
         steps = [
