@@ -69,6 +69,10 @@ PLACEHOLDER_PATTERNS = [
     r"NotImplementedError", r"^\s*#\s*TODO\b", r"후보\s*\d+\s*개\s*비교",
 ]
 
+# 이슈 #321 C STRAY_DIR_LEAK — known infra dir 와 fuzzy match (typo 의심)
+# 예: `.claire` (실측 jajang run-dbd49faf task 1/2/3 사례) → `.claude` 의 typo
+KNOWN_INFRA_DIR_NAMES = [".claude", ".git", ".github"]
+
 INFRA_PATH_PATTERNS = [
     "/.claude/harness-state/", "/.claude/harness-logs/",
     "harness-memory.md", "harness.config.json", "/.claude/harness/",
@@ -115,6 +119,39 @@ def _has_self_verify_anchor(prose: str) -> bool:
         if re.search(pat, prose, re.MULTILINE | re.IGNORECASE):
             return True
     return False
+
+
+def _detect_stray_infra_dirs(prose: str) -> list[tuple[str, str, float]]:
+    """이슈 #321 C STRAY_DIR_LEAK — `.claude` / `.git` / `.github` 와 typo 의심 디렉토리.
+
+    prose 안 `.<word>(/|\\b)` 매치 + KNOWN_INFRA_DIR_NAMES 와 difflib similarity ≥ 0.78
+    이지만 정확 매치 아닌 후보 → typo 의심.
+
+    Returns list of (typo_name, intended_name, similarity_ratio).
+    """
+    if not prose:
+        return []
+    import difflib  # 표준 라이브러리. 모듈 top import 와 분리 (사용 시점 import 비용 무시).
+    # 4~10 문자 word — `.claude` (7자) / `.git` (4자) / `.github` (7자) 모두 커버
+    candidates = re.findall(r'(?<![./\w])\.([a-zA-Z][a-zA-Z0-9_-]{3,9})(?=[/\s\b]|$)', prose)
+    leaks: list[tuple[str, str, float]] = []
+    seen = set()
+    for cand in candidates:
+        full = "." + cand
+        full_lower = full.lower()
+        if full_lower in {n.lower() for n in KNOWN_INFRA_DIR_NAMES}:
+            continue
+        if full_lower in seen:
+            continue
+        seen.add(full_lower)
+        for known in KNOWN_INFRA_DIR_NAMES:
+            ratio = difflib.SequenceMatcher(None, full_lower, known).ratio()
+            # 0.70 = .claire/.claude 케이스 (실측 0.714) 커버, .vscode/.cargo/.cache
+            # 등 false positive 0건 (실측 모두 0.57 이하)
+            if ratio >= 0.70:
+                leaks.append((full, known, ratio))
+                break
+    return leaks
 
 
 # ── 데이터 모델 ────────────────────────────────────────────────────────
@@ -418,6 +455,21 @@ def detect_wastes(
                     fix="agents/architect/system-design.md §Spike Gate 정합 — concrete 구현 + sdk.md 갱신",
                 ))
                 break
+
+    # STRAY_DIR_LEAK — `.claude` 와 typo 의심 디렉토리 흔적 (#321 C)
+    # 실측: jajang run-dbd49faf task 1/2/3 `.claire` 3 회 연속.
+    for s in steps:
+        if not s.prose_full:
+            continue
+        for typo, intended, ratio in _detect_stray_infra_dirs(s.prose_full):
+            findings.append(WasteFinding(
+                pattern="STRAY_DIR_LEAK",
+                severity="MEDIUM",
+                step_idx=s.idx,
+                agent=s.agent,
+                detail=f"{s.agent} prose 안 `{typo}/` 흔적 — `{intended}/` typo 의심 (similarity {ratio:.2f})",
+                fix=f"agents/{s.agent}.md 디렉토리명 정확 인지 룰 보강 또는 사용자 환경 검증",
+            ))
 
     # MUST_FIX_GHOST — must_fix=true 이후 다음 step 진행
     for i, s in enumerate(steps):

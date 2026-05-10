@@ -203,6 +203,44 @@ class WasteDetectionTests(unittest.TestCase):
         wastes = detect_wastes(steps)
         self.assertFalse(any(w.pattern == "ECHO_VIOLATION" for w in wastes))
 
+    def test_stray_dir_leak_detected(self):
+        """이슈 #321 C STRAY_DIR_LEAK — `.claire` 같은 .claude typo 검출."""
+        steps = [
+            StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                       enum="IMPL_DONE", must_fix=False,
+                       prose_excerpt="x",
+                       prose_full="작업 위치 .claire/worktrees/foo/ 시작 — 검증 완료"),
+        ]
+        wastes = detect_wastes(steps)
+        leak = [w for w in wastes if w.pattern == "STRAY_DIR_LEAK"]
+        self.assertEqual(len(leak), 1)
+        self.assertIn(".claire", leak[0].detail)
+        self.assertIn(".claude", leak[0].detail)
+
+    def test_stray_dir_leak_correct_dir_skipped(self):
+        """정확 `.claude` 는 typo 아님 — 검출 X."""
+        steps = [
+            StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                       enum="IMPL_DONE", must_fix=False,
+                       prose_excerpt="x",
+                       prose_full="작업 위치 .claude/worktrees/foo/ 시작 — 검증 완료"),
+        ]
+        wastes = detect_wastes(steps)
+        kinds = {w.pattern for w in wastes}
+        self.assertNotIn("STRAY_DIR_LEAK", kinds)
+
+    def test_stray_dir_leak_unrelated_dir_skipped(self):
+        """완전 다른 디렉토리 (`.vscode` 같은) 는 fuzzy match 안 됨 — 검출 X."""
+        steps = [
+            StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
+                       enum="IMPL_DONE", must_fix=False,
+                       prose_excerpt="x",
+                       prose_full="설정 파일 .vscode/settings.json 갱신"),
+        ]
+        wastes = detect_wastes(steps)
+        kinds = {w.pattern for w in wastes}
+        self.assertNotIn("STRAY_DIR_LEAK", kinds)
+
     def test_placeholder_leak(self):
         steps = [
             StepRecord(idx=0, ts="t", agent="architect", mode="SYSTEM_DESIGN",
