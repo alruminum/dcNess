@@ -195,15 +195,33 @@ git commit -m "<type>: <task-slug>"
 "$HELPER" record-stage-commit src
 git push -u origin "$BRANCH"
 
-# PR body: Part of vs Closes 자동 판단
-REMAINING=$(grep -c '\[ \]' "$STORIES_FILE" 2>/dev/null || echo 0)
-if [ "$REMAINING" = "0" ]; then
-  PR_BODY="Closes #<story_issue>"
-  # 에픽 마지막 story 이면 "Closes #<epic_issue>" 도 추가
+# PR body: Part of vs Closes 자동 판단 (issue-lifecycle.md §1.4 적용 절차)
+# 본 task 의 *부모 Story 섹션* 에서만 [ ] 카운트 — 다른 Story 의 미완 task 와 섞이지 X.
+# 기존 stories.md 전체 grep 은 #320 #2 false positive 사단 (Story 1개 task 케이스 → false Part of).
+# stories.md SSOT 형식: 각 Story 헤더 직하 `**GitHub Issue:** [#MMM](url)` 마커 (issue-lifecycle.md §1.3).
+STORY_REMAINING=$(awk -v issue="#${STORY_ISSUE}" '
+  /\*\*GitHub Issue:\*\*/ {
+    if ($0 ~ "\\[" issue "\\]") {flag=1; next}
+    else {flag=0}
+  }
+  flag && /\[ \]/ {count++}
+  END {print count+0}
+' "$STORIES_FILE")
+
+if [ "$STORY_REMAINING" = "0" ]; then
+  # 본 task 가 부모 Story 의 마지막 → Closes
+  PR_BODY="Closes #${STORY_ISSUE}"
+  # 에픽 마지막 story 사전 체크 (issue-lifecycle.md §2.2)
+  EPIC_OPEN_STORIES=$(gh issue list --label "epic-${EPIC_NUM}-${EPIC_SLUG}" --state open --json number --jq 'length' 2>/dev/null || echo 0)
+  if [ "$EPIC_OPEN_STORIES" = "1" ]; then
+    # 본 story 1개만 OPEN — close 시 epic 도 close 예정
+    PR_BODY="${PR_BODY}
+Closes #${EPIC_ISSUE}"
+  fi
 else
-  PR_BODY="Part of #<story_issue>"
+  PR_BODY="Part of #${STORY_ISSUE}"
 fi
-gh pr create --title "<type>: <task-slug> (#<story_issue>)" --body "$PR_BODY"
+gh pr create --title "<type>: <task-slug> (#${STORY_ISSUE})" --body "$PR_BODY"
 ```
 
 ### Step 7a (impl-task-loop)
