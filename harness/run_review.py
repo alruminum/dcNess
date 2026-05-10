@@ -358,22 +358,37 @@ def detect_wastes(
     findings: list[WasteFinding] = []
 
     # RETRY_SAME_FAIL — 연속 동일 FAIL enum
+    # 이슈 #302 #1: prose-only mode (#284) 정착 후 PROSE_LOGGED 가 표준 advance enum.
+    # 또한 같은 (agent, mode) 가 N task 순회 정상 호출 (예: architect MODULE_PLAN × 4)
+    # 시 동일 enum 반복은 *retry 가 아닌 정상 호출* — prose 내용이 다르면 다른 step.
+    ADVANCE_ENUMS = {
+        "PASS", "READY_FOR_IMPL", "IMPL_DONE", "TESTS_WRITTEN", "LGTM",
+        "SECURE", "DESIGN_REVIEW_PASS", "BUGFIX_PASS", "PLAN_VALIDATION_PASS",
+        "UX_REVIEW_PASS", "SYSTEM_DESIGN_READY", "DOCS_SYNCED", "POLISH_DONE",
+        "SPEC_GAP_RESOLVED", "LIGHT_PLAN_READY", "PRODUCT_PLAN_READY",
+        "PLAN_REVIEW_PASS",
+        "PROSE_LOGGED",  # #284 prose-only mode default sentinel — 정상 종료
+    }
     for i in range(1, len(steps)):
         prev, cur = steps[i - 1], steps[i]
-        if prev.agent == cur.agent and prev.enum == cur.enum and prev.enum not in (
-            "PASS", "READY_FOR_IMPL", "IMPL_DONE", "TESTS_WRITTEN", "LGTM",
-            "SECURE", "DESIGN_REVIEW_PASS", "BUGFIX_PASS", "PLAN_VALIDATION_PASS",
-            "UX_REVIEW_PASS", "SYSTEM_DESIGN_READY", "DOCS_SYNCED", "POLISH_DONE",
-            "SPEC_GAP_RESOLVED", "LIGHT_PLAN_READY", "PRODUCT_PLAN_READY",
-        ):
-            findings.append(WasteFinding(
-                pattern="RETRY_SAME_FAIL",
-                severity="MEDIUM",
-                step_idx=i,
-                agent=cur.agent,
-                detail=f"step {i-1}→{i} 동일 enum 반복: {cur.enum}",
-                fix=f"agents/{cur.agent}.md fail 전략 강화 또는 impl 보강",
-            ))
+        if prev.agent != cur.agent or prev.enum != cur.enum:
+            continue
+        if prev.enum in ADVANCE_ENUMS:
+            continue
+        # prose 내용이 *다르면* 같은 enum 이라도 다른 invocation (N task 순회 등)
+        # — retry 아님. prose_excerpt 가 동일할 때만 진짜 retry 후보.
+        prev_prose = prev.prose_full or prev.prose_excerpt
+        cur_prose = cur.prose_full or cur.prose_excerpt
+        if prev_prose and cur_prose and prev_prose != cur_prose:
+            continue
+        findings.append(WasteFinding(
+            pattern="RETRY_SAME_FAIL",
+            severity="MEDIUM",
+            step_idx=i,
+            agent=cur.agent,
+            detail=f"step {i-1}→{i} 동일 enum 반복: {cur.enum}",
+            fix=f"agents/{cur.agent}.md fail 전략 강화 또는 impl 보강",
+        ))
 
     # ECHO_VIOLATION — prose 전체 줄 수 기준 (prose_full). prose_full 없는 레코드는 skip.
     for s in steps:
