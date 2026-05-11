@@ -4,6 +4,60 @@
 
 ---
 
+## v0.2.10 (2026-05-10)
+
+**커밋 범위**: `9a63e28..(다음 태그)`
+**핵심 변경**: jajang Epic 12 회고 통합 — 진짜 bug 5건 root fix (이슈 #320 / #302 / #321 C / #292)
+
+- **이슈 #320 #1 — TDD 게이트 3 단 (PR #322)**: jajang Epic 12 task 03 cascade 26
+  cases 사단 root fix. engineer 의 prompt-level boundary 룰 (echo / grep) 은 차단력
+  0 → mechanical wall 도입. 산업 표준 (incremental pre-commit → CI 풀 → branch
+  protection) 중 *CI 풀* + *branch protection* 단을 dcness 가 배포.
+  - `.github/actions/tdd-gate/action.yml` 신규 (node 전용, pm 자동 검출)
+  - `commands/init-dcness.md` Step 2.9 추가 — 옵트인 thin yml + branch protection 안내
+
+- **이슈 #320 #2 — PR body Closes pre-flight (PR #324)**: jajang Story 2 #239 OPEN
+  영구 잔존 사단. `loop-procedure.md §3.4` 의 PR body 자동 판단 bash 가 stories.md
+  *전체* `[ ]` 카운트 → 다른 Story 미완 task 와 섞임 → 본 task 가 부모 Story 마지막
+  이라도 `Part of` 박힘. awk 으로 부모 Story 섹션 한정 카운트로 교체.
+  - `docs/plugin/loop-procedure.md` §3.4 bash 골격 수정
+  - `docs/plugin/issue-lifecycle.md` §1.4 적용 절차 4 step 명문화 추가
+
+- **이슈 #302 #1 — RETRY_SAME_FAIL allow-list 보강 (PR #323)**: jajang run-cf83861d
+  false positive 3건 — architect MODULE_PLAN × 4 task 정상 호출이 retry 오인 → review
+  trust 저하. `harness/run_review.py` allow-list 에 `PROSE_LOGGED` (#284 prose-only
+  mode 표준 sentinel) 추가 + prose 내용 다르면 다른 invocation 으로 판정 룰 추가.
+  - 회귀 테스트 2 추가 (test_retry_same_fail_prose_logged_skip /
+    test_retry_same_fail_different_prose_skip)
+
+- **이슈 #321 C 1/4 — STRAY_DIR_LEAK detector (PR #325)**: jajang run-dbd49faf
+  `.claire` × 3 회 연속 typo 사례. `harness/run_review.py:detect_wastes` 에 typo
+  의심 디렉토리 검출 추가 (difflib similarity 0.70 threshold + KNOWN_INFRA_DIR_NAMES
+  allow-list).
+  - 회귀 테스트 3 추가. false positive 후보 9개 검증 (.vscode/.cargo/.cache 등
+    모두 0.70 미만)
+
+- **이슈 #292 partial — Step 4.5 범위 외 path 명문화 (PR #326)**: jajang main
+  stories.md drift 177건의 root cause 일부 명문화. `loop-procedure.md §4` 본문에
+  `quick-bugfix-loop` / engineer 직접 호출 / 메인 직접 commit / dcness 도입 이전
+  잔재 — 사용자 책임 path 명시 + backfill 가이드 cross-link.
+
+**배포 경로** (CLAUDE.md §0.5):
+- (1) plug-in 본체 — `harness/`, `agents/` 변경은 plug-in 업데이트 자동 반영
+- (2) init-dcness 배포 — Step 2.9 신규 (TDD 게이트). 기존 활성 프로젝트는
+  `/init-dcness` 재실행 필요 — Step 2.9 자동 발화하여 thin yml 옵트인
+- (3) SSOT 문서 — `loop-procedure.md` / `issue-lifecycle.md` plug-in cache 직접 read
+
+**업데이트**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 활성화 프로젝트는 추가로 `/init-dcness` 재실행 (Step 2.9 발화 + TDD 게이트
+옵트인 + branch protection 안내). 멱등 — 다른 Step 들은 이미 적용된 경우 skip.
+
+---
+
 ## v0.2.9 (2026-05-09)
 
 **커밋 범위**: `156691f..(다음 태그)`
