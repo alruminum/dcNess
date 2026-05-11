@@ -11,7 +11,7 @@
 skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`orchestration.md`](orchestration.md) §4.1 인덱스 + 해당 loop 풀스펙 sub-section** 보고 task 리스트 동적 구성 → §1~§6 mechanics 따름.
 
 - **skill 경유**: `commands/<skill>.md` 의 `Loop` 필드가 orchestration §4 행 가리킴. skill 은 input 정형화 + 라우팅 추천만 — 절차는 본 SSOT, loop spec 은 orchestration §4.
-- **직접 발화** ("이거 quick 으로 가자"): orchestration.md §3 mini-graph + §4.1 인덱스 보고 메인이 자율 구성. 강제 X.
+- **직접 발화** ("이거 impl 로 가자"): orchestration.md §3 mini-graph + §4.1 인덱스 보고 메인이 자율 구성. 강제 X.
 - **dcness-rules.md (SessionStart inject)**: 본 문서 + catalog 모두 read 의무 명시. 매 세션 진입 시 메인 자동 인지.
 
 ---
@@ -20,7 +20,7 @@ skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`orchestration.md`
 
 ### 1.1 worktree 분기 (impl 류 루프 한정)
 
-**행동형 skill 중 *코드 변경 batch* (`/quick` `/impl` `/impl-loop` `/auto-loop`) 진입 시만 EnterWorktree 자동 호출**. 동시 다중 세션 충돌 회피 + 메인 working tree 보호.
+**행동형 skill 중 *코드 변경 batch* (`/impl` `/impl-loop` `/auto-loop`) 진입 시만 EnterWorktree 자동 호출**. 동시 다중 세션 충돌 회피 + 메인 working tree 보호.
 
 **`/product-plan` / 모듈 설계 / 문서·시드 작업은 워크트리 X** — 본 작업은 충돌 회피 목적 부재. 메인 working tree 에서 별 branch 따고 직접 진행.
 
@@ -53,7 +53,7 @@ RUN_ID=$("$HELPER" begin-run <entry_point> [--issue-num N])
 echo "[<entry>] run started: $RUN_ID"
 ```
 
-`<entry_point>` = §7 매트릭스 행의 `entry_point` 컬럼 (예: `quick`, `impl`, `impl-loop`, `qa`, `product-plan`). begin-run 동작: sid auto-detect + run_id 발급 + `live.json.active_runs` 슬롯 + `.by-pid-current-run/{cc_pid}` 박음.
+`<entry_point>` = §7 매트릭스 행의 `entry_point` 컬럼 (예: `impl`, `impl-loop`, `qa`, `product-plan`). begin-run 동작: sid auto-detect + run_id 발급 + `live.json.active_runs` 슬롯 + `.by-pid-current-run/{cc_pid}` 박음.
 
 ---
 
@@ -244,7 +244,6 @@ git checkout main && git pull --ff-only 2>/dev/null || true
 
 > **범위 외 path 사용자 책임 (#292 root cause 일부)** — 본 Step 4.5 자동 sync 는 위 4 loop 한정. 다음 path 들은 *자동 sync 없음* — 메인이 별도 처리:
 >
-> - `/quick` (`quick-bugfix-loop`) — 작은 버그픽스 / cleanup 용. 일반적으로 stories.md task 와 직접 매핑 안 됨. 단 *드물게* stories.md task 를 다루는 경우 메인이 PR 머지 후 stories.md `[x]` 직접 박을 것.
 > - engineer 직접 호출 (skill 우회) / 메인 직접 commit — *사용자 우회 path*. dcness 룰 미적용 영역.
 > - **dcness 도입 *이전* 작업분** — 룰 도입 전 commit 들의 stories.md 잔재. 1회 backfill 이 정상 (예: jajang PR #232 패턴 — `gh issue list --state closed` 매핑 → unchecked task 일괄 `[x]`). 이후 path 가 정상화되면 drift 0 유지.
 >

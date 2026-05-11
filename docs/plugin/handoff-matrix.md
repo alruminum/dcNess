@@ -196,8 +196,8 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | module-architect | 신규 story (feature-build-loop §4.2 Step 7) / 보강 (engineer SPEC_GAP_FOUND) | ❌ | impl_driver / plan_driver 경유 |
 | module-architect | 버그픽스 (qa 후) / 문서 동기화 | ✅ | 메인 직접 |
 | architecture-validator | — | ✅ | 메인 직접 |
-| code-validator | — | ❌ | impl_driver / quick-bugfix-loop 경유 |
-| 그 외 9 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, design-critic, product-planner, test-engineer, plan-reviewer 모두 메인 직접 |
+| code-validator | — | ❌ | impl_driver 경유 |
+| 그 외 9 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, design-critic, product-planner, test-engineer, plan-reviewer, security-reviewer 모두 메인 직접 |
 | engineer | — | ❌ | impl_driver 경유 필수 |
 
 ### 4.2 Write/Edit 허용 경로 (ALLOW_MATRIX)

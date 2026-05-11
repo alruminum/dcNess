@@ -6,7 +6,7 @@ description: impl task list (feature-build-loop §4.2 Step 7 module-architect ×
 # Impl Loop Skill
 
 ## Loop
-`impl-task-loop × N` ([orchestration.md §4.10](../docs/plugin/orchestration.md) — 다중 task chain).
+`impl-task-loop × N` ([orchestration.md §4.9](../docs/plugin/orchestration.md) — 다중 task chain).
 inner = `impl-task-loop` (orchestration §4.3) per task.
 
 ## Inputs (메인이 사용자에게 받아야 할 정보)
@@ -16,7 +16,6 @@ inner = `impl-task-loop` (orchestration §4.3) per task.
 
 ## 비대상 (다른 skill 추천)
 - task 1개 → `/impl`
-- 한 줄 → `/quick`
 - spec / design → `/product-plan`
 
 ## Outer / inner 컨벤션 (DCN-30-12)
@@ -29,7 +28,7 @@ inner = `impl-task-loop` (orchestration §4.3) per task.
 - 전체 완료 → 보고 (처리 N/N + 각 PR URL)
 
 ## 사전 read (skill 진입 즉시)
-`docs/plugin/loop-procedure.md` + `docs/plugin/orchestration.md` §4.3 + §4.10 + `docs/plugin/handoff-matrix.md` + `docs/plugin/issue-lifecycle.md` read 후 진행.
+`docs/plugin/loop-procedure.md` + `docs/plugin/orchestration.md` §4.3 + §4.9 + `docs/plugin/handoff-matrix.md` + `docs/plugin/issue-lifecycle.md` read 후 진행.
 
 ## 워크트리 (기본 켜짐)
 Skill 진입 시 *outer* 단계에서 자동 `EnterWorktree(name="impl-loop-{ts_short}")` 1회. 모든 inner task 가 같은 워크트리 안에서 진행. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
@@ -38,7 +37,7 @@ Skill 진입 시 *outer* 단계에서 자동 `EnterWorktree(name="impl-loop-{ts_
 [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §6 매치 강제 — 부모 epic stories.md 의 epic/story 이슈 매치 부재 시 해당 task STOP + 사용자 보고. silent skip 금지.
 
 ## 절차
-[`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.3 (inner) + §4.10 (chain 정책) 따름.
+[`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.3 (inner) + §4.9 (chain 정책) 따름.
 
 ## 한계
 - task 의존성 자동 판단 X (v1 = 무조건 직렬, SD impl 목차 순서 / list 순서 = 의존 표현)

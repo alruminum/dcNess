@@ -343,11 +343,6 @@ _REFERENCE_TRAJECTORIES: dict[str, list[tuple[str, Optional[str], str]]] = {
         ("validator",     "CODE_VALIDATION",  "PASS"),
         ("pr-reviewer",   None,               "LGTM"),
     ],
-    "quick_bugfix_loop": [
-        ("engineer",      "IMPL",             "IMPL_DONE"),
-        ("validator",     "BUGFIX_VALIDATION","BUGFIX_PASS"),
-        ("pr-reviewer",   None,               "LGTM"),
-    ],
     "feature_build_fragment": [
         ("product-planner","PRODUCT_PLAN",    "PRODUCT_PLAN_READY"),
         ("architect",      "SYSTEM_DESIGN",   "SYSTEM_DESIGN_READY"),
@@ -407,30 +402,6 @@ _ACTUAL_SCENARIOS: list[dict] = [
         "expect_strict":    False,  # 추가 step 있어서 순서 불일치
         "expect_superset":  True,   # reference 필수 단계 모두 포함
         "expect_subset":    False,  # architect/SPEC_GAP 은 reference 외 단계
-    },
-    {
-        "name": "bugfix_happy_path",
-        "reference": "quick_bugfix_loop",
-        "actual": [
-            ("engineer",      "IMPL",             "IMPL_DONE"),
-            ("validator",     "BUGFIX_VALIDATION","BUGFIX_PASS"),
-            ("pr-reviewer",   None,               "LGTM"),
-        ],
-        "expect_strict":    True,
-        "expect_superset":  True,
-        "expect_subset":    True,
-    },
-    {
-        "name": "bugfix_wrong_validator_mode",
-        "reference": "quick_bugfix_loop",
-        "actual": [
-            ("engineer",      "IMPL",             "IMPL_DONE"),
-            ("validator",     "CODE_VALIDATION",  "PASS"),  # BUGFIX_VALIDATION 대신 CODE_VALIDATION 사용
-            ("pr-reviewer",   None,               "LGTM"),
-        ],
-        "expect_strict":    False,  # validator 모드 불일치
-        "expect_superset":  False,  # BUGFIX_VALIDATION 없음
-        "expect_subset":    False,  # CODE_VALIDATION 은 reference 에 없음
     },
     {
         "name": "polish_happy_path",
