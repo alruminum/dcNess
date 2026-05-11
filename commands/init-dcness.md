@@ -358,216 +358,51 @@ done
 
 이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.8 이 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 Step 2.8 발화. 단 시드는 *부재 시만* 이라 기존 docs 가 있으면 skip — 안전.
 
-### Step 2.9 — TDD 게이트 (옵션, polyglot universal + affected detection)
+### Step 2.9 — TDD Guard (PreToolUse hook 자동 발화)
 
-GitHub Actions CI 에서 *PR 머지 전 affected 테스트 PASS 강제*. branch protection 의 `required status check` 에 등록되면 진짜 mechanical wall (admin 외 우회 불가) 가 됨.
+agent (메인 Claude / engineer / 등) 가 `Edit` / `Write` 시도 시 **PreToolUse hook 이 실행** → 대상 src 파일에 매칭 test 파일이 없으면 deny + 한국어 안내. 진짜 TDD 강제 — 코드 작성 *전* 테스트 먼저.
 
-> **배경 (#320 #1)**: jajang Epic 12 task 03 에서 plan §3.5 가 `useAuthStore 기존 (변경 X)` 명시했는데 engineer 가 selector 패턴으로 바꿔서 *기존* 26 테스트 깨짐. CI 테스트 게이트 + branch protection 으로 mechanical 차단.
+> **배경**: 이전 v0.2.10~v0.2.13 의 CI 게이트 / commit-msg TDD chain 은 monorepo lifecycle hook / pm 다양성 / missing test script 등 함정 누적 → 폐기. PreToolUse 시점 차단이 진짜 root — 사후 검증 아닌 *작성 전* 강제.
 
-> **phase 3 — affected detection 자동**: composite action 이 4 언어 (node / python / rust / go) 자동 검출 + 변경분 affected 만 실행. 사용자 설정 0.
->
-> - **node**: nx / turbo / pnpm workspaces 자동 검출 → `nx affected` / `turbo --filter=...[base]` / `pnpm -F "...[base]"` (dependency 그래프 자동 포함). 단일 패키지 / yarn classic / npm workspaces → 풀 폴백.
-> - **python**: 변경 `.py` 파일의 *가장 가까운 상위* `pyproject.toml` / `setup.py` 식별 → 그 안에서만 pytest. 변경 0건 → skip.
-> - **rust**: `[workspace]` 검출 시 변경 파일 → member 매핑 → `cargo test -p <member>`. 단일 crate → `cargo test`.
-> - **go**: 변경 `.go` 파일의 package path 추출 → `go test ./<path>/...`. 변경 0건 → skip.
->
-> jajang (apps/mobile=js + apps/api=python) 같은 polyglot 모노레포 자동 cover — 웹 변경 = mobile 테스트만, api 변경 = api 테스트만.
+#### 1. 자동 적용 — 사용자 설정 0
 
-#### 1. 지원 언어 검출
+`hooks/tdd-guard.sh` 가 plug-in hook 으로 등록됨 (`hooks/hooks.json` 의 PreToolUse[Edit|Write|NotebookEdit] matcher). 활성화한 프로젝트에서 자동 발화.
 
-다음 마커 중 1+ 매치 시 TDD 게이트 적용 가능:
+발화 흐름:
+- `tool_input.file_path` 추출
+- TS / JS 코드 파일 (`.ts/.tsx/.js/.jsx`) 인지 검사
+- *아니면* silent skip (config / md / json / yml / types / Next.js layout/page/error 등 자동 제외)
+- 매칭 test 파일 존재 검사:
+  - `<dir>/<name>.test.<ext>` / `.spec.<ext>`
+  - `<dir>/__tests__/<name>.test.<ext>` 등
+  - 부모 디렉토리 `__tests__/`
+  - 프로젝트 root `src/__tests__/`
+- 없으면 deny + 한국어 메시지: *"TDD GUARD: '`<name>`'에 대한 테스트 파일이 존재하지 않습니다. 구현 코드를 작성하기 전에 테스트를 먼저 작성하세요."*
 
-| 언어 | 검출 마커 | 테스트 명령 |
-|---|---|---|
-| node | `package.json` | `<pm> test` (pm = pnpm/yarn/bun/npm 자동) |
-| python | `pyproject.toml` / `setup.py` / `setup.cfg` / `requirements*.txt` | `pytest` (unittest 자동 검출 포함) |
-| rust | `Cargo.toml` | `cargo test --all` |
-| go | `go.mod` | `go test ./...` |
+#### 2. TS/JS 프로젝트 한정
 
-```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
-HAS_SUPPORTED=false
-[ -f "$PROJECT_ROOT/package.json" ] && HAS_SUPPORTED=true
-[ -f "$PROJECT_ROOT/pyproject.toml" ] || [ -f "$PROJECT_ROOT/setup.py" ] \
-  || [ -f "$PROJECT_ROOT/setup.cfg" ] \
-  || ls "$PROJECT_ROOT"/requirements*.txt 2>/dev/null | grep -q . \
-  && HAS_SUPPORTED=true
-[ -f "$PROJECT_ROOT/Cargo.toml" ] && HAS_SUPPORTED=true
-[ -f "$PROJECT_ROOT/go.mod" ] && HAS_SUPPORTED=true
-if [ "$HAS_SUPPORTED" = "false" ]; then
-  echo "[dcness] 지원 언어 (node/python/rust/go) 검출 안 됨 — TDD 게이트 skip"
-  # Step 2.9 종료
-fi
-```
+`.ts/.tsx/.js/.jsx` 아닌 파일 = silent skip. 즉:
+- Python / Rust / Go 프로젝트: hook 발화하지만 매칭 파일 없어서 차단 X
+- dcness self (Python): 영향 0
 
-지원 외 (Elixir / Ruby / Java / .NET / PHP / Swift 등) 는 phase 3 후속. 본 단계 silent skip.
+#### 3. 자동 skip 룰
 
-#### 2. 사용자 옵트인
+다음은 자동 통과 (TDD 강제 안 함):
+- 테스트 파일 자체 (`*.test.*` / `*.spec.*` / `__tests__/`)
+- 설정 (`*.json` / `*.yml` / `*.yaml` / `*.env*` / `*.config.*` / `tailwind*` / `postcss*` / `next.config*` / `tsconfig*`)
+- 타입 (`types/` / `types.ts` / `types.d.ts`)
+- Next.js 특수 (`layout` / `page` / `loading` / `error` / `not-found` / `globals.css`)
+- 비-코드 (`*.md` / `*.css` / `*.scss`)
 
-지원 언어 검출 시 사용자에게 묻는다.
+#### 4. 한계
 
-```
-[dcness] GitHub Actions CI 에서 TDD 게이트 강제할까요?
-  - PR 마다 affected 테스트 자동 실행 — 1건이라도 FAIL 시 PR 머지 차단 (branch protection 필요)
-  - polyglot universal — node / python / rust / go 자동 검출
-  - 변경분 기반 (사용자 설정 0):
-    - node: nx / turbo / pnpm workspaces 자동 detect → affected 만. 의존성 그래프 자동 포함.
-    - python: 변경 .py 의 root pyproject 식별 → 그 안에서만 pytest
-    - rust: workspace 멤버 자동 매핑 → cargo test -p <member>
-    - go: 변경 package path 만 → go test ./<path>/...
-  - 본 thin yml 1개만 사용자 repo 에 깔리고, 검증 본체는 alruminum/dcNess composite action 호출
-  - 로컬에서만 테스트 돌리고 CI 강제 원치 않으면 n
-(Y/n)
-```
-
-- **Y**: 다음 thin yml 을 `$PROJECT_ROOT/.github/workflows/tdd-gate.yml` 로 *always-overwrite* (이미 존재해도 갱신):
-
-  ```yaml
-  name: tdd-gate
-  on:
-    pull_request:
-      branches: [main]
-      types: [opened, synchronize, reopened]
-  permissions:
-    contents: read
-  jobs:
-    test:
-      name: TDD gate (full test suite)
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-          with:
-            fetch-depth: 0  # branch diff (PR base sha) 추출 위해 full history 필요
-        - uses: alruminum/dcNess/.github/actions/tdd-gate@main
-          # with:
-          #   ignore_scripts: true  # monorepo prepare/postinstall hook self-block 시 옵트인
-  ```
-
-  - 사용자 repo 에 검증 로직 cp 0 — package manager 검출 / install / test 실행 전부 dcNess composite action 안.
-  - 사용자가 `@main` 대신 `@v1.2.3` 등 tag pin 으로 버전 고정 가능.
-  - 머지 후 push → 다음 PR 부터 CI 자동 발화.
-  - **monorepo prepare/postinstall self-block 회피**: workspace 안 `"prepare": "npm run build"` 같은 hook 이 root install 시 발화 → tsc 빌드 실패 → tdd-gate self-block. 이런 경우 `ignore_scripts: true` 옵트인.
-
-- **n**: skip. 로컬 hook + 사용자 자율로만 테스트 enforce. CI 우회 가능 — 회귀 위험 ↑.
-
-출력 예시 (Y 선택):
-```
-[dcness] .github/workflows/tdd-gate.yml 갱신 (composite action 호출)
-[dcness] TDD 게이트 활성화 — 머지 후 push 시 다음 PR 부터 발화
-```
-
-#### 3. branch protection 안내 (사용자 수동 실행 권유)
-
-CI workflow 깔린 것만으론 *PR 머지를 차단* 안 됨 — branch protection 의 `required status checks` 에 등록되어야 진짜 wall. 아래 명령 안내:
-
-```
-[dcness] TDD 게이트가 진짜 mechanical wall 이 되려면 GitHub Branch Protection 의 required status check 에 'TDD gate (full test suite)' 등록 필요.
-
-자동 설정 (admin 권한 시):
-  gh api -X PUT repos/<OWNER>/<REPO>/branches/main/protection \
-    -f required_status_checks.strict=true \
-    -f 'required_status_checks.contexts[]=TDD gate (full test suite)' \
-    -f enforce_admins=null \
-    -f required_pull_request_reviews=null \
-    -f restrictions=null
-
-또는 GitHub UI 에서: Settings → Branches → main → Edit → 'Require status checks to pass before merging' → 'TDD gate (full test suite)' 검색 후 추가
-
-(주의 — 첫 PR 1건 이상 CI 통과 후에만 GitHub 가 status check 후보 인식. 처음엔 PR 띄운 후 등록.)
-```
-
-본 안내는 *출력만* — 메인 Claude 가 사용자 권한 확인 후 자동 실행할지 사용자 결정에 위임 (admin 권한 가정 위험 회피).
-
-#### 4. 한계 (phase 3)
-
-- 지원 언어 4 (node / python / rust / go) — Elixir / Ruby / Java / .NET / PHP / Swift 는 phase 4 후속.
-- branch protection 자동 설정 안 함 — admin 권한 가정 위험. 안내문만 출력.
-- python: poetry / pdm / uv 같은 modern tooling = pip 폴백. 진정한 native 지원은 phase 4.
-- python/rust/go 의 dependency 그래프 자동 포함 = phase 4 (현재는 path 기반).
-- node yarn classic / npm workspaces / bun = 풀 스위트 폴백 (native affected filter 약함).
-- rust: toolchain pin 필요 시 사용자 workflow 에서 추가. 기본은 ubuntu-latest 의 stable.
-
-#### 5. 기존 활성화 프로젝트 — re-run 안내
-
-이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.9 가 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 발화.
-
-### Step 2.10 — Pre-commit TDD 게이트 (옵션, commit 단 차단)
-
-CI tdd-gate (Step 2.9) 가 *PR 머지 차단* 인 반면, 본 Step 2.10 은 *commit 자체 차단* — 깨진 코드가 *push 전*, *PR 전* 단계에서 거름. branch protection 의존성 0 — 진짜 자체완결 wall.
-
-> **배경 (#320 #1 phase 4)**: CI 게이트 는 branch protection 등록 *후* 만 wall. 사용자 추가 설정 의존성. 또한 `gh pr checks --watch` 강제 (git-naming-spec §6) 가 Claude 흐름 병목. commit-msg hook 으로 commit 단 차단 = 사용자 추가 설정 0 + 즉시 발화.
-
-> **진짜 TDD**: test-engineer 작성 test → engineer 구현 → test 통과해야 commit. *변경분 test 만* 실행 (5~15개 단위, 수초). 풀 스위트 아님.
-
-#### 1. 룰
-
-commit-msg hook 발화 시점에:
-
-1. **옵트인 마커 검사** — `.dcness/tdd-gate-enabled` 파일 없으면 silent PASS (다른 프로젝트 영향 회피)
-2. **skip marker 검사** — commit message 안 `[skip-test: <사유>]` 매치 → PASS (단순 typo / 문서 변경 우회)
-3. **staged 분석**:
-   - `staged_src` = staged 안 코드 확장자 파일 (test 제외)
-   - `staged_test` + `branch_diff_test` (origin/main...HEAD 의 test) → `all_test`
-4. **분기**:
-   - `staged_src` 0 → PASS (docs / config 변경)
-   - `staged_src` 1+ 있고 `all_test` 0 → BLOCK
-   - `all_test` 1+ → 그 test 실행 → 1건이라도 FAIL → BLOCK
-
-#### 2. 사용자 옵트인
-
-```
-[dcness] Pre-commit TDD 게이트 활성화할까요?
-  - staged 안 src 변경 = test 변경 함께 staged 또는 같은 branch 안 있어야 commit 통과
-  - 검출된 test 만 실행 (5~15개 단위, 수초) — 풀 스위트 X
-  - 4 언어 자동 검출 (node jest/vitest, python pytest, rust cargo, go go test)
-  - dcness 의 3-commit 구조 (docs/tests/src) 와 자연 정합 — commit2 의 test 가 branch diff 에 인식됨
-  - 우회: commit message 에 `[skip-test: <사유>]` marker
-  - 옵트인 마커 `.dcness/tdd-gate-enabled` 가 활성화 신호. 다른 프로젝트 영향 0.
-(Y/n)
-```
-
-- **Y**:
-  - `.dcness/tdd-gate-enabled` 빈 파일 작성 (git add 권장 — 팀 공유)
-  - 사용자에게 commit-msg shim 이 이미 깔려있음을 안내 (Step 2.6 의 thin shim 이 자동으로 TDD 게이트 chain 호출)
-- **n**: skip — 마커 작성 안 함. hook 은 silent pass-through.
-
-```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
-mkdir -p "$PROJECT_ROOT/.dcness"
-touch "$PROJECT_ROOT/.dcness/tdd-gate-enabled"
-echo "[dcness] .dcness/tdd-gate-enabled 마커 작성 — pre-commit TDD 게이트 활성. 다음 commit 부터 발화."
-echo "[dcness] 권장: git add .dcness/tdd-gate-enabled (팀 공유)"
-```
-
-#### 3. 3-commit 구조 정합
-
-dcness 의 impl-task-loop 가 박는 3-commit (loop-procedure §3.4):
-
-| commit | stage | staged_src | all_test | TDD 게이트 |
-|---|---|---|---|---|
-| commit1 (docs) | `docs/impl/NN-*.md` | 0 | 0 | PASS |
-| commit2 (tests) | `src/__tests__/**` | 0 (test 만) | branch test | PASS + test 실행 |
-| commit3 (src) | `src/**` + stories.md | 있음 | commit2 의 test 가 branch diff 에 인식 | PASS + test 실행 |
-
-위반 (3-commit 구조 우회 / 임의 commit):
-- src 만 stage, test 0 → BLOCK
-- 사용자 `[skip-test: <사유>]` marker 또는 test 추가 후 재시도
-
-#### 4. 한계 (v0.2.13)
-
-- node test runner: jest / vitest 자동. 그 외 (mocha / ava 등) → `npm test` 폴백
-- python: `pytest <files>` 직접. unittest 만 쓰는 프로젝트 면 marker 우회
-- rust: 단순화 — `cargo test` 풀 폴백 (변경 test 파일만 실행 native 한계)
-- go: 변경 test 의 dirname → `go test ./<dir>/...`
-- 형식 강제 + 실행 강제 둘 다 — 변경분만이라 빠름 (수초)
-
-#### 5. 기존 활성화 프로젝트 — re-run 안내
-
-이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.10 이 자동 발화하지 않음. plug-in 업데이트 + `/init-dcness` 재실행 시 발화. commit-msg shim 은 이미 chain 로직 박혀있어 마커만 작성하면 즉시 동작.
+- TS / JS 한정 — 다른 언어는 phase 후속
+- *test 실행 X* — 존재만 확인. 실행은 사용자 개별 (vitest watch / CI 등)
+- agent 가 hook 우회 (예: `Bash` 으로 직접 파일 작성) 시 차단 X — 단 catastrophic-gate 등 다른 hook 이 잡음
 
 ### Step 2.11 — 자동 commit + PR (인프라 머지 자동화)
 
-Step 2.6 ~ 2.10 까지 *깔린 파일들* (workflow yml / `.dcness/` 마커 등) 은 working tree 변경 상태로 머무름 — 사용자가 git add / commit / push / PR 까지 직접 진행하지 않으면 **main 머지 안 됨 → workflow 가 GitHub 에 안 등록 → CI 게이트 dead code**. 본 Step 이 그 부담을 자동화.
+Step 2.6 ~ 2.9 까지 *깔린 파일들* (workflow yml 등) 은 working tree 변경 상태로 머무름 — 사용자가 git add / commit / push / PR 까지 직접 진행하지 않으면 main 머지 안 됨. 본 Step 이 그 부담을 자동화.
 
 #### 1. 변경 파일 검출
 
@@ -712,27 +547,16 @@ design.md SSOT (Step 2.7 완료 시):
 - docs/PRD.md / ARCHITECTURE.md / ADR.md placeholder — 기획 논의 후 채워넣는 용도
 - 부재 시만 시드 (멱등) — 기존 파일은 보호
 
-TDD 게이트 (Step 2.9 완료 시 — polyglot universal + affected detection):
-- .github/workflows/tdd-gate.yml — PR 마다 affected 테스트 강제 (composite action 호출)
-- 지원 언어 4: node / python / rust / go 자동 검출 + 변경분만 실행
-- node: nx / turbo / pnpm workspaces 자동 detect → dependency 그래프 포함 affected
-- python/rust/go: 변경 파일 path 기반 root 식별 → 해당 root 만 테스트
-- branch protection 의 required status checks 등록은 사용자 수동 (안내문 출력)
-- 사용자 설정 0 — 도구 분기 / 위임 명령 작성 불필요 (#320 #1 phase 3 root fix)
-
-Pre-commit TDD 게이트 (Step 2.10 완료 시 — commit 단 차단):
-- commit-msg hook chain — git-naming 검증 후 TDD 게이트 발화
-- 옵트인 마커 `.dcness/tdd-gate-enabled` 있을 때만 발화 (다른 프로젝트 영향 0)
-- staged src 변경 = staged 또는 branch diff 안 test 함께 있어야 commit 통과
-- 검출된 변경분 test 만 실행 (5~15개 단위, 수초) — 풀 스위트 X
-- 4 언어 자동 (node jest/vitest, python pytest, rust cargo, go go test)
-- 우회: commit message 안 `[skip-test: <사유>]` marker
-- branch protection 의존성 0 — 진짜 자체완결 wall (#320 #1 phase 4 root fix)
+TDD Guard (Step 2.9 — PreToolUse hook):
+- hooks/tdd-guard.sh 자동 발화 (plug-in hook 등록)
+- agent 가 Edit/Write 시도 시 매칭 test 파일 없으면 deny + 한국어 안내
+- TS/JS 한정. 다른 언어 / 비-코드 파일 / Next.js 특수 / 테스트 자체 = silent skip
+- 사용자 설정 0 — plug-in 활성화만으로 발화
+- 진짜 TDD 강제 — 코드 작성 *전* 테스트 먼저
 
 자동 commit + PR (Step 2.11 완료 시):
-- Step 2.6 ~ 2.10 깔린 인프라 파일들 자동 stage + commit + push + PR
+- Step 2.6 ~ 2.9 깔린 인프라 파일들 자동 stage + commit + push + PR
 - 현재 branch = main 일 때만 자동 진행 (사용자 작업 중 branch 보호)
-- 사용자가 *까먹어도* dcness CI 가 dead code 안 됨 (#320 사용자 피드백 root fix)
 
 사용 가능한 skill:
 - /qa  — 이슈 분류
