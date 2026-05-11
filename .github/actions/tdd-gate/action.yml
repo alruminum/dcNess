@@ -17,6 +17,14 @@ inputs:
     description: 'Go version'
     required: false
     default: 'stable'
+  ignore_scripts:
+    description: |
+      node install 시 prepare/postinstall/preinstall 같은 lifecycle scripts 무시 여부.
+      monorepo 의 workspace prepare hook (`"prepare": "npm run build"` 등) 이
+      tdd-gate self-block 일으키는 경우 'true' 옵트인. 디폴트 false (사용자 monorepo 의
+      의도된 빌드 진행).
+    required: false
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -114,11 +122,19 @@ runs:
       if: steps.detect.outputs.has_node == 'true'
       shell: bash
       run: |
+        # ignore_scripts 옵트인 시 prepare/postinstall/preinstall lifecycle scripts 무시
+        # — monorepo workspace prepare hook self-block 회피 (예: jajang mobile-qa-tour)
+        if [ "${{ inputs.ignore_scripts }}" = "true" ]; then
+          IGNORE_FLAG="--ignore-scripts"
+          echo "[tdd-gate] ignore_scripts=true — lifecycle scripts 무시"
+        else
+          IGNORE_FLAG=""
+        fi
         case "${{ steps.pm.outputs.pm }}" in
-          pnpm) pnpm install --frozen-lockfile ;;
-          yarn) yarn install --frozen-lockfile ;;
-          bun)  bun install --frozen-lockfile ;;
-          *)    npm ci ;;
+          pnpm) pnpm install --frozen-lockfile $IGNORE_FLAG ;;
+          yarn) yarn install --frozen-lockfile $IGNORE_FLAG ;;
+          bun)  bun install --frozen-lockfile $IGNORE_FLAG ;;
+          *)    npm ci $IGNORE_FLAG ;;
         esac
 
     - name: Run node tests (affected)

@@ -436,12 +436,17 @@ fi
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v4
+          with:
+            fetch-depth: 0  # branch diff (PR base sha) 추출 위해 full history 필요
         - uses: alruminum/dcNess/.github/actions/tdd-gate@main
+          # with:
+          #   ignore_scripts: true  # monorepo prepare/postinstall hook self-block 시 옵트인
   ```
 
   - 사용자 repo 에 검증 로직 cp 0 — package manager 검출 / install / test 실행 전부 dcNess composite action 안.
   - 사용자가 `@main` 대신 `@v1.2.3` 등 tag pin 으로 버전 고정 가능.
   - 머지 후 push → 다음 PR 부터 CI 자동 발화.
+  - **monorepo prepare/postinstall self-block 회피**: workspace 안 `"prepare": "npm run build"` 같은 hook 이 root install 시 발화 → tsc 빌드 실패 → tdd-gate self-block. 이런 경우 `ignore_scripts: true` 옵트인.
 
 - **n**: skip. 로컬 hook + 사용자 자율로만 테스트 enforce. CI 우회 가능 — 회귀 위험 ↑.
 
