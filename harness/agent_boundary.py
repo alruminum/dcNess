@@ -90,10 +90,6 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'(^|/)apps/[^/]+/src/.*\.spec\.[jt]sx?$',
         r'(^|/)packages/[^/]+/src/__tests__/',
     ),
-    "product-planner": (
-        r'(^|/)prd\.md$',
-        r'(^|/)stories\.md$',
-    ),
     "ux-architect": (
         r'(^|/)docs/ux-flow\.md$',
     ),
@@ -108,11 +104,6 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
 
 # ── §4.3 — READ_DENY_MATRIX (agent 별 Read 금지) ──────────────────────
 READ_DENY_MATRIX: dict[str, tuple[str, ...]] = {
-    "product-planner": (
-        r'(^|/)src/',
-        r'(^|/)docs/impl/',
-        r'(^|/)trd\.md$',
-    ),
     "designer": (
         r'(^|/)src/',
     ),

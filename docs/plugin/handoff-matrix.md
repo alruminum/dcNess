@@ -8,29 +8,22 @@
 
 ## 1. Agent 결론 → 다음 agent 결정 가이드 (자연어)
 
-> agent 11 종 (architect 는 system-architect + module-architect 두 에이전트로 평탄화, validator 는 code-validator + architecture-validator 두 에이전트로 평탄화, security-reviewer 는 pr-reviewer §F-Security + architect 의 위협 모델 가정·invariant 로 흡수, design-critic 은 사용자 직접 PICK 으로 대체 + 클리셰 회피는 design.md §8 + code-validator grep 으로 흡수). agent 가 자기 prose 에 결론 + 권장 다음 단계를 자유롭게 박는다. 메인 Claude 는 그 prose 와 본 가이드를 비교해 다음 호출을 결정한다. 본 가이드는 형식 강제가 아니라 *판단 보조*. 가능한 결론 표현은 agent 별로 다양 — 의미만 맞으면 OK ([`dcness-rules.md`](dcness-rules.md) §1 원칙 2 자율 정합).
+> agent 10 종 (architect 는 system-architect + module-architect 두 에이전트로 평탄화, validator 는 code-validator + architecture-validator 두 에이전트로 평탄화, security-reviewer 는 pr-reviewer §F-Security + architect 의 위협 모델 가정·invariant 로 흡수, design-critic 은 사용자 직접 PICK 으로 대체 + 클리셰 회피는 design.md §8 + code-validator grep 으로 흡수, product-planner 는 메인 Claude 가 사용자와 직접 그릴미 대화로 PRD/stories.md 작성 — 컨텍스트 손실 회피, plan-reviewer 가 외부 검증 담당). agent 가 자기 prose 에 결론 + 권장 다음 단계를 자유롭게 박는다. 메인 Claude 는 그 prose 와 본 가이드를 비교해 다음 호출을 결정한다. 본 가이드는 형식 강제가 아니라 *판단 보조*. 가능한 결론 표현은 agent 별로 다양 — 의미만 맞으면 OK ([`dcness-rules.md`](dcness-rules.md) §1 원칙 2 자율 정합).
 
 > **이슈 #280 정착 후 작동 모델**:
 > - agent 는 prose 마지막 단락에 *어떤 결과로 끝났는지 + 메인이 누구를 부르는 게 적절한지* 자기 언어로 명시.
 > - 메인은 prose + 본 §1 가이드만으로 routing 결정. enum 형식 검증 없음.
 > - prose 가 모호하거나 결론을 추출 못 하면 메인이 사용자에게 위임 (cascade — `harness/routing_telemetry.py:record_cascade`).
 
-### 1.1 product-planner
+### 1.1 plan-reviewer
 
-PRD 작성 / 변경 / 동기화 hub. 일반적으로 다음 4 결과 중 하나로 종료:
+PRD 외부 검증 (`FULL` 모드 default / `PRE_CHECK` 모드 — `/product-plan` 스킬의 Spike Pre-Check 단계). 세 가지 결과:
 
-- **PRD 신규 또는 변경안 준비 완료** → plan-reviewer 호출 (변경분만이면 review 도 변경분 한정).
-- **사용자 입력이 모호해 추가 질문 필요** → 사용자에게 역질문하고 응답 대기 (자동 진행 금지).
-- **변경된 PRD 가 UX 영향** → ux-architect 로 변경 반영.
-- **issue tracker 동기화 완료** → 후속 단계 없음.
-
-### 1.2 plan-reviewer
-
-PRD 심사 (`FULL` 모드 default / `PRE_CHECK` 모드 — `/product-plan` 스킬의 Spike Pre-Check 단계). 세 가지 결과:
-
-- **PRD 승인** (`PLAN_REVIEW_PASS`) → 다음 단계는 ux-architect (UX_FLOW). `PRE_CHECK` 모드면 product-planner 호출 진입.
-- **PRD 변경 요청** (`PLAN_REVIEW_FAIL`) → product-planner 재진입 (cycle ≤ 2). `PRE_CHECK` 모드면 사용자 입력 재정리 후 진입.
+- **PRD 승인** (`PLAN_REVIEW_PASS`) → 메인이 사용자에게 confirm 받고 다음 단계 진입 (system-architect 또는 이슈 등록). `PRE_CHECK` 모드면 PRD 작성 진입.
+- **PRD 변경 요청** (`PLAN_REVIEW_FAIL`) → 메인이 findings 항목별 *수용/거절 권장* + 사용자 confirm → 수용 항목만 메인이 `docs/prd.md` / `docs/stories.md` Edit patch. 재 review 필요 시 plan-reviewer 재호출 (cycle ≤ 2). `PRE_CHECK` 모드면 사용자 입력 재정리.
 - **판정 불가** (`PLAN_REVIEW_ESCALATE`) → 사용자 위임. 4 트리거: 외부 검증 실행 불가 / 권한 경계 밖 정보 의존 / cycle 한도 직전 동일 finding 반복 / `EXTERNAL_VERIFIED` URL 부재 PASS 시도.
+
+> Note: 옛 product-planner sub-agent 폐기. PRD/stories.md 작성은 메인 Claude 가 사용자와 직접 그릴미 대화로 진행 (`commands/product-plan.md`). 컨텍스트 손실 회피 + 인터랙션 풀 보존. plan-reviewer 만 외부 검증으로 sub-agent 유지.
 
 ### 1.3 ux-architect
 
@@ -45,7 +38,7 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
 전체 시스템 설계 hub — 도메인 모델 + 모듈 구조 + 기술 스택 + Story → impl 매핑 표 + Spike Gate. 기술 에픽 (기술 부채/인프라/리팩토링) 도 동일 모드로 처리 (호출자 prompt 에 "기술 에픽" 명시 시 추가로 epic+story 이슈 등록).
 
 - **READY** — 시스템 설계 산출 (`docs/architecture.md` + `## impl 목차` 표) 완료 → architecture-validator (Placeholder Leak + Spike Gate 외부 검증).
-- **ESCALATE** — 기술 제약 충돌 / Spike FAIL / PRD 위반 → 사용자 또는 product-planner 위임.
+- **ESCALATE** — 기술 제약 충돌 / Spike FAIL / PRD 위반 → 사용자 위임 (`/product-plan` 재진입 권고).
 
 ### 1.4b module-architect
 
@@ -57,7 +50,7 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
   - 버그픽스 케이스 = engineer (simple)
   - 보강 케이스 = engineer 재진입
   - 문서 동기화 케이스 = 후속 없음
-- **ESCALATE** — PRD 변경 필요 (product-planner) / 기술 제약 충돌 (사용자) / 권한·도구 부족 (사용자).
+- **ESCALATE** — PRD 변경 필요 (`/product-plan` 재진입) / 기술 제약 충돌 (사용자) / 권한·도구 부족 (사용자).
 
 > Note: 이전 6 mode (SYSTEM_DESIGN / MODULE_PLAN / SPEC_GAP / LIGHT_PLAN / DOCS_SYNC / TECH_EPIC) → 2 agent 통합. 이전 mode 별 결론 enum (SYSTEM_DESIGN_READY / READY_FOR_IMPL / LIGHT_PLAN_READY / SPEC_GAP_RESOLVED / DOCS_SYNCED / TECH_CONSTRAINT_CONFLICT / PRODUCT_PLANNER_ESCALATION_NEEDED) → 단순 `READY` / `ESCALATE` 2종. 옛 TASK_DECOMPOSE 의 가치 (Story → impl 매핑 / NN-slug 명명 / 의존 순서) 는 system-architect 의 `## impl 목차` 표로 흡수. impl 본문 detail 은 module-architect × N 가 채움.
 
@@ -140,7 +133,6 @@ merge 직전 코드 품질 + 보안 코드 패턴 심사:
 | code-validator FAIL → engineer 재진입 | engineer attempt 흡수 | engineer attempt 한도 (3) 도달 시 escalate |
 | architecture-validator FAIL → system-architect 재진입 | 2 cycle | 사용자 위임 |
 | pr-reviewer CHANGES_REQUESTED → POLISH 라운드 | 2 | 사용자 escalate |
-| product-planner CLARITY_INSUFFICIENT 라운드 | 무제한 (사용자 응답 대기) | (해당 없음) |
 | ESCALATE 누적 (동일 fail_type) | 2 | module-architect (보강 케이스) 자동 호출 |
 
 `.attempts.json` 형식 (예시):
@@ -167,7 +159,6 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | `DESIGN_LOOP_ESCALATE` | designer | 시안 생성 불가 (외부 의존 부재 / 컨텍스트 모호 / 권한 부족) |
 | `SCOPE_ESCALATE` | qa | 이슈 범위가 분류 enum 5개 모두 해당 안 됨 |
 | `ESCALATE` | system-architect / module-architect | 기술 제약 충돌 / PRD 변경 필요 / Spike FAIL / 권한 부족 (본문 사유 명시) |
-| `CLARITY_INSUFFICIENT` | product-planner | 사용자 입력 모호 (역질문 필요) |
 
 자동 재시도 / 우회 금지. 사용자 명시 결정 후만 진행.
 
@@ -188,7 +179,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | module-architect | 버그픽스 (qa 후) / 문서 동기화 | ✅ | 메인 직접 |
 | architecture-validator | — | ✅ | 메인 직접 |
 | code-validator | — | ❌ | impl_driver 경유 |
-| 그 외 7 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, product-planner, test-engineer, plan-reviewer 모두 메인 직접 |
+| 그 외 6 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, test-engineer, plan-reviewer 모두 메인 직접 |
 | engineer | — | ❌ | impl_driver 경유 필수 |
 
 ### 4.2 Write/Edit 허용 경로 (ALLOW_MATRIX)
@@ -199,7 +190,6 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | system-architect / module-architect | `docs/**`, `backlog.md` |
 | designer | `design-variants/**`, `docs/ui-spec*` |
 | test-engineer | `src/__tests__/**`, `*.test.*`, `*.spec.*` |
-| product-planner | `docs/prd.md`, `stories.md` |
 | ux-architect | `docs/ux-flow.md` |
 | qa | (Issue tracker mutation 만, 파일 X) |
 | code-validator / architecture-validator / pr-reviewer / plan-reviewer | (없음 — 판정 전용) |
@@ -208,7 +198,6 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 | 에이전트 | 금지 |
 |---|---|
-| product-planner | `src/`, `docs/impl/`, `docs/architecture.md` |
 | designer | `src/` |
 | test-engineer | `src/` (impl 외), 도메인 문서 |
 | plan-reviewer | `src/`, `docs/impl/`, `docs/architecture.md` |

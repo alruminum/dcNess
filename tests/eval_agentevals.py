@@ -85,7 +85,6 @@ def _make_cases() -> list[EnumCase]:
         ("validator",     "UX_VALIDATION",    ["UX_REVIEW_PASS", "UX_REVIEW_FAIL"],   "UX_REVIEW_PASS"),
         ("pr-reviewer",   None,               ["LGTM", "CHANGES_REQUESTED"],          "LGTM"),
         ("plan-reviewer", None,               ["PLAN_REVIEW_PASS", "PLAN_REVIEW_FAIL", "PLAN_REVIEW_ESCALATE"], "PLAN_REVIEW_PASS"),
-        ("product-planner","PRODUCT_PLAN",    ["PRODUCT_PLAN_READY", "CLARITY_INSUFFICIENT"], "PRODUCT_PLAN_READY"),
     ]
 
     cases: list[EnumCase] = []
@@ -344,7 +343,6 @@ _REFERENCE_TRAJECTORIES: dict[str, list[tuple[str, Optional[str], str]]] = {
         ("pr-reviewer",   None,               "LGTM"),
     ],
     "feature_build_fragment": [
-        ("product-planner","PRODUCT_PLAN",    "PRODUCT_PLAN_READY"),
         ("architect",      "SYSTEM_DESIGN",   "SYSTEM_DESIGN_READY"),
         ("architect",      "MODULE_PLAN",     "READY_FOR_IMPL"),
     ],

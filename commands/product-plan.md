@@ -1,54 +1,186 @@
 ---
 name: product-plan
-description: 새 기능 / PRD 변경 / 큰 기획을 받아 product-planner → plan-reviewer → ux-architect (5 카테고리 self-check) → system-architect (self-check + impl 목차 표 산출) → architecture-validator (Placeholder Leak + Spike Gate) → module-architect × N (impl 본문 detail) 시퀀스로 spec/design 단계까지 진행하는 스킬. 사용자가 "기획자야", "새 기능", "피쳐 추가", "이런 기능이 필요할 것 같아", "기획해줘", "프로덕트 플랜", "/product-plan" 등을 말할 때 반드시 이 스킬을 사용한다. 구현 진입은 별도 (`/impl` / `/impl-loop`).
+description: 새 기능 / PRD 변경 / 큰 기획을 받아 메인 Claude 가 사용자와 직접 그릴미 대화하며 `docs/prd.md` + `docs/stories.md` 작성 → plan-reviewer 외부 검증 → 사용자 피드백 confirm → 후속 단계 (system-architect / 이슈 등록 / `/impl-loop`) 시퀀스로 진행하는 스킬. 사용자가 "기획자야", "새 기능", "피쳐 추가", "이런 기능이 필요할 것 같아", "기획해줘", "프로덕트 플랜", "/product-plan" 등을 말할 때 반드시 이 스킬을 사용한다. 구현 진입은 별도 (`/impl` / `/impl-loop`).
 ---
 
-# Product Plan Skill
+# Product Plan Skill — 메인 직접 인터랙션 + plan-reviewer 외부 검증
 
-## Loop
-`feature-build-loop` ([orchestration.md §3.1 / §4.2](../docs/plugin/orchestration.md)).
+> **본 스킬 = 메인 Claude 가 사용자와 *직접* 대화하며 PRD/stories.md 작성**. product-planner sub-agent 폐기 (컨텍스트 손실 회피). 외부 검증은 plan-reviewer sub-agent.
 
-## Inputs (메인이 사용자에게 받아야 할 정보)
-- 요구사항 / 문제 정의 (한 단락)
-- 사용자 시나리오 (Who / When / What / Why)
-- 제약 (기술 / 일정 / 리소스, 있으면)
-- 우선순위 (M0 / M1 / nice-to-have, 있으면)
-- 변경인지 신규인지 (PRD 변경 시 어떤 부분)
+## 그릴미 패턴 (PRD 작성 시 의무)
 
-명확화 안 되면 product-planner 호출 X (`CLARITY_INSUFFICIENT` 회피 — 메인이 사전 정형화).
+메인은 다음 패턴으로 진행:
 
-## Pre-Check Trigger (Spike Pre-Check)
+1. **한 번에 한 질문** — 5 항목 한꺼번에 받지 말고 분기 따라 1개씩
+2. **가설 + 권장안 제시** — 질문할 때 *추측 답안 1+ 포함*. 사용자가 picking 받기 쉽게
+3. **추측 금지** — 코드/문서로 답 가능하면 *탐색 우선*. 모르면 모른다 명시
+4. **결정 나무 가지치기** — 분기 따라 의존성 1 개씩 해결
 
-사용자 입력 또는 1차 정형화 결과에 다음 *spike 의심 신호* 1개 이상 포함 시 product-planner 호출 *전* plan-reviewer 를 `PRE_CHECK` 모드로 1회 먼저 호출 ([`agents/plan-reviewer.md`](../agents/plan-reviewer.md) "호출 모드" 섹션):
+(영감: `~/.claude/skills/grill-me/SKILL.md` 4 줄 룰. 사용자 user skill 외부 의존 X — 본 스킬 안 inline 흡수.)
 
-- **외부 의존 명시**: 외부 모델 / API / SDK 이름 (예: "OpenVoice", "ElevenLabs", "Replicate API", "Suno API", "Apple IAP", "Google Cloud TTS")
-- **조건부 약속 패턴**: "M0 에서 검증" / "마일스톤 0 결정" / "후보 N개 비교 후 선정" / "X 안 되면 Y 로 fallback"
-- **사용자 의문문**: "이거 진짜 되나?", "X 가 Y 를 지원하는지", "API 키 / 쿼터 확인 필요"
+## PRD 산출물 의무 (체크리스트 — 채우는 순서 자유)
+
+그릴 대화 진행하며 `docs/prd.md` 에 다음 정보 다 채워졌는지 메인이 check:
+
+- **서비스 개요** — 핵심 목적 (한 문장) + 타겟 유저 + 사용 상황 + 핵심 가치/차별점
+- **기능 범위** — MVP 핵심 3~5 개 + 있으면 좋은 기능 + 명시적 제외 (NOT in scope)
+- **기능별 스펙** — 각 기능마다 동작 명세 (유저 행동 → 시스템 반응) + 유저 시나리오 (Happy + 예외) + **수용 기준 (Given/When/Then, 검증 가능한 binary)** + 우선순위 (MoSCoW)
+- **화면 인벤토리 + 대략적 플로우** — 텍스트 다이어그램 (기획 관점). UI 없는 기능은 `(UI 없음)` 표시
+- **비즈니스 모델** — 수익 구조 + 과금 주체 + 성공 지표
+- **스코프 결정** — 4 옵션 제시 의무 (사용자 명시 선택 받음):
+  - **A Expansion** (MVP + 자연스럽게 추가)
+  - **B Selective** (MVP + BM 직결 고영향, 균형)
+  - **C Hold Scope** (요구사항 정확히)
+  - **D Reduction** (가장 빠른 핵심 검증만)
+
+미충족 영역 발견 시 메인이 그릴로 추가 질문 → 사용자 답 받고 채움.
+
+### 수용 기준 작성 — 검증 가능 binary 의무
+
+"잘 동작" / "사용자 친화적" 같은 모호 표현 X. 통과 조건이 binary 로 판단 가능해야:
+
+| 약한 표현 | 강한 표현 |
+|---|---|
+| "검색이 빠르다" | "검색 결과 p95 < 200ms 응답" |
+| "에러를 처리한다" | "Given 잘못된 입력, When 제출, Then 에러 메시지 X 표시 + 폼 유지" |
+| "잘 보인다" | "각 카드 제목 1줄 + 메타 2줄 + 썸네일 16:9 비율" |
+
+Given/When/Then 자체가 goal-driven 패턴 — 모든 수용 기준에 적용.
+
+## stories.md 산출물
+
+PRD 작성 완료 후 메인이 `docs/stories.md` Write — epic + N story 구조:
+
+```markdown
+# Story Backlog
+
+**GitHub Epic Issue:** (이슈 등록 후 박힘 — PR2 시점)
+
+## Epic — <epic 한 줄 요약>
+
+### Story 1 — <story 한 줄 요약>
+
+**GitHub Issue:** (이슈 등록 후 박힘)
+
+As a <user>, I want <action>, so that <benefit>.
+
+#### 수용 기준
+- Given/When/Then ...
+- ...
+
+### Story 2 — ...
+```
+
+스토리 본문 = `as a / i want / so that` + 수용 기준만. task-level 세부 진행 추적 X (PR + GitHub Issue close 시스템 SSOT — issue-lifecycle.md §0).
+
+## 작성 절차 (메인 직접)
+
+### Step 0 — 사전 read
+
+`docs/plugin/loop-procedure.md` + `docs/plugin/orchestration.md` §2~§3 + §4.2 + `docs/plugin/handoff-matrix.md` + `docs/plugin/issue-lifecycle.md` read.
+
+### Step 1 — 사용자와 그릴 대화
+
+위 *그릴미 패턴* + *PRD 산출물 체크리스트* 따라 진행. 메인이 한 번에 한 질문씩, 분기 따라 가지치기. 모호 시 가설 + 옵션 제시. 코드/문서 read 가능한 부분은 탐색 우선.
+
+### Step 2 — Spike Pre-Check (조건부)
+
+사용자 입력 또는 1차 정형화 결과에 다음 *spike 의심 신호* 1+ 포함 시 PRD 작성 *전* plan-reviewer 를 `PRE_CHECK` 모드로 1회 호출 (`agents/plan-reviewer.md` "호출 모드" 섹션):
+
+- **외부 의존 명시**: 외부 모델 / API / SDK 이름 (예: "OpenVoice", "ElevenLabs", "Replicate API")
+- **조건부 약속 패턴**: "M0 에서 검증" / "후보 N개 비교 후 선정" / "X 안 되면 Y 로 fallback"
+- **사용자 의문문**: "이거 진짜 되나?", "X 가 Y 를 지원하는지"
 
 플로우:
-- `PLAN_REVIEW_PASS` → product-planner 호출. 검증 결과 (`EXTERNAL_VERIFIED` 섹션) 를 prompt 에 첨부.
-- `PLAN_REVIEW_FAIL` → 사용자에게 결과 보고 + 입력 재정리 요청. product-planner 호출 보류.
-- `PLAN_REVIEW_ESCALATE` → 사용자 위임 (WebFetch 차단 / 공식 문서 부재 / 권한 부족).
+- `PLAN_REVIEW_PASS` → PRD 작성 진입. 검증 결과 (`EXTERNAL_VERIFIED` 섹션) 를 PRD 본문에 박음
+- `PLAN_REVIEW_FAIL` → 사용자에게 결과 보고 + 입력 재정리 요청
+- `PLAN_REVIEW_ESCALATE` → 사용자 위임
 
-신호 없으면 pre-call 스킵 — 기존 시퀀스 그대로 (product-planner 직접 호출).
+신호 없으면 skip — 바로 Step 3.
+
+### Step 3 — PRD 작성
+
+메인이 `docs/prd.md` Write/Edit. 새 작성 = `Write`, 변경 = `Edit` 도구 *섹션 단위 patch* 의무. **Write 통째 호출 금지** (기존 PRD 의 모르는 부분 silent 변경 위험).
+
+### Step 4 — stories.md 작성
+
+메인이 `docs/stories.md` Write. epic + N story 구조 (위 형식).
+
+### Step 5 — plan-reviewer 외부 검증
+
+PRD + stories.md 완성 후 plan-reviewer 호출 (`FULL` 모드 default):
+
+```
+Agent(subagent_type="plan-reviewer", prompt="""
+PRD: docs/prd.md
+Stories: docs/stories.md
+Pre-Check 결과 (있으면): ...
+""")
+```
+
+plan-reviewer 가 8 차원 심사 후 prose 결론 + findings emit.
+
+### Step 6 — 피드백 항목별 수용 (β 패턴)
+
+plan-reviewer findings 각 항목마다 메인이 *"수용 권장 / 거절 권장"* 의견 박아 사용자에게 출력 → 사용자 한 줄로 confirm:
+
+```
+[plan-reviewer finding 1] <내용>
+  메인 의견: 수용 권장 — <이유>
+  → 사용자 confirm: Y/n?
+
+[plan-reviewer finding 2] <내용>
+  메인 의견: 거절 권장 — <이유>
+  → 사용자 confirm: Y/n?
+```
+
+- 사용자 *수용* 항목 → 메인이 `docs/prd.md` / `docs/stories.md` Edit 으로 patch
+- 사용자 *거절* 항목 → 변경 X. PRD 본문에 *거절 사유* 1 줄 박음 (다음 review 재발화 방지)
+- patch 완료 후 → 사용자 OK 시 Step 7. 다시 review 필요하면 Step 5 재진입 (cycle 한도 2)
+
+### Step 7 — branch + commit + PR + 머지
+
+```
+1. git checkout -b docs/<slug> main         # git-naming-spec §1 패턴
+2. git add docs/prd.md docs/stories.md
+3. git commit -m "[docs] PRD 신규 / 변경 요약"   # git-naming-spec §3 패턴
+4. git push -u origin docs/<slug>
+5. gh pr create --title "..." --body "..."   # git-naming-spec §4~§5 템플릿
+6. bash scripts/pr-finalize.sh <PR_NUMBER>   # auto-merge + CI watch + main sync
+```
+
+### Step 8 — 이슈 등록 trigger (선택)
+
+PR 머지 완료 후 메인이 사용자에게 confirm:
+
+```
+PRD + stories.md main 머지 완료. 이제 GitHub epic + story 이슈를 등록할까요? (Y/n)
+```
+
+사용자 Y → 메인이 `docs/plugin/issue-lifecycle.md` §1 따라 epic + N story 이슈 + sub-issue 연결 일괄 처리.
+
+(PR2 후속 — `scripts/create_epic_story_issues.sh` 같은 자동화 스크립트로 갈아엎을 예정.)
 
 ## 비대상 (다른 skill 추천)
+
 - 버그 → `/qa` (`qa-triage`)
 - 한 줄 수정 / 버그픽스 → `/qa` (분류 후 impl-task-loop fallback)
-- 디자인만 → `/ux` (`ux-design-stage`)
+- 디자인만 → designer 직접 (Pencil 또는 `design-variants/*.html`)
 
 ## 후속 라우팅
-- `READY` → `/impl-loop` (multi-task) 또는 `/impl` (per-task) 또는 module-architect 직접
-- `PRODUCT_PLAN_UPDATED` → plan-reviewer 변경분 재심사 (skip 분기 폐기 — 변경의 성격 무관 항상 호출) → PASS 시 ux-architect
-- `UX_REFINE_READY` → `ux-refine-stage` 진입 (`/ux`)
-- `PLAN_REVIEW_ESCALATE` → 사용자 위임 (외부 검증 불가 / 권한 경계 밖 정보 / 동일 finding 반복 / URL 부재 PASS 시도)
-- 기타 escalate enum → 사용자 위임 (orchestration §4.2 분기 표 참조)
 
-## 사전 read (skill 진입 즉시)
-`docs/plugin/loop-procedure.md` + `docs/plugin/orchestration.md` §2~§3 + §4.2 + `docs/plugin/handoff-matrix.md` read 후 진행.
+- PRD/stories 완성 + 머지 + 이슈 등록 후 → `/impl-loop` (multi-task) 또는 `/impl` (per-task) 또는 system-architect 직접
+- 기존 PRD 변경 → 본 스킬 재진입 (`Edit` 도구 섹션 단위 patch 의무, Write 통째 X)
+- `UX_REFINE_READY` 후속 — ux-architect REFINE → designer
 
 ## 워크트리 (X)
-`/product-plan` 은 워크트리 자동 진입 안 함. 기획·설계는 동시 다중 batch 충돌 회피 목적 부재 — 메인 working tree 에서 별 branch 따고 직접 진행. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
 
-## 절차
-[`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.2 (`feature-build-loop` 풀스펙) 따름. 본 파일은 input 명세 + 라우팅만.
+`/product-plan` 은 워크트리 자동 진입 안 함. 기획·설계는 동시 다중 batch 충돌 회피 목적 부재. 메인 working tree 에서 별 branch 따고 직접 진행. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
+
+## 참조
+
+- 시퀀스 / 핸드오프 / 권한: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §2~§3, [`docs/plugin/handoff-matrix.md`](../docs/plugin/handoff-matrix.md)
+- 그릴미 원형: `~/.claude/skills/grill-me/SKILL.md` (사용자 user skill)
+- 이슈 등록 SSOT: [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §1
+- 브랜치·커밋·PR 네이밍: [`docs/plugin/git-naming-spec.md`](../docs/plugin/git-naming-spec.md)
+- plan-reviewer 8 차원 심사: [`agents/plan-reviewer.md`](../agents/plan-reviewer.md)

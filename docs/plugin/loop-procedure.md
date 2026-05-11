@@ -105,12 +105,11 @@ PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
 | code-validator `ESCALATE` (사유: spec 부재) | module-architect (보강 케이스) |
 | code-validator `ESCALATE` (사유: 재시도 한도 초과 등) | 사용자 위임 |
 | `*_ESCALATE` (hard) | 사용자 위임 (escalate) |
-| `*_ESCALATE` (soft) / `CLARITY_INSUFFICIENT` | 비-yolo: 사용자 위임 / yolo: `auto-resolve` |
+| `*_ESCALATE` (soft) | 비-yolo: 사용자 위임 / yolo: `auto-resolve` |
 | `CHANGES_REQUESTED` | engineer POLISH cycle (≤2) |
 | `AMBIGUOUS` | 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS 시 사용자 위임 (enum 후보 + prose 발췌) |
 | architecture-validator `FAIL` | system-architect 재진입 (cycle ≤2) |
-| `PRODUCT_PLAN_UPDATED` | plan-reviewer 변경분 재심사 (skip 분기 폐기 — 변경의 성격 무관 항상 호출). PASS 시 ux-architect. |
-| `PLAN_REVIEW_FAIL` | product-planner 재진입 (cycle ≤2) |
+| `PLAN_REVIEW_FAIL` | 메인이 findings 항목별 사용자 confirm + `docs/prd.md` / `docs/stories.md` Edit patch → plan-reviewer 재진입 (cycle ≤2) |
 | `PLAN_REVIEW_ESCALATE` | 사용자 위임 (외부 검증 불가 / 권한 경계 밖 / 동일 finding 반복 / URL 부재 PASS 시도) |
 
 cycle 한도 = orchestration.md §5.
@@ -148,7 +147,7 @@ TaskUpdate(<기존 task>, completed)
 
 | 상황 | 비-yolo | yolo |
 |---|---|---|
-| `CLARITY_INSUFFICIENT` / `*_ESCALATE` (soft) / `AMBIGUOUS` | 사용자 위임 | `auto-resolve` 적용 |
+| `*_ESCALATE` (soft) / `AMBIGUOUS` | 사용자 위임 | `auto-resolve` 적용 |
 | `SPEC_GAP_FOUND` | 사용자 위임 | module-architect (보강 케이스) cycle (≤2) |
 | `TESTS_FAIL` / code-validator FAIL | 재시도 (≤3) | 동일 |
 | `IMPL_PARTIAL` | engineer 재호출 (split ≤ 3) | 동일 — 새 context window |

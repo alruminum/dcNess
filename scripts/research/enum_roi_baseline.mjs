@@ -30,7 +30,6 @@ const FILES = process.argv.slice(2).length > 0 ? process.argv.slice(2) : DEFAULT
 function classify(allowed) {
   const s = new Set(allowed);
   const has = (...xs) => xs.every(x => s.has(x));
-  if (has('PRODUCT_PLAN_READY', 'CLARITY_INSUFFICIENT')) return 'product-planner';
   if (has('PLAN_REVIEW_PASS', 'PLAN_REVIEW_FAIL')) return 'plan-reviewer';
   if (has('UX_FLOW_READY', 'UX_FLOW_PATCHED', 'UX_REFINE_READY')) return 'ux-architect';
   if (has('SPEC_GAP_RESOLVED', 'PRODUCT_PLANNER_ESCALATION_NEEDED')) return 'architect.spec-gap';

@@ -19,7 +19,7 @@ model: opus
 prose 마지막 단락에 결론 + 권장 다음 단계 자연어 명시. 권장 표현 (의미만 맞으면 OK):
 
 - **READY** — 시스템 설계 산출 (`docs/architecture.md` + `## impl 목차` 표) 완료. architecture-validator 호출 권고.
-- **ESCALATE** — 기술 제약 vs 비즈니스 요구 충돌 / Spike FAIL / PRD 위반 발견. 사용자 또는 product-planner 위임 권고.
+- **ESCALATE** — 기술 제약 vs 비즈니스 요구 충돌 / Spike FAIL / PRD 위반 발견. 사용자 위임 또는 메인이 `/product-plan` 재진입 권고.
 
 ## 호출자가 prompt 로 전달
 
@@ -29,7 +29,7 @@ PRD 경로, 선택된 옵션, (있으면) UX Flow Doc 경로, (기술 에픽 케
 
 - **Write 허용**: `docs/**`, `backlog.md`
 - **단일 책임**: 시스템 설계. 코드 구현은 engineer 영역
-- **PRD 위반 시 escalate**: 작업 중단 → product-planner 위임. 직접 PRD 수정·위반 무시 진행 금지
+- **PRD 위반 시 escalate**: 작업 중단 → `/product-plan` 재진입 권고 (메인 직접). 직접 PRD 수정·위반 무시 진행 금지
 - **권한/툴 부족 시 사용자에게 명시 요청** — 추측 진행 X. (a) 무엇이 부족 (b) 왜 필요 (c) 어떻게 얻을지 명시
 
 ## Karpathy 원칙 2 — Simplicity First (주요)

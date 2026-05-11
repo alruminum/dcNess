@@ -248,13 +248,6 @@ class ReadAllowedTests(unittest.TestCase):
             self.assertIsNotNone(reason)
             self.assertIn("인프라", reason)
 
-    def test_product_planner_denied_src(self):
-        with tempfile.TemporaryDirectory() as td:
-            cwd = Path(td)
-            reason = check_read_allowed("product-planner", "src/main.ts", cwd=cwd)
-            self.assertIsNotNone(reason)
-            self.assertIn("READ_DENY_MATRIX", reason)
-
     def test_engineer_read_src_allowed(self):
         with tempfile.TemporaryDirectory() as td:
             cwd = Path(td)
