@@ -8,7 +8,7 @@
 
 ## 1. Agent 결론 → 다음 agent 결정 가이드 (자연어)
 
-> agent 14 종 (architect 는 system-architect + module-architect 두 에이전트로 평탄화, validator 는 code-validator + architecture-validator 두 에이전트로 평탄화). agent 가 자기 prose 에 결론 + 권장 다음 단계를 자유롭게 박는다. 메인 Claude 는 그 prose 와 본 가이드를 비교해 다음 호출을 결정한다. 본 가이드는 형식 강제가 아니라 *판단 보조*. 가능한 결론 표현은 agent 별로 다양 — 의미만 맞으면 OK ([`dcness-rules.md`](dcness-rules.md) §1 원칙 2 자율 정합).
+> agent 13 종 (architect 는 system-architect + module-architect 두 에이전트로 평탄화, validator 는 code-validator + architecture-validator 두 에이전트로 평탄화, security-reviewer 는 pr-reviewer §F-Security + architect 의 위협 모델 가정·invariant 로 흡수). agent 가 자기 prose 에 결론 + 권장 다음 단계를 자유롭게 박는다. 메인 Claude 는 그 prose 와 본 가이드를 비교해 다음 호출을 결정한다. 본 가이드는 형식 강제가 아니라 *판단 보조*. 가능한 결론 표현은 agent 별로 다양 — 의미만 맞으면 OK ([`dcness-rules.md`](dcness-rules.md) §1 원칙 2 자율 정합).
 
 > **이슈 #280 정착 후 작동 모델**:
 > - agent 는 prose 마지막 단락에 *어떤 결과로 끝났는지 + 메인이 누구를 부르는 게 적절한지* 자기 언어로 명시.
@@ -133,13 +133,6 @@ merge 직전 코드 품질 심사:
 - **알려진 이슈** → 후속 없음.
 - **분류 불가 (escalate)** → 사용자 위임.
 
-### 1.13 security-reviewer
-
-보안 감사. 두 결과:
-
-- **취약점 없음** → 후속 없음 (검증 완료).
-- **취약점 발견** → engineer 수정 요청.
-
 ---
 
 ## 2. Retry 한도
@@ -204,7 +197,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | module-architect | 버그픽스 (qa 후) / 문서 동기화 | ✅ | 메인 직접 |
 | architecture-validator | — | ✅ | 메인 직접 |
 | code-validator | — | ❌ | impl_driver / quick-bugfix-loop 경유 |
-| 그 외 10 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, design-critic, security-reviewer, product-planner, test-engineer, plan-reviewer 모두 메인 직접 |
+| 그 외 9 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, design-critic, product-planner, test-engineer, plan-reviewer 모두 메인 직접 |
 | engineer | — | ❌ | impl_driver 경유 필수 |
 
 ### 4.2 Write/Edit 허용 경로 (ALLOW_MATRIX)
@@ -218,7 +211,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | product-planner | `docs/prd.md`, `stories.md` |
 | ux-architect | `docs/ux-flow.md` |
 | qa | (Issue tracker mutation 만, 파일 X) |
-| code-validator / architecture-validator / design-critic / pr-reviewer / security-reviewer / plan-reviewer | (없음 — 판정 전용) |
+| code-validator / architecture-validator / design-critic / pr-reviewer / plan-reviewer | (없음 — 판정 전용) |
 
 ### 4.3 Read 금지 경로 (READ_DENY_MATRIX)
 

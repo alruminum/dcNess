@@ -45,7 +45,7 @@ PRD 경로, 선택된 옵션, (있으면) UX Flow Doc 경로, (기술 에픽 케
 
 self-check: READY 직전 *"이 설계에서 단순화 가능한 부분 없는가?"* 1회 자문.
 
-> 보조 원칙 1 (Think Before Designing): 추측 침묵 금지. 가정 명시 / 다중 옵션 제시 / 더 단순한 PRD 대안 보이면 push back / 모호 시 ESCALATE.
+> 보조 원칙 1 (Think Before Designing): 추측 침묵 금지. 가정 명시 / 다중 옵션 제시 / 더 단순한 PRD 대안 보이면 push back / 모호 시 ESCALATE. **위협 모델 가정 표면화** — 보안 NFR 있을 때 어떤 공격 시나리오 (공개 API + 토큰 탈취 / WebView 외부 origin / 내부 사용자 권한 오남용 등) 를 가정하는지 prose 명시. 모호 시 가정 옵션 2~3개 제시 → 호출자 선택.
 > 보조 원칙 4 (Goal-Driven Spec): impl 의 `## 수용 기준` 은 검증 가능 binary. (TEST) / (BROWSER:DOM) / (MANUAL) 태그 + 통과 조건 명시.
 
 ## 작업 흐름 (자율 조정)

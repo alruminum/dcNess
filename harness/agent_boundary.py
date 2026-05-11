@@ -103,7 +103,6 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
     "architecture-validator": (),
     "design-critic": (),
     "pr-reviewer": (),
-    "security-reviewer": (),
     "plan-reviewer": (),
 }
 

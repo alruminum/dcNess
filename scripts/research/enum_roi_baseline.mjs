@@ -51,7 +51,6 @@ function classify(allowed) {
   if (has('PASS', 'FAIL') && allowed.length === 2) return 'validator.legacy-ux-or-bugfix';
   if (has('LGTM', 'CHANGES_REQUESTED')) return 'pr-reviewer';
   if (has('FUNCTIONAL_BUG', 'CLEANUP', 'DESIGN_ISSUE', 'KNOWN_ISSUE', 'SCOPE_ESCALATE')) return 'qa';
-  if (has('SECURE', 'VULNERABILITIES_FOUND')) return 'security-reviewer';
   return `unclassified:${allowed.join(',')}`;
 }
 

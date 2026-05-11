@@ -31,7 +31,7 @@ cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-com
 
 ## Prose-Only 패턴 (검증 에이전트)
 
-본 저장소는 [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) (Prose-Only 원칙) 에 따라 검증 결과를 **자유 prose** 로 emit 한다. 검증 에이전트(code-validator, architecture-validator, plan-reviewer, pr-reviewer, security-reviewer 등) 호출 시:
+본 저장소는 [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) (Prose-Only 원칙) 에 따라 검증 결과를 **자유 prose** 로 emit 한다. 검증 에이전트(code-validator, architecture-validator, plan-reviewer, pr-reviewer 등) 호출 시:
 
 1. **stdout 으로 prose**: 형식 자유 (markdown / 평문 / 표). harness 가 prose 파일로 저장(`.claude/harness-state/<run_id>/<agent>[-<MODE>].md`).
 2. **결론 enum**: prose 의 *마지막 단락* 에 enum 단어 1개 명시 (검증 에이전트 통일 — `PASS` / `FAIL` / `ESCALATE`). 모호한 표현 금지.

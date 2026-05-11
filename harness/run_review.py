@@ -56,7 +56,6 @@ EXPECTED_FINAL_ENUMS = {
     "code-validator": {None: "PASS"},
     "architecture-validator": {None: "PASS"},
     "pr-reviewer": {None: "LGTM"},
-    "security-reviewer": {None: "SECURE"},
     "qa": {None: None},  # qa 다양 (FUNCTIONAL_BUG / CLEANUP / etc.)
     "plan-reviewer": {None: "PLAN_REVIEW_PASS"},
     "product-planner": {"PRODUCT_PLAN": "PRODUCT_PLAN_READY"},
@@ -77,7 +76,7 @@ INFRA_PATH_PATTERNS = [
 ]
 
 READONLY_AGENTS = {"qa", "code-validator", "architecture-validator", "pr-reviewer",
-                    "security-reviewer", "plan-reviewer", "design-critic"}
+                    "plan-reviewer", "design-critic"}
 
 # DCN-CHG-20260430-20: Phase 2 — per-Agent budget for THINKING_LOOP detection.
 # elapsed_s: 정상 sub-agent 한 번 호출 한도 (초).
@@ -90,7 +89,6 @@ EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
     "code-validator":  {"elapsed_s": 300, "min_output_tokens": 800},
     "architecture-validator": {"elapsed_s": 300, "min_output_tokens": 800},
     "pr-reviewer":     {"elapsed_s": 180, "min_output_tokens": 600},
-    "security-reviewer": {"elapsed_s": 180, "min_output_tokens": 600},
     "qa":              {"elapsed_s": 300, "min_output_tokens": 600},
     "plan-reviewer":   {"elapsed_s": 300, "min_output_tokens": 1000},
     "design-critic":   {"elapsed_s": 300, "min_output_tokens": 600},
