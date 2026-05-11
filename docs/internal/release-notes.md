@@ -4,6 +4,52 @@
 
 ---
 
+## v0.2.11 (2026-05-11)
+
+**커밋 범위**: `v0.2.10..(다음 태그)`
+**핵심 변경**: TDD 게이트 phase 1 → phase 2 — polyglot universal (#320 #1 확장)
+
+- **이슈 #320 #1 phase 2 (PR #328)** — TDD 게이트가 node 한정에서 4 언어 universal
+  로 확장. v0.2.10 phase 1 의 *node + root `scripts.test` 단일 명령* 가정이
+  polyglot 모노레포 (jajang = apps/mobile=js + apps/api=python) 에 안 맞아 root fix.
+  - `.github/actions/tdd-gate/action.yml` — 4 언어 검출 + 매트릭스 실행
+    - node: package.json + pm 자동 (pnpm/yarn/bun/npm)
+    - python: pyproject.toml / setup.py / setup.cfg / requirements*.txt + pytest (unittest 자동 cover)
+    - rust: Cargo.toml + cargo test --all
+    - go: go.mod + go test ./...
+  - 검출된 *모든* 언어 PASS 필요 (polyglot matrix 결합)
+  - 4 언어 모두 미검출 시 fail (비-지원 언어 phase 3 대기)
+  - `commands/init-dcness.md` Step 2.9: 4 언어 안내문 + polyglot 가이드
+
+**배포 경로** (CLAUDE.md §0.5):
+- (1) plug-in 본체 — `.github/actions/tdd-gate/action.yml` plug-in 업데이트 자동 반영
+- (2) init-dcness 배포 — Step 2.9 안내문 갱신. 기존 활성 프로젝트는 `/init-dcness`
+  재실행 시 새 안내문 받음. thin yml 은 unchanged (외부 composite action 호출 1줄만
+  박혀있어 자동 phase 2 적용)
+- (3) SSOT 문서 — N/A (capability 확장)
+
+**polyglot 적용 효과**:
+- jajang (mobile=js + api=python): plugin update + `/init-dcness` 재실행만으로
+  자동 cover. root `scripts.test` 위임 명령 / 별도 pytest workflow 작성 불필요.
+- 향후 polyglot 활성 프로젝트들 모두 자동 혜택.
+
+**한계 (phase 2)**:
+- 지원 외 (Elixir / Ruby / Java / .NET / PHP / Swift) — phase 3 후속
+- Python tooling = pip 만 (poetry / pdm / uv 는 phase 3)
+- 풀 스위트만 — incremental 로컬 hook 은 phase 4
+
+**업데이트**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 활성화 프로젝트:
+```sh
+/init-dcness   # Step 2.9 발화 — TDD 게이트 옵트인 + 4 언어 안내문
+```
+
+---
+
 ## v0.2.10 (2026-05-10)
 
 **커밋 범위**: `9a63e28..(다음 태그)`
