@@ -157,9 +157,25 @@ PR 머지 완료 후 메인이 사용자에게 confirm:
 PRD + stories.md main 머지 완료. 이제 GitHub epic + story 이슈를 등록할까요? (Y/n)
 ```
 
-사용자 Y → 메인이 `docs/plugin/issue-lifecycle.md` §1 따라 epic + N story 이슈 + sub-issue 연결 일괄 처리.
+사용자 Y → 메인이 `scripts/create_epic_story_issues.sh` 호출 (자동화 스크립트):
 
-(PR2 후속 — `scripts/create_epic_story_issues.sh` 같은 자동화 스크립트로 갈아엎을 예정.)
+```bash
+bash scripts/create_epic_story_issues.sh docs/stories.md
+```
+
+스크립트 동작:
+1. stories.md parse — epic + Story N 추출
+2. milestone number 조회 (Epics / Story)
+3. epic 이슈 1 생성 → stories.md 에 번호 박음
+4. story 이슈 N 순차 생성 → stories.md 에 번호 + 하단 표 박음
+5. sub-issue API 호출 (epic ↔ story N 연결, GitHub native sub-issue API)
+6. 결과 prose 출력
+
+상세 SSOT = [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §1.
+
+스크립트 실패 시 메인이 사용자에게 보고 + `docs/plugin/issue-lifecycle.md` §1 따라 수동 처리 가능 (`mcp__github__create_issue` + `gh api` 직접 호출).
+
+이슈 등록 후 stories.md 변경분은 별도 commit + PR 또는 사용자 자율 (스크립트 자체는 git mutation X — stories.md 만 수정).
 
 ## 비대상 (다른 skill 추천)
 

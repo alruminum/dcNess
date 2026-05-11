@@ -36,6 +36,16 @@ Skill 진입 시 *outer* 단계에서 자동 `EnterWorktree(name="impl-loop-{ts_
 ## Pre-flight gate (각 task 진입 직전)
 [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §6 매치 강제 — 부모 epic stories.md 의 epic/story 이슈 매치 부재 시 해당 task STOP + 사용자 보고. silent skip 금지.
 
+각 task 진입 *직전* 1회 확인 (`/impl` "진입 직전 — task 진행 상태 1회 확인" 동일, issue #346):
+
+```bash
+TASK_SLUG=$(basename "<task-path>" .md)
+git log --oneline --grep "$TASK_SLUG" | head -5
+tail -50 "<task-path>"
+```
+
+이미 머지됨 발견 시 → 해당 task skip + 다음 task 진입. 부분 진행 + tail section 후속 결정 → 진행 컨텍스트 inject + 정상 진입.
+
 ## 절차
 [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.3 (inner) + §4.9 (chain 정책) 따름.
 
