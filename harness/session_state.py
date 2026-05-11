@@ -2,7 +2,7 @@
 
 발상 (`docs/archive/conveyor-design.md` §4 / §6 / §9):
     Claude Code 가 세션 단위 동작 → 한 사용자가 동시 다중 세션 띄울 수 있음.
-    각 세션 안에서 컨베이어가 다중 run 가능 (예: 백그라운드 ralph + foreground quick).
+    각 세션 안에서 컨베이어가 다중 run 가능 (예: 백그라운드 ralph + foreground impl).
     sid × run_id 별 격리된 디렉토리 구조 + `_meta` envelope 으로 leftover 방어.
 
 본 모듈은 다음을 단일 책임으로 묶는다:

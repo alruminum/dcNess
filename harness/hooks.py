@@ -825,7 +825,7 @@ def _is_impl_loop(sid: str, rid: str, *, base_dir: Optional[Path] = None) -> boo
     """현재 run 이 impl-task-loop 계열인지 확인 (entry_point 기준, DCN-CHG-20260502-05).
 
     3-commit 구조 gate 는 impl-task-loop / impl-ui-design-loop / direct-impl-loop 에만 적용.
-    quick-bugfix / feature-build / qa 등 다른 loop 는 적용 X.
+    feature-build / qa 등 다른 loop 는 적용 X.
     """
     try:
         live = read_live(sid, base_dir=base_dir) or {}

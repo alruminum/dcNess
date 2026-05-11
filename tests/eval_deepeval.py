@@ -356,11 +356,6 @@ _REFERENCE_TRAJECTORIES: dict[str, list[tuple[str, Optional[str], str]]] = {
         ("validator",     "CODE_VALIDATION",  "PASS"),
         ("pr-reviewer",   None,               "LGTM"),
     ],
-    "quick_bugfix_loop": [
-        ("engineer",      "IMPL",             "IMPL_DONE"),
-        ("validator",     "BUGFIX_VALIDATION","BUGFIX_PASS"),
-        ("pr-reviewer",   None,               "LGTM"),
-    ],
     "feature_build_fragment": [
         ("product-planner","PRODUCT_PLAN",    "PRODUCT_PLAN_READY"),
         ("architect",      "SYSTEM_DESIGN",   "SYSTEM_DESIGN_READY"),
@@ -409,26 +404,6 @@ _ACTUAL_SCENARIOS: list[dict] = [
             ("pr-reviewer",   None,               "LGTM"),
         ],
         "expect_strict": False, "expect_superset": True, "expect_subset": False,
-    },
-    {
-        "name": "bugfix_happy_path",
-        "reference": "quick_bugfix_loop",
-        "actual": [
-            ("engineer",      "IMPL",             "IMPL_DONE"),
-            ("validator",     "BUGFIX_VALIDATION","BUGFIX_PASS"),
-            ("pr-reviewer",   None,               "LGTM"),
-        ],
-        "expect_strict": True, "expect_superset": True, "expect_subset": True,
-    },
-    {
-        "name": "bugfix_wrong_validator_mode",
-        "reference": "quick_bugfix_loop",
-        "actual": [
-            ("engineer",      "IMPL",             "IMPL_DONE"),
-            ("validator",     "CODE_VALIDATION",  "PASS"),
-            ("pr-reviewer",   None,               "LGTM"),
-        ],
-        "expect_strict": False, "expect_superset": False, "expect_subset": False,
     },
     {
         "name": "polish_happy_path",

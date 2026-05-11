@@ -125,22 +125,21 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 - Plugin 배포 dry-run — 플러그인 공존 검증
 - 후속 skill `/ux` (designer + design-critic, Pencil MCP 의존) — `commands/` 카테고리 확장 후보
 
-## Skill 목록 (`commands/`, 10개)
+## Skill 목록 (`commands/`, 9개)
 
 | 발화 | 역할 |
 |---|---|
 | `/init-dcness` | dcness 활성화 게이트 — 현 cwd main repo 를 plugin-scoped whitelist 추가 |
 | `/qa` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
-| `/quick` | light path 자동화 (qa → architect LIGHT_PLAN → engineer → code-validator (bugfix scope) → pr-reviewer + clean 자동 commit/PR) |
 | `/product-plan` | 새 기능 spec/design (product-planner → plan-reviewer → ux-architect (self-check) → architect SD (self-check + impl 목차) → architecture-validator → architect MODULE_PLAN × N (impl 본문 detail)) |
-| `/impl` | per-task 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = architect MODULE_PLAN 선두 추가 — impl/NN-*.md 정식 위치 부재 시) |
+| `/impl` | per-task 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = module-architect 선두 추가 — impl/NN-*.md 정식 위치 부재 시. 버그픽스 = qa 분류 후 본 fallback path) |
 | `/impl-loop` | multi-task sequential auto chain (각 task 마다 /impl 호출 + clean 자동 진행) |
 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
 | `/efficiency` | Claude Code 세션 토큰/캐시/비용 분석 + HTML 대시보드 + 6 절감 휴리스틱 |
 | `/run-review` | dcness conveyor run 사후 분석 — 각 step 잘한 점·잘못한 점·비용 추출, self-improvement 루프 시작점 |
 | `/audit-redo` | redo-log + agent-trace 결합 분석 — (sub, mode) 별 redo 빈도 + Layer 1/2 개선 후보 제안 |
 
-행동형 skill (`/quick` `/product-plan` `/impl` `/impl-loop`) 공통:
+행동형 skill (`/product-plan` `/impl` `/impl-loop`) 공통:
 - yolo keyword (`yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서`) 검출 시 CLARITY/AMBIGUOUS/ESCALATE 자동 대체 (catastrophic 룰은 hard safety)
 - **워크트리 기본 켜짐** — 진입 시 자동 EnterWorktree. 거부 표현 정규식 `워크트리\s*(빼|없|말)` (예: "워크트리 빼고") 매치 시에만 건너뜀
 

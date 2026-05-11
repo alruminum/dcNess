@@ -429,13 +429,13 @@ class ActiveRunsTests(unittest.TestCase):
 
     def test_start_run_adds_slot(self) -> None:
         start_run(
-            self.sid, self.run_id, "quick",
+            self.sid, self.run_id, "impl",
             base_dir=self.base, issue_num=42,
         )
         data = read_live(self.sid, base_dir=self.base)
         slot = data["active_runs"][self.run_id]
         self.assertEqual(slot["run_id"], self.run_id)
-        self.assertEqual(slot["entry_point"], "quick")
+        self.assertEqual(slot["entry_point"], "impl")
         self.assertEqual(slot["issue_num"], 42)
         self.assertIsNone(slot["completed_at"])
         self.assertIsNone(slot["current_step"])
@@ -444,17 +444,17 @@ class ActiveRunsTests(unittest.TestCase):
         self.assertIn("run_dir", slot)
 
     def test_start_run_creates_dir(self) -> None:
-        start_run(self.sid, self.run_id, "quick", base_dir=self.base)
+        start_run(self.sid, self.run_id, "impl", base_dir=self.base)
         rd = run_dir(self.sid, self.run_id, base_dir=self.base)
         self.assertTrue(rd.exists())
 
     def test_start_run_duplicate_raises(self) -> None:
-        start_run(self.sid, self.run_id, "quick", base_dir=self.base)
+        start_run(self.sid, self.run_id, "impl", base_dir=self.base)
         with self.assertRaises(ValueError):
-            start_run(self.sid, self.run_id, "quick", base_dir=self.base)
+            start_run(self.sid, self.run_id, "impl", base_dir=self.base)
 
     def test_update_current_step(self) -> None:
-        start_run(self.sid, self.run_id, "quick", base_dir=self.base)
+        start_run(self.sid, self.run_id, "impl", base_dir=self.base)
         update_current_step(
             self.sid, self.run_id, "engineer", "IMPL",
             base_dir=self.base,
@@ -529,7 +529,7 @@ class ActiveRunsTests(unittest.TestCase):
         self.assertNotIn("STALE STEP WARN", err.getvalue())
 
     def test_complete_run(self) -> None:
-        start_run(self.sid, self.run_id, "quick", base_dir=self.base)
+        start_run(self.sid, self.run_id, "impl", base_dir=self.base)
         complete_run(self.sid, self.run_id, base_dir=self.base)
         slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.run_id]
         self.assertIsNotNone(slot["completed_at"])
@@ -541,7 +541,7 @@ class ActiveRunsTests(unittest.TestCase):
 
     def test_multiple_active_runs(self) -> None:
         # 동시 다중 run 지원 검증 (OMC 차용 핵심)
-        start_run(self.sid, "run-aaaaaaaa", "quick", base_dir=self.base)
+        start_run(self.sid, "run-aaaaaaaa", "impl", base_dir=self.base)
         start_run(self.sid, "run-bbbbbbbb", "product-plan", base_dir=self.base)
         data = read_live(self.sid, base_dir=self.base)
         self.assertEqual(len(data["active_runs"]), 2)
@@ -569,7 +569,7 @@ class CleanupStaleRunsTests(unittest.TestCase):
         active = live.get("active_runs", {}) or {}
         active[run_id] = {
             "run_id": run_id,
-            "entry_point": "quick",
+            "entry_point": "impl",
             "started_at": now_iso,
             "last_confirmed_at": now_iso,
             "completed_at": None,
@@ -1883,8 +1883,8 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         run_dir(sid, rid, create=True)
         write_pid_current_run(cc_pid, rid)
 
-        # /quick 전형 시퀀스 — pr-reviewer CHANGES_REQUESTED → engineer POLISH →
-        # pr-reviewer LGTM. 첫 pr-reviewer prose 에 MUST FIX 포함.
+        # qa-triage → impl-task-loop fallback 전형 시퀀스 — pr-reviewer CHANGES_REQUESTED →
+        # engineer POLISH → pr-reviewer LGTM. 첫 pr-reviewer prose 에 MUST FIX 포함.
         _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok", Path("/dev/null"))
         _append_step_status(
             sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY", "ok", Path("/dev/null")

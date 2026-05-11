@@ -7,7 +7,7 @@
 #
 # 사용:
 #   "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/dcness}/scripts/dcness-helper" \
-#       begin-run quick
+#       begin-run impl
 #
 # CLAUDE_PLUGIN_ROOT 가 set 안 됐을 때를 대비해 RWH 패턴 (path fallback) 정합.
 

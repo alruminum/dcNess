@@ -608,14 +608,14 @@ class StageCommitTestEngineerGateTests(_ImplPreToolBase):
         self.assertEqual(rc, 0)
 
     def test_test_engineer_gate_skipped_for_non_impl_loop(self) -> None:
-        """quick 루프 (entry_point='quick') 는 gate 미적용."""
+        """qa-triage 루프 (entry_point='qa') 는 gate 미적용."""
         from harness.session_state import start_run as _sr, write_pid_current_run as _wpc
         with TemporaryDirectory() as td:
             base = Path(td)
-            sid, rid, cc_pid = "sid-quick", "run-aaaabbbb", 66666
+            sid, rid, cc_pid = "sid-qa", "run-aaaabbbb", 66666
             write_pid_session(cc_pid, sid, base_dir=base)
             update_live(sid, base_dir=base)
-            _sr(sid, rid, "quick", base_dir=base)  # entry_point="quick" → gate 비적용
+            _sr(sid, rid, "qa", base_dir=base)  # entry_point="qa" → gate 비적용
             _wpc(cc_pid, rid, base_dir=base)
             rc = handle_pretooluse_agent(
                 stdin_data={"sessionId": sid, "tool_input": {"subagent_type": "test-engineer", "mode": ""}},
