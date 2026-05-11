@@ -46,7 +46,7 @@ git log --oneline
 기대 (이전 smoke 잔재 보존):
 - `src/greet.py` — greet() 가드 적용, `_GREETINGS` dict 정의됨 (단 greet() 가 lang param 없어 다국어 미사용 — 미구현 갭)
 - `src/calc.py` — add + subtract 구현, multiply/divide 누락, 주석 typo `숫지`
-- `prd.md`, `docs/architecture.md`, `docs/ux-flow.md`, `backlog.md`, `docs/milestones/v0.2/` — 이전 /product-plan 산출
+- `docs/prd.md`, `docs/architecture.md`, `docs/ux-flow.md`, `backlog.md`, `docs/milestones/v0.2/` — 이전 /product-plan 산출
 - 2 commit (initial + subtract feat)
 
 remote 부재라 PR 생성은 skip — dcness 의 graceful degrade (`/quick` Step 7 의 "git remote 없음 — local commit only") 검증 가능.
