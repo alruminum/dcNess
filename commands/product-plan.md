@@ -197,6 +197,17 @@ bash scripts/create_epic_story_issues.sh docs/stories.md
 
 이슈 등록 후 stories.md 변경분은 별도 commit + PR 또는 사용자 자율 (스크립트 자체는 git mutation X — stories.md 만 수정).
 
+### Step 9 — `/architect-loop` 진입 권장 (사용자 결정)
+
+이슈 등록 완료 후 메인이 사용자에게 confirm:
+
+```
+PRD + stories.md + 이슈 등록 완료. 이제 설계 루프 진입할까요?
+→ `/architect-loop <epic-path>` 호출 시 ux-architect / system-architect / architecture-validator / module-architect × K 순차 진행 + 1 PR 머지. (Y/n)
+```
+
+사용자 Y → `/architect-loop` 진입. N → 사용자가 나중에 직접 호출 (자동 진입 X — `commands/architect-loop.md` §전제 조건 정합).
+
 ## 비대상 (다른 skill 추천)
 
 - 버그 → `/qa` (`qa-triage`)
@@ -205,7 +216,7 @@ bash scripts/create_epic_story_issues.sh docs/stories.md
 
 ## 후속 라우팅
 
-- PRD/stories 완성 + 머지 + 이슈 등록 후 → `/impl-loop` (multi-task) 또는 `/impl` (per-task) 또는 system-architect 직접
+- PRD/stories 완성 + 머지 + 이슈 등록 후 → `/architect-loop` (설계 루프 — 권장) → 그 후 `/impl-loop` / `/impl` (구현 루프)
 - 기존 PRD 변경 → 본 스킬 재진입 (`Edit` 도구 섹션 단위 patch 의무, Write 통째 X)
 - `UX_REFINE_READY` 후속 — ux-architect REFINE → designer
 

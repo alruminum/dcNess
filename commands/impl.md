@@ -1,6 +1,6 @@
 ---
 name: impl
-description: impl task (feature-build-loop §4.2 Step 6 module-architect × N 산출물) 1개를 받아 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = module-architect 선두 추가) 자동 진행하는 스킬. 사용자가 "구현해줘", "/impl <task>", "이 task 구현", "impl 루프", "버그픽스", "한 줄 수정" 등을 말할 때 반드시 이 스킬을 사용한다. /product-plan 의 후속 — feature-build-loop 가 `impl/NN-*.md` 본문 detail 까지 채운 산출물의 task list 1개씩 처리. 버그픽스 케이스 = /qa 분류 후 본 스킬 fallback path (module-architect 선두 추가) 진입.
+description: impl task (architect-loop §4.2 Step 4 module-architect × K 산출물) 1개를 받아 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = module-architect 선두 추가) 자동 진행하는 스킬. 사용자가 "구현해줘", "/impl <task>", "이 task 구현", "impl 루프", "버그픽스", "한 줄 수정" 등을 말할 때 반드시 이 스킬을 사용한다. /architect-loop 의 후속 — architect-loop 가 `impl/NN-*.md` 본문 detail 까지 채운 산출물의 task list 1개씩 처리. 버그픽스 케이스 = /qa 분류 후 본 스킬 fallback path (module-architect 선두 추가) 진입.
 ---
 
 # Impl Skill
@@ -15,14 +15,14 @@ UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (orchestration §4.4)
 - attempt 한도 확인 (engineer 3 / POLISH 2 / module-architect 보강 cycle 2 — 기본값)
 
 ## 비대상 (다른 skill 추천)
-- spec / design 단계 → `/product-plan` (`feature-build-loop`)
+- spec / design 단계 → `/product-plan` (PRD) 또는 `/architect-loop` (설계)
 - 다중 task 자동 chain → `/impl-loop`
 - task 부재 (계획 X) → `/qa` (분류 후 impl-task-loop fallback) 또는 `/product-plan`
 
 ## 진입 모드 — default vs fallback (위치 도장)
 - task 경로 매치 + 정식 위치 (`docs/milestones/v\d+/epics/epic-\d+-*/impl/\d+-*.md`) 파일 존재 → **default**: test-engineer 직진 (module-architect skip).
 - 매치 실패 / 파일 부재 → **fallback**: module-architect 1번 호출 후 test-engineer 진입.
-- 근거: feature-build-loop §4.2 의 Step 7 (module-architect × N) 이 정식 위치 impl 파일 본문 detail 까지 채움. 정식 경로 + 파일 존재 = 통과 보장. (옛 `MODULE_PLAN_READY` 마커 grep 룰 폐기 — 위치 자체가 도장.)
+- 근거: architect-loop §4.2 의 Step 4 (module-architect × K) 가 정식 위치 impl 파일 본문 detail 까지 채움. 정식 경로 + 파일 존재 = 통과 보장. (옛 `MODULE_PLAN_READY` 마커 grep 룰 폐기 — 위치 자체가 도장.)
 
 ## 후속 라우팅
 - 본 loop clean → 자동 commit/PR (branch prefix = orchestration §4.3 decision rule: feat/chore/fix)
@@ -69,4 +69,4 @@ tail -50 "<task-path>"
 근거: jajang Epic 12 task 02 사례 (2026-05-09) — 이미 머지된 task 를 재진입 시도 → 3 분 + 컨텍스트 5% wasted. 진입 *전* 30 초 확인이 사후 회복보다 압도적 저비용.
 
 ## 절차
-[`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.3 (`impl-task-loop` 풀스펙, Step 4.5 stories sync 포함) 따름. UI 감지 시 §4.4 (`impl-ui-design-loop`).
+[`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.3 (`impl-task-loop` 풀스펙) 따름. UI 감지 시 §4.4 (`impl-ui-design-loop`).
