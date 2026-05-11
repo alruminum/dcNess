@@ -101,7 +101,6 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
     "qa": (),
     "code-validator": (),
     "architecture-validator": (),
-    "design-critic": (),
     "pr-reviewer": (),
     "plan-reviewer": (),
 }

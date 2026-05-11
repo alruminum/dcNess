@@ -42,7 +42,6 @@ function classify(allowed) {
   if (has('POLISH_DONE') && allowed.length === 1) return 'engineer.polish';
   if (has('TESTS_WRITTEN')) return 'test-engineer';
   if (has('DESIGN_READY_FOR_REVIEW', 'DESIGN_LOOP_ESCALATE')) return 'designer';
-  if (has('VARIANTS_APPROVED', 'VARIANTS_ALL_REJECTED')) return 'design-critic';
   // validator 단순화 후 — 두 검증 에이전트 모두 PASS/FAIL/ESCALATE 통일.
   // legacy enum (SPEC_MISSING, DESIGN_REVIEW_*) 도 호환 매칭.
   if (has('PASS', 'FAIL', 'ESCALATE')) return 'validator';

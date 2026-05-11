@@ -76,7 +76,7 @@ INFRA_PATH_PATTERNS = [
 ]
 
 READONLY_AGENTS = {"qa", "code-validator", "architecture-validator", "pr-reviewer",
-                    "plan-reviewer", "design-critic"}
+                    "plan-reviewer"}
 
 # DCN-CHG-20260430-20: Phase 2 — per-Agent budget for THINKING_LOOP detection.
 # elapsed_s: 정상 sub-agent 한 번 호출 한도 (초).
@@ -91,7 +91,6 @@ EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
     "pr-reviewer":     {"elapsed_s": 180, "min_output_tokens": 600},
     "qa":              {"elapsed_s": 300, "min_output_tokens": 600},
     "plan-reviewer":   {"elapsed_s": 300, "min_output_tokens": 1000},
-    "design-critic":   {"elapsed_s": 300, "min_output_tokens": 600},
     "designer":        {"elapsed_s": 600, "min_output_tokens": 1000},
     "ux-architect":    {"elapsed_s": 600, "min_output_tokens": 1000},
 }

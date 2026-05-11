@@ -8,7 +8,7 @@
 
 ## 1. Agent 결론 → 다음 agent 결정 가이드 (자연어)
 
-> agent 13 종 (architect 는 system-architect + module-architect 두 에이전트로 평탄화, validator 는 code-validator + architecture-validator 두 에이전트로 평탄화, security-reviewer 는 pr-reviewer §F-Security + architect 의 위협 모델 가정·invariant 로 흡수). agent 가 자기 prose 에 결론 + 권장 다음 단계를 자유롭게 박는다. 메인 Claude 는 그 prose 와 본 가이드를 비교해 다음 호출을 결정한다. 본 가이드는 형식 강제가 아니라 *판단 보조*. 가능한 결론 표현은 agent 별로 다양 — 의미만 맞으면 OK ([`dcness-rules.md`](dcness-rules.md) §1 원칙 2 자율 정합).
+> agent 11 종 (architect 는 system-architect + module-architect 두 에이전트로 평탄화, validator 는 code-validator + architecture-validator 두 에이전트로 평탄화, security-reviewer 는 pr-reviewer §F-Security + architect 의 위협 모델 가정·invariant 로 흡수, design-critic 은 사용자 직접 PICK 으로 대체 + 클리셰 회피는 design.md §8 + code-validator grep 으로 흡수). agent 가 자기 prose 에 결론 + 권장 다음 단계를 자유롭게 박는다. 메인 Claude 는 그 prose 와 본 가이드를 비교해 다음 호출을 결정한다. 본 가이드는 형식 강제가 아니라 *판단 보조*. 가능한 결론 표현은 agent 별로 다양 — 의미만 맞으면 OK ([`dcness-rules.md`](dcness-rules.md) §1 원칙 2 자율 정합).
 
 > **이슈 #280 정착 후 작동 모델**:
 > - agent 는 prose 마지막 단락에 *어떤 결과로 끝났는지 + 메인이 누구를 부르는 게 적절한지* 자기 언어로 명시.
@@ -81,20 +81,13 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
 
 ### 1.7 designer
 
-UI variant 생성. 결과:
+UI 시안 1개 생성. 다중 시안 비교·점수 심사 단계 폐기 (사용자가 마지막 PICK 하므로 critic 대리 판단 중복). 환경 감지 = `docs/design.md` frontmatter `medium: pencil|html`. 결과:
 
-- **variant 준비 완료** → THREE_WAY 면 design-critic, ONE_WAY 면 사용자 PICK.
-- **variant 생성 불가** → escalate (사용자 위임).
+- **시안 준비 완료** → 사용자 직접 확인 (Pencil 캔버스 또는 `design-variants/<screen>-v<N>.html`). 사용자 PICK 후 다음 단계 (test 또는 impl).
+- **시안 거절** → 사용자가 designer 재호출 자유 결정 (한도 명시 X).
+- **시안 생성 불가** → escalate (사용자 위임).
 
-### 1.8 design-critic
-
-variant 심사. 결과:
-
-- **1+ variant 승인** → 사용자 PICK → 다음 단계 (test 또는 impl).
-- **모두 reject** → designer 재진입 (round < 3).
-- **3 round 누적 reject** → ux-architect UX_REFINE.
-
-### 1.9 code-validator
+### 1.8 code-validator
 
 impl 계획 ↔ 구현 코드 일치 검증. impl 파일 경로 (`docs/impl/NN-*.md` 또는 `docs/bugfix/#N-slug.md`) 로 full/bugfix scope 자동 분기. 결론 3종:
 
@@ -102,7 +95,7 @@ impl 계획 ↔ 구현 코드 일치 검증. impl 파일 경로 (`docs/impl/NN-*
 - **FAIL** → engineer 재시도 (attempt < 3).
 - **ESCALATE** → impl 계획 + 대체 소스 모두 부재 / 재시도 한도 초과. 본문 사유 명시 → 메인이 사유 보고 module-architect (보강 케이스) 호출 또는 사용자 위임.
 
-### 1.10 architecture-validator
+### 1.9 architecture-validator
 
 system-architect 산출물의 자가검증 사각지대 (Placeholder Leak + Spike Gate 2 항목) 외부 reviewer. 결론 3종:
 
@@ -116,14 +109,14 @@ system-architect 산출물의 자가검증 사각지대 (Placeholder Leak + Spik
 > - DESIGN_VALIDATION 의 자가검증 가능 항목 (인터페이스/에러/엣지케이스/리스크/성능) 은 system-architect self-check 흡수. *자가검증 사각지대* (Placeholder Leak + Spike Gate) 만 architecture-validator 가 외부 검증.
 > - BUGFIX_VALIDATION 은 code-validator 의 bugfix scope (impl 파일 경로 `docs/bugfix/`) 로 통합.
 
-### 1.11 pr-reviewer
+### 1.10 pr-reviewer
 
-merge 직전 코드 품질 심사:
+merge 직전 코드 품질 + 보안 코드 패턴 심사:
 
 - **LGTM** → CI PASS 후 메인이 즉시 regular merge.
 - **변경 요청** → engineer POLISH 재호출.
 
-### 1.12 qa
+### 1.11 qa
 
 이슈 분류 hub. 5 결과:
 
@@ -146,7 +139,6 @@ merge 직전 코드 품질 심사:
 | engineer SPEC_GAP_FOUND → module-architect (보강) → engineer 재진입 | 2 | `IMPLEMENTATION_ESCALATE` |
 | code-validator FAIL → engineer 재진입 | engineer attempt 흡수 | engineer attempt 한도 (3) 도달 시 escalate |
 | architecture-validator FAIL → system-architect 재진입 | 2 cycle | 사용자 위임 |
-| design THREE_WAY VARIANTS_ALL_REJECTED 라운드 | 3 | `UX_REDESIGN_SHORTLIST` (ux-architect REFINE) |
 | pr-reviewer CHANGES_REQUESTED → POLISH 라운드 | 2 | 사용자 escalate |
 | product-planner CLARITY_INSUFFICIENT 라운드 | 무제한 (사용자 응답 대기) | (해당 없음) |
 | ESCALATE 누적 (동일 fail_type) | 2 | module-architect (보강 케이스) 자동 호출 |
@@ -172,10 +164,9 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 |---|---|---|
 | `IMPLEMENTATION_ESCALATE` | engineer | 재시도 한도 초과 또는 구현 불가 |
 | `UX_FLOW_ESCALATE` | ux-architect | UX Flow 정의 불가 (PRD 모순 등) |
-| `DESIGN_LOOP_ESCALATE` | designer | variant 생성 불가 또는 critic 3 round 후 |
+| `DESIGN_LOOP_ESCALATE` | designer | 시안 생성 불가 (외부 의존 부재 / 컨텍스트 모호 / 권한 부족) |
 | `SCOPE_ESCALATE` | qa | 이슈 범위가 분류 enum 5개 모두 해당 안 됨 |
 | `ESCALATE` | system-architect / module-architect | 기술 제약 충돌 / PRD 변경 필요 / Spike FAIL / 권한 부족 (본문 사유 명시) |
-| `UX_REDESIGN_SHORTLIST` | design-critic | 3 round 누적 reject |
 | `CLARITY_INSUFFICIENT` | product-planner | 사용자 입력 모호 (역질문 필요) |
 
 자동 재시도 / 우회 금지. 사용자 명시 결정 후만 진행.
@@ -197,7 +188,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | module-architect | 버그픽스 (qa 후) / 문서 동기화 | ✅ | 메인 직접 |
 | architecture-validator | — | ✅ | 메인 직접 |
 | code-validator | — | ❌ | impl_driver 경유 |
-| 그 외 9 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, design-critic, product-planner, test-engineer, plan-reviewer, security-reviewer 모두 메인 직접 |
+| 그 외 7 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, product-planner, test-engineer, plan-reviewer 모두 메인 직접 |
 | engineer | — | ❌ | impl_driver 경유 필수 |
 
 ### 4.2 Write/Edit 허용 경로 (ALLOW_MATRIX)
@@ -211,7 +202,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | product-planner | `docs/prd.md`, `stories.md` |
 | ux-architect | `docs/ux-flow.md` |
 | qa | (Issue tracker mutation 만, 파일 X) |
-| code-validator / architecture-validator / design-critic / pr-reviewer / plan-reviewer | (없음 — 판정 전용) |
+| code-validator / architecture-validator / pr-reviewer / plan-reviewer | (없음 — 판정 전용) |
 
 ### 4.3 Read 금지 경로 (READ_DENY_MATRIX)
 
