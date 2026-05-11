@@ -10,11 +10,9 @@
 #   exit 1: block (stderr 메시지 + CC 가 호출 거부)
 #
 # 강제 룰:
-#   - HARNESS_ONLY_AGENTS (engineer, code-validator) — run 미시작 시 차단
 #   - §2.3.1 — pr-reviewer 직전 code-validator PASS 확인
-#   - §2.3.3 — engineer 직전 architect plan READY 확인
-#   - §2.3.4 — architect SD/TD 직전 plan-reviewer + ux-architect 검토 확인
-#   - §2.3.5 — architect MODULE_PLAN (SD 후속) 직전 architecture-validator PASS 확인
+#   - §2.3.3 — engineer 직전 module-architect READY 확인
+#   - §2.3.6~§2.3.8 — impl-task-loop 3-commit 단계 (docs / tests / src) 확인
 
 set -uo pipefail
 

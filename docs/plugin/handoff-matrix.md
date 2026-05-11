@@ -168,21 +168,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 > RWHarness `harness-architecture.md` §3 의 dcNess 변환. dcness 의 두 번째 강제 영역 = "접근 영역" ([`dcness-rules.md`](dcness-rules.md) §1 §1 정합).
 
-### 4.1 호출 권한 (HARNESS_ONLY_AGENTS)
-
-`HARNESS_ONLY_AGENTS = ("engineer",)` — 메인 Claude 가 Agent 도구로 직접 호출 차단. 코드 driver (impl_driver) 경유 필수.
-
-| Agent | 케이스 | 직접 호출 허용 | 비고 |
-|---|---|---|---|
-| system-architect | (전체) | ✅ | 메인 직접 |
-| module-architect | 신규 story (architect-loop §4.2 Step 4) / 보강 (engineer SPEC_GAP_FOUND) | ❌ | impl_driver / plan_driver 경유 |
-| module-architect | 버그픽스 (qa 후) / 문서 동기화 | ✅ | 메인 직접 |
-| architecture-validator | — | ✅ | 메인 직접 |
-| code-validator | — | ❌ | impl_driver 경유 |
-| 그 외 6 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, test-engineer, plan-reviewer 모두 메인 직접 |
-| engineer | — | ❌ | impl_driver 경유 필수 |
-
-### 4.2 Write/Edit 허용 경로 (ALLOW_MATRIX)
+### 4.1 Write/Edit 허용 경로 (ALLOW_MATRIX)
 
 | 에이전트 | 허용 경로 |
 |---|---|
@@ -194,7 +180,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | qa | (Issue tracker mutation 만, 파일 X) |
 | code-validator / architecture-validator / pr-reviewer / plan-reviewer | (없음 — 판정 전용) |
 
-### 4.3 Read 금지 경로 (READ_DENY_MATRIX)
+### 4.2 Read 금지 경로 (READ_DENY_MATRIX)
 
 | 에이전트 | 금지 |
 |---|---|
@@ -202,9 +188,9 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | test-engineer | `src/` (impl 외), 도메인 문서 |
 | plan-reviewer | `src/`, `docs/impl/`, `docs/architecture.md` |
 
-### 4.4 인프라 패턴 (전 에이전트 공통 차단)
+### 4.3 인프라 패턴 (전 에이전트 공통 차단)
 
-> **코드 SSOT**: 실제 강제 패턴은 `harness/agent_boundary.py:DCNESS_INFRA_PATTERNS`. 본 §4.4 와 코드는 항상 동기 — 변경 시 양쪽 함께.
+> **코드 SSOT**: 실제 강제 패턴은 `harness/agent_boundary.py:DCNESS_INFRA_PATTERNS`. 본 §4.3 와 코드는 항상 동기 — 변경 시 양쪽 함께.
 
 ```python
 DCNESS_INFRA_PATTERNS = [
@@ -223,7 +209,7 @@ DCNESS_INFRA_PATTERNS = [
 
 인프라 프로젝트(`is_infra_project()` True) 에선 위 패턴 해제 (dcness 자체 작업 시 본 SSOT 들도 편집 가능해야 함).
 
-### 4.5 인프라 프로젝트 판정
+### 4.4 인프라 프로젝트 판정
 
 RWHarness 4 신호 OR 정합:
 
