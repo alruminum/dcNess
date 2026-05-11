@@ -100,15 +100,15 @@ PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
 | ENUM | 처리 |
 |------|------|
 | advance enum (catalog 행의 `advance` 컬럼) | 다음 step 있으면 진행 / **마지막 step이면 사용자 대기 없이 즉시 Step 7** |
-| `SPEC_GAP_FOUND` | architect SPEC_GAP cycle (≤2) 또는 사용자 위임 |
+| `SPEC_GAP_FOUND` | module-architect (보강 케이스) cycle (≤2) 또는 사용자 위임 |
 | `TESTS_FAIL` / code-validator `FAIL` | engineer 재시도 (attempt < 3) |
-| code-validator `ESCALATE` (사유: spec 부재) | architect SPEC_GAP |
+| code-validator `ESCALATE` (사유: spec 부재) | module-architect (보강 케이스) |
 | code-validator `ESCALATE` (사유: 재시도 한도 초과 등) | 사용자 위임 |
 | `*_ESCALATE` (hard) | 사용자 위임 (escalate) |
 | `*_ESCALATE` (soft) / `CLARITY_INSUFFICIENT` | 비-yolo: 사용자 위임 / yolo: `auto-resolve` |
 | `CHANGES_REQUESTED` | engineer POLISH cycle (≤2) |
 | `AMBIGUOUS` | 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS 시 사용자 위임 (enum 후보 + prose 발췌) |
-| architecture-validator `FAIL` | architect SYSTEM_DESIGN 재진입 (cycle ≤2) |
+| architecture-validator `FAIL` | system-architect 재진입 (cycle ≤2) |
 | `PRODUCT_PLAN_UPDATED` | plan-reviewer skip → ux-architect 직행 |
 
 cycle 한도 = orchestration.md §5.
@@ -123,10 +123,10 @@ cycle 한도 = orchestration.md §5.
 | `CHANGES_REQUESTED` → engineer POLISH | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
 | POLISH 후 pr-reviewer 재실행 | 직전 pr-reviewer task | `TaskUpdate(<task>, in_progress)` |
 | `IMPL_PARTIAL` → engineer 재호출 | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
-| architecture-validator `FAIL` → architect 재진입 | 직전 architect task | `TaskUpdate(<task>, in_progress)` |
+| architecture-validator `FAIL` → system-architect 재진입 | 직전 system-architect task | `TaskUpdate(<task>, in_progress)` |
 | ux-architect self-check FAIL → ux-architect 재진입 | 직전 ux-architect task | `TaskUpdate(<task>, in_progress)` (prose 내부 cycle — 별도 task X) |
 | `AMBIGUOUS` 재호출 1회 | 직전 동일 agent task | `TaskUpdate(<task>, in_progress)` |
-| `SPEC_GAP_FOUND` → architect SPEC_GAP | 신규 task (다른 agent/mode) | `TaskCreate` 가능 |
+| `SPEC_GAP_FOUND` → module-architect (보강) | 신규 task (다른 agent) | `TaskCreate` 가능 |
 
 이유: retry / POLISH 는 *동일 step 의 재실행*. 신규 TaskCreate 시 같은 step 이 task list 에 중복 등장 → 진행 추적 오염. cycle 카운터는 step occurrence (`<agent>[-<MODE>]-N.md`) 로 보존되므로 task 는 1개로 유지.
 
@@ -147,7 +147,7 @@ TaskUpdate(<기존 task>, completed)
 | 상황 | 비-yolo | yolo |
 |---|---|---|
 | `CLARITY_INSUFFICIENT` / `*_ESCALATE` (soft) / `AMBIGUOUS` | 사용자 위임 | `auto-resolve` 적용 |
-| `SPEC_GAP_FOUND` | 사용자 위임 | architect SPEC_GAP cycle (≤2) |
+| `SPEC_GAP_FOUND` | 사용자 위임 | module-architect (보강 케이스) cycle (≤2) |
 | `TESTS_FAIL` / code-validator FAIL | 재시도 (≤3) | 동일 |
 | `IMPL_PARTIAL` | engineer 재호출 (split ≤ 3) | 동일 — 새 context window |
 | `CHANGES_REQUESTED` | 사용자 위임 | engineer POLISH (cycle ≤2) |
@@ -168,17 +168,17 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 
 | 시점 | stage | 포함 파일 | 커밋 메시지 예 |
 |---|---|---|---|
-| (default) test-engineer 시작 직전 / (fallback) MODULE_PLAN READY_FOR_IMPL 직후 | docs | `docs/impl/NN.md` (default 면 이미 정식 위치, fallback 이면 새로 작성됨) | `docs: impl plan <task-slug>` |
+| (default) test-engineer 시작 직전 / (fallback) module-architect READY 직후 | docs | `docs/impl/NN.md` (default 면 이미 정식 위치, fallback 이면 새로 작성됨) | `docs: impl plan <task-slug>` |
 | TESTS_WRITTEN 직후 | tests | `src/tests/**`, `*.test.*` | `test: tests for <task-slug>` |
 | code-validator PASS 직후 | src | `src/**`, stories.md 등 | `feat/fix/chore: <task-slug>` |
 | LGTM 직후 | — (merge) | 새 커밋 없음 | — |
 
-> default 모드 = task 파일이 이미 정식 위치에 있음 (feature-build-loop §4.2 Step 7 MODULE_PLAN × N 산출물). branch 새로 만들고 *기존* `docs/impl/NN-*.md` 를 stage 만 하는 commit (변경 0 일 수도 있으니 `git add -A docs/impl/` 로 의도 표시 + commit). fallback 모드 = 위치 부재 → MODULE_PLAN 1번 호출 → 새로 작성된 파일을 stage.
+> default 모드 = task 파일이 이미 정식 위치에 있음 (feature-build-loop §4.2 Step 7 module-architect × N 산출물). branch 새로 만들고 *기존* `docs/impl/NN-*.md` 를 stage 만 하는 commit (변경 0 일 수도 있으니 `git add -A docs/impl/` 로 의도 표시 + commit). fallback 모드 = 위치 부재 → module-architect 1번 호출 → 새로 작성된 파일을 stage.
 
 ### commit 골격
 
 ```bash
-# commit1 (default = test-engineer 시작 직전 / fallback = MODULE_PLAN READY_FOR_IMPL 직후) — 브랜치 최초 생성
+# commit1 (default = test-engineer 시작 직전 / fallback = module-architect READY 직후) — 브랜치 최초 생성
 BRANCH="<prefix>/<task-slug>"
 git checkout -b "$BRANCH" main
 git add docs/impl/NN-*.md          # 플랜 문서 (default 시 변경 없음 — 정식 위치 stage 만)
@@ -390,7 +390,7 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 
 ### 7.1 catastrophic 룰 정합
 
-[`orchestration.md`](orchestration.md) §2.3 5룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 `READY_FOR_IMPL` enum / feature-build-loop §4.2 Step 6 (MODULE_PLAN × N) 진입 직전 architecture-validator PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
+[`orchestration.md`](orchestration.md) §2.3 5룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `READY` enum / feature-build-loop §4.2 Step 6 (module-architect × N) 진입 직전 architecture-validator PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
 
 > Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (loop-catalog.md 폐기, 8 → 7 SSOT).
 

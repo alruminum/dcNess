@@ -174,7 +174,7 @@ ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>")
 
 REDO 판단 신호: 결과가 질문에 제대로 답하지 못함 / 같은 tool 5회+ 반복 / boundary 위반 stderr / 기대 enum 불일치.
 
-루프 순서 변경도 자유 — architect 재실행, 다른 에이전트 호출 등 적극.
+루프 순서 변경도 자유 — system-architect / module-architect 재실행, 다른 에이전트 호출 등 적극.
 
 **echo 안티패턴**:
 - ❌ 압축 paraphrase 1~2줄로 끝내기
