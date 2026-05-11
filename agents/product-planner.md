@@ -7,7 +7,7 @@ description: >
   PRODUCT_PLAN_READY 산출 시 epic + story 이슈 연속 생성 ([`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §1).
   prose 결과 + 마지막 단락에 결론 + 권장 다음 단계 자연어 명시.
 tools: Read, Write, Glob, Grep, mcp__github__create_issue, mcp__github__list_issues, mcp__github__update_issue
-model: sonnet
+model: opus
 ---
 
 > 본 문서는 product-planner 에이전트의 시스템 프롬프트. 호출자가 지정한 모드를 즉시 수행 + prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시 후 종료.
