@@ -482,7 +482,7 @@ allowed_enums / 분기 / sub_cycles / branch_prefix decision rule / Step 4.5 = �
 - [`../../CLAUDE.md`](../../CLAUDE.md) — 작업 절차 + 게이트 SSOT
 - [`../archive/plugin-dryrun-guide.md`](../archive/plugin-dryrun-guide.md) — plugin 배포 dry-run (역사 자료)
 - [`../archive/migration-decisions.md`](../archive/migration-decisions.md) §2.1 — RWHarness 모듈 분류 (impl_loop.py DISCARD) (역사 자료)
-- `agents/*.md` — 각 agent prose writing guide + 결론 enum 출처 (system-architect / module-architect / engineer / test-engineer / code-validator / architecture-validator / designer / design-critic / ux-architect / product-planner / plan-reviewer / pr-reviewer / qa / security-reviewer)
+- `agents/*.md` — 각 agent prose writing guide + 결론 enum 출처 (system-architect / module-architect / engineer / test-engineer / code-validator / architecture-validator / designer / design-critic / ux-architect / product-planner / plan-reviewer / pr-reviewer / qa)
 - `harness/signal_io.py` / `harness/interpret_strategy.py` — interpret_signal + heuristic
 - `scripts/analyze_metrics.mjs` — fitness 측정
 - RWHarness `docs/harness-spec.md` §4.2/§4.3 + `harness-architecture.md` §3 — 시퀀스 / 핸드오프 매트릭스 출처
