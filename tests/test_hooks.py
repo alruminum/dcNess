@@ -244,10 +244,10 @@ class CatastrophicPrReviewerTests(_PreToolBase):
         )
         self.assertEqual(rc, 1)
 
-    def test_engineer_write_with_code_validation_pass_allows(self) -> None:
+    def test_engineer_write_with_code_validator_pass_allows(self) -> None:
         (self.run_path / "engineer-IMPL.md").write_text("IMPL_DONE", encoding="utf-8")
-        (self.run_path / "validator-CODE_VALIDATION.md").write_text(
-            "PASS", encoding="utf-8",
+        (self.run_path / "code-validator.md").write_text(
+            "## 결론\nPASS\n", encoding="utf-8",
         )
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("pr-reviewer", ""),
@@ -256,10 +256,11 @@ class CatastrophicPrReviewerTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
 
-    def test_engineer_write_with_bugfix_validation_pass_allows(self) -> None:
+    def test_engineer_write_with_code_validator_occurrence_pass_allows(self) -> None:
+        # occurrence (재호출) 도 인정
         (self.run_path / "engineer-IMPL.md").write_text("IMPL_DONE", encoding="utf-8")
-        (self.run_path / "validator-BUGFIX_VALIDATION.md").write_text(
-            "PASS", encoding="utf-8",
+        (self.run_path / "code-validator-2.md").write_text(
+            "## 결론\nPASS\n", encoding="utf-8",
         )
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("pr-reviewer", ""),
@@ -270,12 +271,84 @@ class CatastrophicPrReviewerTests(_PreToolBase):
 
 
 # ---------------------------------------------------------------------------
-# §2.3.4 / §2.3.5 catastrophic gate 폐기 (2026-05-12, v0.2.17)
-# 옛 단일 `architect` agent + mode (SYSTEM_DESIGN / MODULE_PLAN) 시절 잔재.
-# system-architect / module-architect 분리 + architect-loop 신설 후
-# prerequisite 검증은 메인 영역 (architect-loop skill §Pre-flight gate).
-# CatastrophicArchitectTests / CatastrophicDesignValidationTests 폐기.
+# §2.3.5 — architect-loop 안 module-architect × N 첫 호출 직전
+# architecture-validator PASS 필수 (PR B-4 부활, β-strong)
 # ---------------------------------------------------------------------------
+
+
+class _ArchitectLoopBase(unittest.TestCase):
+    """architect-loop entry_point 컨텍스트 — §2.3.5 gate 발동 조건."""
+
+    sid = "test-sid-arch"
+    rid = "run-archloop"
+    cc_pid = 55555
+
+    def setUp(self) -> None:
+        self._td = TemporaryDirectory()
+        self.base = Path(self._td.name)
+        write_pid_session(self.cc_pid, self.sid, base_dir=self.base)
+        update_live(self.sid, base_dir=self.base)
+        start_run(self.sid, self.rid, "architect-loop", base_dir=self.base)
+        write_pid_current_run(self.cc_pid, self.rid, base_dir=self.base)
+        self.run_path = run_dir(self.sid, self.rid, base_dir=self.base)
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+
+    def _payload(self, subagent: str, mode: str = "") -> dict:
+        return {
+            "sessionId": self.sid,
+            "tool_input": {"subagent_type": subagent, "mode": mode},
+        }
+
+
+class CatastrophicArchitectureValidatorTests(_ArchitectLoopBase):
+    def test_module_architect_first_call_blocked_without_arch_validator(self) -> None:
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("module-architect"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_module_architect_first_call_allowed_with_arch_validator_pass(self) -> None:
+        (self.run_path / "architecture-validator.md").write_text(
+            "## 결론\nPASS\n", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("module-architect"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_module_architect_subsequent_call_skips_arch_validator_check(self) -> None:
+        # 첫 호출 prose 이미 있음 → 후속 호출. gate 미발동.
+        (self.run_path / "module-architect.md").write_text(
+            "## 결론\nPASS\n", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("module-architect"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_gate_skipped_for_non_architect_loop(self) -> None:
+        """impl-task-loop 등 다른 entry_point 는 §2.3.5 미적용."""
+        with TemporaryDirectory() as td:
+            base = Path(td)
+            sid, rid, cc_pid = "sid-impl", "run-impl1234", 44444
+            write_pid_session(cc_pid, sid, base_dir=base)
+            update_live(sid, base_dir=base)
+            start_run(sid, rid, "impl", base_dir=base)
+            write_pid_current_run(cc_pid, rid, base_dir=base)
+            rc = handle_pretooluse_agent(
+                stdin_data={"sessionId": sid, "tool_input": {"subagent_type": "module-architect", "mode": ""}},
+                cc_pid=cc_pid,
+                base_dir=base,
+            )
+            self.assertEqual(rc, 0)
 
 
 # ---------------------------------------------------------------------------
