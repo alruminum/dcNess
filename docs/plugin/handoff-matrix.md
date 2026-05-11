@@ -193,10 +193,10 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | 에이전트 | 허용 경로 |
 |---|---|
 | engineer | `src/**` |
-| architect | `docs/**`, `backlog.md`, `trd.md` |
+| architect | `docs/**`, `backlog.md` |
 | designer | `design-variants/**`, `docs/ui-spec*` |
 | test-engineer | `src/__tests__/**`, `*.test.*`, `*.spec.*` |
-| product-planner | `prd.md`, `stories.md` |
+| product-planner | `docs/prd.md`, `stories.md` |
 | ux-architect | `docs/ux-flow.md` |
 | qa | (Issue tracker mutation 만, 파일 X) |
 | validator / design-critic / pr-reviewer / security-reviewer / plan-reviewer | (없음 — 판정 전용) |
@@ -205,10 +205,10 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 | 에이전트 | 금지 |
 |---|---|
-| product-planner | `src/`, `docs/impl/`, `trd.md` |
+| product-planner | `src/`, `docs/impl/`, `docs/architecture.md` |
 | designer | `src/` |
 | test-engineer | `src/` (impl 외), 도메인 문서 |
-| plan-reviewer | `src/`, `docs/impl/`, `trd.md` |
+| plan-reviewer | `src/`, `docs/impl/`, `docs/architecture.md` |
 
 ### 4.4 인프라 패턴 (전 에이전트 공통 차단)
 

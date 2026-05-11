@@ -95,10 +95,10 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 **스코프 밖** (NICE TO HAVE + 총평에 라우팅 권고, MUST FIX 금지):
 | 파일 | 소유 에이전트 |
 |---|---|
-| `docs/bugfix/**`, `docs/impl/**`, `docs/architecture*`, `docs/sdk.md`, `docs/db-schema.md`, `docs/domain-logic*`, `backlog.md`, `trd.md` | architect |
+| `docs/bugfix/**`, `docs/impl/**`, `docs/architecture*`, `docs/sdk.md`, `docs/db-schema.md`, `docs/domain-logic*`, `backlog.md` | architect |
 | `docs/design.md` | ux-architect (시스템 레벨: Colors/Typography/Layout/Shapes/Elevation + 해당 frontmatter 토큰), designer (Components 섹션 + frontmatter components 토큰) |
 | `docs/ux-flow.md` | ux-architect |
-| `prd.md` | product-planner |
+| `docs/prd.md` | product-planner |
 | `package.json`, lockfile, 의존성 파일 | 사용자 직접 |
 | `.claude/**`, `hooks/**`, `harness/**`, `scripts/**` | 인프라 — 리뷰 대상 아님, 언급 금지 |
 

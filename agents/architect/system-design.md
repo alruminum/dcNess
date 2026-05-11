@@ -204,7 +204,7 @@ docs/domain-model.md (300줄 이하)
 architect 가 SYSTEM_DESIGN / SPEC_GAP 호출될 때마다 다음 검사:
 1. `docs/architecture.md` (또는 분리된 detail) 와 실제 src/ 모듈 목록 정합?
 2. `docs/domain-model.md` 와 실제 src/ 도메인 코드 정합?
-3. PRD (`prd.md`) 의 요구사항이 시스템 설계에 반영됐는가?
+3. PRD (`docs/prd.md`) 의 요구사항이 시스템 설계에 반영됐는가?
 
 불일치 발견 시:
 - architect 가 *직접 sync* (SYSTEM_DESIGN 모드)
