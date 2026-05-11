@@ -18,7 +18,7 @@ epic issue ─┬─ story issue ── (task: PR 기반, 이슈 없음)
 
 ### 1.1 시점
 
-메인 Claude 가 PRD/stories.md 작성 + plan-reviewer PASS + PR 머지 완료 후 *사용자 confirm trigger* 로 epic + story 이슈 *연속* 생성 (`commands/product-plan.md` Step 8). 별도 호출 (구 ISSUE_SYNC) X.
+메인 Claude 가 PRD/stories.md 작성 + plan-reviewer PASS + PR 머지 완료 후 *사용자 confirm trigger* 로 epic + story 이슈 *연속* 생성 (`commands/product-plan.md` Step 8). 자동화 스크립트 = [`scripts/create_epic_story_issues.sh`](../../scripts/create_epic_story_issues.sh) — stories.md parse + epic/story 이슈 생성 + sub-issue API 연결 한 명령으로 처리. 별도 호출 (구 ISSUE_SYNC) X.
 
 ### 1.2 Epic 이슈
 
