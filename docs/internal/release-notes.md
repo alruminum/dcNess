@@ -4,6 +4,87 @@
 
 ---
 
+## v0.2.17 (2026-05-12, 예정)
+
+**커밋 범위**: `v0.2.16..(다음 태그)`
+**핵심 변경**: agent 다이어트 + 기획·설계 루프 재편 (breaking change 묶음)
+
+### 폐기된 agent (4)
+
+- `security-reviewer` (PR #348) — `pr-reviewer §F-Security` + architect 위협 모델 가정·invariant 흡수
+- `design-critic` (PR #351) — designer 1 시안 + 사용자 직접 PICK
+- `product-planner` (PR #352) — 메인 Claude 가 사용자와 *직접 그릴미 대화* 로 PRD/stories.md 작성. 외부 검증은 `plan-reviewer` (잔존)
+- (옛 단일 `architect` agent — 이미 system-architect / module-architect 로 분리 완료)
+
+agent 13 → 9.
+
+### stories.md 양식 단순화 + impl 파일 7 원칙 (PR #355)
+
+- stories.md = user story (`As a / I want / So that`) 만. 옛 3 섹션 (`대상 화면·컴포넌트` / `동작 명세` / `수용 기준 (Story 단위)`) 폐기
+- impl 파일 7 원칙 (Scope / 자기완결성 / 사전 준비 / 시그니처 / AC 실행커맨드 / 주의사항 / 네이밍)
+- impl 파일 진입 prompt 의무 (architecture.md + adr.md + 의존 PR read)
+- ADR 룰 + architecture.md 비대화 방지 (300줄 cap)
+
+### `feature-build-loop` 폐기 + `/architect-loop` 신설 (본 PR — PR3-B)
+
+- 옛 `feature-build-loop` (Step 2~6.N 통째 commit X 후 첫 task PR commit3 에 누적) → `/product-plan` (Step 2~3, PRD+stories PR1) + `/architect-loop` (Step 4~6.N, 설계 PR2) 분리
+- `/architect-loop` 진입 = 사용자 명시 호출 (자동 X). 워크트리 ON 자동
+- commit 단위: ux-flow → commit1 / architecture.md+adr.md → commit2 / impl/NN-*.md K 개 → commit 3..K+2 / PR 1개 + 머지
+- 본 변경 SSOT = [`commands/architect-loop.md`](../../commands/architect-loop.md), [`docs/plugin/orchestration.md`](../plugin/orchestration.md) §3.1.5 / §4.2
+
+### `Step 4.5 sync` + `backlog.md` 폐기 (본 PR)
+
+- 옛 룰: engineer IMPL_DONE 후 메인이 stories.md `[x]` 체크 + backlog.md epic `[x]` 체크
+- 폐기 사유: 새 stories.md 양식 = task `[ ]` 자체 없음 (user story 만, PR #355) + 진행 추적 SSOT 단일화 (GitHub issue close 시스템 + PR body `Closes`/`Part of` 트레일러)
+- impl-task-loop commit3 = src/** **only** (옛 `src/**, stories.md 등` 룰 폐기)
+
+### PR body `Closes` 판정 메커니즘 변경 (본 PR)
+
+- 옛 룰: stories.md 부모 Story 섹션 `[ ]` 카운트 (awk one-liner)
+- 새 룰: impl 파일 frontmatter `task_index: <i>/<total>` + `story: <N>` grep
+- module-architect 가 frontmatter 박음 (호출자 prompt 의 `task_index` 그대로). epic 마지막 story 판정 = gh API 1 회 호출
+
+### 이슈 등록 자동화 (PR #353)
+
+- `scripts/create_epic_story_issues.sh` 신설 — stories.md parse + epic/story 이슈 생성 + sub-issue API 연결 한 명령
+- `/impl` / `/impl-loop` 진입 직전 task 진행 상태 확인 룰 (issue #346 옵션 C — `git log --grep` + plan tail read)
+
+### 마이그레이션 정책
+
+- **활성 프로젝트 (jajang 등) 진행 중 working tree** — 옛 룰 그대로 종료. 신규 epic 만 새 룰 (`/architect-loop`) 적용
+- **옛 양식 stories.md (task `[ ]` 박힌)** — 잔재 허용. backfill 강제 X. 새 작성만 새 양식
+- **자동 변환 원하는 사용자용** — `scripts/migrate_stories_to_new_format.sh` (report-only, 자동 변환 X)
+
+### Breaking Change 호환 깨짐 알림
+
+다음 sub-agent 직접 호출자 = 깨짐:
+- `subagent_type: "dcness:product-planner"` → 메인 Claude 가 사용자와 직접 그릴미 대화 + `plan-reviewer` 외부 검증
+- `subagent_type: "dcness:design-critic"` → designer 1 시안 + 사용자 PICK
+- `subagent_type: "dcness:security-reviewer"` → `pr-reviewer §F-Security` 흡수
+
+해당 호출자 = `/qa` / `/impl` / `/product-plan` / `/architect-loop` skill 진입으로 자동 라우팅.
+
+### `harness/hooks.py` catastrophic gate 단순화 (본 PR)
+
+- §2.3.4 / §2.3.5 = 옛 단일 `architect` agent + mode 시절 잔재. prerequisite 검증은 메인 영역 (architect-loop skill §Pre-flight gate / 전제 조건) 으로 이전 — 코드 강제 폐기
+- §2.3.1 / §2.3.3 / §2.3.6~§2.3.8 = 유지
+- `_has_plan_ready` 갱신: `module-architect.md` + occurrence (`module-architect-N.md`) 우선, legacy 호환 유지
+
+### 배포 경로 (CLAUDE.md §0.5)
+
+- (1) plug-in 본체 — `commands/architect-loop.md` 신설 + `agents/{module-architect,system-architect,engineer,pr-reviewer,qa}.md` 갱신 + `harness/hooks.py` 갱신
+- (2) init-dcness 배포 — `scripts/migrate_stories_to_new_format.sh` (선택 사용)
+- (3) SSOT 문서 — `docs/plugin/{orchestration,loop-procedure,issue-lifecycle,handoff-matrix}.md` 갱신
+
+**사용자 적용**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 활성 프로젝트의 진행 중 epic 은 옛 룰 그대로 종료. 신규 epic 부터 `/product-plan` → `/architect-loop` → `/impl-loop` 시퀀스 적용.
+
+---
+
 ## v0.2.16 (2026-05-11)
 
 **커밋 범위**: `v0.2.15..(다음 태그)`
