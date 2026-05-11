@@ -4,6 +4,51 @@
 
 ---
 
+## v0.2.12 (2026-05-11)
+
+**커밋 범위**: `v0.2.11..(다음 태그)`
+**핵심 변경**: TDD 게이트 phase 3 — affected detection 자동 (CI 병목 해소, 사용자 설정 0)
+
+- **이슈 #320 #1 phase 3 (PR #330)** — composite action 이 4 언어 변경분 affected
+  만 자동 실행. v0.2.11 phase 2 풀 스위트의 CI watch 병목 (2~5분/PR × N task)
+  해소.
+  - **node**: nx.json / turbo.json / pnpm-workspace.yaml 자동 검출 →
+    `nx affected` / `turbo run test --filter=...[<base>]` /
+    `pnpm -F "...[<base>]" test`. dependency 그래프 자동 포함.
+    - 미검출 (yarn classic / npm workspaces / bun / 단일) → 풀 폴백
+  - **python**: 변경 .py 파일의 가장 가까운 상위 `pyproject.toml` / `setup.py` /
+    `setup.cfg` 식별 → 그 root 별 pip install + pytest. 변경 0건 → skip.
+  - **rust**: Cargo.toml `[workspace]` 검출 시 변경 파일 → member 매핑 →
+    `cargo test -p <member>`. 단일 crate → `cargo test`. 변경 0건 → skip.
+  - **go**: 변경 .go 의 dirname (유니크) → `go test ./<path>/...`. 변경 0건 → skip.
+  - **PR base 자동 추출**: `github.event.pull_request.base.sha` 또는 origin/main 폴백
+
+**jajang 효과**:
+- apps/mobile (js + pnpm workspaces) 변경 → 해당 workspace + dependents 만 jest
+- apps/api (python) 변경 → apps/api 안 pytest 만
+- 둘 다 변경 안 됐으면 skip
+- 사용자 작업 0 — `package.json["dcness"]["testCommand"]` override 박을 필요 없음
+
+**배포 경로** (CLAUDE.md §0.5):
+- (1) plug-in 본체 — `.github/actions/tdd-gate/action.yml` plug-in 업데이트 자동
+- (2) init-dcness 배포 — Step 2.9 안내문 갱신. thin yml unchanged (composite action
+  호출 1줄만 박힘 → 자동 phase 3 적용)
+- (3) SSOT 문서 — N/A (capability 확장)
+
+**한계 (phase 3)**:
+- python/rust/go dependency 그래프 자동 포함 = phase 4 (현재 path 기반)
+- yarn classic / npm workspaces / bun affected = 풀 폴백 (native filter 약함)
+- 비-지원 언어 (Elixir/Ruby/Java/.NET/PHP/Swift) = phase 4
+
+**업데이트**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 활성화 프로젝트는 thin yml 그대로 — composite action 만 phase 3 자동 적용 (다음 PR 부터).
+
+---
+
 ## v0.2.11 (2026-05-11)
 
 **커밋 범위**: `v0.2.10..(다음 태그)`
