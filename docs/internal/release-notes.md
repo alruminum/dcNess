@@ -4,6 +4,73 @@
 
 ---
 
+## v0.2.16 (2026-05-11)
+
+**커밋 범위**: `v0.2.15..(다음 태그)`
+**핵심 변경**: TDD 게이트 design pivot — CI 게이트 + commit-msg chain 전체 rollback, PreToolUse tdd-guard 도입
+
+- **이슈 #320 design pivot (PR #339)** — v0.2.10~v0.2.13 의 CI 게이트 (composite
+  action) + commit-msg TDD chain 이 monorepo lifecycle hook / pm 다양성 / missing
+  test script 등 함정 누적. 사용자 의도 ("구현보다 테스트 먼저") 는 사후 검증
+  아니라 *작성 전 차단*. PreToolUse hook 시점 차단으로 전환.
+  - **Rollback**:
+    - `.github/actions/tdd-gate/action.yml` 삭제
+    - `scripts/check_tdd_staged.mjs` 삭제
+    - `scripts/hooks/commit-msg` TDD chain 제거 (git-naming 만 남김)
+    - `commands/init-dcness.md` Step 2.9 (CI 게이트) + Step 2.10 (commit-msg TDD) 제거
+    - **유지**: `scripts/pr-finalize.sh` (사용자 명시 의도)
+  - **신규**:
+    - `hooks/tdd-guard.sh` — PreToolUse[Edit|Write|NotebookEdit] hook
+    - `hooks/hooks.json` matcher 등록
+    - `commands/init-dcness.md` Step 2.9 (신규 안내문)
+  - **영감**: jha0313/codex-live-demo `.codex/hooks/tdd-guard.sh`
+  - **동작**: agent 가 src 파일 Edit/Write 시도 시 매칭 test 파일 존재 검사 →
+    없으면 deny + 한국어 안내. TS/JS 한정. 자동 skip (설정/타입/Next.js 특수/비-코드)
+    풍부. 다른 언어 영향 0.
+
+**차이** (이전 v0.2.13 commit-msg vs 본 PR PreToolUse):
+
+| | v0.2.13 commit-msg | v0.2.16 PreToolUse |
+|---|---|---|
+| 시점 | commit 직전 | 코드 작성 *직전* |
+| 진짜 TDD | △ 사후 검증 | ✅ 작성 전 차단 |
+| 실행 | O test 실행 | ❌ 존재만 |
+| 함정 | jajang 사단 (lifecycle / pm) | 적음 (자동 skip 풍부) |
+| 범위 | 4 언어 | TS/JS |
+| 옵트인 | 마커 파일 | 자동 (TS/JS 검출) |
+
+**실증 검증 8 케이스**:
+- test 없는 src → DENY
+- test 있는 src → PASS
+- 설정 / Next.js / .py / test 자체 / empty → silent skip
+
+**배포 경로** (CLAUDE.md §0.5):
+- (1) plug-in 본체 — `hooks/tdd-guard.sh` + `hooks/hooks.json` plug-in 업데이트 자동
+- (2) init-dcness 배포 — Step 2.9 안내문. tdd-guard 사용자 repo cp X (plug-in hook 직접 발화)
+- (3) SSOT 문서 — N/A
+
+**한계 (v0.2.16)**:
+- TS/JS 한정 — 다른 언어 후속
+- *test 실행 X* — 존재만 확인 (실행은 사용자 vitest watch / CI 등 개별)
+- agent 가 `Bash` 으로 직접 파일 작성 시 차단 X (단 catastrophic-gate 등 다른 hook 이 잡음)
+
+**사용자 적용**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 활성화 프로젝트 (jajang — 이전 TDD 인프라 정리):
+```sh
+cd ~/project/jajang
+git rm .github/workflows/tdd-gate.yml
+git rm -f .dcness/tdd-gate-enabled
+git commit -m "..."
+```
+
+이후 agent Edit/Write 시 tdd-guard 자동 발화. 사용자 추가 설정 0.
+
+---
+
 ## v0.2.15 (2026-05-11)
 
 **커밋 범위**: `v0.2.14..(다음 태그)`
