@@ -106,11 +106,11 @@ PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
 | code-validator `ESCALATE` (사유: 재시도 한도 초과 등) | 사용자 위임 |
 | `*_ESCALATE` (hard) | 사용자 위임 (escalate) |
 | `*_ESCALATE` (soft) | 비-yolo: 사용자 위임 / yolo: `auto-resolve` |
-| `CHANGES_REQUESTED` | engineer POLISH cycle (≤2) |
+| `FAIL` | engineer POLISH cycle (≤2) |
 | `AMBIGUOUS` | 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS 시 사용자 위임 (enum 후보 + prose 발췌) |
 | architecture-validator `FAIL` | system-architect 재진입 (cycle ≤2) |
-| `PLAN_REVIEW_FAIL` | 메인이 findings 항목별 사용자 confirm + `docs/prd.md` / `docs/stories.md` Edit patch → plan-reviewer 재진입 (cycle ≤2) |
-| `PLAN_REVIEW_ESCALATE` | 사용자 위임 (외부 검증 불가 / 권한 경계 밖 / 동일 finding 반복 / URL 부재 PASS 시도) |
+| `FAIL` | 메인이 findings 항목별 사용자 confirm + `docs/prd.md` / `docs/stories.md` Edit patch → plan-reviewer 재진입 (cycle ≤2) |
+| `ESCALATE` | 사용자 위임 (외부 검증 불가 / 권한 경계 밖 / 동일 finding 반복 / URL 부재 PASS 시도) |
 
 cycle 한도 = orchestration.md §5.
 
@@ -121,7 +121,7 @@ cycle 한도 = orchestration.md §5.
 | 분기 | 재활용 대상 task | 행동 |
 |---|---|---|
 | `TESTS_FAIL` → engineer 재시도 | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
-| `CHANGES_REQUESTED` → engineer POLISH | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
+| `FAIL` → engineer POLISH | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
 | POLISH 후 pr-reviewer 재실행 | 직전 pr-reviewer task | `TaskUpdate(<task>, in_progress)` |
 | `IMPL_PARTIAL` → engineer 재호출 | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
 | architecture-validator `FAIL` → system-architect 재진입 | 직전 system-architect task | `TaskUpdate(<task>, in_progress)` |
@@ -151,7 +151,7 @@ TaskUpdate(<기존 task>, completed)
 | `SPEC_GAP_FOUND` | 사용자 위임 | module-architect (보강 케이스) cycle (≤2) |
 | `TESTS_FAIL` / code-validator FAIL | 재시도 (≤3) | 동일 |
 | `IMPL_PARTIAL` | engineer 재호출 (split ≤ 3) | 동일 — 새 context window |
-| `CHANGES_REQUESTED` | 사용자 위임 | engineer POLISH (cycle ≤2) |
+| `FAIL` | 사용자 위임 | engineer POLISH (cycle ≤2) |
 | Step 7 caveat (NICE TO HAVE only, MUST FIX 0) | 사용자 위임 | 7a 자동 |
 | catastrophic 룰 | hard safety | hard safety (yolo 우회 X) |
 
@@ -170,7 +170,7 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 | 시점 | 내용 |
 |---|---|
 | code-validator PASS 직후 | branch 새로 + `src/**` commit + push + `gh pr create` |
-| LGTM 직후 | `gh pr merge` (merge) |
+| PASS 직후 | `gh pr merge` (merge) |
 
 > `docs/.../impl/NN-*.md` 는 `/architect-loop` 산출물이 *미리 main 에 머지* 한 상태. impl-task-loop 안에서 별도 commit X. fallback 모드 (정식 위치 부재) 는 module-architect 가 그 자리에서 새로 작성하는데, 본 PR 의 src commit 에 같이 포함.
 
@@ -328,7 +328,7 @@ worktree 처리도 사용자 결정.
 
 **메모리 candidate 의무 (#149)**: caveat 발생 = 회귀 방지 신호. prose 본문에만 적고 끝내면 다음 세션에서 동일 caveat 재발. 메인은 위 양식의 *📝 메모리 candidate* 섹션을 *반드시* emit (없으면 "없음" 명시) — 사용자가 저장 여부 결정. 양식 없이 7b 보고 종료 = 룰 위반. 7a (clean) 도 review report 의 waste finding 이 있으면 같은 양식 적용.
 
-**yolo 시**: `has_must_fix == false` + enum unexpected 만 (CHANGES_REQUESTED 1건 등) → 자동 7a 시도. `has_must_fix` 또는 `has_ambiguous` true → yolo 도 7b. yolo 라도 메모리 candidate 양식은 emit (사용자 위임 X — 본인이 저장 후 진행).
+**yolo 시**: `has_must_fix == false` + enum unexpected 만 (FAIL 1건 등) → 자동 7a 시도. `has_must_fix` 또는 `has_ambiguous` true → yolo 도 7b. yolo 라도 메모리 candidate 양식은 emit (사용자 위임 X — 본인이 저장 후 진행).
 
 ---
 
@@ -348,7 +348,7 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 
 ### 7.1 catastrophic 룰 정합
 
-[`orchestration.md`](orchestration.md) §2.3 catastrophic 시퀀스 = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `READY` enum / architect-loop §4.2 Step 4 (module-architect × K) 진입 직전 architecture-validator PASS / PRD 변경 후 plan-reviewer PASS).
+[`orchestration.md`](orchestration.md) §2.3 catastrophic 시퀀스 = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `PASS` enum / architect-loop §4.2 Step 4 (module-architect × K) 진입 직전 architecture-validator PASS / PRD 변경 후 plan-reviewer PASS).
 
 > Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (loop-catalog.md 폐기, 8 → 7 SSOT).
 

@@ -11,7 +11,7 @@ bash 훅 (`hooks/*.sh`) 이 stdin payload + cc_pid 를 본 모듈의 핸들러�
         PreToolUse, tool=Agent. §2.3 룰 검사.
         exit 0 = allow, exit 1 = block (stderr 메시지 + CC 가 호출 거부).
 
-§2.3.2 (LGTM 없이 merge) / §2.3.4 (PRD 변경 후 plan-reviewer PASS) /
+§2.3.2 (LGTM 없이 merge — 자연어 폐기) / §2.3.4 (PRD 변경 후 plan-reviewer PASS) /
 §2.3.5 (module-architect 진입 직전 architecture-validator PASS) /
 §2.3.6~§2.3.8 (impl-task-loop 3-commit) 는 *메인 영역* (skill 안 Pre-flight)
 또는 다른 흐름 (`/architect-loop` 의 impl 미리 머지 등) 으로 이전 — 코드
@@ -255,12 +255,12 @@ def handle_pretooluse_agent(
 
     rd = run_dir(sid, rid, base_dir=base_dir)
 
-    # §2.3.3 — engineer 직전 architect plan READY 필수 (mode != POLISH)
+    # §2.3.3 — engineer 직전 module-architect PASS 필수 (mode != POLISH)
     if subagent == "engineer" and mode != "POLISH":
         if not _has_plan_ready(rd):
             print(
-                "[catastrophic §2.3.3] engineer 호출은 architect plan READY 후만 "
-                "(MODULE_PLAN.md 안 READY_FOR_IMPL 또는 LIGHT_PLAN.md 안 LIGHT_PLAN_READY)",
+                "[catastrophic §2.3.3] engineer 호출은 module-architect PASS 후만 "
+                "(module-architect.md 안 PASS 마커)",
                 file=sys.stderr,
             )
             return 1
@@ -275,7 +275,7 @@ def handle_pretooluse_agent(
             )
             return 1
 
-    # §2.3.2 (LGTM 없이 merge) / §2.3.4 / §2.3.5 / §2.3.6~§2.3.8 (3-commit) —
+    # §2.3.2 (LGTM 없이 merge — 자연어 폐기) / §2.3.4 / §2.3.5 / §2.3.6~§2.3.8 (3-commit) —
     # /architect-loop 가 impl/NN-*.md 미리 머지로 의미 소멸 또는 prerequisite
     # 검증은 메인 영역 (skill 안에서 보장) 으로 이전. 코드 강제 폐기.
 
@@ -703,19 +703,14 @@ def _read_or_empty(path: Path) -> str:
 
 
 def _has_plan_ready(rd: Path) -> bool:
-    # module-architect 표준 위치 (agent 분리 후)
-    if "READY" in _read_or_empty(rd / "module-architect.md"):
+    # module-architect 표준 위치 — enum 통일 (PASS) 후
+    if "PASS" in _read_or_empty(rd / "module-architect.md"):
         return True
     # occurrence 카운터 (`module-architect-2.md` / `-3.md` ...) — 가장 최근 호출 확인
     for n in range(2, 10):
-        if "READY" in _read_or_empty(rd / f"module-architect-{n}.md"):
+        if "PASS" in _read_or_empty(rd / f"module-architect-{n}.md"):
             return True
-    # legacy 호환 (단일 architect agent 시절)
-    mp = _read_or_empty(rd / "architect-MODULE_PLAN.md")
-    if "READY_FOR_IMPL" in mp:
-        return True
-    lp = _read_or_empty(rd / "architect-LIGHT_PLAN.md")
-    return "LIGHT_PLAN_READY" in lp
+    return False
 
 
 def _has_engineer_write(rd: Path) -> bool:
@@ -735,7 +730,7 @@ def _has_validator_pass(rd: Path) -> bool:
 
 
 def _has_plan_review_pass(rd: Path) -> bool:
-    return "PLAN_REVIEW_PASS" in _read_or_empty(rd / "plan-reviewer.md")
+    return "PASS" in _read_or_empty(rd / "plan-reviewer.md")
 
 
 def _has_ux_flow_ready(rd: Path) -> bool:

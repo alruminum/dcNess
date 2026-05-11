@@ -37,8 +37,8 @@ class ParseStepsTests(unittest.TestCase):
             tmp = Path(td)
             rd = _make_run_dir(tmp, "sid1", "rid1", [
                 {"ts": "2026-04-30T10:00:00", "agent": "architect", "mode": "MODULE_PLAN",
-                 "enum": "READY_FOR_IMPL", "must_fix": False,
-                 "prose_excerpt": "## 결론\nMODULE_PLAN 완성\nREADY_FOR_IMPL"},
+                 "enum": "PASS", "must_fix": False,
+                 "prose_excerpt": "## 결론\nMODULE_PLAN 완성\nPASS"},
                 {"ts": "2026-04-30T10:05:00", "agent": "engineer", "mode": "IMPL",
                  "enum": "IMPL_DONE", "must_fix": False,
                  "prose_excerpt": "구현 완료\n## 결론\nIMPL_DONE"},
@@ -47,7 +47,7 @@ class ParseStepsTests(unittest.TestCase):
             self.assertEqual(len(steps), 2)
             self.assertEqual(steps[0].agent, "architect")
             self.assertEqual(steps[0].mode, "MODULE_PLAN")
-            self.assertEqual(steps[0].enum, "READY_FOR_IMPL")
+            self.assertEqual(steps[0].enum, "PASS")
             self.assertEqual(steps[0].elapsed_s, 300)
             self.assertEqual(steps[1].agent, "engineer")
 
@@ -80,11 +80,11 @@ class ProseFileTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
             prose_path = tmp / "pr-reviewer.md"
-            prose_path.write_text("MUST FIX 0, NICE TO HAVE 6 (let tree: any / dead code).\nLGTM\n")
+            prose_path.write_text("MUST FIX 0, NICE TO HAVE 6 (let tree: any / dead code).\nPASS\n")
             rd = _make_run_dir(tmp, "sid1", "rid1", [
                 {"ts": "2026-04-30T10:00:00", "agent": "pr-reviewer", "mode": None,
-                 "enum": "LGTM", "must_fix": True,
-                 "prose_excerpt": "MUST FIX 0, NICE TO HAVE 6\nLGTM",
+                 "enum": "PASS", "must_fix": True,
+                 "prose_excerpt": "MUST FIX 0, NICE TO HAVE 6\nPASS",
                  "prose_file": str(prose_path)},
             ])
             steps = parse_steps(rd)
@@ -187,7 +187,7 @@ class WasteDetectionTests(unittest.TestCase):
         # prose_full 이 짧을 때만 ECHO_VIOLATION (prose_excerpt 기준 X)
         steps = [
             StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                       enum="READY_FOR_IMPL", must_fix=False,
+                       enum="PASS", must_fix=False,
                        prose_excerpt="too short",
                        prose_full="too short\n"),
         ]
@@ -198,7 +198,7 @@ class WasteDetectionTests(unittest.TestCase):
         # prose_full 없으면 오탐 방지 — skip
         steps = [
             StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                       enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="too short"),
+                       enum="PASS", must_fix=False, prose_excerpt="too short"),
         ]
         wastes = detect_wastes(steps)
         self.assertFalse(any(w.pattern == "ECHO_VIOLATION" for w in wastes))
@@ -275,7 +275,7 @@ class WasteDetectionTests(unittest.TestCase):
     def test_external_verified_missing(self):
         steps = [
             StepRecord(idx=0, ts="t", agent="plan-reviewer", mode=None,
-                       enum="PLAN_REVIEW_PASS", must_fix=False,
+                       enum="PASS", must_fix=False,
                        prose_excerpt="a\nb\nc\nd\ne",
                        prose_full="## 8 차원 판정\n모두 PASS"),
         ]
@@ -286,8 +286,8 @@ class WasteDetectionTests(unittest.TestCase):
 class GoodDetectionTests(unittest.TestCase):
     def test_enum_clean(self):
         steps = [
-            StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                       enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="a\nb\nc\nd\ne"),
+            StepRecord(idx=0, ts="t", agent="module-architect", mode=None,
+                       enum="PASS", must_fix=False, prose_excerpt="a\nb\nc\nd\ne"),
         ]
         goods = detect_goods(steps)
         self.assertTrue(any(g.pattern == "ENUM_CLEAN" for g in goods))
@@ -329,7 +329,7 @@ class LocalTimeRenderTests(unittest.TestCase):
             tmp = Path(td)
             rd = _make_run_dir(tmp, "sid1", "rid1", [
                 {"ts": "2026-04-30T02:46:47+00:00", "agent": "architect", "mode": "MODULE_PLAN",
-                 "enum": "READY_FOR_IMPL", "must_fix": False,
+                 "enum": "PASS", "must_fix": False,
                  "prose_excerpt": "a\nb\nc\nd\ne\nf"},
             ])
             report = build_report(rd, repo_path=tmp)
@@ -380,7 +380,7 @@ class ReportRenderTests(unittest.TestCase):
             tmp = Path(td)
             rd = _make_run_dir(tmp, "sid1", "rid1", [
                 {"ts": "2026-04-30T10:00:00", "agent": "architect", "mode": "MODULE_PLAN",
-                 "enum": "READY_FOR_IMPL", "must_fix": False,
+                 "enum": "PASS", "must_fix": False,
                  "prose_excerpt": "line1\nline2\nline3\nline4\nline5\nline6"},
                 {"ts": "2026-04-30T10:05:00", "agent": "engineer", "mode": "IMPL",
                  "enum": "IMPL_DONE", "must_fix": False,
@@ -402,7 +402,7 @@ class RunListTests(unittest.TestCase):
             sessions_root = tmp / ".claude" / "harness-state" / ".sessions"
             _make_run_dir(tmp, "sid1", "rid_a", [
                 {"ts": "2026-04-30T10:00:00", "agent": "architect", "mode": None,
-                 "enum": "READY_FOR_IMPL", "must_fix": False, "prose_excerpt": "x"}])
+                 "enum": "PASS", "must_fix": False, "prose_excerpt": "x"}])
             _make_run_dir(tmp, "sid1", "rid_b", [
                 {"ts": "2026-04-30T11:00:00", "agent": "engineer", "mode": "IMPL",
                  "enum": "IMPL_DONE", "must_fix": False, "prose_excerpt": "x"}])
@@ -433,7 +433,7 @@ class AssignInvocationsTests(unittest.TestCase):
         from datetime import datetime as dt
         steps = [
             StepRecord(idx=0, ts="2026-04-30T10:05:00+00:00", agent="architect", mode="MODULE_PLAN",
-                       enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="x"),
+                       enum="PASS", must_fix=False, prose_excerpt="x"),
             StepRecord(idx=1, ts="2026-04-30T10:15:00+00:00", agent="engineer", mode="IMPL",
                        enum="IMPL_DONE", must_fix=False, prose_excerpt="x"),
         ]
@@ -454,7 +454,7 @@ class AssignInvocationsTests(unittest.TestCase):
         from datetime import datetime as dt
         steps = [
             StepRecord(idx=0, ts="2026-04-30T10:05:00+00:00", agent="architect", mode=None,
-                       enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="x"),
+                       enum="PASS", must_fix=False, prose_excerpt="x"),
         ]
         invocations = [
             {"ts": dt(2026, 4, 30, 10, 4, 30), "agent": "engineer", "duration_ms": 60000,
@@ -471,7 +471,7 @@ class AssignInvocationsTests(unittest.TestCase):
             StepRecord(idx=0, ts="2026-04-30T10:00:00+00:00", agent="product-planner", mode=None,
                        enum="PRODUCT_PLAN_UPDATED", must_fix=False, prose_excerpt="x"),
             StepRecord(idx=1, ts="2026-04-30T10:10:00+00:00", agent="plan-reviewer", mode=None,
-                       enum="PLAN_REVIEW_PASS", must_fix=False, prose_excerpt="x"),
+                       enum="PASS", must_fix=False, prose_excerpt="x"),
             StepRecord(idx=2, ts="2026-04-30T10:20:00+00:00", agent="product-planner", mode=None,
                        enum="PRODUCT_PLAN_UPDATED", must_fix=False, prose_excerpt="x"),
         ]
@@ -493,7 +493,7 @@ class AssignInvocationsTests(unittest.TestCase):
         from datetime import datetime as dt
         steps = [
             StepRecord(idx=0, ts="2026-04-30T10:00:00+00:00", agent="architect", mode=None,
-                       enum="READY_FOR_IMPL", must_fix=False, prose_excerpt="x"),
+                       enum="PASS", must_fix=False, prose_excerpt="x"),
         ]
         invocations = [
             {"ts": dt(2026, 4, 30, 10, 5, 0), "agent": "architect", "duration_ms": 60000,
@@ -508,7 +508,7 @@ class ThinkingLoopDetectionTests(unittest.TestCase):
         # 사용자 jajang 사례 시뮬레이션 — architect 6분 + 624 tokens
         budget = EXPECTED_AGENT_BUDGETS["architect"]
         s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                        enum="READY_FOR_IMPL", must_fix=False,
+                        enum="PASS", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6")
         s.matched_invocation = True
         s.duration_ms = 360000  # 6분
@@ -521,7 +521,7 @@ class ThinkingLoopDetectionTests(unittest.TestCase):
     def test_no_thinking_loop_when_healthy(self):
         # 정상 — 60s + 5000 tokens
         s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                        enum="READY_FOR_IMPL", must_fix=False,
+                        enum="PASS", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6")
         s.matched_invocation = True
         s.duration_ms = 60000
@@ -533,7 +533,7 @@ class ThinkingLoopDetectionTests(unittest.TestCase):
     def test_no_thinking_loop_when_unmatched(self):
         # matched_invocation=False 면 detection skip
         s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                        enum="READY_FOR_IMPL", must_fix=False,
+                        enum="PASS", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6")
         s.matched_invocation = False
         s.duration_ms = 0
@@ -737,7 +737,7 @@ class MissingSelfVerifyTests(unittest.TestCase):
 
     def test_skipped_for_non_engineer(self):
         s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                        enum="READY_FOR_IMPL", must_fix=False,
+                        enum="PASS", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5")
         s.prose_full = "## 결론\nREADY"  # no self-verify anchor
         wastes = detect_wastes([s])

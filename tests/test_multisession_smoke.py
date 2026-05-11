@@ -323,13 +323,13 @@ class CatastrophicRuleE2eTests(unittest.TestCase):
         self.assertIn("§2.3.3", result.stderr)
 
     def test_engineer_with_plan_passes_e2e(self) -> None:
-        # architect-MODULE_PLAN.md 작성
+        # module-architect.md 작성
         run_path = (
             self.cwd / ".claude" / "harness-state"
             / ".sessions" / self.sid / "runs" / self.rid
         )
-        (run_path / "architect-MODULE_PLAN.md").write_text(
-            "READY_FOR_IMPL", encoding="utf-8",
+        (run_path / "module-architect.md").write_text(
+            "PASS", encoding="utf-8",
         )
         result = _run_python_hook(
             "pretooluse-agent",

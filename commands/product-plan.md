@@ -112,9 +112,9 @@ task-level 세부 진행 추적 X (PR + GitHub Issue close 시스템 SSOT — [`
 - **사용자 의문문**: "이거 진짜 되나?", "X 가 Y 를 지원하는지"
 
 플로우:
-- `PLAN_REVIEW_PASS` → PRD 작성 진입. 검증 결과 (`EXTERNAL_VERIFIED` 섹션) 를 PRD 본문에 박음
-- `PLAN_REVIEW_FAIL` → 사용자에게 결과 보고 + 입력 재정리 요청
-- `PLAN_REVIEW_ESCALATE` → 사용자 위임
+- `PASS` → PRD 작성 진입. 검증 결과 (`EXTERNAL_VERIFIED` 섹션) 를 PRD 본문에 박음
+- `FAIL` → 사용자에게 결과 보고 + 입력 재정리 요청
+- `ESCALATE` → 사용자 위임
 
 신호 없으면 skip — 바로 Step 3.
 

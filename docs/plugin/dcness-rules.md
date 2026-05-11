@@ -229,7 +229,7 @@ begin/end-step 은 `agent mode` **두 개 인자** 형식만 허용:
 
 **안티패턴** (begin/end-step 쌍 누락):
 - ❌ engineer commit/PR 후 git status 확인 → end-step skip
-- ❌ CHANGES_REQUESTED 후 POLISH Agent 호출 시 begin/end-step 미포함
+- ❌ FAIL 후 POLISH Agent 호출 시 begin/end-step 미포함
 - ❌ end-step 보류 중 다음 step 진입으로 망각
 - ❌ task 간 보고 작성 후 begin-step 재호출 누락
 

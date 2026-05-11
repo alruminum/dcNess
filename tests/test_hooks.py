@@ -12,13 +12,10 @@ Coverage matrix:
         - §2.3.1 — pr-reviewer 직전 CODE_VALIDATION 없으면 차단
         - §2.3.1 — engineer 변경 후 CODE_VALIDATION PASS 있으면 통과
         - §2.3.1 — BUGFIX_VALIDATION PASS 도 인정
-        - §2.3.3 — engineer 직전 plan READY 없으면 차단
-        - §2.3.3 — MODULE_PLAN READY_FOR_IMPL 있으면 통과
-        - §2.3.3 — LIGHT_PLAN_READY 있으면 통과 (light path)
+        - §2.3.3 — engineer 직전 module-architect PASS 없으면 차단
+        - §2.3.3 — module-architect.md 안 PASS 있으면 통과
+        - §2.3.3 — module-architect-N.md (occurrence) 안 PASS 도 인정
         - §2.3.3 — engineer POLISH 모드는 plan 검사 skip
-        - §2.3.4 — PRD 변경 후 plan-reviewer 없으면 차단
-        - §2.3.4 — ux-architect READY 없으면 차단
-        - §2.3.4 — 둘 다 있으면 통과
         - 그 외 agent (architect MODULE_PLAN, qa 등) — run 외부에서도 통과
         - sid 없음 → silent allow
         - tool_input 비정상 → silent allow
@@ -191,20 +188,9 @@ class CatastrophicEngineerTests(_PreToolBase):
         )
         self.assertEqual(rc, 1)
 
-    def test_allowed_with_module_plan_ready(self) -> None:
-        (self.run_path / "architect-MODULE_PLAN.md").write_text(
-            "## 계획\n...\n## 결론\nREADY_FOR_IMPL\n", encoding="utf-8",
-        )
-        rc = handle_pretooluse_agent(
-            stdin_data=self._payload("engineer", "IMPL"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 0)
-
-    def test_allowed_with_light_plan_ready(self) -> None:
-        (self.run_path / "architect-LIGHT_PLAN.md").write_text(
-            "LIGHT_PLAN_READY", encoding="utf-8",
+    def test_allowed_with_module_architect_pass(self) -> None:
+        (self.run_path / "module-architect.md").write_text(
+            "## 계획\n...\n## 결론\nPASS\n", encoding="utf-8",
         )
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("engineer", "IMPL"),
@@ -216,6 +202,18 @@ class CatastrophicEngineerTests(_PreToolBase):
     def test_polish_mode_skips_plan_check(self) -> None:
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("engineer", "POLISH"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_allowed_with_module_architect_occurrence(self) -> None:
+        # module-architect-2.md (occurrence 카운터) 안 PASS 도 인정
+        (self.run_path / "module-architect-2.md").write_text(
+            "## 결론\nPASS\n", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer", "IMPL"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -313,10 +311,10 @@ class RidResolutionTests(unittest.TestCase):
         update_live(self.sid, base_dir=self.base, active_runs=active)
 
         rd_b = run_dir(self.sid, "run-bbbbbbbb", base_dir=self.base)
-        # newer 의 run_dir 에 plan READY 박음
+        # newer 의 run_dir 에 module-architect PASS 박음
         rd_b.mkdir(parents=True, exist_ok=True)
-        (rd_b / "architect-MODULE_PLAN.md").write_text(
-            "READY_FOR_IMPL", encoding="utf-8",
+        (rd_b / "module-architect.md").write_text(
+            "PASS", encoding="utf-8",
         )
 
         # by-pid 없이 호출 → live.json 의 newer 슬롯 선택 → READY 있어 통과
@@ -971,10 +969,10 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self.assertTrue(expected.exists())
 
     def test_prose_file_stored_in_current_step(self) -> None:
-        self._set_current_step("architect", "MODULE_PLAN")
-        prose = "## 결론\nREADY_FOR_IMPL\n"
+        self._set_current_step("module-architect", None)
+        prose = "## 결론\nPASS\n"
         handle_posttooluse_agent(
-            stdin_data=self._payload_with_prose("architect", "architect", "MODULE_PLAN", prose),
+            stdin_data=self._payload_with_prose("module-architect", "module-architect", None, prose),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -982,7 +980,7 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         slot = live.get("active_runs", {}).get(self.rid, {})
         cur_step = slot.get("current_step") or {}
         self.assertIn("prose_file", cur_step)
-        self.assertTrue(cur_step["prose_file"].endswith("architect-MODULE_PLAN.md"))
+        self.assertTrue(cur_step["prose_file"].endswith("module-architect.md"))
 
     def test_empty_prose_no_staging(self) -> None:
         self._set_current_step("qa", None)
@@ -1136,7 +1134,7 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
     def test_robust_extraction_value_key(self) -> None:
         """`value` 키 변형 — 일부 SDK 가 사용."""
         self._set_current_step("qa", None)
-        prose = "## 결론\nLGTM\n"
+        prose = "## 결론\nPASS\n"
         rc = handle_posttooluse_agent(
             stdin_data={
                 "sessionId": self.sid,

@@ -48,16 +48,17 @@ except Exception:
 # ── 상수 ───────────────────────────────────────────────────────────────
 
 EXPECTED_FINAL_ENUMS = {
-    "architect": {"MODULE_PLAN": "READY_FOR_IMPL", "SYSTEM_DESIGN": "SYSTEM_DESIGN_READY",
-                   "TASK_DECOMPOSE": "READY_FOR_IMPL", "LIGHT_PLAN": "LIGHT_PLAN_READY",
-                   "SPEC_GAP": "SPEC_GAP_RESOLVED", "DOCS_SYNC": "DOCS_SYNCED"},
-    "test-engineer": {None: "TESTS_WRITTEN"},
+    "system-architect": {None: "PASS"},
+    "module-architect": {None: "PASS"},
+    "test-engineer": {None: "PASS"},
     "engineer": {"IMPL": "IMPL_DONE", "POLISH": "POLISH_DONE"},
     "code-validator": {None: "PASS"},
     "architecture-validator": {None: "PASS"},
-    "pr-reviewer": {None: "LGTM"},
+    "pr-reviewer": {None: "PASS"},
     "qa": {None: None},  # qa 다양 (FUNCTIONAL_BUG / CLEANUP / etc.)
-    "plan-reviewer": {None: "PLAN_REVIEW_PASS"},
+    "plan-reviewer": {None: "PASS"},
+    "designer": {None: "PASS"},
+    "ux-architect": {None: "UX_FLOW_READY"},  # 통일 부적합 — variant 3개
 }
 
 PLACEHOLDER_PATTERNS = [
@@ -393,11 +394,13 @@ def detect_wastes(
     # 또한 같은 (agent, mode) 가 N task 순회 정상 호출 (예: architect MODULE_PLAN × 4)
     # 시 동일 enum 반복은 *retry 가 아닌 정상 호출* — prose 내용이 다르면 다른 step.
     ADVANCE_ENUMS = {
-        "PASS", "READY_FOR_IMPL", "IMPL_DONE", "TESTS_WRITTEN", "LGTM",
-        "SECURE", "SYSTEM_DESIGN_READY", "DOCS_SYNCED", "POLISH_DONE",
-        "SPEC_GAP_RESOLVED", "LIGHT_PLAN_READY", "PRODUCT_PLAN_READY",
-        "PLAN_REVIEW_PASS", "UX_FLOW_READY",
-        "PROSE_LOGGED",  # #284 prose-only mode default sentinel — 정상 종료
+        "PASS",  # 8 agent enum 통일 (code-validator / architecture-validator /
+                 # plan-reviewer / system-architect / module-architect /
+                 # test-engineer / pr-reviewer / designer 공통)
+        "IMPL_DONE", "POLISH_DONE",  # engineer 분기 enum (통일 부적합)
+        "PRODUCT_PLAN_READY",  # product-planner workflow enum
+        "UX_FLOW_READY", "UX_FLOW_PATCHED", "UX_REFINE_READY",  # ux-architect 분기
+        "PROSE_LOGGED",  # #284 prose-only mode default sentinel
     }
     for i in range(1, len(steps)):
         prev, cur = steps[i - 1], steps[i]
