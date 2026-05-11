@@ -66,8 +66,8 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
 | qa 분류 | 경로 | 다음 행동 |
 |---|---|---|
-| FUNCTIONAL_BUG | impl 루프 | module-architect (버그픽스) → depth 별 루프 (SPEC_GAP 발생 시 module-architect 보강 inline) |
-| CLEANUP | impl 루프 | module-architect (버그픽스) → simple depth. 코드 제거/정리만 |
+| FUNCTIONAL_BUG | `impl-task-loop` (`/impl`) fallback path | module-architect (버그픽스) 선두 추가 → test-engineer → engineer:IMPL → code-validator (bugfix scope 자동 분기) → pr-reviewer |
+| CLEANUP | `impl-task-loop` (`/impl`) fallback path | module-architect (버그픽스) 선두 추가 → 동일 시퀀스. 코드 제거/정리 중심 |
 | DESIGN_ISSUE | ux 스킬 | designer → DESIGN_HANDOFF → impl |
 | SCOPE_ESCALATE | 유저 보고 | product-planner 라우팅 |
 | KNOWN_ISSUE | 유저 보고 | 추가 정보 수집 후 재분석 |

@@ -1,6 +1,6 @@
 ---
 name: product-plan
-description: 새 기능 / PRD 변경 / 큰 기획을 받아 product-planner → plan-reviewer → ux-architect (5 카테고리 self-check) → system-architect (self-check + impl 목차 표 산출) → architecture-validator (Placeholder Leak + Spike Gate) → module-architect × N (impl 본문 detail) 시퀀스로 spec/design 단계까지 진행하는 스킬. 사용자가 "기획자야", "새 기능", "피쳐 추가", "이런 기능이 필요할 것 같아", "기획해줘", "프로덕트 플랜", "/product-plan" 등을 말할 때 반드시 이 스킬을 사용한다. 구현 진입은 별도 (`/quick` 또는 `/impl` / `/impl-loop`).
+description: 새 기능 / PRD 변경 / 큰 기획을 받아 product-planner → plan-reviewer → ux-architect (5 카테고리 self-check) → system-architect (self-check + impl 목차 표 산출) → architecture-validator (Placeholder Leak + Spike Gate) → module-architect × N (impl 본문 detail) 시퀀스로 spec/design 단계까지 진행하는 스킬. 사용자가 "기획자야", "새 기능", "피쳐 추가", "이런 기능이 필요할 것 같아", "기획해줘", "프로덕트 플랜", "/product-plan" 등을 말할 때 반드시 이 스킬을 사용한다. 구현 진입은 별도 (`/impl` / `/impl-loop`).
 ---
 
 # Product Plan Skill
@@ -34,7 +34,7 @@ description: 새 기능 / PRD 변경 / 큰 기획을 받아 product-planner → 
 
 ## 비대상 (다른 skill 추천)
 - 버그 → `/qa` (`qa-triage`)
-- 한 줄 수정 → `/quick` (`quick-bugfix-loop`)
+- 한 줄 수정 / 버그픽스 → `/qa` (분류 후 impl-task-loop fallback)
 - 디자인만 → `/ux` (`ux-design-stage`)
 
 ## 후속 라우팅
