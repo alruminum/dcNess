@@ -412,10 +412,9 @@ allowed_enums / 분기 / sub_cycles / branch_prefix decision rule = §4.3 인용
 ### 5.1 보존 (catastrophic — 코드 강제)
 
 - §2.3 catastrophic 시퀀스 5 항목 (code-validator / architecture-validator / pr-reviewer 우회 금지 등)
-- handoff-matrix §4.1 HARNESS_ONLY_AGENTS (engineer 직접 호출 차단)
-- handoff-matrix §4.2 ALLOW_MATRIX (Write 경계)
-- handoff-matrix §4.3 READ_DENY_MATRIX (Read 격리)
-- handoff-matrix §4.4 DCNESS_INFRA_PATTERNS (인프라 보호)
+- handoff-matrix §4.1 ALLOW_MATRIX (Write 경계)
+- handoff-matrix §4.2 READ_DENY_MATRIX (Read 격리)
+- handoff-matrix §4.3 DCNESS_INFRA_PATTERNS (인프라 보호)
 - handoff-matrix §3 escalate 결론은 자동 복구 금지
 
 ### 5.2 자율 (agent 결정)
@@ -441,7 +440,7 @@ allowed_enums / 분기 / sub_cycles / branch_prefix decision rule = §4.3 인용
 - 메인이 handoff-matrix §1 결정표 보고 `list[Step]` 짜서 컨베이어 호출
 - 컨베이어 = 시퀀스 순회 + Agent 호출 + `signal_io.interpret_signal` 로 enum 추출 + `Step.advance_when` 비교
 - enum ∈ advance_when 이면 다음 step. 아니면 `ConveyorPause` 반환 (예외 아님) — 메인이 받아 자율 처리
-- §2.3 catastrophic 4 룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` (PreToolUse Agent) 가 코드 hardcode 0 으로 강제
+- §2.3 catastrophic 시퀀스 = `hooks/catastrophic-gate.sh` (PreToolUse Agent) 가 코드 hardcode 0 으로 강제
 - 형식 강제 LLM 출력 (JSON 등) **사용 안 함** — proposal §2.5 (prose-only) 정합
 
 상세 디자인 + 폐기된 옵션 카탈로그 (3 옵션 — RWHarness fork / 정적 dict / Orchestration Agent) = [`../archive/conveyor-design.md`](../archive/conveyor-design.md).

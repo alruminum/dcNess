@@ -361,7 +361,7 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 
 ### 7.1 catastrophic 룰 정합
 
-[`orchestration.md`](orchestration.md) §2.3 5룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `READY` enum / architect-loop §4.2 Step 4 (module-architect × K) 진입 직전 architecture-validator PASS / PRD 변경 후 plan-reviewer PASS).
+[`orchestration.md`](orchestration.md) §2.3 catastrophic 시퀀스 = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `READY` enum / architect-loop §4.2 Step 4 (module-architect × K) 진입 직전 architecture-validator PASS / PRD 변경 후 plan-reviewer PASS).
 
 > Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (loop-catalog.md 폐기, 8 → 7 SSOT).
 

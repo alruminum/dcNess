@@ -4,11 +4,10 @@
 접근을 차단한다. handoff-matrix.md §4.1~§4.5 의 spec 을 코드로 강제 (DCN-CHG-20260501-01).
 
 핵심 룰 (handoff-matrix.md §4 정합):
-    §4.1 HARNESS_ONLY_AGENTS (engineer 등 컨베이어 경유 필수) — `hooks.py:handle_pretooluse_agent`
-    §4.2 ALLOW_MATRIX — agent 별 Write 허용 path
-    §4.3 READ_DENY_MATRIX — agent 별 Read 금지 path
-    §4.4 DCNESS_INFRA_PATTERNS — 전 agent 공통 차단 (인프라 보호)
-    §4.5 is_infra_project() — dcness 자체 작업 시 §4.2~§4.4 해제
+    §4.1 ALLOW_MATRIX — agent 별 Write 허용 path
+    §4.2 READ_DENY_MATRIX — agent 별 Read 금지 path
+    §4.3 DCNESS_INFRA_PATTERNS — 전 agent 공통 차단 (인프라 보호)
+    §4.4 is_infra_project() — dcness 자체 작업 시 §4.1~§4.3 해제
 
 활성 sub-agent 판정: live.json.active_agent (catastrophic-gate 가 PreToolUse Agent
 훅에서 기록, post-agent-clear 가 PostToolUse Agent 훅에서 해제).

@@ -9,8 +9,6 @@ Coverage matrix:
         - 기존 live.json 보존 (재호출 안전)
 
     handle_pretooluse_agent:
-        - HARNESS_ONLY_AGENTS — run 없으면 차단
-        - HARNESS_ONLY_AGENTS — run 있으면 추가 검사
         - §2.3.1 — pr-reviewer 직전 CODE_VALIDATION 없으면 차단
         - §2.3.1 — engineer 변경 후 CODE_VALIDATION PASS 있으면 통과
         - §2.3.1 — BUGFIX_VALIDATION PASS 도 인정
@@ -39,7 +37,6 @@ from tempfile import TemporaryDirectory
 from typing import Optional
 
 from harness.hooks import (
-    HARNESS_ONLY_AGENTS,
     handle_posttooluse_agent,
     handle_posttooluse_file_op,
     handle_pretooluse_agent,
@@ -178,53 +175,6 @@ class _PreToolBase(unittest.TestCase):
                 "mode": mode,
             },
         }
-
-
-# ---------------------------------------------------------------------------
-# HARNESS_ONLY_AGENTS
-# ---------------------------------------------------------------------------
-
-
-class HarnessOnlyAgentsTests(_PreToolBase):
-    def test_constant_matches_spec(self) -> None:
-        # validator 단순화 — engineer + code-validator 2개만 HARNESS_ONLY
-        self.assertIn(("engineer", None), HARNESS_ONLY_AGENTS)
-        self.assertIn(("code-validator", None), HARNESS_ONLY_AGENTS)
-        self.assertEqual(len(HARNESS_ONLY_AGENTS), 2)
-
-    def test_engineer_blocked_without_run(self) -> None:
-        # 새 base — run 없음
-        with TemporaryDirectory() as td:
-            base = Path(td)
-            update_live(self.sid, base_dir=base)  # live 만 있고 run 없음
-            rc = handle_pretooluse_agent(
-                stdin_data=self._payload("engineer", "IMPL"),
-                cc_pid=88888,  # run 없는 cc_pid
-                base_dir=base,
-            )
-            self.assertEqual(rc, 1)
-
-    def test_code_validator_blocked_without_run(self) -> None:
-        with TemporaryDirectory() as td:
-            base = Path(td)
-            update_live(self.sid, base_dir=base)
-            rc = handle_pretooluse_agent(
-                stdin_data=self._payload("code-validator", ""),
-                cc_pid=88888,
-                base_dir=base,
-            )
-            self.assertEqual(rc, 1)
-
-    def test_non_harness_only_agent_allowed_without_run(self) -> None:
-        with TemporaryDirectory() as td:
-            base = Path(td)
-            update_live(self.sid, base_dir=base)
-            rc = handle_pretooluse_agent(
-                stdin_data=self._payload("qa", ""),
-                cc_pid=88888,
-                base_dir=base,
-            )
-            self.assertEqual(rc, 0)
 
 
 # ---------------------------------------------------------------------------

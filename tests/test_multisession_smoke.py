@@ -367,29 +367,5 @@ class CatastrophicRuleE2eTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("§2.3.1", result.stderr)
 
-    def test_harness_only_blocks_when_no_run_for_other_session(self) -> None:
-        """다른 세션 (run 없는) 의 cc_pid 로 engineer 호출 — HARNESS_ONLY 차단."""
-        other_cc_pid = 88888
-        # other session init
-        _run_python_hook(
-            "session-start",
-            {"sessionId": "other-ses"},
-            other_cc_pid,
-            cwd=self.cwd,
-        )
-        # other session 은 begin-run 안 함 → run 컨텍스트 없음
-        result = _run_python_hook(
-            "pretooluse-agent",
-            {
-                "sessionId": "other-ses",
-                "tool_input": {"subagent_type": "engineer", "mode": "IMPL"},
-            },
-            other_cc_pid,
-            cwd=self.cwd,
-        )
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("컨베이어 경유 필수", result.stderr)
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -96,16 +96,15 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 **Matcher**: `Agent`
 **시점**: 메인 Claude 가 sub-agent 호출 (Task tool with `subagent_type`) *직전*.
 
-**역할**: [`orchestration.md`](orchestration.md) §2.3 catastrophic 5 룰 + [`handoff-matrix.md`](handoff-matrix.md) §4.1 HARNESS_ONLY_AGENTS 강제
+**역할**: [`orchestration.md`](orchestration.md) §2.3 catastrophic 시퀀스 강제
 
 | 룰 | 차단 조건 |
 |---|---|
-| HARNESS_ONLY_AGENTS | `engineer` agent 를 메인이 직접 Task 호출 (run 미시작 상태) — `impl_driver` 컨베이어 경유 필수 |
 | §2.3.1 | src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 |
-| §2.3.2 | pr-reviewer LGTM 없이 merge |
 | §2.3.3 | engineer 가 module-architect `READY` 없이 src/ 작성 |
-| §2.3.4 | PRD 변경 후 plan-reviewer + ux-architect 검토 없이 system-architect 진입 |
-| §2.3.5 | module-architect × N 진입 직전 architecture-validator PASS 없이 진입 |
+| §2.3.6 | test-engineer 호출 전 commit1(docs) 미기록 |
+| §2.3.7 | engineer IMPL 호출 전 commit2(tests) 미기록 |
+| §2.3.8 | pr-reviewer 호출 전 commit3(src) 미기록 |
 
 **차단 동작**: `exit 1` → CC 가 Agent 호출 거부 + stderr 메시지 사용자 노출.
 **외부 사용자 영향**: 활성 프로젝트의 시퀀스 위반 시 sub-agent 호출 자체가 막힘. 메인 Claude 가 직접 회복 시도하거나 사용자 위임.
@@ -122,18 +121,18 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 
 | § | 룰 | 영향 |
 |---|---|---|
-| §4.4 | `DCNESS_INFRA_PATTERNS` | 전 sub-agent 의 인프라 path 차단 (`.claude/`, `hooks/`, `harness/*.py`, `docs/plugin/*.md`, `scripts/*.mjs`) |
-| §4.2 | `ALLOW_MATRIX` | agent 별 Write 허용 path (예 engineer = `src/**`, designer = `design-variants/**`) |
-| §4.3 | `READ_DENY_MATRIX` | agent 별 Read 금지 (예 product-planner 는 `src/`, `docs/impl/`, `docs/architecture.md` 못 읽음) |
-| §4.5 | `is_infra_project()` | dcness 자체 작업 시 위 모두 해제 |
+| §4.3 | `DCNESS_INFRA_PATTERNS` | 전 sub-agent 의 인프라 path 차단 (`.claude/`, `hooks/`, `harness/*.py`, `docs/plugin/*.md`, `scripts/*.mjs`) |
+| §4.1 | `ALLOW_MATRIX` | agent 별 Write 허용 path (예 engineer = `src/**`, designer = `design-variants/**`) |
+| §4.2 | `READ_DENY_MATRIX` | agent 별 Read 금지 (예 designer 는 `src/` 못 읽음) |
+| §4.4 | `is_infra_project()` | dcness 자체 작업 시 위 모두 해제 |
 
 **메인 Claude turn** (sub-agent 비활성): pass-through. governance Document Sync 가 별도 보호.
 **mcp__.* tool**: `file_path` 인자 부재 → boundary 검사 skip, trace 만.
 **차단 동작**: `exit 1` → CC 가 tool 호출 거부.
 
-**외부 사용자 영향**: 활성 프로젝트의 sub-agent 가 권한 외 path 시도 시 자동 차단. ALLOW_MATRIX 정의 안 된 agent 가 새로 호출되면 차단되므로, custom agent 추가 시 §4.2 행 등록 의무.
+**외부 사용자 영향**: 활성 프로젝트의 sub-agent 가 권한 외 path 시도 시 자동 차단. ALLOW_MATRIX 정의 안 된 agent 가 새로 호출되면 차단되므로, custom agent 추가 시 §4.1 행 등록 의무.
 
-**코드 SSOT**: [`harness/agent_boundary.py`](../../harness/agent_boundary.py) `DCNESS_INFRA_PATTERNS` (handoff-matrix §4.4 와 동기 의무).
+**코드 SSOT**: [`harness/agent_boundary.py`](../../harness/agent_boundary.py) `DCNESS_INFRA_PATTERNS` (handoff-matrix §4.3 와 동기 의무).
 
 ---
 
