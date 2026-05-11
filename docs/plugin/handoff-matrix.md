@@ -45,7 +45,7 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
 모듈/태스크 단위 설계 hub. 호출자 컨텍스트 (신규 story / 버그픽스 / 기존 impl 보강 / 문서 동기화) 에 따라 분량·범위 자율 판단.
 
 - **READY** — impl 설계문서 작성/수정 완료. 다음 단계는 컨텍스트:
-  - feature-build-loop 안 = impl 목차 다음 행 있으면 module-architect 재호출, 마지막 행이면 loop 종료 → impl-task-loop 진입
+  - architect-loop 안 = impl 목차 다음 행 있으면 module-architect 재호출, 마지막 행이면 loop 종료 (PR 생성/머지) → impl-task-loop 진입
   - impl-task-loop fallback = test-engineer
   - 버그픽스 케이스 = engineer (simple)
   - 보강 케이스 = engineer 재진입
@@ -175,7 +175,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | Agent | 케이스 | 직접 호출 허용 | 비고 |
 |---|---|---|---|
 | system-architect | (전체) | ✅ | 메인 직접 |
-| module-architect | 신규 story (feature-build-loop §4.2 Step 7) / 보강 (engineer SPEC_GAP_FOUND) | ❌ | impl_driver / plan_driver 경유 |
+| module-architect | 신규 story (architect-loop §4.2 Step 4) / 보강 (engineer SPEC_GAP_FOUND) | ❌ | impl_driver / plan_driver 경유 |
 | module-architect | 버그픽스 (qa 후) / 문서 동기화 | ✅ | 메인 직접 |
 | architecture-validator | — | ✅ | 메인 직접 |
 | code-validator | — | ❌ | impl_driver 경유 |
@@ -187,7 +187,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | 에이전트 | 허용 경로 |
 |---|---|
 | engineer | `src/**` |
-| system-architect / module-architect | `docs/**`, `backlog.md` |
+| system-architect / module-architect | `docs/**` |
 | designer | `design-variants/**`, `docs/ui-spec*` |
 | test-engineer | `src/__tests__/**`, `*.test.*`, `*.spec.*` |
 | ux-architect | `docs/ux-flow.md` |

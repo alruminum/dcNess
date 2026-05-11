@@ -165,65 +165,63 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 
 ## 3.4 impl-task-loop 3-commit 구조 (orchestration §4.3 한정)
 
-`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` 에서 루프 종료 전 3 단계 commit + PR create 를 강제 (catastrophic gate §2.3.6~§2.3.8, `hooks.py`).
+`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` 에서 루프 종료 전 3 단계 commit + PR create 를 강제 (catastrophic gate §2.3.6~§2.3.8, `hooks.py`). **커밋 메시지·브랜치·PR 네이밍 규칙 SSOT** = [`git-naming-spec.md`](git-naming-spec.md). 본 §3.4 는 *시점·stage·포함 파일* 만 정의.
 
-| 시점 | stage | 포함 파일 | 커밋 메시지 예 |
-|---|---|---|---|
-| (default) test-engineer 시작 직전 / (fallback) module-architect READY 직후 | docs | `docs/impl/NN.md` (default 면 이미 정식 위치, fallback 이면 새로 작성됨) | `docs: impl plan <task-slug>` |
-| TESTS_WRITTEN 직후 | tests | `src/tests/**`, `*.test.*` | `test: tests for <task-slug>` |
-| code-validator PASS 직후 | src | `src/**`, stories.md 등 | `feat/fix/chore: <task-slug>` |
-| LGTM 직후 | — (merge) | 새 커밋 없음 | — |
+| 시점 | stage | 포함 파일 |
+|---|---|---|
+| (default) test-engineer 시작 직전 / (fallback) module-architect READY 직후 | docs | `docs/milestones/.../impl/NN-*.md` (default 면 이미 정식 위치, fallback 이면 새로 작성됨) |
+| TESTS_WRITTEN 직후 | tests | `src/tests/**`, `*.test.*` |
+| code-validator PASS 직후 | src | `src/**` (only) |
+| LGTM 직후 | — (merge) | 새 커밋 없음 |
 
-> default 모드 = task 파일이 이미 정식 위치에 있음 (feature-build-loop §4.2 Step 7 module-architect × N 산출물). branch 새로 만들고 *기존* `docs/impl/NN-*.md` 를 stage 만 하는 commit (변경 0 일 수도 있으니 `git add -A docs/impl/` 로 의도 표시 + commit). fallback 모드 = 위치 부재 → module-architect 1번 호출 → 새로 작성된 파일을 stage.
+> default 모드 = task 파일이 이미 정식 위치에 있음 (architect-loop §4.2 Step 4 module-architect × K 산출물). branch 새로 만들고 *기존* `docs/.../impl/NN-*.md` 를 stage 만 하는 commit (변경 0 일 수도 있으니 `git add -A docs/.../impl/` 로 의도 표시 + commit). fallback 모드 = 위치 부재 → module-architect 1번 호출 → 새로 작성된 파일을 stage.
+
+> **commit3 = src/** only** — stories.md / backlog.md / docs/* 등 다른 path 섞지 않는다. Step 4.5 sync 룰 폐기 (2026-05-12) — 진행 추적은 PR body `Closes`/`Part of` 트레일러 + GitHub native sub-issue API 가 SSOT.
 
 ### commit 골격
 
 ```bash
+# 메시지 형식 = git-naming-spec.md §2~§5 참조. 아래는 시점·stage 골격만.
+
 # commit1 (default = test-engineer 시작 직전 / fallback = module-architect READY 직후) — 브랜치 최초 생성
-BRANCH="<prefix>/<task-slug>"
+BRANCH="<prefix>/<task-slug>"   # prefix = feat/fix/chore (decision rule = orchestration §4.3)
 git checkout -b "$BRANCH" main
-git add docs/impl/NN-*.md          # 플랜 문서 (default 시 변경 없음 — 정식 위치 stage 만)
-git commit --allow-empty -m "docs: impl plan <task-slug>"  # default 일 때 변경 없으면 --allow-empty
-"$HELPER" record-stage-commit docs  # stage_commits.docs 기록
+git add docs/milestones/.../impl/NN-*.md
+git commit --allow-empty -m "[docs] impl plan <task-slug>"   # default 변경 0 시 --allow-empty
+"$HELPER" record-stage-commit docs
 
 # commit2 (TESTS_WRITTEN 직후)
-git add src/tests/**  # test 파일
-git commit -m "test: tests for <task-slug>"
+git add src/tests/**
+git commit -m "[test] <task-slug>"
 "$HELPER" record-stage-commit tests
 
-# commit3 (code-validator PASS 직후) — push + PR create
-git add src/**  # src 변경 + stories.md/backlog.md (Step 4.5 결과)
-git commit -m "<type>: <task-slug>"
+# commit3 (code-validator PASS 직후) — src/** only
+git add src/**
+git commit -m "<git-naming-spec §2 형식>"
 "$HELPER" record-stage-commit src
 git push -u origin "$BRANCH"
 
-# PR body: Part of vs Closes 자동 판단 (issue-lifecycle.md §1.4 적용 절차)
-# 본 task 의 *부모 Story 섹션* 에서만 [ ] 카운트 — 다른 Story 의 미완 task 와 섞이지 X.
-# 기존 stories.md 전체 grep 은 #320 #2 false positive 사단 (Story 1개 task 케이스 → false Part of).
-# stories.md SSOT 형식: 각 Story 헤더 직하 `**GitHub Issue:** [#MMM](url)` 마커 (issue-lifecycle.md §1.3).
-STORY_REMAINING=$(awk -v issue="#${STORY_ISSUE}" '
-  /\*\*GitHub Issue:\*\*/ {
-    if ($0 ~ "\\[" issue "\\]") {flag=1; next}
-    else {flag=0}
-  }
-  flag && /\[ \]/ {count++}
-  END {print count+0}
-' "$STORIES_FILE")
+# PR body: Closes vs Part of 자동 판단 (issue-lifecycle.md §1.4 적용 절차)
+# 입력 = impl 파일 frontmatter `task_index: i/total` + `story: N` (module-architect × K 시점에 박힘)
+TASK_FILE="docs/milestones/.../impl/NN-*.md"
+TASK_INDEX=$(awk '/^task_index:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")  # "3/3"
+STORY_NUM=$(awk '/^story:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")
+I="${TASK_INDEX%/*}"
+TOTAL="${TASK_INDEX#*/}"
 
-if [ "$STORY_REMAINING" = "0" ]; then
-  # 본 task 가 부모 Story 의 마지막 → Closes
+if [ "$I" = "$TOTAL" ]; then
+  # Story 마지막 task → Closes
   PR_BODY="Closes #${STORY_ISSUE}"
-  # 에픽 마지막 story 사전 체크 (issue-lifecycle.md §2.2)
-  EPIC_OPEN_STORIES=$(gh issue list --label "epic-${EPIC_NUM}-${EPIC_SLUG}" --state open --json number --jq 'length' 2>/dev/null || echo 0)
+  # epic 마지막 story 판정 (issue-lifecycle.md §2.2)
+  EPIC_OPEN_STORIES=$(gh issue list --label "epic-${EPIC_NUM}-${EPIC_SLUG}" --milestone Story --state open --json number --jq 'length' 2>/dev/null || echo 0)
   if [ "$EPIC_OPEN_STORIES" = "1" ]; then
-    # 본 story 1개만 OPEN — close 시 epic 도 close 예정
     PR_BODY="${PR_BODY}
 Closes #${EPIC_ISSUE}"
   fi
 else
   PR_BODY="Part of #${STORY_ISSUE}"
 fi
-gh pr create --title "<type>: <task-slug> (#${STORY_ISSUE})" --body "$PR_BODY"
+gh pr create --title "<git-naming-spec §4 형식>" --body "$PR_BODY"
 ```
 
 ### Step 7a (impl-task-loop)
@@ -237,40 +235,13 @@ git checkout main && git pull --ff-only 2>/dev/null || true
 
 ---
 
-## 4. Step 4.5 — stories.md / backlog.md sync (impl 계열 한정)
+## 4. Step 4.5 — 폐기 (2026-05-12)
 
-`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` / `impl-loop` 의 inner task 에 한정. engineer `IMPL_DONE` 직후, code-validator 진입 *전*. 메인 직접 mechanical edit (agent 위임 X — 도메인 외).
-
-> **범위 외 path 사용자 책임 (#292 root cause 일부)** — 본 Step 4.5 자동 sync 는 위 4 loop 한정. 다음 path 들은 *자동 sync 없음* — 메인이 별도 처리:
+> **이전 정의**: `stories.md` task `[x]` 체크 + `backlog.md` epic `[x]` 체크 (engineer `IMPL_DONE` 직후, 메인 mechanical edit).
 >
-> - engineer 직접 호출 (skill 우회) / 메인 직접 commit — *사용자 우회 path*. dcness 룰 미적용 영역.
-> - **dcness 도입 *이전* 작업분** — 룰 도입 전 commit 들의 stories.md 잔재. 1회 backfill 이 정상 (예: jajang PR #232 패턴 — `gh issue list --state closed` 매핑 → unchecked task 일괄 `[x]`). 이후 path 가 정상화되면 drift 0 유지.
+> **폐기 사유**: stories.md 양식 단순화 (user story 만, task `[ ]` 박지 않음 — PR3-A) + `backlog.md` 자체 폐기. 진행 추적 SSOT = GitHub issue close 시스템 (PR body `Closes #N` / `Part of #N` 트레일러) 단일화. impl task PR diff 에는 stories.md / backlog.md 변경 0 (commit3 = src/** only).
 >
-> drift 검출은 `/run-review` / `/audit-redo` 가 사후 안내 (현재 detector 부재 — 후속 추적).
-
-### 4.5.1 epic 경로 추출
-
-```bash
-EPIC_DIR=$(dirname $(dirname "<task path>"))
-STORIES_FILE="$EPIC_DIR/stories.md"
-BACKLOG_FILE="$(dirname $(dirname $EPIC_DIR))/../backlog.md"
-```
-
-(실제 경로는 milestone 구조에 따라 메인이 `find` / `Glob` 으로 확인.)
-
-### 4.5.2 갱신 룰
-
-- task 가 다룬 Story 의 task `[ ]` → `[x]`. task ## 관련 Story / ## 적용 범위 메타로 식별.
-- Story 하위 모두 `[x]` 면 Story 자체 `[x]`.
-- stories.md 의 모든 Story `[x]` 면 backlog.md 의 epic 라인 `[x]`. 부분 진행 시 backlog 손대지 않음.
-
-### 4.5.3 가시성
-
-```
-[<entry>] step 4.5 — stories.md / backlog.md sync
-- stories.md: Story 1 [ ] → [x] (8 task 모두 완료)
-- backlog.md: epic-01 라인 [ ] → [x]
-```
+> **마이그레이션**: 기존 활성 프로젝트의 옛 stories.md (task `[ ]` 박힌) 는 *그대로 잔재 허용* — backfill 강제 X. 새 작성만 새 양식 ([`commands/product-plan.md`](../../commands/product-plan.md) §stories.md 산출물). 자동 마이그레이션 원하는 사용자용 = `scripts/migrate_stories_to_new_format.sh`.
 
 ---
 
@@ -390,7 +361,7 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 
 ### 7.1 catastrophic 룰 정합
 
-[`orchestration.md`](orchestration.md) §2.3 5룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `READY` enum / feature-build-loop §4.2 Step 6 (module-architect × N) 진입 직전 architecture-validator PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
+[`orchestration.md`](orchestration.md) §2.3 5룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `READY` enum / architect-loop §4.2 Step 4 (module-architect × K) 진입 직전 architecture-validator PASS / PRD 변경 후 plan-reviewer PASS).
 
 > Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (loop-catalog.md 폐기, 8 → 7 SSOT).
 

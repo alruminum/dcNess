@@ -60,7 +60,7 @@ flowchart TD
     merge[merge: LGTM 후 자동 + regular]
     cleanup[post-commit cleanup]
 
-    entry -->|impl/NN-*.md 정식 경로 존재<br/>= feature-build-loop 통과물| test
+    entry -->|impl/NN-*.md 정식 경로 존재<br/>= architect-loop 통과물| test
     entry -->|impl 부재 = 즉석 task| plan
     plan -->|READY| test
     test -->|TESTS_WRITTEN| impl
@@ -80,7 +80,7 @@ flowchart TD
     merge --> cleanup
 ```
 
-> default 진입 = test-engineer (impl/NN-*.md 정식 경로 존재 = feature-build-loop §4.2 가 module-architect × N 마쳐 본문 detail 까지 채운 산출물). fallback (즉석 task / 정식 경로 부재) 만 module-architect 호출.
+> default 진입 = test-engineer (impl/NN-*.md 정식 경로 존재 = architect-loop §4.2 가 module-architect × N 마쳐 본문 detail 까지 채운 산출물). fallback (즉석 task / 정식 경로 부재) 만 module-architect 호출.
 
 ### 2.2 UI 작업 추가 시 design 단계 삽입
 
@@ -109,8 +109,8 @@ flowchart TD
 1. **src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 금지**
 2. **pr-reviewer LGTM 없이 merge 금지**
 3. **engineer 가 module-architect `READY` enum 발화 없이 src/ 작성 금지** (신규 / 보강 / 버그픽스 모든 케이스 동일)
-4. **PRD 변경 후 plan-reviewer + ux-architect 검토 없이 system-architect 진입 금지**
-5. **module-architect × N (feature-build-loop §4.2 마지막 단계) 진입 직전 architecture-validator PASS 없이 진입 금지**
+4. **PRD 변경 후 plan-reviewer PASS 없이 `/architect-loop` 진입 금지** (PRD 검증은 `/product-plan` 책임)
+5. **module-architect × N (architect-loop §4.2 Step 6) 진입 직전 architecture-validator PASS 없이 진입 금지**
 
 이는 proposal §2.5 원칙 4 ("흐름 강제는 catastrophic 시퀀스만") 의 catastrophic 백본.
 
@@ -119,30 +119,43 @@ flowchart TD
 ## 3. 진입 경로별 시나리오 (mini-graph 6 개)
 
 > 8 loop 행별 풀스펙 = 본 문서 §4. 본 §3 = mini-graph (what), §4 = 행별 풀스펙 (how) 1:1.
-> 7 loop name (`feature-build-loop` §3.1, `impl-task-loop` §2.1, `impl-ui-design-loop` §2.2, `qa-triage` §3.5, `ux-design-stage` §3.2, `ux-refine-stage` §3.3, `direct-impl-loop` §3.4) — §4 행 ID.
+> 7 loop name (`architect-loop` §3.1.5, `impl-task-loop` §2.1, `impl-ui-design-loop` §2.2, `qa-triage` §3.5, `ux-design-stage` §3.2, `ux-refine-stage` §3.3, `direct-impl-loop` §3.4) — §4 행 ID.
 > 실행 절차 (Step 0~8 mechanics) = [`loop-procedure.md`](loop-procedure.md).
 
-### 3.1 신규 기능 / PRD 변경 → `feature-build-loop` (§4.2)
+### 3.1 신규 기능 / PRD 변경 → `/product-plan` (§4.2)
 
 ```mermaid
 flowchart LR
     qa[qa] --> main[메인 Claude<br/>그릴미 대화로 PRD/stories.md 직접 Write]
     main --> pr[plan-reviewer<br/>FULL 모드 외부 검증]
-    pr -->|PLAN_REVIEW_PASS| ux[ux-architect UX_FLOW<br/>+ 5 카테고리 self-check]
+    pr -->|PLAN_REVIEW_PASS| commit[PR 생성 + 머지<br/>+ epic/story 이슈 등록]
     pr -->|PLAN_REVIEW_FAIL| confirm[메인 + 사용자<br/>findings 항목별 confirm + Edit patch]
     confirm --> pr
-    pr -->|PLAN_REVIEW_ESCALATE| esc
-    ux -->|UX_FLOW_READY| sd[system-architect<br/>+ self-check<br/>+ impl 목차 표]
-    ux -->|UX_FLOW_ESCALATE| esc((escalate))
-    sd -->|READY| dv[architecture-validator<br/>Placeholder Leak + Spike Gate]
-    dv -->|PASS| mp[module-architect × N<br/>impl 목차 행마다 1 호출]
-    dv -->|FAIL| sd
-    dv -->|ESCALATE| esc
-    mp -->|READY × N| impl[구현 루프 §2.1]
+    pr -->|PLAN_REVIEW_ESCALATE| esc((escalate))
+    commit --> done((종료 — 사용자 결정))
+    done -.->|다음 단계 권장| arch[/architect-loop §4.10/]
 ```
 
-UX 검증은 ux-architect self-check (5 카테고리, FAIL 시 재고려 2 cycle) 로 흡수. architecture-validator cycle 한도 = 2. 초과 시 사용자 위임. catastrophic §2.3.5 — module-architect × N 진입 직전 architecture-validator PASS 필수.
-진입: `product-plan` 스킬 또는 사용자 "기능 추가" 발화.
+진입: `/product-plan` 스킬 또는 사용자 "기능 추가" 발화. 종료 후 사용자가 `/architect-loop` 호출 결정 (자동 진입 X).
+
+### 3.1.5 PRD 머지 후 설계 단계 → `/architect-loop` (§4.10)
+
+```mermaid
+flowchart LR
+    entry[/architect-loop 진입/] --> ux[ux-architect UX_FLOW<br/>+ 5 카테고리 self-check]
+    ux -->|UX_FLOW_READY| c1[commit 1: ux-flow.md]
+    ux -->|UX_FLOW_ESCALATE| esc((escalate))
+    c1 --> sd[system-architect<br/>+ self-check<br/>+ impl 목차 표]
+    sd -->|READY| dv[architecture-validator<br/>Placeholder Leak + Spike Gate]
+    dv -->|PASS| c2[commit 2: architecture.md + adr.md]
+    dv -->|FAIL| sd
+    dv -->|ESCALATE| esc
+    c2 --> mp[module-architect × K<br/>impl 목차 행마다 1 호출]
+    mp -->|READY × K, 각 호출 후 commit| done[PR 생성 + 머지]
+    mp -->|SPEC_GAP_FOUND / ESCALATE| esc
+```
+
+architect-loop = 1 epic 처리 단위. 워크트리 ON 자동 진입. PRD 머지 + epic/story 이슈 등록은 진입 전제 (`/product-plan` 책임). catastrophic §2.3.5 — module-architect × K 진입 직전 architecture-validator PASS 필수. 종료 = 1 PR (ux-flow + arch+adr + impl K = K+2 commit). 진입: 사용자 `/architect-loop <epic-path>` 명시.
 
 ### 3.2 UI 만 변경 → `ux-design-stage` (§4.6, 하네스 루프 없음)
 
@@ -191,14 +204,14 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 
 ## 4. 8 loop 행별 풀스펙
 
-> *행별 풀스펙* SSOT (entry_point / task_list / advance / clean_enum / branch_prefix / Step 4.5 적용 / Step 별 allowed_enums / 분기 / sub_cycles).
-> 시퀀스 mini-graph + 진입 경로 = §3. 실행 절차 = [`loop-procedure.md`](loop-procedure.md).
+> *행별 풀스펙* SSOT (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles).
+> 시퀀스 mini-graph + 진입 경로 = §3. 실행 절차 = [`loop-procedure.md`](loop-procedure.md). Step 4.5 sync 룰 = 폐기 (2026-05-12, 본 SSOT 단일화).
 
 ### 4.1 한눈 인덱스
 
 | loop | entry_point | task_list (Step 1) | advance | clean_enum | expected_steps |
 |------|-------------|--------------------|---------|------------|----------------|
-| `feature-build-loop` (§3.1, §4.2) | `product-plan` | 메인 직접 PRD/stories Write / plan-reviewer / ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator / module-architect × N | 메인 PRD 완성 → `PLAN_REVIEW_PASS` → `UX_FLOW_READY` → `READY` → `PASS` → `READY × N` | advance 동일 | 5 + N (N = system-architect impl 목차 행 수) |
+| `architect-loop` (§3.1.5, §4.2) | `architect-loop` (사용자 명시) | ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator / module-architect × K | `UX_FLOW_READY` → `READY` → `PASS` → `READY × K` | advance 동일 | 3 + K (K = system-architect impl 목차 행 수) |
 | `impl-task-loop` (§2.1, §4.3) | `impl` | (default) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `TESTS_WRITTEN` → `IMPL_DONE` → `PASS` → `LGTM` | advance 동일 | 4 (default) / 5 (fallback) |
 | `impl-ui-design-loop` (§2.2, §4.4) | `impl` (UI 감지) | (default) designer / 사용자 PICK / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `DESIGN_READY_FOR_REVIEW` → 사용자 PICK → `TESTS_WRITTEN` → `IMPL_DONE` → `PASS` → `LGTM` | advance 동일 | 6 (default) / 7 (fallback) |
 | `qa-triage` (§3.5, §4.5) | `qa` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
@@ -206,43 +219,44 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 | `ux-refine-stage` (§3.3, §4.7) | `ux` (REFINE) | ux-architect:UX_REFINE / designer / 사용자 PICK | `UX_REFINE_READY` → `DESIGN_READY_FOR_REVIEW` → 사용자 PICK | advance 동일 | 3 |
 | `direct-impl-loop` (§3.4, §4.8) | `impl_driver` (future) | `impl-task-loop` 동일 | `impl-task-loop` 동일 | `impl-task-loop` 동일 | 5 |
 
-### 4.2 `feature-build-loop` 풀스펙
+### 4.2 `architect-loop` 풀스펙
 
-**branch_prefix**: commit X (spec/design 종료, 구현 진입은 별도 루프). **Step 4.5 적용**: X.
+**branch_prefix**: `docs/<epic-slug>`. **워크트리**: ON 자동 (`EnterWorktree(name="architect-{ts_short}")` — [`loop-procedure.md`](loop-procedure.md) §1.1).
 
-**Step 별 allowed_enums** (`end-step --allowed-enums`):
-| step | agent[:mode] | allowed_enums |
-|---|---|---|
-| 2 | (메인 Claude 직접 PRD/stories.md Write — 그릴미 대화) | — (sub-agent 없음, 메인이 사용자와 직접 인터랙션. `commands/product-plan.md` 참조) |
-| 3 | plan-reviewer | `PLAN_REVIEW_PASS,PLAN_REVIEW_FAIL,PLAN_REVIEW_ESCALATE` |
-| 4 | ux-architect:UX_FLOW (5 카테고리 self-check 의무) | `UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE` |
-| 5 | system-architect (self-check 의무) | `READY,ESCALATE` (산출물에 `## impl 목차` 표 포함 — Story → impl 매핑 + N 행) |
-| 5.5 | architecture-validator | `PASS,FAIL,ESCALATE` |
-| 6.1 ~ 6.N | module-architect (신규 케이스, occurrence 1..N — system-architect impl 목차 행마다 1번) | `READY,SPEC_GAP_FOUND,ESCALATE` |
+**전제 조건** (진입 전 충족 의무):
+- PRD/stories.md 이미 머지 (`/product-plan` 책임)
+- epic + story 이슈 등록 완료 (`scripts/create_epic_story_issues.sh`)
+- 사용자가 `/architect-loop <epic-path>` 명시 호출 (자동 진입 X)
 
-**module-architect × N 단계 (Step 6)**:
-- 입력 = system-architect 산출물의 `## impl 목차` 표. 메인 Claude 가 표 행 (NN, 파일명, 대응 Story, 의존) 을 순회하며 module-architect 1번씩 호출.
-- 각 호출이 `docs/milestones/vNN/epics/epic-NN-*/impl/<NN>-<slug>.md` 를 새로 작성 (수용 기준 표 / DB 영향도 / TypeScript 타입 / READY 게이트 — `agents/module-architect.md` 의무).
-- 호출 순서 = impl 목차의 의존 순서. 선행 impl 본문이 후행의 `## 의존성` 입력이 되므로 *순차*.
-- N 개 호출 모두 `READY` enum → feature-build-loop clean 종료. 한 건이라도 SPEC_GAP_FOUND / ESCALATE → 보강 cycle 또는 사용자 위임.
+**Step 별 allowed_enums + commit**:
+| step | agent[:mode] | allowed_enums | commit |
+|---|---|---|---|
+| 2 | ux-architect:UX_FLOW (5 카테고리 self-check 의무) | `UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE` | commit 1 (`[docs] ux-flow <epic-slug>`) — READY 직후 |
+| 3 | system-architect (self-check 의무) | `READY,ESCALATE` (산출물에 `## impl 목차` 표 — Story → impl 매핑 + K 행 + `task_index: i/total` 열) | (working tree only) |
+| 3.5 | architecture-validator | `PASS,FAIL,ESCALATE` | commit 2 (`[docs] architecture + adr <epic-slug>`) — PASS 직후 |
+| 4.1 ~ 4.K | module-architect (신규 케이스, occurrence 1..K) | `READY,SPEC_GAP_FOUND,ESCALATE` | commit 3..K+2 (`[docs] impl <NN>-<slug>`) — 각 READY 직후 |
 
-**stories.md task 행 추가 (메인 Claude 직접)**: Step 6 N 회 모두 종료 직후, 메인 Claude 가 `stories.md` 안 각 Story 헤더 아래에 `- [ ] <NN>-<slug>.md` 행 N 개 추가 (impl 목차 표 그대로 옮김). 체크박스 `[x]` tick 은 별 영역 — `impl-task-loop` Step 4.5 (engineer IMPL_DONE 후) 가 책임.
+**module-architect × K 단계 (Step 4)**:
+- 입력 = system-architect 산출물의 `## impl 목차` 표. 메인이 표 행 (NN, 파일명, 대응 Story, `task_index = i/total`, 의존) 순회하며 module-architect 1번씩 호출
+- 각 호출이 `docs/milestones/vNN/epics/epic-NN-*/impl/<NN>-<slug>.md` 새로 작성. **frontmatter `story: <N>, task_index: <i>/<total>` 의무** — impl-task-loop PR body Closes/Part of 판정 입력 ([`issue-lifecycle.md`](issue-lifecycle.md) §1.4)
+- 호출 순서 = impl 목차 의존 순서 (선행 impl 본문이 후행 `## 의존성` 입력 → 순차)
+- K 호출 모두 `READY` → architect-loop clean 종료 (Step 5)
+
+**Step 5 — commit / push / PR / 머지**:
+- `git push -u origin docs/<epic-slug>` + `gh pr create` (PR body = 설계 산출물 요약, `Part of #<epic-issue>`)
+- `bash scripts/pr-finalize.sh` 머지 (squash 금지 — 커밋 히스토리 보존)
+- `ExitWorktree` (squash 흡수 검사 후 자동 keep/remove)
 
 **분기**:
-- (Spike Pre-Check) — 사용자 입력에 외부 의존 / 조건부 약속 패턴 / 의문문 신호 1+ 존재 시 `/product-plan` 스킬이 메인 PRD 작성 *전* plan-reviewer `PRE_CHECK` 모드 1회 호출. PASS 시 PRD 작성 진입, FAIL 시 사용자 입력 재정리, ESCALATE 시 사용자 위임. (`commands/product-plan.md` "Spike Pre-Check" 섹션)
-- 메인 PRD/stories.md 완성 → plan-reviewer `FULL` 모드 진입
-- `PLAN_REVIEW_PASS` → 메인이 사용자에게 confirm 받고 PR 생성 + 머지 → 이슈 등록 trigger (선택) → ux-architect (UX_FLOW)
-- `PLAN_REVIEW_FAIL` → 메인이 findings 항목별 *수용/거절 권장* + 사용자 confirm → 수용 항목만 `docs/prd.md` / `docs/stories.md` Edit patch → plan-reviewer 재진입 (cycle ≤ 2)
-- `PLAN_REVIEW_ESCALATE` → 사용자 위임 (외부 검증 불가 / 권한 경계 밖 정보 / 동일 finding 반복 / URL 부재 PASS 시도 — `agents/plan-reviewer.md` ESCALATE 트리거 4 케이스)
+- ux-architect self-check FAIL → ux-architect 재진입 (cycle ≤ 2, prose 내부)
 - `UX_REFINE_READY` → designer 분기 (ux-design-stage / ux-refine-stage 권장)
 - `UX_FLOW_ESCALATE` → 사용자 위임
-- ux-architect self-check FAIL → ux-architect 재진입 (cycle ≤ 2, prose 내부에서 처리)
 - architecture-validator `FAIL` → system-architect 재진입 (cycle ≤ 2)
 - architecture-validator `ESCALATE` → 사용자 위임
 - module-architect `SPEC_GAP_FOUND` → module-architect (보강 케이스) cycle (≤ 2) → 신규 케이스 재진입
 - module-architect `ESCALATE` → 사용자 위임
 
-**sub_cycles**: 위 분기에서 재호출 시 동일 agent 로 별도 begin/end-step 1쌍 (DCN-30-25). occurrence 카운터가 파일명 충돌을 자동 처리 — `dcness-rules.md §3.4`. module-architect × N 의 N 호출도 같은 mechanism 으로 `module-architect.md` / `module-architect-2.md` ... 자동 명명.
+**sub_cycles**: 위 분기 재호출 시 동일 agent 로 별도 begin/end-step 1쌍. occurrence 카운터가 파일명 충돌 자동 처리 ([`dcness-rules.md`](dcness-rules.md) §3.4). module-architect × K 의 K 호출 = `module-architect.md` / `module-architect-2.md` ... 자동 명명.
 
 ### 4.3 `impl-task-loop` 풀스펙
 
@@ -259,7 +273,7 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 | default | task 경로 매치 + 정식 위치 (`docs/milestones/v\d+/epics/epic-\d+-*/impl/\d+-*.md`) 파일 존재 | test-engineer | 4 |
 | fallback | 위 매치 실패 (즉석 task / direct-impl-loop / impl 부재) | module-architect | 5 |
 
-**근거**: feature-build-loop §4.2 의 Step 6 (module-architect × N) 이 정식 위치 impl 파일 본문 detail 까지 채움. 즉 정식 경로 + 파일 존재 = 본문 detail 보장 + architecture-validator PASS 통과물. module-architect 재호출 redundant. (이전 `MODULE_PLAN_READY` 마커 grep 룰 — DCN-30-13 — 폐기. 위치 자체가 도장.)
+**근거**: architect-loop §4.2 의 Step 4 (module-architect × K) 가 정식 위치 impl 파일 본문 detail 까지 채움. 즉 정식 경로 + 파일 존재 = 본문 detail 보장 + architecture-validator PASS 통과물. module-architect 재호출 redundant. (이전 `MODULE_PLAN_READY` 마커 grep 룰 — DCN-30-13 — 폐기. 위치 자체가 도장.)
 
 **3-commit 구조** ([`loop-procedure.md`](loop-procedure.md) §3.4 — catastrophic §2.3.6~§2.3.8):
 | stage | 시점 | 내용 |
@@ -268,8 +282,6 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 | commit2 (tests) | TESTS_WRITTEN 직후 | test 파일 + `record-stage-commit tests` |
 | commit3 (src) + PR | code-validator PASS 직후 | src 파일 + push + `gh pr create` + `record-stage-commit src` |
 | merge | LGTM 직후 | `gh pr merge` (NO --squash — 3 commit 히스토리 보존) |
-
-**Step 4.5 적용**: ✓ (engineer `IMPL_DONE` 직후, code-validator 진입 *전* — [`loop-procedure.md`](loop-procedure.md) §4).
 
 **Step 별 allowed_enums (default 모드)**:
 | step | agent[:mode] | allowed_enums |
@@ -298,7 +310,7 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 
 ### 4.4 `impl-ui-design-loop` 풀스펙
 
-**branch_prefix**: §4.3 와 동일 (`feat` / `chore` / `fix`). **Step 4.5 적용**: ✓.
+**branch_prefix**: §4.3 와 동일 (`feat` / `chore` / `fix`).
 
 **진입 모드 — default vs fallback**: §4.3 룰 그대로 (정식 경로 + 파일 존재 시 default = module-architect skip).
 
@@ -324,7 +336,7 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 
 ### 4.5 `qa-triage` 풀스펙
 
-**branch_prefix**: commit X (분류만, 코드 변경 X). **Step 4.5 적용**: X.
+**branch_prefix**: commit X (분류만, 코드 변경 X).
 
 **Step 별 allowed_enums**:
 | step | agent[:mode] | allowed_enums |
@@ -342,7 +354,7 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 
 ### 4.6 `ux-design-stage` 풀스펙
 
-**branch_prefix**: commit X (design handoff, 코드 X). **Step 4.5 적용**: X.
+**branch_prefix**: commit X (design handoff, 코드 X).
 
 **Step 별 allowed_enums**:
 | step | agent[:mode] | allowed_enums |
@@ -363,7 +375,7 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 
 ### 4.7 `ux-refine-stage` 풀스펙
 
-**branch_prefix**: commit X. **Step 4.5 적용**: X.
+**branch_prefix**: commit X.
 
 **Step 별 allowed_enums**:
 | step | agent[:mode] | allowed_enums |
@@ -385,7 +397,7 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 - entry_point = `impl_driver` CLI (현재 미구현, 후속 Task 예정)
 - 사용자 task 경로 직접 명시 (skill UI 없음)
 
-allowed_enums / 분기 / sub_cycles / branch_prefix decision rule / Step 4.5 = §4.3 인용.
+allowed_enums / 분기 / sub_cycles / branch_prefix decision rule = §4.3 인용.
 
 ### 4.9 다중 task chain (`impl-loop`)
 
