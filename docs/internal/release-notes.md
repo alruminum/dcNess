@@ -4,6 +4,43 @@
 
 ---
 
+## v0.2.15 (2026-05-11)
+
+**커밋 범위**: `v0.2.14..(다음 태그)`
+**핵심 변경**: TDD 게이트 polish — `ignore_scripts` input + `pr-finalize.sh` 한 명령 머지
+
+- **이슈 #320 jajang prepare hook self-block (PR #336)** — composite action 에
+  `ignore_scripts` input 추가. monorepo workspace `"prepare": "npm run build"`
+  같은 hook 이 root `npm ci` 시 발화 → 빌드 실패 → tdd-gate self-block 회피.
+  - `with: { ignore_scripts: true }` 옵트인 시 `--ignore-scripts` flag 적용
+  - pnpm / yarn / bun / npm 모두 지원
+  - 디폴트 false (기존 행동 유지)
+  - thin yml 템플릿에 `fetch-depth: 0` + 옵트인 주석 추가
+
+- **이슈 #320 pr-finalize helper (PR #337)** — 머지 절차 5 명령 → 1 명령.
+  사용자 피드백 "머지되면 main 으로 다시 되돌아가고 pull 까지 했으면" 대응.
+  - `scripts/pr-finalize.sh` 신규
+  - 흐름: gh pr merge --auto → gh pr checks --watch → auto-merge 완료 대기 → checkout main + pull
+  - argument 없으면 current branch 의 open PR 자동 검출
+  - working tree dirty 시 사용자 확인 후 sync skip
+  - CI FAIL / 머지 안 됨 시 exit 1 + 안내
+  - `git-naming-spec.md §6` + `CLAUDE.md §5` 머지 절차 갱신 — 1 명령으로 통합
+
+**배포 경로** (CLAUDE.md §0.5):
+- (1) plug-in 본체 — `.github/actions/tdd-gate/action.yml` + `scripts/pr-finalize.sh`
+- (2) init-dcness 배포 — Step 2.9 thin yml 갱신 (옵트인 주석 + fetch-depth)
+- (3) SSOT 문서 — `git-naming-spec.md` §6 + `CLAUDE.md` §5
+
+**jajang 즉시 적용**:
+```sh
+claude plugin update dcness@dcness
+/init-dcness   # 새 thin yml 받음
+# .github/workflows/tdd-gate.yml 에서 with: ignore_scripts: true 박음 (monorepo prepare hook self-block 회피 시)
+bash scripts/pr-finalize.sh   # 머지 + main sync 자동
+```
+
+---
+
 ## v0.2.14 (2026-05-11)
 
 **커밋 범위**: `v0.2.13..(다음 태그)`
