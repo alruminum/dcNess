@@ -163,42 +163,29 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 
 ---
 
-## 3.4 impl-task-loop 3-commit 구조 (orchestration §4.3 한정)
+## 3.4 impl-task-loop commit 구조 (orchestration §4.3 한정)
 
-`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` 에서 루프 종료 전 3 단계 commit + PR create 를 강제 (catastrophic gate §2.3.6~§2.3.8, `hooks.py`). **커밋 메시지·브랜치·PR 네이밍 규칙 SSOT** = [`git-naming-spec.md`](git-naming-spec.md). 본 §3.4 는 *시점·stage·포함 파일* 만 정의.
+`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` 에서 루프 종료 전 src commit + PR create. **커밋 메시지·브랜치·PR 네이밍 규칙 SSOT** = [`git-naming-spec.md`](git-naming-spec.md). 본 §3.4 는 *시점·포함 파일* 만 정의.
 
-| 시점 | stage | 포함 파일 |
-|---|---|---|
-| (default) test-engineer 시작 직전 / (fallback) module-architect READY 직후 | docs | `docs/milestones/.../impl/NN-*.md` (default 면 이미 정식 위치, fallback 이면 새로 작성됨) |
-| TESTS_WRITTEN 직후 | tests | `src/tests/**`, `*.test.*` |
-| code-validator PASS 직후 | src | `src/**` (only) |
-| LGTM 직후 | — (merge) | 새 커밋 없음 |
+| 시점 | 내용 |
+|---|---|
+| code-validator PASS 직후 | branch 새로 + `src/**` commit + push + `gh pr create` |
+| LGTM 직후 | `gh pr merge` (merge) |
 
-> default 모드 = task 파일이 이미 정식 위치에 있음 (architect-loop §4.2 Step 4 module-architect × K 산출물). branch 새로 만들고 *기존* `docs/.../impl/NN-*.md` 를 stage 만 하는 commit (변경 0 일 수도 있으니 `git add -A docs/.../impl/` 로 의도 표시 + commit). fallback 모드 = 위치 부재 → module-architect 1번 호출 → 새로 작성된 파일을 stage.
+> `docs/.../impl/NN-*.md` 는 `/architect-loop` 산출물이 *미리 main 에 머지* 한 상태. impl-task-loop 안에서 별도 commit X. fallback 모드 (정식 위치 부재) 는 module-architect 가 그 자리에서 새로 작성하는데, 본 PR 의 src commit 에 같이 포함.
 
-> **commit3 = src/** only** — stories.md / backlog.md / docs/* 등 다른 path 섞지 않는다. Step 4.5 sync 룰 폐기 (2026-05-12) — 진행 추적은 PR body `Closes`/`Part of` 트레일러 + GitHub native sub-issue API 가 SSOT.
+> **commit = `src/**` only** — stories.md / backlog.md 등 다른 path 섞지 않는다. 진행 추적은 PR body `Closes #N` / `Part of #N` 트레일러 + GitHub native sub-issue API 가 SSOT.
 
 ### commit 골격
 
 ```bash
-# 메시지 형식 = git-naming-spec.md §2~§5 참조. 아래는 시점·stage 골격만.
+# 메시지 형식 = git-naming-spec.md §2~§5 참조.
 
-# commit1 (default = test-engineer 시작 직전 / fallback = module-architect READY 직후) — 브랜치 최초 생성
+# branch 생성 + src commit (code-validator PASS 직후)
 BRANCH="<prefix>/<task-slug>"   # prefix = feat/fix/chore (decision rule = orchestration §4.3)
 git checkout -b "$BRANCH" main
-git add docs/milestones/.../impl/NN-*.md
-git commit --allow-empty -m "[docs] impl plan <task-slug>"   # default 변경 0 시 --allow-empty
-"$HELPER" record-stage-commit docs
-
-# commit2 (TESTS_WRITTEN 직후)
-git add src/tests/**
-git commit -m "[test] <task-slug>"
-"$HELPER" record-stage-commit tests
-
-# commit3 (code-validator PASS 직후) — src/** only
 git add src/**
 git commit -m "<git-naming-spec §2 형식>"
-"$HELPER" record-stage-commit src
 git push -u origin "$BRANCH"
 
 # PR body: Closes vs Part of 자동 판단 (issue-lifecycle.md §1.4 적용 절차)
@@ -226,7 +213,7 @@ gh pr create --title "<git-naming-spec §4 형식>" --body "$PR_BODY"
 
 ### Step 7a (impl-task-loop)
 
-PR 이미 생성된 상태 — merge only, **NO --squash** (3 commit 히스토리 보존):
+PR 이미 생성된 상태 — merge only:
 
 ```bash
 gh pr merge || echo "[impl] merge 대기 — CI / reviewers"
@@ -288,7 +275,7 @@ clean 아니면 **7b (caveat)**.
 
 ### 5.4 7a — Clean 자동 commit/PR
 
-> **impl-task-loop 제외**: 3-commit 구조 (§3.4) 에서 branch/commit3/push/PR 이미 완료. Step 7a = merge only (`gh pr merge` — NO --squash).
+> **impl-task-loop 제외**: §3.4 에서 branch/commit/push/PR 이미 완료. Step 7a = merge only (`gh pr merge`).
 
 자동 진행 (사용자 확인 X, **impl-task-loop 외** 루프 적용):
 

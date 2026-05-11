@@ -12,7 +12,6 @@
 # 강제 룰:
 #   - §2.3.1 — pr-reviewer 직전 code-validator PASS 확인
 #   - §2.3.3 — engineer 직전 module-architect READY 확인
-#   - §2.3.6~§2.3.8 — impl-task-loop 3-commit 단계 (docs / tests / src) 확인
 
 set -uo pipefail
 
