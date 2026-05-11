@@ -14,6 +14,10 @@
  *
  * agent 분류는 allowed enum 셋 시그니처 기반 (record 에 agent name 부재).
  * 매트릭스와 drift 가 있으면 "unclassified:..." 로 표시 — 그 자체가 발견.
+
+ * [역사 baseline] agent enum 통일 (PR #361 / B-3, 2026-05-11) *이전* 의
+ * 분류 함수. 새 enum (PASS/FAIL/ESCALATE) 통일 후엔 agent 추정 불가능 —
+ * 본 baseline 은 다이어트 *이전* run 의 회고 분석용.
  */
 import { readFileSync, existsSync } from 'node:fs';
 

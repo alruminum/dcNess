@@ -138,20 +138,20 @@ _PADDING = (
 def _make_cases() -> list[EnumCase]:
     """agent × mode 별 합성 prose 케이스 생성."""
     specs = [
-        ("architect",     "MODULE_PLAN",      ["READY_FOR_IMPL", "SPEC_GAP_FOUND"],   "READY_FOR_IMPL"),
-        ("architect",     "SYSTEM_DESIGN",    ["SYSTEM_DESIGN_READY", "SPEC_GAP_FOUND"], "SYSTEM_DESIGN_READY"),
-        ("architect",     "LIGHT_PLAN",       ["LIGHT_PLAN_READY", "SPEC_GAP_FOUND"], "LIGHT_PLAN_READY"),
-        ("architect",     "SPEC_GAP",         ["SPEC_GAP_RESOLVED", "PRODUCT_PLANNER_ESCALATION_NEEDED"], "SPEC_GAP_RESOLVED"),
-        ("architect",     "DOCS_SYNC",        ["DOCS_SYNCED"],                        "DOCS_SYNCED"),
+        ("module-architect",    None         ,      ["PASS", "SPEC_GAP_FOUND"],   "PASS"),
+        ("system-architect",    None         ,    ["PASS", "SPEC_GAP_FOUND"], "PASS"),
+        ("module-architect",    None         ,       ["PASS", "SPEC_GAP_FOUND"], "PASS"),
+        ("module-architect",    None         ,         ["PASS", "ESCALATE"], "PASS"),
+        ("module-architect",    None         ,        ["PASS"],                        "PASS"),
         ("engineer",      "IMPL",             ["IMPL_DONE", "SPEC_GAP_FOUND", "TESTS_FAIL"], "IMPL_DONE"),
         ("engineer",      "POLISH",           ["POLISH_DONE"],                        "POLISH_DONE"),
-        ("test-engineer", None,               ["TESTS_WRITTEN", "SPEC_GAP_FOUND"],    "TESTS_WRITTEN"),
+        ("test-engineer", None,               ["PASS", "SPEC_GAP_FOUND"],    "PASS"),
         ("validator",     "CODE_VALIDATION",  ["PASS", "FAIL", "SPEC_MISSING"],       "PASS"),
         ("validator",     "BUGFIX_VALIDATION",["BUGFIX_PASS", "BUGFIX_FAIL"],         "BUGFIX_PASS"),
         ("validator",     "PLAN_VALIDATION",  ["PLAN_VALIDATION_PASS", "PLAN_VALIDATION_FAIL"], "PLAN_VALIDATION_PASS"),
         ("validator",     "UX_VALIDATION",    ["UX_REVIEW_PASS", "UX_REVIEW_FAIL"],   "UX_REVIEW_PASS"),
-        ("pr-reviewer",   None,               ["LGTM", "CHANGES_REQUESTED"],          "LGTM"),
-        ("plan-reviewer", None,               ["PLAN_REVIEW_PASS", "PLAN_REVIEW_FAIL", "PLAN_REVIEW_ESCALATE"], "PLAN_REVIEW_PASS"),
+        ("pr-reviewer",   None,               ["PASS", "FAIL"],          "PASS"),
+        ("plan-reviewer", None,               ["PASS", "FAIL", "ESCALATE"], "PASS"),
     ]
 
     cases: list[EnumCase] = []
@@ -349,19 +349,19 @@ def run_real_data_eval(harness_root: Path) -> dict:
 
 _REFERENCE_TRAJECTORIES: dict[str, list[tuple[str, Optional[str], str]]] = {
     "impl_task_loop": [
-        ("architect",     "MODULE_PLAN",      "READY_FOR_IMPL"),
-        ("test-engineer", None,               "TESTS_WRITTEN"),
+        ("module-architect",    None         ,      "PASS"),
+        ("test-engineer", None,               "PASS"),
         ("engineer",      "IMPL",             "IMPL_DONE"),
         ("validator",     "CODE_VALIDATION",  "PASS"),
-        ("pr-reviewer",   None,               "LGTM"),
+        ("pr-reviewer",   None,               "PASS"),
     ],
     "feature_build_fragment": [
-        ("architect",      "SYSTEM_DESIGN",   "SYSTEM_DESIGN_READY"),
-        ("architect",      "MODULE_PLAN",     "READY_FOR_IMPL"),
+        ("system-architect",    None         ,   "PASS"),
+        ("module-architect",    None         ,     "PASS"),
     ],
     "polish_loop": [
         ("engineer",      "POLISH",           "POLISH_DONE"),
-        ("pr-reviewer",   None,               "LGTM"),
+        ("pr-reviewer",   None,               "PASS"),
     ],
 }
 
@@ -370,11 +370,11 @@ _ACTUAL_SCENARIOS: list[dict] = [
         "name": "impl_happy_path",
         "reference": "impl_task_loop",
         "actual": [
-            ("architect",     "MODULE_PLAN",      "READY_FOR_IMPL"),
-            ("test-engineer", None,               "TESTS_WRITTEN"),
+            ("module-architect",    None         ,      "PASS"),
+            ("test-engineer", None,               "PASS"),
             ("engineer",      "IMPL",             "IMPL_DONE"),
             ("validator",     "CODE_VALIDATION",  "PASS"),
-            ("pr-reviewer",   None,               "LGTM"),
+            ("pr-reviewer",   None,               "PASS"),
         ],
         "expect_strict": True, "expect_superset": True, "expect_subset": True,
     },
@@ -382,10 +382,10 @@ _ACTUAL_SCENARIOS: list[dict] = [
         "name": "impl_missing_test_engineer",
         "reference": "impl_task_loop",
         "actual": [
-            ("architect",     "MODULE_PLAN",      "READY_FOR_IMPL"),
+            ("module-architect",    None         ,      "PASS"),
             ("engineer",      "IMPL",             "IMPL_DONE"),
             ("validator",     "CODE_VALIDATION",  "PASS"),
-            ("pr-reviewer",   None,               "LGTM"),
+            ("pr-reviewer",   None,               "PASS"),
         ],
         "expect_strict": False, "expect_superset": False, "expect_subset": True,
     },
@@ -393,13 +393,13 @@ _ACTUAL_SCENARIOS: list[dict] = [
         "name": "impl_with_spec_gap_retry",
         "reference": "impl_task_loop",
         "actual": [
-            ("architect",     "MODULE_PLAN",      "READY_FOR_IMPL"),
-            ("test-engineer", None,               "TESTS_WRITTEN"),
+            ("module-architect",    None         ,      "PASS"),
+            ("test-engineer", None,               "PASS"),
             ("engineer",      "IMPL",             "SPEC_GAP_FOUND"),
-            ("architect",     "SPEC_GAP",         "SPEC_GAP_RESOLVED"),
+            ("module-architect",    None         ,         "PASS"),
             ("engineer",      "IMPL",             "IMPL_DONE"),
             ("validator",     "CODE_VALIDATION",  "PASS"),
-            ("pr-reviewer",   None,               "LGTM"),
+            ("pr-reviewer",   None,               "PASS"),
         ],
         "expect_strict": False, "expect_superset": True, "expect_subset": False,
     },
@@ -408,7 +408,7 @@ _ACTUAL_SCENARIOS: list[dict] = [
         "reference": "polish_loop",
         "actual": [
             ("engineer",      "POLISH",           "POLISH_DONE"),
-            ("pr-reviewer",   None,               "LGTM"),
+            ("pr-reviewer",   None,               "PASS"),
         ],
         "expect_strict": True, "expect_superset": True, "expect_subset": True,
     },
