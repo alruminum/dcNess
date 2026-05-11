@@ -27,7 +27,7 @@ epic issue ─┬─ story issue ── (task: PR 기반, 이슈 없음)
   - `epic-NN-<slug>` = 에픽 풀네임 라벨 (예: `epic-11-monkey-design-review`). 미존재 시 GitHub 자동 생성
 - **마일스톤**: `Epics`
 - **제목**: `[epic] <epic 한 줄 요약>`
-- **본문**: 목표 + 선행조건 + 완료 기준만. 진척 체크리스트 X (stories.md 가 SSOT)
+- **본문**: 목표 + 선행조건 + **완료 기준 (epic 단위 수용 기준 — 검증 가능한 조건, 사용자가 GitHub UI 에서 확인)**. 진척 체크리스트 X (stories.md 가 SSOT)
 - **stories.md 기록 (상단)**:
   ```
   **GitHub Epic Issue:** [#NNN](https://github.com/{owner}/{repo}/issues/NNN)
@@ -38,7 +38,7 @@ epic issue ─┬─ story issue ── (task: PR 기반, 이슈 없음)
 - **레이블**: `story` + `v0N` + `epic-NN-<slug>` (3중, epic 과 `epic-NN-<slug>` 공유)
 - **마일스톤**: `Story`
 - **제목**: `[story] <story 한 줄 요약>`
-- **본문**: 수용 기준 (Given/When/Then) 만. 태스크 체크리스트 X (stories.md 가 SSOT)
+- **본문**: `As a / I want / So that` 만 (user story). 수용 기준 (Story 단위) / 대상 화면 / 동작 명세 박지 않음 — architecture.md + impl 파일 영역. 태스크 체크리스트 X (stories.md 가 SSOT)
 - **순서**: epic 생성 완료 후 story 1, 2, … 순차
 - **stories.md 기록**:
   - 각 story 헤더 직하: `**GitHub Issue:** [#MMM](url)`
