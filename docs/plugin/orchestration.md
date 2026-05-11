@@ -106,11 +106,10 @@ flowchart TD
 
 다음은 *어떤 동적 결정* 으로도 우회 금지 — `hooks/catastrophic-gate.sh` 가 PreToolUse 강제:
 
-1. **src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 금지**
-2. **pr-reviewer LGTM 없이 merge 금지**
-3. **engineer 가 module-architect `READY` enum 발화 없이 src/ 작성 금지** (신규 / 보강 / 버그픽스 모든 케이스 동일)
-4. **PRD 변경 후 plan-reviewer PASS 없이 `/architect-loop` 진입 금지** (PRD 검증은 `/product-plan` 책임)
-5. **module-architect × N (architect-loop §4.2 Step 6) 진입 직전 architecture-validator PASS 없이 진입 금지**
+1. **src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 금지** (§2.3.1)
+2. **engineer 가 module-architect `READY` enum 발화 없이 src/ 작성 금지** (§2.3.3 — 신규 / 보강 / 버그픽스 모든 케이스 동일)
+3. **PRD 변경 후 plan-reviewer PASS 없이 `/architect-loop` 진입 금지** (§2.3.4 — PRD 검증은 `/product-plan` 책임. 자연어 룰 — 메인 영역 강제)
+4. **module-architect × N (architect-loop §4.2 Step 6) 진입 직전 architecture-validator PASS 없이 진입 금지** (§2.3.5 — architect-loop 한정 코드 강제)
 
 이는 proposal §2.5 원칙 4 ("흐름 강제는 catastrophic 시퀀스만") 의 catastrophic 백본.
 
@@ -275,13 +274,13 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 
 **근거**: architect-loop §4.2 의 Step 4 (module-architect × K) 가 정식 위치 impl 파일 본문 detail 까지 채움. 즉 정식 경로 + 파일 존재 = 본문 detail 보장 + architecture-validator PASS 통과물. module-architect 재호출 redundant. (이전 `MODULE_PLAN_READY` 마커 grep 룰 — DCN-30-13 — 폐기. 위치 자체가 도장.)
 
-**3-commit 구조** ([`loop-procedure.md`](loop-procedure.md) §3.4 — catastrophic §2.3.6~§2.3.8):
+**commit 구조** ([`loop-procedure.md`](loop-procedure.md) §3.4):
 | stage | 시점 | 내용 |
 |---|---|---|
-| commit1 (docs) | (default) test-engineer 시작 직전 / (fallback) module-architect READY 직후 | docs/impl/NN.md 이미 정식 위치에 있음 — branch 만 새로 + `record-stage-commit docs` |
-| commit2 (tests) | TESTS_WRITTEN 직후 | test 파일 + `record-stage-commit tests` |
-| commit3 (src) + PR | code-validator PASS 직후 | src 파일 + push + `gh pr create` + `record-stage-commit src` |
-| merge | LGTM 직후 | `gh pr merge` (NO --squash — 3 commit 히스토리 보존) |
+| branch + commit (src) + PR | code-validator PASS 직후 | branch 새로 + src 파일 + push + `gh pr create` |
+| merge | LGTM 직후 | `gh pr merge` |
+
+> `docs/impl/NN.md` 는 `/architect-loop` 산출물이 *미리 머지* 한 상태 (main 안). impl-task-loop 안에서 별도 commit X.
 
 **Step 별 allowed_enums (default 모드)**:
 | step | agent[:mode] | allowed_enums |

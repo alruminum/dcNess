@@ -102,9 +102,6 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 |---|---|
 | §2.3.1 | src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 |
 | §2.3.3 | engineer 가 module-architect `READY` 없이 src/ 작성 |
-| §2.3.6 | test-engineer 호출 전 commit1(docs) 미기록 |
-| §2.3.7 | engineer IMPL 호출 전 commit2(tests) 미기록 |
-| §2.3.8 | pr-reviewer 호출 전 commit3(src) 미기록 |
 
 **차단 동작**: `exit 1` → CC 가 Agent 호출 거부 + stderr 메시지 사용자 노출.
 **외부 사용자 영향**: 활성 프로젝트의 시퀀스 위반 시 sub-agent 호출 자체가 막힘. 메인 Claude 가 직접 회복 시도하거나 사용자 위임.
