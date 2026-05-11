@@ -58,7 +58,6 @@ EXPECTED_FINAL_ENUMS = {
     "pr-reviewer": {None: "LGTM"},
     "qa": {None: None},  # qa 다양 (FUNCTIONAL_BUG / CLEANUP / etc.)
     "plan-reviewer": {None: "PLAN_REVIEW_PASS"},
-    "product-planner": {"PRODUCT_PLAN": "PRODUCT_PLAN_READY"},
 }
 
 PLACEHOLDER_PATTERNS = [
@@ -82,7 +81,6 @@ READONLY_AGENTS = {"qa", "code-validator", "architecture-validator", "pr-reviewe
 # elapsed_s: 정상 sub-agent 한 번 호출 한도 (초).
 # min_output_tokens: 정상 sub-agent 가 emit 할 최소 output token (이하 = stall 의심).
 EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
-    "product-planner": {"elapsed_s": 600, "min_output_tokens": 2000},
     "architect":       {"elapsed_s": 600, "min_output_tokens": 1500},
     "engineer":        {"elapsed_s": 900, "min_output_tokens": 2000},
     "test-engineer":   {"elapsed_s": 600, "min_output_tokens": 1500},

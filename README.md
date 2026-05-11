@@ -131,7 +131,7 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 |---|---|
 | `/init-dcness` | dcness 활성화 게이트 — 현 cwd main repo 를 plugin-scoped whitelist 추가 |
 | `/qa` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
-| `/product-plan` | 새 기능 spec/design (product-planner → plan-reviewer → ux-architect (self-check) → architect SD (self-check + impl 목차) → architecture-validator → architect MODULE_PLAN × N (impl 본문 detail)) |
+| `/product-plan` | 새 기능 spec/design (메인 Claude 가 사용자와 그릴미 대화로 PRD/stories.md 직접 Write → plan-reviewer 외부 검증 → 항목별 사용자 confirm → ux-architect → system-architect → architecture-validator → module-architect × N) |
 | `/impl` | per-task 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = module-architect 선두 추가 — impl/NN-*.md 정식 위치 부재 시. 버그픽스 = qa 분류 후 본 fallback path) |
 | `/impl-loop` | multi-task sequential auto chain (각 task 마다 /impl 호출 + clean 자동 진행) |
 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
@@ -139,7 +139,7 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 | `/run-review` | dcness conveyor run 사후 분석 — 각 step 잘한 점·잘못한 점·비용 추출, self-improvement 루프 시작점 |
 | `/audit-redo` | redo-log + agent-trace 결합 분석 — (sub, mode) 별 redo 빈도 + Layer 1/2 개선 후보 제안 |
 
-행동형 skill (`/product-plan` `/impl` `/impl-loop`) 공통:
+행동형 skill (`/impl` `/impl-loop`) 공통 (`/product-plan` 은 워크트리 X):
 - yolo keyword (`yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서`) 검출 시 CLARITY/AMBIGUOUS/ESCALATE 자동 대체 (catastrophic 룰은 hard safety)
 - **워크트리 기본 켜짐** — 진입 시 자동 EnterWorktree. 거부 표현 정규식 `워크트리\s*(빼|없|말)` (예: "워크트리 빼고") 매치 시에만 건너뜀
 

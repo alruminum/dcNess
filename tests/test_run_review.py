@@ -505,10 +505,10 @@ class AssignInvocationsTests(unittest.TestCase):
 
 class ThinkingLoopDetectionTests(unittest.TestCase):
     def test_thinking_loop_high_duration_low_output(self):
-        # 사용자 jajang 사례 시뮬레이션 — product-planner 6분 + 624 tokens
-        budget = EXPECTED_AGENT_BUDGETS["product-planner"]
-        s = StepRecord(idx=0, ts="t", agent="product-planner", mode=None,
-                        enum="PRODUCT_PLAN_CHANGE_DIFF", must_fix=False,
+        # 사용자 jajang 사례 시뮬레이션 — architect 6분 + 624 tokens
+        budget = EXPECTED_AGENT_BUDGETS["architect"]
+        s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
+                        enum="READY_FOR_IMPL", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6")
         s.matched_invocation = True
         s.duration_ms = 360000  # 6분
@@ -532,8 +532,8 @@ class ThinkingLoopDetectionTests(unittest.TestCase):
 
     def test_no_thinking_loop_when_unmatched(self):
         # matched_invocation=False 면 detection skip
-        s = StepRecord(idx=0, ts="t", agent="product-planner", mode=None,
-                        enum="PRODUCT_PLAN_READY", must_fix=False,
+        s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
+                        enum="READY_FOR_IMPL", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6")
         s.matched_invocation = False
         s.duration_ms = 0

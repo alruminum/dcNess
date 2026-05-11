@@ -799,15 +799,6 @@ class FileOpHookTests(_PreToolBase):
         )
         self.assertEqual(rc, 1)
 
-    def test_product_planner_blocked_on_src_read(self) -> None:
-        update_live(self.sid, base_dir=self.base, active_agent="product-planner")
-        rc = handle_pretooluse_file_op(
-            stdin_data=self._file_op_payload("Read", file_path="src/main.ts"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 1)
-
     def test_engineer_bash_sed_blocks_infra(self) -> None:
         update_live(self.sid, base_dir=self.base, active_agent="engineer")
         rc = handle_pretooluse_file_op(
