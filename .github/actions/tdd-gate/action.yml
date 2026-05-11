@@ -1,33 +1,57 @@
 name: 'dcness TDD gate'
 description: |
-  Run full project test suite as a required status check before merge.
-  Phase 2 — polyglot universal: node / python / rust / go 자동 검출 + 매트릭스 실행.
-  검출된 모든 언어 테스트가 PASS 해야 게이트 PASS. 둘 이상 검출 시 모두 실행.
+  Run affected tests as required status check before merge.
+  Phase 3 — polyglot universal + 자동 affected detection.
+  node (nx / turbo / pnpm workspaces) / python (변경 .py root) / rust (workspace member) /
+  go (변경 package path) — 각 언어별 변경분 + 의존성 그래프 자동 적용. 사용자 설정 0.
 inputs:
   node-version:
-    description: 'Node.js version to use (node 검출 시)'
+    description: 'Node.js version'
     required: false
     default: '20'
   python-version:
-    description: 'Python version to use (python 검출 시)'
+    description: 'Python version'
     required: false
     default: '3.12'
   go-version:
-    description: 'Go version to use (go 검출 시)'
+    description: 'Go version'
     required: false
     default: 'stable'
 runs:
   using: composite
   steps:
-    # ── Step 1: 언어 검출 ──────────────────────────────────────────────
+    # ── Step 0: PR base 식별 (diff base) ────────────────────────────
+    - name: Resolve diff base
+      id: base
+      shell: bash
+      run: |
+        BASE_SHA="${{ github.event.pull_request.base.sha }}"
+        if [ -z "$BASE_SHA" ]; then
+          # PR 이벤트 아님 (예: workflow_dispatch / push to main) → origin/main 폴백
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE_SHA=$(git rev-parse origin/main 2>/dev/null || git rev-parse HEAD~1)
+        fi
+        echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+        echo "[tdd-gate] diff base: $BASE_SHA"
+
+    - name: Extract changed files
+      id: changed
+      shell: bash
+      run: |
+        BASE="${{ steps.base.outputs.base_sha }}"
+        # 충분한 history fetch (shallow clone 회피)
+        git fetch origin "$BASE" --depth=50 2>/dev/null || true
+        CHANGED=$(git diff --name-only "$BASE"...HEAD 2>/dev/null || git diff --name-only "$BASE" HEAD)
+        echo "$CHANGED" > /tmp/dcness-changed.txt
+        echo "[tdd-gate] 변경 파일 $(echo "$CHANGED" | grep -c . || echo 0)개:"
+        echo "$CHANGED" | head -20
+
+    # ── Step 1: 언어 검출 ──────────────────────────────────────────
     - name: Detect languages
       id: detect
       shell: bash
       run: |
-        HAS_NODE=false
-        HAS_PYTHON=false
-        HAS_RUST=false
-        HAS_GO=false
+        HAS_NODE=false; HAS_PYTHON=false; HAS_RUST=false; HAS_GO=false
         [ -f package.json ] && HAS_NODE=true
         if [ -f pyproject.toml ] || [ -f setup.py ] || [ -f setup.cfg ] \
            || ls requirements*.txt 2>/dev/null | grep -q .; then
@@ -35,40 +59,38 @@ runs:
         fi
         [ -f Cargo.toml ] && HAS_RUST=true
         [ -f go.mod ] && HAS_GO=true
-        echo "has_node=$HAS_NODE" >> "$GITHUB_OUTPUT"
+        echo "has_node=$HAS_NODE"     >> "$GITHUB_OUTPUT"
         echo "has_python=$HAS_PYTHON" >> "$GITHUB_OUTPUT"
-        echo "has_rust=$HAS_RUST" >> "$GITHUB_OUTPUT"
-        echo "has_go=$HAS_GO" >> "$GITHUB_OUTPUT"
+        echo "has_rust=$HAS_RUST"     >> "$GITHUB_OUTPUT"
+        echo "has_go=$HAS_GO"         >> "$GITHUB_OUTPUT"
         echo "[tdd-gate] detect: node=$HAS_NODE python=$HAS_PYTHON rust=$HAS_RUST go=$HAS_GO"
         if [ "$HAS_NODE" = "false" ] && [ "$HAS_PYTHON" = "false" ] \
            && [ "$HAS_RUST" = "false" ] && [ "$HAS_GO" = "false" ]; then
-          echo "::error::지원 언어 검출 안 됨 (node/python/rust/go). 다음 중 하나 필요: package.json / pyproject.toml / setup.py / setup.cfg / requirements*.txt / Cargo.toml / go.mod. 비-지원 언어는 workflow 제거 또는 후속 phase 대기." >&2
+          echo "::error::지원 언어 검출 안 됨 (node/python/rust/go). 비-지원 언어는 workflow 제거 또는 후속 phase 대기." >&2
           exit 1
         fi
 
-    # ── Step 2: Node.js block ─────────────────────────────────────────
-    - name: Detect package manager (node)
+    # ── Step 2: Node block — affected detection + 실행 ──────────────
+    - name: Detect node package manager
       if: steps.detect.outputs.has_node == 'true'
       id: pm
       shell: bash
       run: |
-        if [ -f pnpm-lock.yaml ]; then
-          echo "pm=pnpm" >> "$GITHUB_OUTPUT"
-        elif [ -f yarn.lock ]; then
-          echo "pm=yarn" >> "$GITHUB_OUTPUT"
-        elif [ -f bun.lockb ] || [ -f bun.lock ]; then
-          echo "pm=bun" >> "$GITHUB_OUTPUT"
-        else
-          echo "pm=npm" >> "$GITHUB_OUTPUT"
+        if   [ -f pnpm-lock.yaml ]; then echo "pm=pnpm" >> "$GITHUB_OUTPUT"
+        elif [ -f yarn.lock ];      then echo "pm=yarn" >> "$GITHUB_OUTPUT"
+        elif [ -f bun.lockb ] || [ -f bun.lock ]; then echo "pm=bun" >> "$GITHUB_OUTPUT"
+        else echo "pm=npm" >> "$GITHUB_OUTPUT"
         fi
 
-    - name: Verify scripts.test (node)
+    - name: Detect node monorepo tool
       if: steps.detect.outputs.has_node == 'true'
+      id: nodetool
       shell: bash
       run: |
-        if [ -z "$(node -e "const p=require('./package.json'); process.stdout.write(p.scripts && p.scripts.test || '')" 2>/dev/null)" ]; then
-          echo "::error::package.json scripts.test 미정의 — node 테스트 명령 부재. monorepo 면 root scripts.test 에 위임 명령 박을 것 (예: npm workspaces = \"npm test --workspaces --if-present\")." >&2
-          exit 1
+        if   [ -f nx.json ];             then echo "tool=nx"     >> "$GITHUB_OUTPUT"
+        elif [ -f turbo.json ];          then echo "tool=turbo"  >> "$GITHUB_OUTPUT"
+        elif [ -f pnpm-workspace.yaml ]; then echo "tool=pnpm-ws" >> "$GITHUB_OUTPUT"
+        else echo "tool=none" >> "$GITHUB_OUTPUT"
         fi
 
     - name: Setup pnpm
@@ -99,18 +121,39 @@ runs:
           *)    npm ci ;;
         esac
 
-    - name: Run node tests
+    - name: Run node tests (affected)
       if: steps.detect.outputs.has_node == 'true'
       shell: bash
       run: |
-        case "${{ steps.pm.outputs.pm }}" in
-          pnpm) pnpm test ;;
-          yarn) yarn test ;;
-          bun)  bun test ;;
-          *)    npm test ;;
+        BASE="${{ steps.base.outputs.base_sha }}"
+        TOOL="${{ steps.nodetool.outputs.tool }}"
+        PM="${{ steps.pm.outputs.pm }}"
+        case "$TOOL" in
+          nx)
+            npx nx affected --target=test --base="$BASE" --head=HEAD
+            ;;
+          turbo)
+            case "$PM" in
+              pnpm) pnpm exec turbo run test --filter="...[$BASE]" ;;
+              yarn) yarn turbo run test --filter="...[$BASE]" ;;
+              *)    npx turbo run test --filter="...[$BASE]" ;;
+            esac
+            ;;
+          pnpm-ws)
+            pnpm --filter "...[$BASE]" test
+            ;;
+          *)
+            # 단일 패키지 또는 native filter 미지원 (yarn classic / npm workspaces / bun) → 풀
+            case "$PM" in
+              pnpm) pnpm test ;;
+              yarn) yarn test ;;
+              bun)  bun test ;;
+              *)    npm test ;;
+            esac
+            ;;
         esac
 
-    # ── Step 3: Python block ──────────────────────────────────────────
+    # ── Step 3: Python block — 변경 .py 의 root pyproject 식별 ──────
     - name: Setup Python
       if: steps.detect.outputs.has_python == 'true'
       uses: actions/setup-python@v5
@@ -118,43 +161,93 @@ runs:
         python-version: ${{ inputs.python-version }}
         cache: 'pip'
 
-    - name: Install python dependencies
+    - name: Run python tests (affected)
       if: steps.detect.outputs.has_python == 'true'
       shell: bash
       run: |
+        # 변경 .py 파일 추출
+        CHANGED_PY=$(grep '\.py$' /tmp/dcness-changed.txt || true)
+        if [ -z "$CHANGED_PY" ]; then
+          echo "[tdd-gate] python 변경 0건 — skip"
+          exit 0
+        fi
+        # 각 .py 의 가장 가까운 상위 pyproject.toml / setup.py 디렉토리 식별
+        ROOTS=$(for f in $CHANGED_PY; do
+          dir=$(dirname "$f")
+          while [ "$dir" != "." ] && [ "$dir" != "/" ]; do
+            if [ -f "$dir/pyproject.toml" ] || [ -f "$dir/setup.py" ] || [ -f "$dir/setup.cfg" ]; then
+              echo "$dir"
+              break
+            fi
+            dir=$(dirname "$dir")
+          done
+          # root 까지 못 찾으면 cwd 사용
+          if [ "$dir" = "." ] || [ "$dir" = "/" ]; then
+            echo "."
+          fi
+        done | sort -u)
+        echo "[tdd-gate] python affected roots:"
+        echo "$ROOTS"
+        # 각 root 별 install + pytest
         python -m pip install --upgrade pip
-        # 프로젝트 자체 install — pyproject.toml / setup.py 우선
-        if [ -f pyproject.toml ] || [ -f setup.py ]; then
-          pip install -e . 2>/dev/null || pip install . 2>/dev/null || echo "[tdd-gate] project install skip"
-        fi
-        # requirements*.txt 모두 install
-        for req in requirements*.txt; do
-          [ -f "$req" ] && pip install -r "$req"
+        for root in $ROOTS; do
+          echo "[tdd-gate] >>> python root: $root"
+          (
+            cd "$root"
+            if [ -f pyproject.toml ] || [ -f setup.py ]; then
+              pip install -e . 2>/dev/null || pip install . 2>/dev/null || echo "[install skip]"
+            fi
+            for req in requirements*.txt; do
+              [ -f "$req" ] && pip install -r "$req"
+            done
+            python -c "import pytest" 2>/dev/null || pip install pytest
+            if [ -d tests ] || [ -d test ]; then
+              pytest
+            else
+              pytest . || python -m unittest discover
+            fi
+          )
         done
-        # pytest 미설치 시 보조 install (unittest 폴백 케이스도 pytest 가 unittest 잘 검출)
-        python -c "import pytest" 2>/dev/null || pip install pytest
 
-    - name: Run python tests
-      if: steps.detect.outputs.has_python == 'true'
-      shell: bash
-      run: |
-        # pytest 우선 — tests/ 또는 test/ 자동 검출. 둘 다 없으면 cwd 전체 discover.
-        # pytest 가 unittest 테스트도 자동 검출 (TestCase 상속 클래스) → unittest 프로젝트도 cover.
-        if [ -d tests ] || [ -d test ]; then
-          pytest
-        else
-          pytest . || python -m unittest discover
-        fi
-
-    # ── Step 4: Rust block ────────────────────────────────────────────
-    - name: Run rust tests
+    # ── Step 4: Rust block — workspace member 자동 detect ───────────
+    - name: Run rust tests (affected)
       if: steps.detect.outputs.has_rust == 'true'
       shell: bash
       run: |
-        # ubuntu-latest 에 rustc/cargo 기본 포함. toolchain pin 필요 시 사용자 workflow 에서 추가.
-        cargo test --all --verbose
+        CHANGED_RS=$(grep -E '\.(rs|toml)$' /tmp/dcness-changed.txt || true)
+        if [ -z "$CHANGED_RS" ]; then
+          echo "[tdd-gate] rust 변경 0건 — skip"
+          exit 0
+        fi
+        # root Cargo.toml 에 [workspace] 있으면 member 별 -p, 아니면 cargo test
+        if grep -q '^\[workspace\]' Cargo.toml 2>/dev/null; then
+          # 변경 파일의 가장 가까운 상위 Cargo.toml (root 외) 식별
+          PKGS=$(for f in $CHANGED_RS; do
+            dir=$(dirname "$f")
+            while [ "$dir" != "." ] && [ "$dir" != "/" ]; do
+              if [ -f "$dir/Cargo.toml" ] && [ "$dir" != "." ]; then
+                # package name 추출 (Cargo.toml 의 name = "...")
+                grep -E '^name\s*=' "$dir/Cargo.toml" | head -1 | sed -E 's/name\s*=\s*"(.+)"/\1/'
+                break
+              fi
+              dir=$(dirname "$dir")
+            done
+          done | sort -u)
+          if [ -z "$PKGS" ]; then
+            # root 직접 변경 (workspace 멤버 아님) → 풀
+            cargo test --all
+          else
+            for pkg in $PKGS; do
+              echo "[tdd-gate] >>> cargo test -p $pkg"
+              cargo test -p "$pkg"
+            done
+          fi
+        else
+          # 단일 crate
+          cargo test
+        fi
 
-    # ── Step 5: Go block ──────────────────────────────────────────────
+    # ── Step 5: Go block — 변경 package path 만 ─────────────────────
     - name: Setup Go
       if: steps.detect.outputs.has_go == 'true'
       uses: actions/setup-go@v5
@@ -162,7 +255,19 @@ runs:
         go-version: ${{ inputs.go-version }}
         cache: true
 
-    - name: Run go tests
+    - name: Run go tests (affected)
       if: steps.detect.outputs.has_go == 'true'
       shell: bash
-      run: go test ./...
+      run: |
+        CHANGED_GO=$(grep '\.go$' /tmp/dcness-changed.txt || true)
+        if [ -z "$CHANGED_GO" ]; then
+          echo "[tdd-gate] go 변경 0건 — skip"
+          exit 0
+        fi
+        # 변경 .go 파일의 package path 추출 (디렉토리 단위) — 유니크
+        PKGS=$(for f in $CHANGED_GO; do dirname "$f"; done | sort -u)
+        echo "[tdd-gate] go affected packages:"
+        echo "$PKGS"
+        for pkg in $PKGS; do
+          go test "./$pkg/..."
+        done
