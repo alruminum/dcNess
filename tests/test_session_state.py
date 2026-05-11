@@ -1633,12 +1633,12 @@ class HelperAutomationTests(unittest.TestCase):
 복잡한 분석 줄2.
 
 ## 결론
-LIGHT_PLAN_READY — 빈 문자열 가드 추가.
+PASS — 빈 문자열 가드 추가.
 - src/greet.py:4 ValueError raise
 - 테스트 추가
 """
         out = _extract_prose_summary(prose)
-        self.assertIn("LIGHT_PLAN_READY", out)
+        self.assertIn("PASS", out)
         self.assertIn("ValueError raise", out)
         # `## 변경 분석` 섹션 본문은 안 들어와야 (결론 우선)
         self.assertNotIn("복잡한 분석", out)
@@ -1666,9 +1666,9 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
     def test_extract_prose_summary_fallback_when_no_section(self) -> None:
         """결론/요약 헤더 부재 → 첫 N 줄 fallback."""
         from harness.session_state import _extract_prose_summary
-        prose = "no headers\nLIGHT_PLAN_READY\nbody\n"
+        prose = "no headers\nPASS\nbody\n"
         out = _extract_prose_summary(prose)
-        self.assertIn("LIGHT_PLAN_READY", out)
+        self.assertIn("PASS", out)
 
     def test_extract_prose_summary_change_only_word_not_match(self) -> None:
         """`## 변경` 단독은 매칭 X (`## 변경 분석` 등 generic 헤더 회피)."""
@@ -1714,15 +1714,15 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         run_dir(sid, rid, create=True)
         _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "qa prose body", Path("/dev/null"))
         _append_step_status(
-            sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY",
-            "## 결론\nLIGHT_PLAN_READY\n## 변경\n무언가",
+            sid, rid, "module-architect", None, "PASS",
+            "## 결론\nPASS\n## 변경\n무언가",
             Path("/dev/null"),
         )
         records = _read_steps_jsonl(sid, rid)
         self.assertEqual(len(records), 2)
         self.assertEqual(records[0]["agent"], "qa")
         self.assertEqual(records[0]["enum"], "FUNCTIONAL_BUG")
-        self.assertEqual(records[1]["mode"], "LIGHT_PLAN")
+        self.assertIsNone(records[1]["mode"])
         self.assertFalse(records[0]["must_fix"])
 
     def test_append_step_status_detects_must_fix(self) -> None:
@@ -1837,7 +1837,7 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
 
         _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok", Path("/dev/null"))
         _append_step_status(
-            sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY", "ok", Path("/dev/null")
+            sid, rid, "module-architect", None, "PASS", "ok", Path("/dev/null")
         )
         _append_step_status(sid, rid, "engineer", "IMPL", "IMPL_DONE", "fix done", Path("/dev/null"))
         _append_step_status(
@@ -1887,7 +1887,7 @@ LIGHT_PLAN_READY — 빈 문자열 가드 추가.
         # engineer POLISH → pr-reviewer LGTM. 첫 pr-reviewer prose 에 MUST FIX 포함.
         _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok", Path("/dev/null"))
         _append_step_status(
-            sid, rid, "architect", "LIGHT_PLAN", "LIGHT_PLAN_READY", "ok", Path("/dev/null")
+            sid, rid, "module-architect", None, "PASS", "ok", Path("/dev/null")
         )
         _append_step_status(
             sid, rid, "engineer", "IMPL", "IMPL_DONE", "first attempt", Path("/dev/null")
