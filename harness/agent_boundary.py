@@ -1,7 +1,7 @@
 """agent_boundary.py — sub-agent 경로 접근 강제 (`docs/plugin/handoff-matrix.md` §4 SSOT).
 
 본 모듈은 PreToolUse(Edit/Write/Read/Bash) 훅이 호출하여 활성 sub-agent 의 path
-접근을 차단한다. handoff-matrix.md §4.1~§4.5 의 spec 을 코드로 강제 (DCN-CHG-20260501-01).
+접근을 차단한다. handoff-matrix.md §4.1~§4.4 의 spec 을 코드로 강제 (DCN-CHG-20260501-01).
 
 핵심 룰 (handoff-matrix.md §4 정합):
     §4.1 ALLOW_MATRIX — agent 별 Write 허용 path
@@ -43,7 +43,7 @@ __all__ = [
 ]
 
 
-# ── §4.4 — 인프라 패턴 (전 agent 공통 차단) ──────────────────────────
+# ── §4.3 — 인프라 패턴 (전 agent 공통 차단) ──────────────────────────
 # handoff-matrix.md:223 spec 그대로 + dcness 정합 보강.
 DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
     r'(^|/)\.claude/',
@@ -58,7 +58,7 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
 )
 
 
-# ── §4.2 — ALLOW_MATRIX (agent 별 Write 허용) ─────────────────────────
+# ── §4.1 — ALLOW_MATRIX (agent 별 Write 허용) ─────────────────────────
 # handoff-matrix.md:200~209 정합. RWHarness agent-boundary.py:48~84 와 동일 패턴.
 ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
     "engineer": (
@@ -101,7 +101,7 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
 }
 
 
-# ── §4.3 — READ_DENY_MATRIX (agent 별 Read 금지) ──────────────────────
+# ── §4.2 — READ_DENY_MATRIX (agent 별 Read 금지) ──────────────────────
 READ_DENY_MATRIX: dict[str, tuple[str, ...]] = {
     "designer": (
         r'(^|/)src/',
@@ -117,7 +117,7 @@ READ_DENY_MATRIX: dict[str, tuple[str, ...]] = {
 }
 
 
-# ── §4.5 — is_infra_project() 4 OR 신호 ──────────────────────────────
+# ── §4.4 — is_infra_project() 4 OR 신호 ──────────────────────────────
 INFRA_PROJECT_CWD_WHITELIST: tuple[str, ...] = (
     "/Users/dc.kim/project/dcNess",
 )
@@ -129,7 +129,7 @@ def is_infra_project(
     env: Optional[dict] = None,
     home: Optional[Path] = None,
 ) -> bool:
-    """4 OR 신호 — handoff-matrix.md §4.5.
+    """4 OR 신호 — handoff-matrix.md §4.4.
 
     1. DCNESS_INFRA=1 환경변수
     2. 마커 파일 ~/.claude/.dcness-infra 존재
@@ -214,7 +214,7 @@ def check_write_allowed(
     # 1. INFRA pattern → 모든 agent 차단.
     matched = _matches_any(norm, DCNESS_INFRA_PATTERNS)
     if matched:
-        return f"인프라 path 보호: matched `{matched}` (handoff-matrix.md §4.4)"
+        return f"인프라 path 보호: matched `{matched}` (handoff-matrix.md §4.3)"
 
     # 2. ALLOW_MATRIX 미매칭 → 차단.
     allowed = ALLOW_MATRIX.get(agent)
@@ -224,7 +224,7 @@ def check_write_allowed(
     if not _matches_any(norm, allowed):
         return (
             f"{agent} ALLOW_MATRIX 미매칭: `{norm}` "
-            f"(handoff-matrix.md §4.2 — 허용 = {list(allowed)})"
+            f"(handoff-matrix.md §4.1 — 허용 = {list(allowed)})"
         )
     return None
 
@@ -252,14 +252,14 @@ def check_read_allowed(
 
     matched = _matches_any(norm, DCNESS_INFRA_PATTERNS)
     if matched:
-        return f"인프라 path 읽기 금지: matched `{matched}` (handoff-matrix.md §4.4)"
+        return f"인프라 path 읽기 금지: matched `{matched}` (handoff-matrix.md §4.3)"
 
     deny = READ_DENY_MATRIX.get(agent, ())
     matched = _matches_any(norm, deny)
     if matched:
         return (
             f"{agent} READ_DENY_MATRIX 매칭: `{norm}` "
-            f"(handoff-matrix.md §4.3 matched `{matched}`)"
+            f"(handoff-matrix.md §4.2 matched `{matched}`)"
         )
     return None
 
