@@ -116,7 +116,7 @@ flowchart TD
 ## 3. 진입 경로별 시나리오 (mini-graph 6 개)
 
 > 8 loop 행별 풀스펙 = 본 문서 §4. 본 §3 = mini-graph (what), §4 = 행별 풀스펙 (how) 1:1.
-> 8 loop name (`feature-build-loop` §3.1, `impl-task-loop` §2.1, `impl-ui-design-loop` §2.2, `quick-bugfix-loop` §3.5, `qa-triage` §3.6, `ux-design-stage` §3.2, `ux-refine-stage` §3.3, `direct-impl-loop` §3.4) — §4 행 ID.
+> 7 loop name (`feature-build-loop` §3.1, `impl-task-loop` §2.1, `impl-ui-design-loop` §2.2, `qa-triage` §3.5, `ux-design-stage` §3.2, `ux-refine-stage` §3.3, `direct-impl-loop` §3.4) — §4 행 ID.
 > 실행 절차 (Step 0~8 mechanics) = [`loop-procedure.md`](loop-procedure.md).
 
 ### 3.1 신규 기능 / PRD 변경 → `feature-build-loop` (§4.2)
@@ -141,7 +141,7 @@ flowchart LR
 UX 검증은 ux-architect self-check (5 카테고리, FAIL 시 재고려 2 cycle) 로 흡수. architecture-validator cycle 한도 = 2. 초과 시 사용자 위임. catastrophic §2.3.5 — module-architect × N 진입 직전 architecture-validator PASS 필수.
 진입: `product-plan` 스킬 또는 사용자 "기능 추가" 발화.
 
-### 3.2 UI 만 변경 → `ux-design-stage` (§4.7, 하네스 루프 없음)
+### 3.2 UI 만 변경 → `ux-design-stage` (§4.6, 하네스 루프 없음)
 
 ```mermaid
 flowchart LR
@@ -151,7 +151,7 @@ flowchart LR
 
 엔지니어 호출은 *사용자 결정*. 시퀀스 게이트 없음.
 
-### 3.3 화면 리디자인 → `ux-refine-stage` (§4.8)
+### 3.3 화면 리디자인 → `ux-refine-stage` (§4.7)
 
 ```mermaid
 flowchart LR
@@ -161,7 +161,7 @@ flowchart LR
     dr -->|DESIGN_READY_FOR_REVIEW| handoff((DESIGN_HANDOFF))
 ```
 
-### 3.4 일반 구현 직접 호출 → `direct-impl-loop` (§4.9)
+### 3.4 일반 구현 직접 호출 → `direct-impl-loop` (§4.8)
 
 ```mermaid
 flowchart LR
@@ -170,30 +170,19 @@ flowchart LR
 
 `impl_driver` 코드는 후속 Task — §6 옵션 (a)/(b)/(c) 중 채택 후 구현.
 
-### 3.5 작은 버그 → `quick-bugfix-loop` (§4.5)
-
-```mermaid
-flowchart LR
-    quick[quick 스킬] --> qa
-    qa -->|FUNCTIONAL_BUG| lp[module-architect 버그픽스]
-    lp -->|READY| eng[engineer simple]
-    eng -->|IMPL_DONE| cv[code-validator<br/>bugfix scope 자동 분기]
-    cv -->|PASS| pr[pr-reviewer]
-```
-
-버그픽스 케이스는 정식 신규 케이스보다 가볍고 test-engineer 단계 생략 가능 (사용자 판단).
-
-### 3.6 버그 보고 분류 → `qa-triage` (§4.6)
+### 3.5 버그 보고 분류 → `qa-triage` (§4.5)
 
 ```mermaid
 flowchart LR
     qa[qa 스킬] --> qaa[qa agent]
-    qaa -->|FUNCTIONAL_BUG| lp[버그픽스 시퀀스 §3.5]
+    qaa -->|FUNCTIONAL_BUG| lp[impl-task-loop §4.3 fallback]
+    qaa -->|CLEANUP| lp
     qaa -->|DESIGN_ISSUE| ds[designer 시퀀스 §3.2/3.3]
-    qaa -->|CLEANUP| eng[engineer 직접]
     qaa -->|KNOWN_ISSUE| stop((종료))
     qaa -->|SCOPE_ESCALATE| esc((escalate))
 ```
+
+FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부재 시 module-architect 선두 추가). TDD Guard (`hooks/tdd-guard.sh`) 강제로 light path 별도 분기 폐기.
 
 ---
 
@@ -209,11 +198,10 @@ flowchart LR
 | `feature-build-loop` (§3.1, §4.2) | `product-plan` | product-planner / plan-reviewer / ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator / module-architect × N | `PRODUCT_PLAN_READY` → `PLAN_REVIEW_PASS` → `UX_FLOW_READY` → `READY` → `PASS` → `READY × N` | advance 동일 | 5 + N (N = system-architect impl 목차 행 수) |
 | `impl-task-loop` (§2.1, §4.3) | `impl` | (default) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `TESTS_WRITTEN` → `IMPL_DONE` → `PASS` → `LGTM` | advance 동일 | 4 (default) / 5 (fallback) |
 | `impl-ui-design-loop` (§2.2, §4.4) | `impl` (UI 감지) | (default) designer / design-critic / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `DESIGN_READY_FOR_REVIEW` → `VARIANTS_APPROVED` → `TESTS_WRITTEN` → `IMPL_DONE` → `PASS` → `LGTM` | advance 동일 | 6 (default) / 7 (fallback) |
-| `quick-bugfix-loop` (§3.5, §4.5) | `quick` | qa / module-architect (버그픽스) / engineer:IMPL / code-validator / pr-reviewer | `FUNCTIONAL_BUG`/`CLEANUP` → `READY` → `IMPL_DONE` → `PASS` → `LGTM` | advance 동일 | 5 |
-| `qa-triage` (§3.6, §4.6) | `qa` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
-| `ux-design-stage` (§3.2, §4.7) | `ux` | ux-architect:UX_FLOW / designer:SCREEN(THREE_WAY) / design-critic | `UX_FLOW_READY` → `DESIGN_READY_FOR_REVIEW` → `VARIANTS_APPROVED` | advance 동일 | 3 |
-| `ux-refine-stage` (§3.3, §4.8) | `ux` (REFINE) | ux-architect:UX_REFINE / designer:SCREEN(THREE_WAY) / design-critic | `UX_REFINE_READY` → `DESIGN_READY_FOR_REVIEW` → `VARIANTS_APPROVED` | advance 동일 | 3 |
-| `direct-impl-loop` (§3.4, §4.9) | `impl_driver` (future) | `impl-task-loop` 동일 | `impl-task-loop` 동일 | `impl-task-loop` 동일 | 5 |
+| `qa-triage` (§3.5, §4.5) | `qa` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
+| `ux-design-stage` (§3.2, §4.6) | `ux` | ux-architect:UX_FLOW / designer:SCREEN(THREE_WAY) / design-critic | `UX_FLOW_READY` → `DESIGN_READY_FOR_REVIEW` → `VARIANTS_APPROVED` | advance 동일 | 3 |
+| `ux-refine-stage` (§3.3, §4.7) | `ux` (REFINE) | ux-architect:UX_REFINE / designer:SCREEN(THREE_WAY) / design-critic | `UX_REFINE_READY` → `DESIGN_READY_FOR_REVIEW` → `VARIANTS_APPROVED` | advance 동일 | 3 |
+| `direct-impl-loop` (§3.4, §4.8) | `impl_driver` (future) | `impl-task-loop` 동일 | `impl-task-loop` 동일 | `impl-task-loop` 동일 | 5 |
 
 ### 4.2 `feature-build-loop` 풀스펙
 
@@ -333,30 +321,7 @@ flowchart LR
 
 **sub_cycles**: §4.3 동일 + `designer:SCREEN-ROUND-<n>` (variants 재생성, round < 3).
 
-### 4.5 `quick-bugfix-loop` 풀스펙
-
-**branch_prefix**:
-- qa enum `FUNCTIONAL_BUG` → `fix/<slug>` / `CLEANUP` → `chore/<slug>` / 그 외 → 자동 진행 X (라우팅 추천 후 종료)
-
-**Step 4.5 적용**: △ (light path — stories.md 갱신은 사용자 결정. backlog 변경 X).
-
-**Step 별 allowed_enums**:
-| step | agent[:mode] | allowed_enums |
-|---|---|---|
-| 2 | qa | `FUNCTIONAL_BUG,CLEANUP,DESIGN_ISSUE,KNOWN_ISSUE,SCOPE_ESCALATE` |
-| 3 | module-architect (버그픽스 케이스) | `READY,SPEC_GAP_FOUND,ESCALATE` |
-| 4 | engineer:IMPL | `IMPL_DONE,IMPL_PARTIAL,SPEC_GAP_FOUND,TESTS_FAIL,IMPLEMENTATION_ESCALATE` |
-| 5 | code-validator (bugfix scope — impl 경로 `docs/bugfix/` 자동 분기) | `PASS,FAIL,ESCALATE` |
-| 6 | pr-reviewer | `LGTM,CHANGES_REQUESTED` |
-
-**qa 분기**:
-- `DESIGN_ISSUE` → 종료 + ux-design-stage 추천 (구현 후)
-- `KNOWN_ISSUE` → 종료
-- `SCOPE_ESCALATE` → 사용자 위임 (분류 모호)
-
-**sub_cycles**: §4.3 동일 (`module-architect 보강` / `engineer POLISH` / `engineer IMPL` 재시도). test-engineer 단계가 없으므로 TESTS_FAIL 은 engineer 자체 검증 실패 의미.
-
-### 4.6 `qa-triage` 풀스펙
+### 4.5 `qa-triage` 풀스펙
 
 **branch_prefix**: commit X (분류만, 코드 변경 X). **Step 4.5 적용**: X.
 
@@ -366,15 +331,15 @@ flowchart LR
 | 2 | qa | `FUNCTIONAL_BUG,CLEANUP,DESIGN_ISSUE,KNOWN_ISSUE,SCOPE_ESCALATE` |
 
 **enum 별 라우팅 추천** (advance 개념 없음 — 메인이 사용자 결정 받음):
-- `FUNCTIONAL_BUG` → `quick-bugfix-loop` (`/quick`) 또는 `impl-task-loop`
-- `CLEANUP` → `quick-bugfix-loop` (`/quick`) 또는 engineer 직접
+- `FUNCTIONAL_BUG` → `impl-task-loop` (`/impl`) fallback path (impl 부재 시 module-architect 선두 추가)
+- `CLEANUP` → `impl-task-loop` (`/impl`) fallback path
 - `DESIGN_ISSUE` → `ux-design-stage` (`/ux`) 또는 designer 직접
 - `KNOWN_ISSUE` → 종료
 - `SCOPE_ESCALATE` → 사용자 위임 (큰 변경 / 다중 모듈)
 
 **sub_cycles**: 없음. AMBIGUOUS 시 [`dcness-rules.md`](dcness-rules.md) §6 cascade.
 
-### 4.7 `ux-design-stage` 풀스펙
+### 4.6 `ux-design-stage` 풀스펙
 
 **branch_prefix**: commit X (design handoff, 코드 X). **Step 4.5 적용**: X.
 
@@ -396,7 +361,7 @@ flowchart LR
 
 **sub_cycles**: `designer:SCREEN-ROUND-<n>` (round < 3).
 
-### 4.8 `ux-refine-stage` 풀스펙
+### 4.7 `ux-refine-stage` 풀스펙
 
 **branch_prefix**: commit X. **Step 4.5 적용**: X.
 
@@ -408,13 +373,13 @@ flowchart LR
 | 3 | designer:SCREEN(THREE_WAY) | `DESIGN_READY_FOR_REVIEW,DESIGN_LOOP_ESCALATE` |
 | 4 | design-critic | `VARIANTS_APPROVED,VARIANTS_ALL_REJECTED,UX_REDESIGN_SHORTLIST` |
 
-**designer mode**: §4.7 동일.
+**designer mode**: §4.6 동일.
 
 **Step 2.5 — 사용자 승인**: ux-architect UX_REFINE_READY 후 designer 진입 *전* 메인이 사용자에게 refine 결과 prose 발췌 + 진행 여부 확인. 거절 시 ux-architect 재호출 (cycle ≤ 2). step 컨벤션 = `user-approval-2.5` (helper begin/end-step 비대상).
 
-**분기**: §4.7 동일.
+**분기**: §4.6 동일.
 
-### 4.9 `direct-impl-loop` 풀스펙
+### 4.8 `direct-impl-loop` 풀스펙
 
 §4.3 (`impl-task-loop`) 와 100% 동일. 차이점:
 - entry_point = `impl_driver` CLI (현재 미구현, 후속 Task 예정)
@@ -422,7 +387,7 @@ flowchart LR
 
 allowed_enums / 분기 / sub_cycles / branch_prefix decision rule / Step 4.5 = §4.3 인용.
 
-### 4.10 다중 task chain (`impl-loop`)
+### 4.9 다중 task chain (`impl-loop`)
 
 `/impl-loop` = `impl-task-loop` × N. outer task `impl-<i>: <task>` + inner sub-task `b<i>.<agent>` (DCN-CHG-30-12). default = 4 sub-task (test-engineer / engineer / code-validator / pr-reviewer), fallback = 5 (module-architect 선두 추가). 각 task clean → 자동 7a + 다음 task. caveat → 멈춤 + 사용자 위임 (Step 2.5 — `commands/impl-loop.md` 참조).
 
