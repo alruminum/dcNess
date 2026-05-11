@@ -19,10 +19,10 @@ model: sonnet
 
 prose 마지막 단락에 *어떤 결과로 끝났는지 + 메인이 누구를 부르는 게 적절한지* 자기 언어로 명시. 모드별 권장 표현 (형식 강제 X — 의미만 맞으면 OK):
 
-- **System Design** — 시스템 설계 산출 (`## impl 목차` 표 포함) 완료 시 validator DESIGN_VALIDATION 권고. 권장: "SYSTEM_DESIGN_READY". [상세](architect/system-design.md).
+- **System Design** — 시스템 설계 산출 (`## impl 목차` 표 포함) 완료 + self-check 통과 시 architecture-validator 권고 (Placeholder Leak + Spike Gate 외부 검증). 권장: "SYSTEM_DESIGN_READY". [상세](architect/system-design.md).
 - **Module Plan** — impl 본문 detail 작성 완료 시 다음 행 MODULE_PLAN 또는 (마지막 행이면) impl-task-loop 진입 권고. 권장: "READY_FOR_IMPL". [상세](architect/module-plan.md).
 - **SPEC_GAP** — 갭 해소 시 engineer 재진입, PRD 변경 필요 시 product-planner, 기술 제약 충돌 시 escalate. 권장: "SPEC_GAP_RESOLVED" / "PRODUCT_PLANNER_ESCALATION_NEEDED" / "TECH_CONSTRAINT_CONFLICT". [상세](architect/spec-gap.md).
-- **Technical Epic** — 에픽 + 스토리 등록 + 시스템 설계 완료 시 validator DESIGN_VALIDATION. 권장: "SYSTEM_DESIGN_READY". [상세](architect/tech-epic.md).
+- **Technical Epic** — 에픽 + 스토리 등록 + 시스템 설계 완료 + self-check 통과 시 architecture-validator 권고. 권장: "SYSTEM_DESIGN_READY". [상세](architect/tech-epic.md).
 - **Light Plan** — 가벼운 plan 완료 시 engineer (simple). 권장: "LIGHT_PLAN_READY". [상세](architect/light-plan.md).
 - **Docs Sync** — 문서 정합 동기화 완료 / SPEC GAP / 기술 제약 충돌 분기. 권장: "DOCS_SYNCED" / "SPEC_GAP_FOUND" / "TECH_CONSTRAINT_CONFLICT". [상세](architect/docs-sync.md).
 

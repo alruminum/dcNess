@@ -101,13 +101,14 @@ PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
 |------|------|
 | advance enum (catalog 행의 `advance` 컬럼) | 다음 step 있으면 진행 / **마지막 step이면 사용자 대기 없이 즉시 Step 7** |
 | `SPEC_GAP_FOUND` | architect SPEC_GAP cycle (≤2) 또는 사용자 위임 |
-| `TESTS_FAIL` / validator `FAIL` | engineer 재시도 (attempt < 3) |
-| `SPEC_MISSING` | architect SPEC_GAP |
+| `TESTS_FAIL` / code-validator `FAIL` | engineer 재시도 (attempt < 3) |
+| code-validator `ESCALATE` (사유: spec 부재) | architect SPEC_GAP |
+| code-validator `ESCALATE` (사유: 재시도 한도 초과 등) | 사용자 위임 |
 | `*_ESCALATE` (hard) | 사용자 위임 (escalate) |
 | `*_ESCALATE` (soft) / `CLARITY_INSUFFICIENT` | 비-yolo: 사용자 위임 / yolo: `auto-resolve` |
 | `CHANGES_REQUESTED` | engineer POLISH cycle (≤2) |
 | `AMBIGUOUS` | 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS 시 사용자 위임 (enum 후보 + prose 발췌) |
-| `DESIGN_REVIEW_FAIL` / `UX_FAIL` | 직전 architect/ux-architect 재진입 (cycle ≤2) |
+| architecture-validator `FAIL` | architect SYSTEM_DESIGN 재진입 (cycle ≤2) |
 | `PRODUCT_PLAN_UPDATED` | plan-reviewer skip → ux-architect 직행 |
 
 cycle 한도 = orchestration.md §5.
@@ -122,8 +123,8 @@ cycle 한도 = orchestration.md §5.
 | `CHANGES_REQUESTED` → engineer POLISH | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
 | POLISH 후 pr-reviewer 재실행 | 직전 pr-reviewer task | `TaskUpdate(<task>, in_progress)` |
 | `IMPL_PARTIAL` → engineer 재호출 | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
-| `DESIGN_REVIEW_FAIL` → architect 재진입 | 직전 architect task | `TaskUpdate(<task>, in_progress)` |
-| `UX_FAIL` → ux-architect 재진입 | 직전 ux-architect task | `TaskUpdate(<task>, in_progress)` |
+| architecture-validator `FAIL` → architect 재진입 | 직전 architect task | `TaskUpdate(<task>, in_progress)` |
+| ux-architect self-check FAIL → ux-architect 재진입 | 직전 ux-architect task | `TaskUpdate(<task>, in_progress)` (prose 내부 cycle — 별도 task X) |
 | `AMBIGUOUS` 재호출 1회 | 직전 동일 agent task | `TaskUpdate(<task>, in_progress)` |
 | `SPEC_GAP_FOUND` → architect SPEC_GAP | 신규 task (다른 agent/mode) | `TaskCreate` 가능 |
 
@@ -147,7 +148,7 @@ TaskUpdate(<기존 task>, completed)
 |---|---|---|
 | `CLARITY_INSUFFICIENT` / `*_ESCALATE` (soft) / `AMBIGUOUS` | 사용자 위임 | `auto-resolve` 적용 |
 | `SPEC_GAP_FOUND` | 사용자 위임 | architect SPEC_GAP cycle (≤2) |
-| `TESTS_FAIL` / validator FAIL | 재시도 (≤3) | 동일 |
+| `TESTS_FAIL` / code-validator FAIL | 재시도 (≤3) | 동일 |
 | `IMPL_PARTIAL` | engineer 재호출 (split ≤ 3) | 동일 — 새 context window |
 | `CHANGES_REQUESTED` | 사용자 위임 | engineer POLISH (cycle ≤2) |
 | Step 7 caveat (NICE TO HAVE only, MUST FIX 0) | 사용자 위임 | 7a 자동 |
@@ -169,7 +170,7 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 |---|---|---|---|
 | (default) test-engineer 시작 직전 / (fallback) MODULE_PLAN READY_FOR_IMPL 직후 | docs | `docs/impl/NN.md` (default 면 이미 정식 위치, fallback 이면 새로 작성됨) | `docs: impl plan <task-slug>` |
 | TESTS_WRITTEN 직후 | tests | `src/tests/**`, `*.test.*` | `test: tests for <task-slug>` |
-| CODE_VALIDATION PASS 직후 | src | `src/**`, stories.md 등 | `feat/fix/chore: <task-slug>` |
+| code-validator PASS 직후 | src | `src/**`, stories.md 등 | `feat/fix/chore: <task-slug>` |
 | LGTM 직후 | — (merge) | 새 커밋 없음 | — |
 
 > default 모드 = task 파일이 이미 정식 위치에 있음 (feature-build-loop §4.2 Step 7 MODULE_PLAN × N 산출물). branch 새로 만들고 *기존* `docs/impl/NN-*.md` 를 stage 만 하는 commit (변경 0 일 수도 있으니 `git add -A docs/impl/` 로 의도 표시 + commit). fallback 모드 = 위치 부재 → MODULE_PLAN 1번 호출 → 새로 작성된 파일을 stage.
@@ -189,7 +190,7 @@ git add src/tests/**  # test 파일
 git commit -m "test: tests for <task-slug>"
 "$HELPER" record-stage-commit tests
 
-# commit3 (CODE_VALIDATION PASS 직후) — push + PR create
+# commit3 (code-validator PASS 직후) — push + PR create
 git add src/**  # src 변경 + stories.md/backlog.md (Step 4.5 결과)
 git commit -m "<type>: <task-slug>"
 "$HELPER" record-stage-commit src
@@ -237,7 +238,7 @@ git checkout main && git pull --ff-only 2>/dev/null || true
 
 ## 4. Step 4.5 — stories.md / backlog.md sync (impl 계열 한정)
 
-`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` / `impl-loop` 의 inner task 에 한정. engineer `IMPL_DONE` 직후, validator 진입 *전*. 메인 직접 mechanical edit (agent 위임 X — 도메인 외).
+`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` / `impl-loop` 의 inner task 에 한정. engineer `IMPL_DONE` 직후, code-validator 진입 *전*. 메인 직접 mechanical edit (agent 위임 X — 도메인 외).
 
 > **범위 외 path 사용자 책임 (#292 root cause 일부)** — 본 Step 4.5 자동 sync 는 위 4 loop 한정. 다음 path 들은 *자동 sync 없음* — 메인이 별도 처리:
 >
@@ -389,7 +390,7 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 
 ### 7.1 catastrophic 룰 정합
 
-[`orchestration.md`](orchestration.md) §2.3 4룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (validator → pr-reviewer 직전 PASS / engineer 직전 `READY_FOR_IMPL` enum / feature-build-loop §4.2 Step 7 (MODULE_PLAN × N) 진입 직전 DESIGN_REVIEW_PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
+[`orchestration.md`](orchestration.md) §2.3 5룰 + handoff-matrix §4.1 HARNESS_ONLY_AGENTS = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 `READY_FOR_IMPL` enum / feature-build-loop §4.2 Step 6 (MODULE_PLAN × N) 진입 직전 architecture-validator PASS / PRD 변경 후 plan-reviewer + ux-architect 검토).
 
 > Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (loop-catalog.md 폐기, 8 → 7 SSOT).
 

@@ -3,7 +3,7 @@
 > ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. epic 본문 / 영향도 분석 / 마이그레이션 단계 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. THINKING_LOOP 회귀 회피 (DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 기술 에픽 작성 호출 — 기술 부채/인프라/리팩토링/아키텍처 변경.
-**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. 권장 표현 (형식 강제 X): `SYSTEM_DESIGN_READY` (validator DESIGN_VALIDATION 권고).
+**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. 권장 표현 (형식 강제 X): `SYSTEM_DESIGN_READY` (architecture-validator 권고 — Placeholder Leak + Spike Gate 외부 검증).
 **호출자가 prompt 로 전달하는 정보**: 개선 목표 설명, 영향 범위.
 
 기능 에픽 (비즈니스 가치 중심) 은 product-planner 영역이므로 제외.

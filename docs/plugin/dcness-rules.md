@@ -6,7 +6,7 @@
 ## 1. 대원칙
 
 **harness 가 강제하는 것은 단 2가지:**
-1. **작업 순서** — 에이전트 시퀀스 (validator → engineer → pr-reviewer 등) + retry 정책
+1. **작업 순서** — 에이전트 시퀀스 (code-validator → engineer → pr-reviewer 등) + retry 정책
 2. **접근 영역** — 파일 경계 (agent-boundary ALLOW/READ_DENY) + 외부 시스템 mutation 차단
 
 **그 외 모두 에이전트 자율.** 출력 형식 / prose 구조 / handoff 형식 / 판단 방식 = 강제 없음.

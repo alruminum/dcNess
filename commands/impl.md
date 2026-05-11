@@ -1,6 +1,6 @@
 ---
 name: impl
-description: impl task (feature-build-loop §4.2 Step 7 architect MODULE_PLAN × N 산출물) 1개를 받아 정식 impl 루프 (default = test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer · fallback = architect MODULE_PLAN 선두 추가) 자동 진행하는 스킬. 사용자가 "구현해줘", "/impl <task>", "이 task 구현", "impl 루프" 등을 말할 때 반드시 이 스킬을 사용한다. /product-plan 의 후속 — feature-build-loop 가 `impl/NN-*.md` 본문 detail 까지 채운 산출물의 task list 1개씩 처리. /quick 보다 무거움 (test-engineer + CODE_VALIDATION 포함).
+description: impl task (feature-build-loop §4.2 Step 6 architect MODULE_PLAN × N 산출물) 1개를 받아 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = architect MODULE_PLAN 선두 추가) 자동 진행하는 스킬. 사용자가 "구현해줘", "/impl <task>", "이 task 구현", "impl 루프" 등을 말할 때 반드시 이 스킬을 사용한다. /product-plan 의 후속 — feature-build-loop 가 `impl/NN-*.md` 본문 detail 까지 채운 산출물의 task list 1개씩 처리. /quick 보다 무거움 (test-engineer + code-validator 포함).
 ---
 
 # Impl Skill

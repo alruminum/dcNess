@@ -99,7 +99,8 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
     ),
     # 판정 전용 agent — Write 0.
     "qa": (),
-    "validator": (),
+    "code-validator": (),
+    "architecture-validator": (),
     "design-critic": (),
     "pr-reviewer": (),
     "security-reviewer": (),

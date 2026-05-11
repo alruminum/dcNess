@@ -173,10 +173,17 @@ class WriteAllowedAllowMatrixTests(unittest.TestCase):
                 check_write_allowed("architect", "docs/architecture.md", cwd=cwd)
             )
 
-    def test_validator_readonly(self):
+    def test_code_validator_readonly(self):
         with tempfile.TemporaryDirectory() as td:
             cwd = Path(td)
-            reason = check_write_allowed("validator", "src/foo.ts", cwd=cwd)
+            reason = check_write_allowed("code-validator", "src/foo.ts", cwd=cwd)
+            self.assertIsNotNone(reason)
+            self.assertIn("ALLOW_MATRIX", reason)
+
+    def test_architecture_validator_readonly(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            reason = check_write_allowed("architecture-validator", "docs/architecture.md", cwd=cwd)
             self.assertIsNotNone(reason)
             self.assertIn("ALLOW_MATRIX", reason)
 

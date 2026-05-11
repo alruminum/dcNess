@@ -25,12 +25,12 @@ Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함
 
 ## 1차 구현 (Phase 1) 현황
 
-✅ **완료** — validator 단일 agent 단위로 prose-only 패턴 검증.
+✅ **완료** — 검증 에이전트 (code-validator + architecture-validator) 단위로 prose-only 패턴 검증.
 
 | 컴포넌트 | 위치 | 상태 |
 |---|---|---|
-| Signal I/O 모듈 | [`harness/signal_io.py`](harness/signal_io.py) | 29 단위 테스트 통과 (round-trip / path 화이트리스트 / 휴리스틱 / DI swap) |
-| Validator agent docs | [`agents/validator.md`](agents/validator.md) + [`agents/validator/*.md`](agents/validator) (5 모드) | prose writing guide (결론 + 이유) |
+| Signal I/O 모듈 | [`harness/signal_io.py`](harness/signal_io.py) | 단위 테스트 통과 (round-trip / path 화이트리스트 / 휴리스틱 / DI swap) |
+| Validator agent docs | [`agents/code-validator.md`](agents/code-validator.md) + [`agents/architecture-validator.md`](agents/architecture-validator.md) | prose writing guide (결론 PASS/FAIL/ESCALATE + 이유) |
 | Plugin manifest | [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) + [marketplace.json](.claude-plugin/marketplace.json) | 다른 플러그인과 공존 가능 (`name=dcness`) |
 | CI workflows | [`.github/workflows/`](.github/workflows) | 3 종 (document-sync / python-tests / plugin-manifest) |
 
@@ -80,7 +80,7 @@ from harness.signal_io import (
 
 # Agent 측 (또는 harness 가 stdout 캡처 후) — prose 저장
 write_prose(
-    "validator", "run_001",
+    "code-validator", "run_001",
     """## 검증 결과
 
 A 스펙 일치 / B 의존성 모두 통과. C 경고 1건 (FAIL 아님).
@@ -89,13 +89,12 @@ A 스펙 일치 / B 의존성 모두 통과. C 경고 1건 (FAIL 아님).
 
 PASS
 """,
-    mode="CODE_VALIDATION",
 )
 
 # Orchestrator 측 — prose 읽고 결론 enum 1개 추출
 try:
-    prose = read_prose("validator", "run_001", mode="CODE_VALIDATION")
-    conclusion = interpret_signal(prose, ["PASS", "FAIL", "SPEC_MISSING"])
+    prose = read_prose("code-validator", "run_001")
+    conclusion = interpret_signal(prose, ["PASS", "FAIL", "ESCALATE"])
     if conclusion == "PASS":
         ...  # 다음 단계 진입
 except MissingSignal as e:
@@ -132,9 +131,9 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 |---|---|
 | `/init-dcness` | dcness 활성화 게이트 — 현 cwd main repo 를 plugin-scoped whitelist 추가 |
 | `/qa` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
-| `/quick` | light path 자동화 (qa → architect LIGHT_PLAN → engineer → validator BUGFIX_VALIDATION → pr-reviewer + clean 자동 commit/PR) |
-| `/product-plan` | 새 기능 spec/design (product-planner → plan-reviewer → ux-architect → validator UX → architect SD (impl 목차) → validator DESIGN_VALIDATION → architect MODULE_PLAN × N (impl 본문 detail)) |
-| `/impl` | per-task 정식 impl 루프 (default = test-engineer → engineer → validator CODE_VALIDATION → pr-reviewer · fallback = architect MODULE_PLAN 선두 추가 — impl/NN-*.md 정식 위치 부재 시) |
+| `/quick` | light path 자동화 (qa → architect LIGHT_PLAN → engineer → code-validator (bugfix scope) → pr-reviewer + clean 자동 commit/PR) |
+| `/product-plan` | 새 기능 spec/design (product-planner → plan-reviewer → ux-architect (self-check) → architect SD (self-check + impl 목차) → architecture-validator → architect MODULE_PLAN × N (impl 본문 detail)) |
+| `/impl` | per-task 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = architect MODULE_PLAN 선두 추가 — impl/NN-*.md 정식 위치 부재 시) |
 | `/impl-loop` | multi-task sequential auto chain (각 task 마다 /impl 호출 + clean 자동 진행) |
 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
 | `/efficiency` | Claude Code 세션 토큰/캐시/비용 분석 + HTML 대시보드 + 6 절감 휴리스틱 |

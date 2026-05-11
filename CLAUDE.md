@@ -54,7 +54,7 @@
 
 - **목적**: RWHarness fork-and-refactor — Prose-Only 원칙 결정론 + 4 기둥 정합 + 함정 회피 5원칙.
 - **모드**: **메인 Claude 직접 작업** (`docs/archive/status-json-mutate-pattern.md` §10 / §11.4 정합).
-  - architect / validator / engineer 위임 강제 **없음**.
+  - architect / code-validator / engineer 위임 강제 **없음**.
   - RWHarness 가드 미적용 환경. **단** Document Sync 거버넌스만 강제.
   - 글로벌 `~/.claude/CLAUDE.md` 의 RWHarness 위임 룰(에이전트 분기 / 인프라 프로젝트 분기)은 본 프로젝트에 **미적용**. 본 파일이 우선한다.
 

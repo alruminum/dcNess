@@ -187,11 +187,10 @@ class _PreToolBase(unittest.TestCase):
 
 class HarnessOnlyAgentsTests(_PreToolBase):
     def test_constant_matches_spec(self) -> None:
-        # orchestration.md §7.1 정합 확인
+        # validator 단순화 — engineer + code-validator 2개만 HARNESS_ONLY
         self.assertIn(("engineer", None), HARNESS_ONLY_AGENTS)
-        self.assertIn(("validator", "PLAN_VALIDATION"), HARNESS_ONLY_AGENTS)
-        self.assertIn(("validator", "CODE_VALIDATION"), HARNESS_ONLY_AGENTS)
-        self.assertIn(("validator", "BUGFIX_VALIDATION"), HARNESS_ONLY_AGENTS)
+        self.assertIn(("code-validator", None), HARNESS_ONLY_AGENTS)
+        self.assertEqual(len(HARNESS_ONLY_AGENTS), 2)
 
     def test_engineer_blocked_without_run(self) -> None:
         # 새 base — run 없음
@@ -205,12 +204,12 @@ class HarnessOnlyAgentsTests(_PreToolBase):
             )
             self.assertEqual(rc, 1)
 
-    def test_validator_plan_blocked_without_run(self) -> None:
+    def test_code_validator_blocked_without_run(self) -> None:
         with TemporaryDirectory() as td:
             base = Path(td)
             update_live(self.sid, base_dir=base)
             rc = handle_pretooluse_agent(
-                stdin_data=self._payload("validator", "PLAN_VALIDATION"),
+                stdin_data=self._payload("code-validator", ""),
                 cc_pid=88888,
                 base_dir=base,
             )
@@ -397,10 +396,10 @@ class CatastrophicArchitectTests(_PreToolBase):
 
 
 class CatastrophicDesignValidationTests(_PreToolBase):
-    """architect TASK_DECOMPOSE 직전 validator DESIGN_VALIDATION DESIGN_REVIEW_PASS 필수.
+    """architect MODULE_PLAN (SD 후속) 직전 architecture-validator PASS 필수.
 
-    조건: SYSTEM_DESIGN.md 가 존재할 때만 발동 (시스템 설계 단계가 있었음). 단순
-    MODULE_PLAN 진입은 미적용.
+    조건: SYSTEM_DESIGN.md 가 존재할 때만 발동 (시스템 설계 단계가 있었음).
+    MODULE_PLAN 의 fallback (impl-task-loop 모드) 진입은 미적용 (SYSTEM_DESIGN.md 부재).
     """
 
     def _setup_full_review(self) -> None:
@@ -420,9 +419,9 @@ class CatastrophicDesignValidationTests(_PreToolBase):
 
     def test_td_blocked_without_design_review_pass(self) -> None:
         self._setup_full_review()
-        # validator-DESIGN_VALIDATION.md 부재 → 차단
+        # architecture-validator.md 부재 → 차단
         rc = handle_pretooluse_agent(
-            stdin_data=self._payload("architect", "TASK_DECOMPOSE"),
+            stdin_data=self._payload("architect", "MODULE_PLAN"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -430,11 +429,11 @@ class CatastrophicDesignValidationTests(_PreToolBase):
 
     def test_td_blocked_with_design_review_fail(self) -> None:
         self._setup_full_review()
-        (self.run_path / "validator-DESIGN_VALIDATION.md").write_text(
-            "DESIGN_REVIEW_FAIL — 인터페이스 미정의", encoding="utf-8",
+        (self.run_path / "architecture-validator.md").write_text(
+            "FAIL — Spike Gate: 추상 ABC + Mock 만 검출", encoding="utf-8",
         )
         rc = handle_pretooluse_agent(
-            stdin_data=self._payload("architect", "TASK_DECOMPOSE"),
+            stdin_data=self._payload("architect", "MODULE_PLAN"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -442,11 +441,11 @@ class CatastrophicDesignValidationTests(_PreToolBase):
 
     def test_td_passes_with_design_review_pass(self) -> None:
         self._setup_full_review()
-        (self.run_path / "validator-DESIGN_VALIDATION.md").write_text(
-            "DESIGN_REVIEW_PASS — 3 계층 모두 통과", encoding="utf-8",
+        (self.run_path / "architecture-validator.md").write_text(
+            "PASS — Placeholder Leak 0 / Spike Gate 통과", encoding="utf-8",
         )
         rc = handle_pretooluse_agent(
-            stdin_data=self._payload("architect", "TASK_DECOMPOSE"),
+            stdin_data=self._payload("architect", "MODULE_PLAN"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -470,20 +469,11 @@ class CatastrophicDesignValidationTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
 
-    def test_td_skipped_when_no_system_design(self) -> None:
-        """SYSTEM_DESIGN.md 부재 시 §2.3.5 발동 X — 단순 TASK_DECOMPOSE 직접 호출 케이스."""
-        (self.run_path / "product-planner.md").write_text(
-            "PRODUCT_PLAN_READY", encoding="utf-8",
-        )
-        (self.run_path / "plan-reviewer.md").write_text(
-            "PLAN_REVIEW_PASS", encoding="utf-8",
-        )
-        (self.run_path / "ux-architect.md").write_text(
-            "UX_FLOW_READY", encoding="utf-8",
-        )
-        # SYSTEM_DESIGN 없으면 §2.3.5 검사 skip — §2.3.4 만 적용 (이미 통과)
+    def test_module_plan_skipped_when_no_system_design(self) -> None:
+        """SYSTEM_DESIGN.md 부재 시 §2.3.5 발동 X — impl-task-loop fallback MODULE_PLAN 직접 호출 케이스."""
+        # SYSTEM_DESIGN 없는 fallback 케이스 — §2.3.4 / §2.3.5 모두 미발동
         rc = handle_pretooluse_agent(
-            stdin_data=self._payload("architect", "TASK_DECOMPOSE"),
+            stdin_data=self._payload("architect", "MODULE_PLAN"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )

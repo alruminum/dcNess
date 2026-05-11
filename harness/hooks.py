@@ -137,9 +137,7 @@ def _extract_prose_text(obj: Any, _depth: int = 0) -> str:
 # (agent_name, mode_or_None) — None = 모든 mode 적용
 HARNESS_ONLY_AGENTS: tuple = (
     ("engineer", None),
-    ("validator", "PLAN_VALIDATION"),
-    ("validator", "CODE_VALIDATION"),
-    ("validator", "BUGFIX_VALIDATION"),
+    ("code-validator", None),
 )
 
 
@@ -306,12 +304,12 @@ def handle_pretooluse_agent(
             )
             return 1
 
-    # 3. §2.3.1 — pr-reviewer 직전 validator (CODE/BUGFIX) PASS 필수
+    # 3. §2.3.1 — pr-reviewer 직전 code-validator PASS 필수
     if subagent == "pr-reviewer":
         if _has_engineer_write(rd) and not _has_validator_pass(rd):
             print(
-                "[catastrophic §2.3.1] pr-reviewer 호출은 validator "
-                "CODE_VALIDATION 또는 BUGFIX_VALIDATION PASS 후만",
+                "[catastrophic §2.3.1] pr-reviewer 호출은 code-validator "
+                "PASS 후만 (full/bugfix scope 모두 동일)",
                 file=sys.stderr,
             )
             return 1
@@ -344,16 +342,16 @@ def handle_pretooluse_agent(
                 )
                 return 1
 
-    # 5. §2.3.5 (DCN-CHG-20260430-05) — architect TASK_DECOMPOSE 직전 validator
-    #    DESIGN_VALIDATION (DESIGN_REVIEW_PASS) 필수. 시스템 설계 검증 안 한 채
+    # 5. §2.3.5 — architect MODULE_PLAN (feature-build-loop SD 후속) 직전
+    #    architecture-validator PASS 필수. 시스템 설계 검증 안 한 채
     #    impl batch 분해 = 무의미.
-    if subagent == "architect" and mode == "TASK_DECOMPOSE":
-        # SYSTEM_DESIGN 단계가 있었다는 사실 확인 — design-validation 검사 발동 조건
+    if subagent == "architect" and mode == "MODULE_PLAN":
+        # SYSTEM_DESIGN 단계가 있었다는 사실 확인 — architecture-validator 검사 발동 조건
         if (rd / "architect-SYSTEM_DESIGN.md").exists():
             if not _has_design_review_pass(rd):
                 print(
-                    "[catastrophic §2.3.5] architect TASK_DECOMPOSE 직전 "
-                    "validator DESIGN_VALIDATION DESIGN_REVIEW_PASS 필수",
+                    "[catastrophic §2.3.5] architect MODULE_PLAN (SD 후속) "
+                    "진입 직전 architecture-validator PASS 필수",
                     file=sys.stderr,
                 )
                 return 1
@@ -794,11 +792,15 @@ def _has_engineer_write(rd: Path) -> bool:
 
 
 def _has_validator_pass(rd: Path) -> bool:
-    cv = _read_or_empty(rd / "validator-CODE_VALIDATION.md")
-    if "PASS" in cv:
+    # code-validator 표준 위치 (validator 단순화 후)
+    if "PASS" in _read_or_empty(rd / "code-validator.md"):
         return True
-    bv = _read_or_empty(rd / "validator-BUGFIX_VALIDATION.md")
-    return "PASS" in bv
+    # legacy prose 위치 호환 (run-dir 마이그레이션 전 자료)
+    if "PASS" in _read_or_empty(rd / "validator-CODE_VALIDATION.md"):
+        return True
+    if "PASS" in _read_or_empty(rd / "validator-BUGFIX_VALIDATION.md"):
+        return True
+    return False
 
 
 def _has_plan_review_pass(rd: Path) -> bool:
@@ -811,7 +813,11 @@ def _has_ux_flow_ready(rd: Path) -> bool:
 
 
 def _has_design_review_pass(rd: Path) -> bool:
-    """validator-DESIGN_VALIDATION.md 안 DESIGN_REVIEW_PASS 확인 (DCN-CHG-20260430-05)."""
+    """architecture-validator.md 안 PASS 확인 (validator 단순화 후)."""
+    # architecture-validator 표준 위치
+    if "PASS" in _read_or_empty(rd / "architecture-validator.md"):
+        return True
+    # legacy prose 위치 호환
     return "DESIGN_REVIEW_PASS" in _read_or_empty(rd / "validator-DESIGN_VALIDATION.md")
 
 

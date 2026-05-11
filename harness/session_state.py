@@ -1649,9 +1649,19 @@ _YOLO_FALLBACKS: Dict[str, Dict[str, str]] = {
         "hint": "SPEC_GAP cycle 진입 (architect SPEC_GAP) 또는 사용자 위임",
         "next_enum": "SPEC_GAP_RESOLVED",
     },
-    "validator:FAIL": {
+    "code-validator:FAIL": {
         "action": "re-invoke-prev",
-        "hint": "직전 agent (engineer/ux-architect 등) 재호출 — 가장 보수적 1 cycle",
+        "hint": "engineer 재호출 (FAIL 본문 보고) — attempt < 3",
+        "next_enum": None,
+    },
+    "code-validator:ESCALATE": {
+        "action": "escalate-or-architect-spec-gap",
+        "hint": "본문 사유 prose 확인: spec 부재면 architect SPEC_GAP, 그 외면 사용자 위임",
+        "next_enum": None,
+    },
+    "architecture-validator:FAIL": {
+        "action": "re-invoke-prev",
+        "hint": "architect SYSTEM_DESIGN 재진입 (cycle ≤ 2)",
         "next_enum": None,
     },
     "*:AMBIGUOUS": {
@@ -1708,7 +1718,7 @@ def _cli_auto_resolve(args: Any) -> int:
 
     catastrophic 룰 우회 X — yolo 는 skill-level 확인 prompt 자동화만.
     """
-    key = args.agent_mode  # 예: "ux-architect:UX_FLOW_ESCALATE" 또는 "validator:FAIL"
+    key = args.agent_mode  # 예: "ux-architect:UX_FLOW_ESCALATE" 또는 "code-validator:FAIL"
     fallback = _YOLO_FALLBACKS.get(key)
     if fallback is None:
         # AMBIGUOUS 통합 케이스 — 어떤 agent 든 동일 권장
@@ -1855,7 +1865,7 @@ def _build_arg_parser() -> Any:
     p_rsc.add_argument(
         "stage",
         choices=["docs", "tests", "src"],
-        help="커밋 단계 (docs=MODULE_PLAN 후 / tests=TESTS_WRITTEN 후 / src=CODE_VALIDATION 후)",
+        help="커밋 단계 (docs=MODULE_PLAN 후 / tests=TESTS_WRITTEN 후 / src=code-validator PASS 후)",
     )
     p_rsc.set_defaults(func=_cli_record_stage_commit)
 
@@ -1865,7 +1875,7 @@ def _build_arg_parser() -> Any:
     )
     p_ar.add_argument(
         "agent_mode",
-        help='"ux-architect:UX_FLOW_ESCALATE", "validator:FAIL", "*:AMBIGUOUS" 등',
+        help='"ux-architect:UX_FLOW_ESCALATE", "code-validator:FAIL", "*:AMBIGUOUS" 등',
     )
     p_ar.set_defaults(func=_cli_auto_resolve)
 
