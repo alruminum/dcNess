@@ -560,6 +560,129 @@ dcness 의 impl-task-loop 가 박는 3-commit (loop-procedure §3.4):
 
 이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.10 이 자동 발화하지 않음. plug-in 업데이트 + `/init-dcness` 재실행 시 발화. commit-msg shim 은 이미 chain 로직 박혀있어 마커만 작성하면 즉시 동작.
 
+### Step 2.11 — 자동 commit + PR (인프라 머지 자동화)
+
+Step 2.6 ~ 2.10 까지 *깔린 파일들* (workflow yml / `.dcness/` 마커 등) 은 working tree 변경 상태로 머무름 — 사용자가 git add / commit / push / PR 까지 직접 진행하지 않으면 **main 머지 안 됨 → workflow 가 GitHub 에 안 등록 → CI 게이트 dead code**. 본 Step 이 그 부담을 자동화.
+
+#### 1. 변경 파일 검출
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+cd "$PROJECT_ROOT"
+
+# dcness 가 cp 한 파일만 명시 path — 사용자 다른 untracked 안 건드림
+NEW_FILES=$(git status --short \
+  .github/workflows/ .dcness/ 2>/dev/null \
+  | grep -E '^\?\?' | awk '{print $2}')
+MODIFIED=$(git status --short \
+  .github/workflows/ .dcness/ 2>/dev/null \
+  | grep -E '^.M' | awk '{print $2}')
+CHANGES="$NEW_FILES $MODIFIED"
+CHANGES_TRIM=$(echo $CHANGES | tr -s ' ')
+
+# 변경 없으면 skip
+if [ -z "$CHANGES_TRIM" ]; then
+  echo "[dcness] working tree 안 dcness 인프라 변경 없음 — Step 2.11 skip"
+  # Step 2.11 종료, Step 3 으로
+fi
+```
+
+#### 2. 현재 branch 검사 — main 외 진행 중이면 skip
+
+```bash
+CUR_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CUR_BRANCH" != "main" ]; then
+  echo "[dcness] 현재 branch = '$CUR_BRANCH' (main 아님) — 자동 commit skip"
+  echo "  사용자 작업 중인 branch 보호. 수동 처리:"
+  echo "    git checkout main && /init-dcness  # 재실행"
+  echo "  또는 본 변경을 현재 branch 에 직접 stage:"
+  for f in $CHANGES; do echo "    git add $f"; done
+  # Step 2.11 종료
+fi
+```
+
+#### 3. 사용자 동의
+
+```
+[dcness] dcness 인프라 변경 자동 commit + PR 만들까요?
+  변경 파일 (N개):
+    .github/workflows/git-naming-validation.yml (신규)
+    .github/workflows/pr-body-validation.yml (신규)
+    .github/workflows/tdd-gate.yml (신규)
+    .dcness/tdd-gate-enabled (신규)
+  자동 진행 시:
+    1. branch 생성: docs/dcness-init-{timestamp}
+    2. 위 파일들 stage + commit (메시지 자동)
+    3. push + PR 생성 (자동 머지 옵션은 사용자 결정)
+  n 시 수동 처리 (직접 stage/commit/PR)
+(Y/n)
+```
+
+#### 4. 자동 진행 (Y 선택 시)
+
+```bash
+TS=$(date +%Y%m%d_%H%M%S)
+BR="docs/dcness_init_${TS}"
+
+git checkout -b "$BR"
+
+# 명시 path 만 stage — 다른 untracked 안 건드림
+for f in $CHANGES; do
+  git add "$f"
+done
+
+git commit -m "[docs] dcNess init — workflows + 마커 stage
+
+dcness plug-in 의 인프라 파일 main 등록:
+$(for f in $CHANGES; do echo "  - $f"; done)
+
+본 commit 머지 후 다음 PR 부터:
+- git-naming-validation 발화
+- pr-body-validation 발화
+- tdd-gate (CI affected) 발화
+- pre-commit TDD 게이트 (.dcness/tdd-gate-enabled 인지) 발화
+"
+
+git push -u origin "$BR"
+
+gh pr create --title "[docs] dcNess init — workflows + 마커 stage" --body "$(cat <<EOF
+## 변경 요약
+
+dcness plug-in 의 인프라 파일들 main 등록.
+
+## 포함
+
+$(for f in $CHANGES; do echo "- \`$f\`"; done)
+
+## 관련 이슈
+
+Document-Exception-PR-Close: dcness init 인프라 PR — issue 매핑 없음. dcness plug-in 의 \`/init-dcness\` Step 2.11 자동 생성.
+
+## 머지 후 발화
+
+- \`git-naming-validation\` CI 자동
+- \`pr-body-validation\` CI 자동
+- \`tdd-gate\` (CI affected) 자동
+- pre-commit TDD 게이트 (\`.dcness/tdd-gate-enabled\` 인지) 즉시 발화
+EOF
+)"
+```
+
+#### 5. 머지 안내
+
+```
+[dcness] PR 생성 완료. 다음:
+  1. PR 머지 (gh pr merge <num> --auto --merge)
+  2. main pull (git checkout main && git pull)
+  3. 다음 feature PR 부터 모든 게이트 자동 발화
+```
+
+#### 6. 한계
+
+- 현재 branch != main 일 때 자동 진행 X — 사용자 작업 보호 (`git stash` 위험 회피)
+- 사용자가 *이미 PR 만든 인프라 변경* 있을 때 중복 시도 가능 — 메인 Claude 가 사전 `gh pr list --search "dcness init"` 검사 권장
+- `gh` CLI 미설치 시 push 까지만 + 사용자 수동 PR 권유
+
 ### Step 3 — 사용자 안내
 
 ```
@@ -600,6 +723,11 @@ Pre-commit TDD 게이트 (Step 2.10 완료 시 — commit 단 차단):
 - 4 언어 자동 (node jest/vitest, python pytest, rust cargo, go go test)
 - 우회: commit message 안 `[skip-test: <사유>]` marker
 - branch protection 의존성 0 — 진짜 자체완결 wall (#320 #1 phase 4 root fix)
+
+자동 commit + PR (Step 2.11 완료 시):
+- Step 2.6 ~ 2.10 깔린 인프라 파일들 자동 stage + commit + push + PR
+- 현재 branch = main 일 때만 자동 진행 (사용자 작업 중 branch 보호)
+- 사용자가 *까먹어도* dcness CI 가 dead code 안 됨 (#320 사용자 피드백 root fix)
 
 사용 가능한 skill:
 - /qa  — 이슈 분류
