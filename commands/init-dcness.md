@@ -358,13 +358,20 @@ done
 
 이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.8 이 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 Step 2.8 발화. 단 시드는 *부재 시만* 이라 기존 docs 가 있으면 skip — 안전.
 
-### Step 2.9 — TDD 게이트 (옵션, polyglot universal)
+### Step 2.9 — TDD 게이트 (옵션, polyglot universal + affected detection)
 
-GitHub Actions CI 에서 *PR 머지 전 풀 테스트 스위트 PASS 강제*. branch protection 의 `required status check` 에 등록되면 진짜 mechanical wall (admin 외 우회 불가) 가 됨. 산업 표준 3 단 enforcement (로컬 incremental → CI 풀 → branch protection) 중 *CI 풀* 단.
+GitHub Actions CI 에서 *PR 머지 전 affected 테스트 PASS 강제*. branch protection 의 `required status check` 에 등록되면 진짜 mechanical wall (admin 외 우회 불가) 가 됨.
 
-> **배경 (#320 #1)**: jajang Epic 12 task 03 에서 plan §3.5 가 `useAuthStore 기존 (변경 X)` 명시했는데 engineer 가 selector 패턴으로 바꿔서 *기존* 26 테스트 깨짐. engineer 의 자체 테스트는 *새 테스트 파일만* 돌리고 풀 스위트 미실행 → cascade 발견 지연. CI 풀 테스트 게이트 + branch protection 으로 mechanical 차단.
+> **배경 (#320 #1)**: jajang Epic 12 task 03 에서 plan §3.5 가 `useAuthStore 기존 (변경 X)` 명시했는데 engineer 가 selector 패턴으로 바꿔서 *기존* 26 테스트 깨짐. CI 테스트 게이트 + branch protection 으로 mechanical 차단.
 
-> **phase 2 — polyglot universal**: composite action 이 4 언어 (node / python / rust / go) 자동 검출. 검출된 *모든* 언어 테스트 PASS 해야 게이트 PASS. jajang (mobile=js/jest + api=python/pytest) 같은 polyglot 모노레포도 추가 설정 없이 cover.
+> **phase 3 — affected detection 자동**: composite action 이 4 언어 (node / python / rust / go) 자동 검출 + 변경분 affected 만 실행. 사용자 설정 0.
+>
+> - **node**: nx / turbo / pnpm workspaces 자동 검출 → `nx affected` / `turbo --filter=...[base]` / `pnpm -F "...[base]"` (dependency 그래프 자동 포함). 단일 패키지 / yarn classic / npm workspaces → 풀 폴백.
+> - **python**: 변경 `.py` 파일의 *가장 가까운 상위* `pyproject.toml` / `setup.py` 식별 → 그 안에서만 pytest. 변경 0건 → skip.
+> - **rust**: `[workspace]` 검출 시 변경 파일 → member 매핑 → `cargo test -p <member>`. 단일 crate → `cargo test`.
+> - **go**: 변경 `.go` 파일의 package path 추출 → `go test ./<path>/...`. 변경 0건 → skip.
+>
+> jajang (apps/mobile=js + apps/api=python) 같은 polyglot 모노레포 자동 cover — 웹 변경 = mobile 테스트만, api 변경 = api 테스트만.
 
 #### 1. 지원 언어 검출
 
@@ -401,12 +408,13 @@ fi
 
 ```
 [dcness] GitHub Actions CI 에서 TDD 게이트 강제할까요?
-  - PR 마다 풀 테스트 스위트 자동 실행 — 1건이라도 FAIL 시 PR 머지 차단 (branch protection 필요)
-  - polyglot universal — node / python / rust / go 자동 검출 + 모두 실행
-  - node: package.json scripts.test 위임 (monorepo 면 root 에 `npm test --workspaces --if-present` 같은 위임 명령 박을 것)
-  - python: pyproject.toml / requirements*.txt 자동 install + pytest 실행 (tests/ 또는 test/ 자동 검출, unittest 도 pytest 가 cover)
-  - rust: cargo test --all
-  - go: go test ./...
+  - PR 마다 affected 테스트 자동 실행 — 1건이라도 FAIL 시 PR 머지 차단 (branch protection 필요)
+  - polyglot universal — node / python / rust / go 자동 검출
+  - 변경분 기반 (사용자 설정 0):
+    - node: nx / turbo / pnpm workspaces 자동 detect → affected 만. 의존성 그래프 자동 포함.
+    - python: 변경 .py 의 root pyproject 식별 → 그 안에서만 pytest
+    - rust: workspace 멤버 자동 매핑 → cargo test -p <member>
+    - go: 변경 package path 만 → go test ./<path>/...
   - 본 thin yml 1개만 사용자 repo 에 깔리고, 검증 본체는 alruminum/dcNess composite action 호출
   - 로컬에서만 테스트 돌리고 CI 강제 원치 않으면 n
 (Y/n)
@@ -465,12 +473,13 @@ CI workflow 깔린 것만으론 *PR 머지를 차단* 안 됨 — branch protect
 
 본 안내는 *출력만* — 메인 Claude 가 사용자 권한 확인 후 자동 실행할지 사용자 결정에 위임 (admin 권한 가정 위험 회피).
 
-#### 4. 한계 (phase 2)
+#### 4. 한계 (phase 3)
 
-- 지원 언어 4 (node / python / rust / go) — Elixir / Ruby / Java / .NET / PHP / Swift 는 phase 3 후속.
-- 풀 스위트만 — incremental (`vitest --changed` / `jest --findRelatedTests`) 로컬 hook 은 phase 4.
+- 지원 언어 4 (node / python / rust / go) — Elixir / Ruby / Java / .NET / PHP / Swift 는 phase 4 후속.
 - branch protection 자동 설정 안 함 — admin 권한 가정 위험. 안내문만 출력.
-- python: poetry / pdm / uv 같은 modern tooling 은 phase 3. 현재 pip 만 (`pip install -e .` + `requirements*.txt`).
+- python: poetry / pdm / uv 같은 modern tooling = pip 폴백. 진정한 native 지원은 phase 4.
+- python/rust/go 의 dependency 그래프 자동 포함 = phase 4 (현재는 path 기반).
+- node yarn classic / npm workspaces / bun = 풀 스위트 폴백 (native affected filter 약함).
 - rust: toolchain pin 필요 시 사용자 workflow 에서 추가. 기본은 ubuntu-latest 의 stable.
 
 #### 5. 기존 활성화 프로젝트 — re-run 안내
@@ -501,11 +510,13 @@ design.md SSOT (Step 2.7 완료 시):
 - docs/PRD.md / ARCHITECTURE.md / ADR.md placeholder — 기획 논의 후 채워넣는 용도
 - 부재 시만 시드 (멱등) — 기존 파일은 보호
 
-TDD 게이트 (Step 2.9 완료 시 — polyglot universal):
-- .github/workflows/tdd-gate.yml — PR 마다 풀 테스트 스위트 강제 (composite action 호출)
-- 지원 언어 4: node / python / rust / go 자동 검출. polyglot 모노레포 (jajang 같이 js + python) 도 추가 설정 없이 cover
+TDD 게이트 (Step 2.9 완료 시 — polyglot universal + affected detection):
+- .github/workflows/tdd-gate.yml — PR 마다 affected 테스트 강제 (composite action 호출)
+- 지원 언어 4: node / python / rust / go 자동 검출 + 변경분만 실행
+- node: nx / turbo / pnpm workspaces 자동 detect → dependency 그래프 포함 affected
+- python/rust/go: 변경 파일 path 기반 root 식별 → 해당 root 만 테스트
 - branch protection 의 required status checks 등록은 사용자 수동 (안내문 출력)
-- 산업 표준 3 단 enforcement 중 *CI 풀* 단. 로컬 incremental + branch protection 결합으로 진짜 wall 완성 (#320 #1 root fix)
+- 사용자 설정 0 — 도구 분기 / 위임 명령 작성 불필요 (#320 #1 phase 3 root fix)
 
 사용 가능한 skill:
 - /qa  — 이슈 분류
