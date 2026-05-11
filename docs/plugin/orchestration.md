@@ -127,7 +127,8 @@ flowchart LR
     pp -->|PRODUCT_PLAN_READY| pr[plan-reviewer]
     pp -->|CLARITY_INSUFFICIENT| user((사용자))
     pr -->|PLAN_REVIEW_PASS| ux[ux-architect UX_FLOW<br/>+ 5 카테고리 self-check]
-    pr -->|PLAN_REVIEW_CHANGES_REQUESTED| pp
+    pr -->|PLAN_REVIEW_FAIL| pp
+    pr -->|PLAN_REVIEW_ESCALATE| esc
     ux -->|UX_FLOW_READY| sd[system-architect<br/>+ self-check<br/>+ impl 목차 표]
     ux -->|UX_FLOW_ESCALATE| esc((escalate))
     sd -->|READY| dv[architecture-validator<br/>Placeholder Leak + Spike Gate]
@@ -222,7 +223,7 @@ flowchart LR
 | step | agent[:mode] | allowed_enums |
 |---|---|---|
 | 2 | product-planner | `PRODUCT_PLAN_READY,CLARITY_INSUFFICIENT,PRODUCT_PLAN_CHANGE_DIFF,PRODUCT_PLAN_UPDATED` |
-| 3 | plan-reviewer | `PLAN_REVIEW_PASS,PLAN_REVIEW_CHANGES_REQUESTED` |
+| 3 | plan-reviewer | `PLAN_REVIEW_PASS,PLAN_REVIEW_FAIL,PLAN_REVIEW_ESCALATE` |
 | 4 | ux-architect:UX_FLOW (5 카테고리 self-check 의무) | `UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE` |
 | 5 | system-architect (self-check 의무) | `READY,ESCALATE` (산출물에 `## impl 목차` 표 포함 — Story → impl 매핑 + N 행) |
 | 5.5 | architecture-validator | `PASS,FAIL,ESCALATE` |
@@ -237,11 +238,13 @@ flowchart LR
 **stories.md task 행 추가 (메인 Claude 직접)**: Step 6 N 회 모두 종료 직후, 메인 Claude 가 `stories.md` 안 각 Story 헤더 아래에 `- [ ] <NN>-<slug>.md` 행 N 개 추가 (impl 목차 표 그대로 옮김). 체크박스 `[x]` tick 은 별 영역 — `impl-task-loop` Step 4.5 (engineer IMPL_DONE 후) 가 책임.
 
 **분기**:
+- (Spike Pre-Check) — 사용자 입력에 외부 의존 / 조건부 약속 패턴 / 의문문 신호 1+ 존재 시 `/product-plan` 스킬이 product-planner 호출 *전* plan-reviewer `PRE_CHECK` 모드 1회 호출. PASS 시 product-planner 진입, FAIL 시 사용자 입력 재정리, ESCALATE 시 사용자 위임. (`commands/product-plan.md` "Pre-Check Trigger" 섹션)
 - `PRODUCT_PLAN_READY` → product-planner 가 epic + story 이슈 동시 생성 후 plan-reviewer 진입 ([`issue-lifecycle.md`](issue-lifecycle.md) §1)
-- `PRODUCT_PLAN_UPDATED` → plan-reviewer skip + ux-architect 직행 (이전 PLAN_REVIEW_PASS 활용)
+- `PRODUCT_PLAN_UPDATED` → plan-reviewer 변경분 재심사 (skip 분기 폐기 — 변경의 성격 무관 항상 호출). PASS 시 ux-architect.
 - `PRODUCT_PLAN_CHANGE_DIFF` → plan-reviewer 변경분만 재심사
 - `CLARITY_INSUFFICIENT` → 사용자 역질문 후 product-planner 재호출
-- `PLAN_REVIEW_CHANGES_REQUESTED` → product-planner 재진입 (cycle ≤ 2)
+- `PLAN_REVIEW_FAIL` → product-planner 재진입 (cycle ≤ 2)
+- `PLAN_REVIEW_ESCALATE` → 사용자 위임 (외부 검증 불가 / 권한 경계 밖 정보 / 동일 finding 반복 / URL 부재 PASS 시도 — `agents/plan-reviewer.md` ESCALATE 트리거 4 케이스)
 - `UX_REFINE_READY` → designer SCREEN 분기 (ux-design-stage / ux-refine-stage 권장)
 - `UX_FLOW_ESCALATE` → 사용자 위임
 - ux-architect self-check FAIL → ux-architect 재진입 (cycle ≤ 2, prose 내부에서 처리)

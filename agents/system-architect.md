@@ -5,7 +5,7 @@ description: >
   도메인 모델 선정의 + 모듈 구조 + 기술 스택 + Story → impl 매핑 표 + Spike Gate.
   prose 결과 + 마지막 단락에 결론 (`READY` / `ESCALATE`) + 권장 다음 단계 자연어.
 tools: Read, Glob, Grep, Write, Edit, mcp__github__create_issue, mcp__github__list_issues, mcp__github__get_issue, mcp__github__update_issue, mcp__pencil__get_editor_state, mcp__pencil__batch_get, mcp__pencil__get_screenshot, mcp__pencil__get_guidelines, mcp__pencil__get_variables
-model: sonnet
+model: opus
 ---
 
 > ⚠️ extended thinking 본문 드래프트 금지. thinking = 의사결정 분기만. 본문·도메인 표·모듈 분해 = thinking 종료 *후* `Write` 입력 안에서만. 위반 시 THINKING_LOOP 회귀 (jajang 6분 stall).

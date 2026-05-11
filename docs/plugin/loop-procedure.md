@@ -109,7 +109,9 @@ PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
 | `CHANGES_REQUESTED` | engineer POLISH cycle (≤2) |
 | `AMBIGUOUS` | 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS 시 사용자 위임 (enum 후보 + prose 발췌) |
 | architecture-validator `FAIL` | system-architect 재진입 (cycle ≤2) |
-| `PRODUCT_PLAN_UPDATED` | plan-reviewer skip → ux-architect 직행 |
+| `PRODUCT_PLAN_UPDATED` | plan-reviewer 변경분 재심사 (skip 분기 폐기 — 변경의 성격 무관 항상 호출). PASS 시 ux-architect. |
+| `PLAN_REVIEW_FAIL` | product-planner 재진입 (cycle ≤2) |
+| `PLAN_REVIEW_ESCALATE` | 사용자 위임 (외부 검증 불가 / 권한 경계 밖 / 동일 finding 반복 / URL 부재 PASS 시도) |
 
 cycle 한도 = orchestration.md §5.
 

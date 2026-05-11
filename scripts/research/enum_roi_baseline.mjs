@@ -31,7 +31,7 @@ function classify(allowed) {
   const s = new Set(allowed);
   const has = (...xs) => xs.every(x => s.has(x));
   if (has('PRODUCT_PLAN_READY', 'CLARITY_INSUFFICIENT')) return 'product-planner';
-  if (has('PLAN_REVIEW_PASS', 'PLAN_REVIEW_CHANGES_REQUESTED')) return 'plan-reviewer';
+  if (has('PLAN_REVIEW_PASS', 'PLAN_REVIEW_FAIL')) return 'plan-reviewer';
   if (has('UX_FLOW_READY', 'UX_FLOW_PATCHED', 'UX_REFINE_READY')) return 'ux-architect';
   if (has('SPEC_GAP_RESOLVED', 'PRODUCT_PLANNER_ESCALATION_NEEDED')) return 'architect.spec-gap';
   if (has('DOCS_SYNCED', 'SPEC_GAP_FOUND', 'TECH_CONSTRAINT_CONFLICT')) return 'architect.docs-sync';

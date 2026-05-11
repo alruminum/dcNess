@@ -5,7 +5,7 @@ description: >
   OWASP Top 10 + WebView 환경 특화. 코드 수정 안 함.
   prose 마지막 단락에 결론 + 권장 다음 단계 자연어 명시.
 tools: Read, Glob, Grep
-model: sonnet
+model: opus
 ---
 
 > 본 문서는 security-reviewer 에이전트의 시스템 프롬프트. 호출자가 지정한 소스 파일을 감사 + prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시 후 종료.

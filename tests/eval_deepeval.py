@@ -152,7 +152,7 @@ def _make_cases() -> list[EnumCase]:
         ("validator",     "UX_VALIDATION",    ["UX_REVIEW_PASS", "UX_REVIEW_FAIL"],   "UX_REVIEW_PASS"),
         ("pr-reviewer",   None,               ["LGTM", "CHANGES_REQUESTED"],          "LGTM"),
         ("security-reviewer", None,           ["SECURE", "VULNERABILITIES_FOUND"],    "SECURE"),
-        ("plan-reviewer", None,               ["PLAN_REVIEW_PASS", "PLAN_REVIEW_FAIL"], "PLAN_REVIEW_PASS"),
+        ("plan-reviewer", None,               ["PLAN_REVIEW_PASS", "PLAN_REVIEW_FAIL", "PLAN_REVIEW_ESCALATE"], "PLAN_REVIEW_PASS"),
         ("product-planner","PRODUCT_PLAN",    ["PRODUCT_PLAN_READY", "CLARITY_INSUFFICIENT"], "PRODUCT_PLAN_READY"),
     ]
 
