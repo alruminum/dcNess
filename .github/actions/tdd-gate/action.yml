@@ -1,29 +1,54 @@
 name: 'dcness TDD gate'
 description: |
   Run full project test suite as a required status check before merge.
-  Phase 1 — node 프로젝트 한정 (vitest/jest/등 — package.json scripts.test 위임).
-  package manager 자동 검출 (pnpm-lock.yaml / yarn.lock / bun.lock(b) / 기본 npm).
+  Phase 2 — polyglot universal: node / python / rust / go 자동 검출 + 매트릭스 실행.
+  검출된 모든 언어 테스트가 PASS 해야 게이트 PASS. 둘 이상 검출 시 모두 실행.
 inputs:
   node-version:
-    description: 'Node.js version to use'
+    description: 'Node.js version to use (node 검출 시)'
     required: false
     default: '20'
+  python-version:
+    description: 'Python version to use (python 검출 시)'
+    required: false
+    default: '3.12'
+  go-version:
+    description: 'Go version to use (go 검출 시)'
+    required: false
+    default: 'stable'
 runs:
   using: composite
   steps:
-    - name: Verify node project
+    # ── Step 1: 언어 검출 ──────────────────────────────────────────────
+    - name: Detect languages
+      id: detect
       shell: bash
       run: |
-        if [ ! -f package.json ]; then
-          echo "::error::package.json 부재 — phase 1 TDD 게이트는 node 프로젝트 한정. 비-node 프로젝트는 본 workflow 제거 또는 후속 phase 대기." >&2
-          exit 1
+        HAS_NODE=false
+        HAS_PYTHON=false
+        HAS_RUST=false
+        HAS_GO=false
+        [ -f package.json ] && HAS_NODE=true
+        if [ -f pyproject.toml ] || [ -f setup.py ] || [ -f setup.cfg ] \
+           || ls requirements*.txt 2>/dev/null | grep -q .; then
+          HAS_PYTHON=true
         fi
-        if [ -z "$(node -e "const p=require('./package.json'); process.stdout.write(p.scripts && p.scripts.test || '')" 2>/dev/null)" ]; then
-          echo "::error::package.json scripts.test 미정의 — TDD 게이트가 강제할 테스트 명령 부재. scripts.test 정의 후 재시도." >&2
+        [ -f Cargo.toml ] && HAS_RUST=true
+        [ -f go.mod ] && HAS_GO=true
+        echo "has_node=$HAS_NODE" >> "$GITHUB_OUTPUT"
+        echo "has_python=$HAS_PYTHON" >> "$GITHUB_OUTPUT"
+        echo "has_rust=$HAS_RUST" >> "$GITHUB_OUTPUT"
+        echo "has_go=$HAS_GO" >> "$GITHUB_OUTPUT"
+        echo "[tdd-gate] detect: node=$HAS_NODE python=$HAS_PYTHON rust=$HAS_RUST go=$HAS_GO"
+        if [ "$HAS_NODE" = "false" ] && [ "$HAS_PYTHON" = "false" ] \
+           && [ "$HAS_RUST" = "false" ] && [ "$HAS_GO" = "false" ]; then
+          echo "::error::지원 언어 검출 안 됨 (node/python/rust/go). 다음 중 하나 필요: package.json / pyproject.toml / setup.py / setup.cfg / requirements*.txt / Cargo.toml / go.mod. 비-지원 언어는 workflow 제거 또는 후속 phase 대기." >&2
           exit 1
         fi
 
-    - name: Detect package manager
+    # ── Step 2: Node.js block ─────────────────────────────────────────
+    - name: Detect package manager (node)
+      if: steps.detect.outputs.has_node == 'true'
       id: pm
       shell: bash
       run: |
@@ -36,25 +61,35 @@ runs:
         else
           echo "pm=npm" >> "$GITHUB_OUTPUT"
         fi
-        echo "[tdd-gate] package manager: $(cat "$GITHUB_OUTPUT" | grep ^pm= | tail -1)"
+
+    - name: Verify scripts.test (node)
+      if: steps.detect.outputs.has_node == 'true'
+      shell: bash
+      run: |
+        if [ -z "$(node -e "const p=require('./package.json'); process.stdout.write(p.scripts && p.scripts.test || '')" 2>/dev/null)" ]; then
+          echo "::error::package.json scripts.test 미정의 — node 테스트 명령 부재. monorepo 면 root scripts.test 에 위임 명령 박을 것 (예: npm workspaces = \"npm test --workspaces --if-present\")." >&2
+          exit 1
+        fi
 
     - name: Setup pnpm
-      if: steps.pm.outputs.pm == 'pnpm'
+      if: steps.detect.outputs.has_node == 'true' && steps.pm.outputs.pm == 'pnpm'
       uses: pnpm/action-setup@v3
       with:
         version: 9
 
     - name: Setup Bun
-      if: steps.pm.outputs.pm == 'bun'
+      if: steps.detect.outputs.has_node == 'true' && steps.pm.outputs.pm == 'bun'
       uses: oven-sh/setup-bun@v2
 
     - name: Setup Node.js
+      if: steps.detect.outputs.has_node == 'true'
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
         cache: ${{ steps.pm.outputs.pm == 'bun' && '' || steps.pm.outputs.pm }}
 
-    - name: Install dependencies
+    - name: Install node dependencies
+      if: steps.detect.outputs.has_node == 'true'
       shell: bash
       run: |
         case "${{ steps.pm.outputs.pm }}" in
@@ -64,7 +99,8 @@ runs:
           *)    npm ci ;;
         esac
 
-    - name: Run tests
+    - name: Run node tests
+      if: steps.detect.outputs.has_node == 'true'
       shell: bash
       run: |
         case "${{ steps.pm.outputs.pm }}" in
@@ -73,3 +109,60 @@ runs:
           bun)  bun test ;;
           *)    npm test ;;
         esac
+
+    # ── Step 3: Python block ──────────────────────────────────────────
+    - name: Setup Python
+      if: steps.detect.outputs.has_python == 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: 'pip'
+
+    - name: Install python dependencies
+      if: steps.detect.outputs.has_python == 'true'
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        # 프로젝트 자체 install — pyproject.toml / setup.py 우선
+        if [ -f pyproject.toml ] || [ -f setup.py ]; then
+          pip install -e . 2>/dev/null || pip install . 2>/dev/null || echo "[tdd-gate] project install skip"
+        fi
+        # requirements*.txt 모두 install
+        for req in requirements*.txt; do
+          [ -f "$req" ] && pip install -r "$req"
+        done
+        # pytest 미설치 시 보조 install (unittest 폴백 케이스도 pytest 가 unittest 잘 검출)
+        python -c "import pytest" 2>/dev/null || pip install pytest
+
+    - name: Run python tests
+      if: steps.detect.outputs.has_python == 'true'
+      shell: bash
+      run: |
+        # pytest 우선 — tests/ 또는 test/ 자동 검출. 둘 다 없으면 cwd 전체 discover.
+        # pytest 가 unittest 테스트도 자동 검출 (TestCase 상속 클래스) → unittest 프로젝트도 cover.
+        if [ -d tests ] || [ -d test ]; then
+          pytest
+        else
+          pytest . || python -m unittest discover
+        fi
+
+    # ── Step 4: Rust block ────────────────────────────────────────────
+    - name: Run rust tests
+      if: steps.detect.outputs.has_rust == 'true'
+      shell: bash
+      run: |
+        # ubuntu-latest 에 rustc/cargo 기본 포함. toolchain pin 필요 시 사용자 workflow 에서 추가.
+        cargo test --all --verbose
+
+    # ── Step 5: Go block ──────────────────────────────────────────────
+    - name: Setup Go
+      if: steps.detect.outputs.has_go == 'true'
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: true
+
+    - name: Run go tests
+      if: steps.detect.outputs.has_go == 'true'
+      shell: bash
+      run: go test ./...
