@@ -123,7 +123,7 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 [`PROGRESS.md`](PROGRESS.md) §TODO 참조. 핵심 후보:
 
 - Plugin 배포 dry-run — 플러그인 공존 검증
-- 후속 skill `/ux` (designer + design-critic, Pencil MCP 의존) — `commands/` 카테고리 확장 후보
+- 후속 skill `/ux` (designer 1 시안 + 사용자 직접 PICK, Pencil 캔버스 또는 `design-variants/<screen>-v<N>.html`) — `commands/` 카테고리 확장 후보
 
 ## Skill 목록 (`commands/`, 9개)
 

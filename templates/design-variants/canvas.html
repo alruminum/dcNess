@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>dcness design canvas</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; font-family: system-ui, sans-serif; }
+    .canvas { cursor: grab; user-select: none; }
+  </style>
+</head>
+<body>
+  <!--
+    designer 책임:
+    1. 신규 화면 시안 추가 시 이 파일에 한 줄만 박는다 — 좌표 X (canvas.js auto-layout):
+         <iframe data-frame-id="<screen-id>" src="<screen-id>-v<N>.html"></iframe>
+       사용자가 위치 명시 요청 시만 data-pos="<col>,<row>" 박음.
+    2. viewport 다른 frame:
+         <iframe data-frame-id="..." data-viewport="desktop" src="..."></iframe>
+    3. 화살표는 optional — 사용자 명시 요청 시만 추가:
+         <svg class="flow-arrows">
+           <path data-from="login" data-to="payment-confirm" data-label="로그인 후"/>
+         </svg>
+  -->
+  <div class="canvas">
+    <!-- 시안 iframe 들 — designer 가 추가 -->
+
+    <!-- 화살표 (optional) -->
+    <!--
+    <svg class="flow-arrows">
+      <path data-from="" data-to="" data-label=""/>
+    </svg>
+    -->
+  </div>
+
+  <script defer src="_lib/canvas.js"></script>
+  <script defer src="_lib/show-ids.js"></script>
+</body>
+</html>

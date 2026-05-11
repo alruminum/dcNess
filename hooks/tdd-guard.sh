@@ -61,6 +61,13 @@ case "$FILE_PATH" in
   */layout.tsx|*/layout.ts|*/page.tsx|*/page.ts|*/loading.tsx|*/error.tsx|*/not-found.tsx|*/globals.css) exit 0 ;;
 esac
 
+# 자동 skip — plug-in 시드 boilerplate / 디자인 시안 폴더
+# templates/ = dcness self repo 의 사용자 프로젝트 배포용 시드 (cp 후 활성화)
+# design-variants/ = 활성화 프로젝트의 디자인 시안 폴더 (UI prototype, production 테스트 의무 X)
+case "$FILE_PATH" in
+  */templates/*|*/design-variants/*) exit 0 ;;
+esac
+
 # TS/JS 한정 — 그 외 silent skip
 case "$FILE_PATH" in
   *.ts|*.tsx|*.js|*.jsx) ;;

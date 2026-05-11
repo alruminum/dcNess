@@ -358,6 +358,62 @@ done
 
 이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.8 이 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 Step 2.8 발화. 단 시드는 *부재 시만* 이라 기존 docs 가 있으면 skip — 안전.
 
+### Step 2.8.5 — design-variants 시드 (HTML 흐름 디자인 미리보기)
+
+designer 가 Pencil 미연동 환경에서 `.html` fallback 으로 시안을 만들 때 사용하는 shared script + canvas 템플릿. *부재할 때만* 깔리며 (멱등), 이미 존재하면 skip.
+
+배포 대상:
+- `design-variants/_lib/show-ids.js` — Show IDs 토글 + URL hash highlight (84줄, 모든 .html 시안이 import)
+- `design-variants/_lib/canvas.js` — canvas.html 의 pan/zoom + iframe auto-layout + 직선 화살표 (137줄)
+- `design-variants/canvas.html` — 모든 화면 시안 통합 view 템플릿 (designer 가 신규 화면 추가 시 `<iframe>` 한 줄만 박음)
+
+본 Step 은 **bash 자동화 X — 메인 Claude 가 절차 따라 사용자 응답 받고 진행**. UI 없는 프로젝트면 Step 2.7 의 *UI 프로젝트 여부* 판정 결과 따라 skip 가능.
+
+#### 1. 프로젝트 design-variants 디렉토리 확인
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+mkdir -p "$PROJECT_ROOT/design-variants/_lib"
+```
+
+#### 2. 부재 파일 시드 (3개 각각 멱등)
+
+```
+[dcness] design-variants/ 가 비어있습니다. designer 의 .html fallback 시안 인프라를 깔까요? (Y/n)
+  - design-variants/_lib/show-ids.js (Show IDs 토글)
+  - design-variants/_lib/canvas.js (pan/zoom + 화살표)
+  - design-variants/canvas.html (통합 view 템플릿)
+```
+
+```bash
+PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+
+for FILE in _lib/show-ids.js _lib/canvas.js canvas.html; do
+  TARGET="$PROJECT_ROOT/design-variants/$FILE"
+  SOURCE="$PLUGIN_ROOT/templates/design-variants/$FILE"
+  if [ -f "$TARGET" ]; then
+    echo "[dcness] design-variants/$FILE 이미 존재 — skip"
+  else
+    cp "$SOURCE" "$TARGET"
+    echo "[dcness] design-variants/$FILE 시드 완료"
+  fi
+done
+```
+
+#### 3. 멱등 보장
+
+- 두 번 실행해도 추가 변경 없음 — 파일 있으면 skip.
+- 사용자가 \"n\" 답변 시 다음 호출 때 다시 묻되 빠르게 \"n\" 가능.
+
+#### 4. 출처 / 갱신 의무
+
+본 Step 이 cp 하는 시드는 plug-in `templates/design-variants/{_lib/show-ids.js, _lib/canvas.js, canvas.html}` 가 SSOT. 시드 갱신 시 본 디렉토리에서 갱신 — 사용자 repo 의 기존 파일은 cp 대상 아니므로 자동 반영 안 됨 (사용자 작업물 보호 원칙). 사용자가 shared script 업데이트 받고 싶으면 `design-variants/_lib/*.js` 직접 삭제 후 `/init-dcness` 재실행.
+
+#### 5. 기존 활성화 프로젝트 — re-run 안내
+
+이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.8.5 가 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 Step 2.8.5 발화. 시드는 *부재 시만* 이라 안전.
+
 ### Step 2.9 — TDD Guard (PreToolUse hook 자동 발화)
 
 agent (메인 Claude / engineer / 등) 가 `Edit` / `Write` 시도 시 **PreToolUse hook 이 실행** → 대상 src 파일에 매칭 test 파일이 없으면 deny + 한국어 안내. 진짜 TDD 강제 — 코드 작성 *전* 테스트 먼저.
@@ -546,6 +602,12 @@ design.md SSOT (Step 2.7 완료 시):
 초기 docs 폼 시드 (Step 2.8 완료 시):
 - docs/prd.md / architecture.md / adr.md placeholder — 기획 논의 후 채워넣는 용도
 - 부재 시만 시드 (멱등) — 기존 파일은 보호
+
+design-variants 시드 (Step 2.8.5 — designer .html fallback 인프라):
+- design-variants/_lib/{show-ids,canvas}.js + canvas.html
+- Pencil 미연동 환경에서 designer 가 .html 시안 만들 때 사용
+- 사용자가 브라우저로 design-variants/canvas.html 더블클릭 = 모든 시안 통합 view (pan/zoom + 화살표)
+- 부재 시만 시드 (멱등)
 
 TDD Guard (Step 2.9 — PreToolUse hook):
 - hooks/tdd-guard.sh 자동 발화 (plug-in hook 등록)
