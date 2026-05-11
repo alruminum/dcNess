@@ -1,6 +1,6 @@
 ---
 name: quick
-description: 작은 버그픽스·코드 정리를 한 줄로 받아 light path (qa → architect LIGHT_PLAN → engineer simple → code-validator (bugfix scope 자동 분기) → pr-reviewer) 자동 진행하는 스킬. 사용자가 "간단히 해줘", "작은 수정", "한 줄 버그", "/quick", "퀵", "바로 고쳐줘", "오타 고쳐", "간단한 수정" 등을 말할 때 반드시 이 스킬을 사용한다. 분류 결과가 FUNCTIONAL_BUG / CLEANUP 면 자동 진행, 그 외 (DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) 면 사용자 결정.
+description: 작은 버그픽스·코드 정리를 한 줄로 받아 light path (qa → module-architect (버그픽스) → engineer simple → code-validator (bugfix scope 자동 분기) → pr-reviewer) 자동 진행하는 스킬. 사용자가 "간단히 해줘", "작은 수정", "한 줄 버그", "/quick", "퀵", "바로 고쳐줘", "오타 고쳐", "간단한 수정" 등을 말할 때 반드시 이 스킬을 사용한다. 분류 결과가 FUNCTIONAL_BUG / CLEANUP 면 자동 진행, 그 외 (DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) 면 사용자 결정.
 ---
 
 # Quick Skill

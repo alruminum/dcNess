@@ -8,7 +8,7 @@
 
 ## 1. Agent 결론 → 다음 agent 결정 가이드 (자연어)
 
-> agent 14 종 (architect 는 mode 펼침, validator 는 code-validator + architecture-validator 두 에이전트로 평탄화). agent 가 자기 prose 에 결론 + 권장 다음 단계를 자유롭게 박는다. 메인 Claude 는 그 prose 와 본 가이드를 비교해 다음 호출을 결정한다. 본 가이드는 형식 강제가 아니라 *판단 보조*. 가능한 결론 표현은 agent 별로 다양 — 의미만 맞으면 OK ([`dcness-rules.md`](dcness-rules.md) §1 원칙 2 자율 정합).
+> agent 14 종 (architect 는 system-architect + module-architect 두 에이전트로 평탄화, validator 는 code-validator + architecture-validator 두 에이전트로 평탄화). agent 가 자기 prose 에 결론 + 권장 다음 단계를 자유롭게 박는다. 메인 Claude 는 그 prose 와 본 가이드를 비교해 다음 호출을 결정한다. 본 가이드는 형식 강제가 아니라 *판단 보조*. 가능한 결론 표현은 agent 별로 다양 — 의미만 맞으면 OK ([`dcness-rules.md`](dcness-rules.md) §1 원칙 2 자율 정합).
 
 > **이슈 #280 정착 후 작동 모델**:
 > - agent 는 prose 마지막 단락에 *어떤 결과로 끝났는지 + 메인이 누구를 부르는 게 적절한지* 자기 언어로 명시.
@@ -35,24 +35,30 @@ PRD 심사. 두 가지 결과:
 
 UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 (외부 validator 부재 — 자가검증). 다음 4 결과:
 
-- **UX Flow 신규 완성 / 변경분 patch 완료 + self-check PASS** → architect SYSTEM_DESIGN.
+- **UX Flow 신규 완성 / 변경분 patch 완료 + self-check PASS** → system-architect.
 - **UI refine 완료 (기존 디자인 다듬기)** → 사용자 승인 후 designer SCREEN.
 - **Flow 정의 불가 (PRD 모순 등) 또는 self-check 2 cycle 후에도 FAIL** → escalate (사용자 위임).
 
-### 1.4 architect (6 mode hub)
+### 1.4 system-architect
 
-mode 별 처리 흐름:
+전체 시스템 설계 hub — 도메인 모델 + 모듈 구조 + 기술 스택 + Story → impl 매핑 표 + Spike Gate. 기술 에픽 (기술 부채/인프라/리팩토링) 도 동일 모드로 처리 (호출자 prompt 에 "기술 에픽" 명시 시 추가로 epic+story 이슈 등록).
 
-- **SYSTEM_DESIGN / TECH_EPIC** — 시스템 설계 산출 (`## impl 목차` 표 포함) + 5 항목 self-check 통과. 완료 시 architecture-validator (Placeholder Leak + Spike Gate 외부 검증).
-- **MODULE_PLAN** — impl 파일 detail 작성. 다음 단계는 컨텍스트:
-  - feature-build-loop 안 = impl 목차 다음 행 있으면 MODULE_PLAN 재호출, 마지막 행이면 loop 종료 → impl-task-loop 진입.
-  - impl-task-loop fallback = test-engineer.
-  - SPEC GAP 발견 시 architect SPEC_GAP, 기술 제약 충돌 시 escalate.
-- **SPEC_GAP** — gap 해소 시 engineer 재진입. PRD 변경 필요면 product-planner. 기술 제약 충돌이면 escalate.
-- **LIGHT_PLAN** — 가벼운 plan 완료 시 engineer (simple).
-- **DOCS_SYNC** — 문서 정합 동기화 완료 시 후속 없음. SPEC GAP 발견 시 architect SPEC_GAP, 기술 제약 충돌 시 escalate.
+- **READY** — 시스템 설계 산출 (`docs/architecture.md` + `## impl 목차` 표) 완료 → architecture-validator (Placeholder Leak + Spike Gate 외부 검증).
+- **ESCALATE** — 기술 제약 충돌 / Spike FAIL / PRD 위반 → 사용자 또는 product-planner 위임.
 
-> Note: 옛 TASK_DECOMPOSE mode 폐기 (issue #247). 가치 4 자리 (Story → impl 매핑 / NN-slug 명명 / 의존 순서 / outline) 는 SYSTEM_DESIGN 의 `## impl 목차` 표로 흡수. impl 파일 본문 detail 은 MODULE_PLAN × N 가 채움.
+### 1.4b module-architect
+
+모듈/태스크 단위 설계 hub. 호출자 컨텍스트 (신규 story / 버그픽스 / 기존 impl 보강 / 문서 동기화) 에 따라 분량·범위 자율 판단.
+
+- **READY** — impl 설계문서 작성/수정 완료. 다음 단계는 컨텍스트:
+  - feature-build-loop 안 = impl 목차 다음 행 있으면 module-architect 재호출, 마지막 행이면 loop 종료 → impl-task-loop 진입
+  - impl-task-loop fallback = test-engineer
+  - 버그픽스 케이스 = engineer (simple)
+  - 보강 케이스 = engineer 재진입
+  - 문서 동기화 케이스 = 후속 없음
+- **ESCALATE** — PRD 변경 필요 (product-planner) / 기술 제약 충돌 (사용자) / 권한·도구 부족 (사용자).
+
+> Note: 이전 6 mode (SYSTEM_DESIGN / MODULE_PLAN / SPEC_GAP / LIGHT_PLAN / DOCS_SYNC / TECH_EPIC) → 2 agent 통합. 이전 mode 별 결론 enum (SYSTEM_DESIGN_READY / READY_FOR_IMPL / LIGHT_PLAN_READY / SPEC_GAP_RESOLVED / DOCS_SYNCED / TECH_CONSTRAINT_CONFLICT / PRODUCT_PLANNER_ESCALATION_NEEDED) → 단순 `READY` / `ESCALATE` 2종. 옛 TASK_DECOMPOSE 의 가치 (Story → impl 매핑 / NN-slug 명명 / 의존 순서) 는 system-architect 의 `## impl 목차` 표로 흡수. impl 본문 detail 은 module-architect × N 가 채움.
 
 ### 1.5 engineer
 
@@ -60,7 +66,7 @@ mode 별 처리 흐름:
 
 - **구현 완료 (기능 검증 가능)** → code-validator (impl 파일 경로로 full/bugfix scope 자동 분기).
 - **부분 구현 (분량 초과로 split 필요)** → engineer 재호출 (split 한도 3, 새 context window — DCN-30-34).
-- **SPEC GAP 발견 (스펙 모호 / 부족)** → architect SPEC_GAP (attempt < 2). 한도 초과면 escalate.
+- **SPEC GAP 발견 (스펙 모호 / 부족)** → module-architect (보강 케이스, attempt < 2). 한도 초과면 escalate.
 - **테스트 실패 (재구현 필요)** → engineer 재시도 (attempt < 3). 한도 초과면 escalate.
 - **POLISH 단계 마무리** → pr-reviewer 재호출.
 - **escalate** (구현 불가 / 한도 초과) → 사용자 위임.
@@ -70,7 +76,7 @@ mode 별 처리 흐름:
 테스트 코드 선작성 (TDD). 결과:
 
 - **테스트 준비 완료** → engineer (attempt 0 진입).
-- **스펙 부족해 테스트 작성 불가** → architect SPEC_GAP.
+- **스펙 부족해 테스트 작성 불가** → module-architect (보강 케이스).
 
 ### 1.7 designer
 
@@ -93,20 +99,20 @@ impl 계획 ↔ 구현 코드 일치 검증. impl 파일 경로 (`docs/impl/NN-*
 
 - **PASS** → pr-reviewer.
 - **FAIL** → engineer 재시도 (attempt < 3).
-- **ESCALATE** → impl 계획 + 대체 소스 모두 부재 / 재시도 한도 초과. 본문 사유 명시 → 메인이 사유 보고 architect SPEC_GAP 호출 또는 사용자 위임.
+- **ESCALATE** → impl 계획 + 대체 소스 모두 부재 / 재시도 한도 초과. 본문 사유 명시 → 메인이 사유 보고 module-architect (보강 케이스) 호출 또는 사용자 위임.
 
 ### 1.10 architecture-validator
 
-architect SYSTEM_DESIGN 산출물의 자가검증 사각지대 (Placeholder Leak + Spike Gate 2 항목) 외부 reviewer. 결론 3종:
+system-architect 산출물의 자가검증 사각지대 (Placeholder Leak + Spike Gate 2 항목) 외부 reviewer. 결론 3종:
 
-- **PASS** → architect MODULE_PLAN × N (impl 목차 첫 행부터 순차).
-- **FAIL** → architect SYSTEM_DESIGN 재진입 (cycle 한도 2). 본문에 placeholder 위치 / Must 기능 직결 / spike 권고 명시.
-- **ESCALATE** → architect 재설계 1 cycle 후에도 동일 FAIL → 사용자 위임.
+- **PASS** → module-architect × N (impl 목차 첫 행부터 순차).
+- **FAIL** → system-architect 재진입 (cycle 한도 2). 본문에 placeholder 위치 / Must 기능 직결 / spike 권고 명시.
+- **ESCALATE** → system-architect 재설계 1 cycle 후에도 동일 FAIL → 사용자 위임.
 
 > Note: 옛 validator 5 모드 (CODE/DESIGN/UX/BUGFIX/PLAN) 폐기 (validator 단순화).
 > - PLAN_VALIDATION 은 컨베이어 task_list 에 *원래부터* 빠져있던 drift (issue #247) — 정합 회복.
 > - UX_VALIDATION 은 ux-architect self-check 흡수 (5 카테고리, FAIL 시 재고려).
-> - DESIGN_VALIDATION 의 자가검증 가능 항목 (인터페이스/에러/엣지케이스/리스크/성능) 은 architect SYSTEM_DESIGN self-check 흡수. *자가검증 사각지대* (Placeholder Leak + Spike Gate) 만 architecture-validator 가 외부 검증.
+> - DESIGN_VALIDATION 의 자가검증 가능 항목 (인터페이스/에러/엣지케이스/리스크/성능) 은 system-architect self-check 흡수. *자가검증 사각지대* (Placeholder Leak + Spike Gate) 만 architecture-validator 가 외부 검증.
 > - BUGFIX_VALIDATION 은 code-validator 의 bugfix scope (impl 파일 경로 `docs/bugfix/`) 로 통합.
 
 ### 1.11 pr-reviewer
@@ -120,7 +126,7 @@ merge 직전 코드 품질 심사:
 
 이슈 분류 hub. 5 결과:
 
-- **기능 버그** → architect LIGHT_PLAN.
+- **기능 버그** → module-architect (버그픽스 케이스).
 - **간단 cleanup** → engineer 직접 (light).
 - **디자인 이슈** → designer 또는 ux-architect (REFINE).
 - **알려진 이슈** → 후속 없음.
@@ -142,14 +148,14 @@ merge 직전 코드 품질 심사:
 | 항목 | 한도 | 초과 시 |
 |---|---|---|
 | engineer attempt (TESTS_FAIL → 재시도) | 3 | `IMPLEMENTATION_ESCALATE` |
-| engineer split (IMPL_PARTIAL → 재호출, DCN-30-34) | 3 | `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — architect SYSTEM_DESIGN 재진입 권고 / impl 목차 분할 재검토) |
-| engineer SPEC_GAP_FOUND → architect.spec-gap → engineer 재진입 | 2 | `IMPLEMENTATION_ESCALATE` |
+| engineer split (IMPL_PARTIAL → 재호출, DCN-30-34) | 3 | `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — system-architect 재진입 권고 / impl 목차 분할 재검토) |
+| engineer SPEC_GAP_FOUND → module-architect (보강) → engineer 재진입 | 2 | `IMPLEMENTATION_ESCALATE` |
 | code-validator FAIL → engineer 재진입 | engineer attempt 흡수 | engineer attempt 한도 (3) 도달 시 escalate |
-| architecture-validator FAIL → architect SYSTEM_DESIGN 재진입 | 2 cycle | 사용자 위임 |
+| architecture-validator FAIL → system-architect 재진입 | 2 cycle | 사용자 위임 |
 | design THREE_WAY VARIANTS_ALL_REJECTED 라운드 | 3 | `UX_REDESIGN_SHORTLIST` (ux-architect REFINE) |
 | pr-reviewer CHANGES_REQUESTED → POLISH 라운드 | 2 | 사용자 escalate |
 | product-planner CLARITY_INSUFFICIENT 라운드 | 무제한 (사용자 응답 대기) | (해당 없음) |
-| ESCALATE 누적 (동일 fail_type) | 2 | architect SPEC_GAP 자동 호출 |
+| ESCALATE 누적 (동일 fail_type) | 2 | module-architect (보강 케이스) 자동 호출 |
 
 `.attempts.json` 형식 (예시):
 ```json
@@ -174,8 +180,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | `UX_FLOW_ESCALATE` | ux-architect | UX Flow 정의 불가 (PRD 모순 등) |
 | `DESIGN_LOOP_ESCALATE` | designer | variant 생성 불가 또는 critic 3 round 후 |
 | `SCOPE_ESCALATE` | qa | 이슈 범위가 분류 enum 5개 모두 해당 안 됨 |
-| `PRODUCT_PLANNER_ESCALATION_NEEDED` | architect.spec-gap | PRD 변경 필요 |
-| `TECH_CONSTRAINT_CONFLICT` | architect.spec-gap / docs-sync | 기술 제약 충돌 |
+| `ESCALATE` | system-architect / module-architect | 기술 제약 충돌 / PRD 변경 필요 / Spike FAIL / 권한 부족 (본문 사유 명시) |
 | `UX_REDESIGN_SHORTLIST` | design-critic | 3 round 누적 reject |
 | `CLARITY_INSUFFICIENT` | product-planner | 사용자 입력 모호 (역질문 필요) |
 
@@ -191,12 +196,13 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 `HARNESS_ONLY_AGENTS = ("engineer",)` — 메인 Claude 가 Agent 도구로 직접 호출 차단. 코드 driver (impl_driver) 경유 필수.
 
-| Agent | Mode | 직접 호출 허용 | 비고 |
+| Agent | 케이스 | 직접 호출 허용 | 비고 |
 |---|---|---|---|
-| architect | SYSTEM_DESIGN, TECH_EPIC, LIGHT_PLAN, DOCS_SYNC | ✅ | 메인 직접 |
-| architect | MODULE_PLAN, SPEC_GAP | ❌ | impl_driver / plan_driver 경유 (feature-build-loop §4.2 Step 7 의 MODULE_PLAN × N 도 컨베이어 경유) |
+| system-architect | (전체) | ✅ | 메인 직접 |
+| module-architect | 신규 story (feature-build-loop §4.2 Step 7) / 보강 (engineer SPEC_GAP_FOUND) | ❌ | impl_driver / plan_driver 경유 |
+| module-architect | 버그픽스 (qa 후) / 문서 동기화 | ✅ | 메인 직접 |
 | architecture-validator | — | ✅ | 메인 직접 |
-| code-validator | — | ❌ | impl_driver / quick-bugfix-loop 경유 (validator-CODE_VALIDATION.md / validator-BUGFIX_VALIDATION.md 위치는 prose 산출물 호환을 위해 보존) |
+| code-validator | — | ❌ | impl_driver / quick-bugfix-loop 경유 |
 | 그 외 10 agent | — | ✅ | designer, ux-architect, qa, pr-reviewer, design-critic, security-reviewer, product-planner, test-engineer, plan-reviewer 모두 메인 직접 |
 | engineer | — | ❌ | impl_driver 경유 필수 |
 
@@ -205,7 +211,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 | 에이전트 | 허용 경로 |
 |---|---|
 | engineer | `src/**` |
-| architect | `docs/**`, `backlog.md` |
+| system-architect / module-architect | `docs/**`, `backlog.md` |
 | designer | `design-variants/**`, `docs/ui-spec*` |
 | test-engineer | `src/__tests__/**`, `*.test.*`, `*.spec.*` |
 | product-planner | `docs/prd.md`, `stories.md` |

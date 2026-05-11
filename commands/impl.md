@@ -1,6 +1,6 @@
 ---
 name: impl
-description: impl task (feature-build-loop §4.2 Step 6 architect MODULE_PLAN × N 산출물) 1개를 받아 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = architect MODULE_PLAN 선두 추가) 자동 진행하는 스킬. 사용자가 "구현해줘", "/impl <task>", "이 task 구현", "impl 루프" 등을 말할 때 반드시 이 스킬을 사용한다. /product-plan 의 후속 — feature-build-loop 가 `impl/NN-*.md` 본문 detail 까지 채운 산출물의 task list 1개씩 처리. /quick 보다 무거움 (test-engineer + code-validator 포함).
+description: impl task (feature-build-loop §4.2 Step 6 module-architect × N 산출물) 1개를 받아 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = module-architect 선두 추가) 자동 진행하는 스킬. 사용자가 "구현해줘", "/impl <task>", "이 task 구현", "impl 루프" 등을 말할 때 반드시 이 스킬을 사용한다. /product-plan 의 후속 — feature-build-loop 가 `impl/NN-*.md` 본문 detail 까지 채운 산출물의 task list 1개씩 처리. /quick 보다 무거움 (test-engineer + code-validator 포함).
 ---
 
 # Impl Skill
@@ -12,7 +12,7 @@ UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (orchestration §4.4)
 ## Inputs (메인이 사용자에게 받아야 할 정보)
 - task 경로 (필수, 예: `docs/milestones/v0.2/epics/epic-01-*/impl/01-*.md`)
 - 이슈 번호 (있으면)
-- attempt 한도 확인 (engineer 3 / POLISH 2 / SPEC_GAP cycle 2 — 기본값)
+- attempt 한도 확인 (engineer 3 / POLISH 2 / module-architect 보강 cycle 2 — 기본값)
 
 ## 비대상 (다른 skill 추천)
 - 한 줄 / 작은 버그 → `/quick` (`quick-bugfix-loop`)
@@ -21,9 +21,9 @@ UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (orchestration §4.4)
 - task 부재 (계획 X) → `/quick` 또는 `/product-plan`
 
 ## 진입 모드 — default vs fallback (위치 도장)
-- task 경로 매치 + 정식 위치 (`docs/milestones/v\d+/epics/epic-\d+-*/impl/\d+-*.md`) 파일 존재 → **default**: test-engineer 직진 (architect MODULE_PLAN skip).
-- 매치 실패 / 파일 부재 → **fallback**: architect MODULE_PLAN 1번 호출 후 test-engineer 진입.
-- 근거: feature-build-loop §4.2 의 Step 7 (MODULE_PLAN × N) 이 정식 위치 impl 파일 본문 detail 까지 채움. 정식 경로 + 파일 존재 = 통과 보장. (옛 `MODULE_PLAN_READY` 마커 grep 룰 폐기 — 위치 자체가 도장.)
+- task 경로 매치 + 정식 위치 (`docs/milestones/v\d+/epics/epic-\d+-*/impl/\d+-*.md`) 파일 존재 → **default**: test-engineer 직진 (module-architect skip).
+- 매치 실패 / 파일 부재 → **fallback**: module-architect 1번 호출 후 test-engineer 진입.
+- 근거: feature-build-loop §4.2 의 Step 7 (module-architect × N) 이 정식 위치 impl 파일 본문 detail 까지 채움. 정식 경로 + 파일 존재 = 통과 보장. (옛 `MODULE_PLAN_READY` 마커 grep 룰 폐기 — 위치 자체가 도장.)
 
 ## 후속 라우팅
 - 본 loop clean → 자동 commit/PR (branch prefix = orchestration §4.3 decision rule: feat/chore/fix)

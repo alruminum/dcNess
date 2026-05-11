@@ -58,7 +58,7 @@ traces = read_trace(sid, rid)
 
 ```
 engineer / IMPL: PASS=12 / REDO_SAME=2 / REDO_BACK=5 (redo 비율 37%)
-architect / MODULE_PLAN: PASS=8 / REDO_BACK=1 (redo 비율 11%)
+module-architect: PASS=8 / REDO_BACK=1 (redo 비율 11%)
 code-validator: PASS=10 (redo 비율 0%)
 ```
 
@@ -95,13 +95,13 @@ trace 패턴:
 
 ### Layer 1 후보 (현 프로젝트 즉시 적용)
 
-다음 architect MODULE_PLAN sub spawn 시 1차 prompt 끝에 추가:
+다음 module-architect sub spawn 시 1차 prompt 끝에 추가:
 > "이 프로젝트에서 module plan 모호로 인한 engineer redo 비율 37%. 인터페이스 시그니처 + 의사코드 명시 의무."
 
 ### Layer 2 후보 (인프라 환류 — 검증 후)
 
-위 Layer 1 적용이 N 회 (또는 N 프로젝트) 검증되면 `agents/architect/module-plan.md` system prompt 영구 patch 제안:
-> "MODULE_PLAN 산출 시 engineer 가 즉시 구현 가능한 수준 — 인터페이스 시그니처 (타입) + 핵심 로직 의사코드 강제."
+위 Layer 1 적용이 N 회 (또는 N 프로젝트) 검증되면 `agents/module-architect.md` system prompt 영구 patch 제안:
+> "module-architect 산출 시 engineer 가 즉시 구현 가능한 수준 — 인터페이스 시그니처 (타입) + 핵심 로직 의사코드 강제."
 
 → PR 작성 후 머지.
 ```
@@ -121,7 +121,7 @@ trace 패턴:
 
 ```
 사용자: /audit-redo
-메인: (현재 run 분석) → 리포트 그대로 출력 → "Layer 1 후보 1개 (architect MODULE_PLAN 보강) 적용 권고. Layer 2 는 다음 프로젝트 검증 후."
+메인: (현재 run 분석) → 리포트 그대로 출력 → "Layer 1 후보 1개 (module-architect 보강) 적용 권고. Layer 2 는 다음 프로젝트 검증 후."
 
 사용자: /audit-redo --all-runs
 메인: (본 sid 의 모든 run 누적) → 더 강한 패턴 → Layer 2 patch 제안 N 개

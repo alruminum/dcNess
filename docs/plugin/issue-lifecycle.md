@@ -55,7 +55,7 @@ epic issue ─┬─ story issue ── (task: PR 기반, 이슈 없음)
 GitHub native sub-issue API 로 epic 과 story 를 부모-자식 관계로 연결. 본문 체크리스트 (`- [ ] #M — Story N: …`) 만으로는 `sub_issues_summary.total: 0` 이라 GitHub UI 의 progress bar / sub-issues 패널이 작동하지 않음.
 
 - **시점**: §1.3 의 story 이슈 N 개 *전부* 생성 완료 후 일괄 호출.
-- **호출 주체**: 메인 Claude — product-planner / architect tech-epic 등 agent 종료 직후 메인이 prose 에서 epic 번호 + story id 목록을 받아 호출. agent 자체는 `gh api` 호출 X (권한 최소화 — agent tools 에 Bash 추가하지 않음).
+- **호출 주체**: 메인 Claude — product-planner / system-architect (기술 에픽 케이스) 등 agent 종료 직후 메인이 prose 에서 epic 번호 + story id 목록을 받아 호출. agent 자체는 `gh api` 호출 X (권한 최소화 — agent tools 에 Bash 추가하지 않음).
 - **API**: 현재 `mcp__github__*` 툴셋엔 sub-issue 추가 도구 없음 — `gh api` 직접 호출 필수. 장래 MCP 툴 추가되면 본 § 갱신.
 
   ```bash
@@ -180,7 +180,7 @@ gh api repos/{owner}/{repo}/milestones --jq '.[] | {number, title}'
 
 ## 6. mid-flow 누락 차단 (pre-flight gate)
 
-`/impl` / `/impl-loop` / `architect SYSTEM_DESIGN` (impl 목차 산출 시) / `architect MODULE_PLAN × N` (feature-build-loop §4.2 Step 7) 진입 시 부모 epic stories.md 상단 매치 강제:
+`/impl` / `/impl-loop` / `system-architect` (impl 목차 산출 시) / `module-architect × N` (feature-build-loop §4.2 Step 7) 진입 시 부모 epic stories.md 상단 매치 강제:
 
 - `**GitHub Epic Issue:** [#\d+]` (정식 등록), 또는
 - `**GitHub Epic Issue:** 미등록 (사유: …)` (§3 허용 모드)
@@ -194,6 +194,6 @@ story 이슈 부재 시 동일 패턴 (Story N 헤더 직하 `**GitHub Issue:** 
 - 시퀀스 / 핸드오프: [`orchestration.md`](orchestration.md)
 - loop spec (8 loop 행별 풀스펙): [`orchestration.md`](orchestration.md) §4
 - product-planner: [`../../agents/product-planner.md`](../../agents/product-planner.md) §PRODUCT_PLAN
-- system-design (impl 목차 표 SSOT): [`../../agents/architect/system-design.md`](../../agents/architect/system-design.md)
-- module-plan (impl 본문 detail per task): [`../../agents/architect/module-plan.md`](../../agents/architect/module-plan.md)
+- system-architect (impl 목차 표 SSOT): [`../../agents/system-architect.md`](../../agents/system-architect.md)
+- module-architect (impl 본문 detail per task): [`../../agents/module-architect.md`](../../agents/module-architect.md)
 - engineer: [`../../agents/engineer.md`](../../agents/engineer.md) §1 task = 1 PR

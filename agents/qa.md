@@ -18,7 +18,7 @@ model: sonnet
 
 prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
-- **기능 버그 발견** → architect LIGHT_PLAN 호출. "FUNCTIONAL_BUG — architect.light-plan 권고".
+- **기능 버그 발견** → module-architect 호출 (버그픽스 케이스). "FUNCTIONAL_BUG — module-architect 권고".
 - **간단 정리 작업** → engineer 직접 (light) 호출. "CLEANUP — engineer 단독 권고".
 - **디자인 이슈** → designer 또는 ux-architect (REFINE) 호출. "DESIGN_ISSUE".
 - **이미 알려진 이슈** → 후속 없음. "KNOWN_ISSUE".
@@ -66,8 +66,8 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
 | qa 분류 | 경로 | 다음 행동 |
 |---|---|---|
-| FUNCTIONAL_BUG | impl 루프 | architect LIGHT_PLAN → depth 별 루프 (SPEC_GAP 발생 시 architect inline) |
-| CLEANUP | impl 루프 | architect LIGHT_PLAN → simple depth. 코드 제거/정리만 |
+| FUNCTIONAL_BUG | impl 루프 | module-architect (버그픽스) → depth 별 루프 (SPEC_GAP 발생 시 module-architect 보강 inline) |
+| CLEANUP | impl 루프 | module-architect (버그픽스) → simple depth. 코드 제거/정리만 |
 | DESIGN_ISSUE | ux 스킬 | designer → DESIGN_HANDOFF → impl |
 | SCOPE_ESCALATE | 유저 보고 | product-planner 라우팅 |
 | KNOWN_ISSUE | 유저 보고 | 추가 정보 수집 후 재분석 |
@@ -106,7 +106,7 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
 ## 폐기된 분류 어휘
 
-- `SPEC_ISSUE` 폐기 — 코드 관련 버그는 모두 FUNCTIONAL_BUG. 구현 중 스펙 부족 발견 시 engineer 가 SPEC_GAP_FOUND emit → architect inline 보강.
+- `SPEC_ISSUE` 폐기 — 코드 관련 버그는 모두 FUNCTIONAL_BUG. 구현 중 스펙 부족 발견 시 engineer 가 SPEC_GAP_FOUND emit → module-architect (보강 케이스) inline.
 - `BACKLOG` 폐기 — 기능 요청·저우선 이슈는 SCOPE_ESCALATE.
 
 ## CRITICAL 발견 시
