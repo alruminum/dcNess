@@ -358,33 +358,55 @@ done
 
 이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.8 이 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 Step 2.8 발화. 단 시드는 *부재 시만* 이라 기존 docs 가 있으면 skip — 안전.
 
-### Step 2.9 — TDD 게이트 (옵션, node 프로젝트 한정)
+### Step 2.9 — TDD 게이트 (옵션, polyglot universal)
 
 GitHub Actions CI 에서 *PR 머지 전 풀 테스트 스위트 PASS 강제*. branch protection 의 `required status check` 에 등록되면 진짜 mechanical wall (admin 외 우회 불가) 가 됨. 산업 표준 3 단 enforcement (로컬 incremental → CI 풀 → branch protection) 중 *CI 풀* 단.
 
 > **배경 (#320 #1)**: jajang Epic 12 task 03 에서 plan §3.5 가 `useAuthStore 기존 (변경 X)` 명시했는데 engineer 가 selector 패턴으로 바꿔서 *기존* 26 테스트 깨짐. engineer 의 자체 테스트는 *새 테스트 파일만* 돌리고 풀 스위트 미실행 → cascade 발견 지연. CI 풀 테스트 게이트 + branch protection 으로 mechanical 차단.
 
-#### 1. node 프로젝트 검출
+> **phase 2 — polyglot universal**: composite action 이 4 언어 (node / python / rust / go) 자동 검출. 검출된 *모든* 언어 테스트 PASS 해야 게이트 PASS. jajang (mobile=js/jest + api=python/pytest) 같은 polyglot 모노레포도 추가 설정 없이 cover.
+
+#### 1. 지원 언어 검출
+
+다음 마커 중 1+ 매치 시 TDD 게이트 적용 가능:
+
+| 언어 | 검출 마커 | 테스트 명령 |
+|---|---|---|
+| node | `package.json` | `<pm> test` (pm = pnpm/yarn/bun/npm 자동) |
+| python | `pyproject.toml` / `setup.py` / `setup.cfg` / `requirements*.txt` | `pytest` (unittest 자동 검출 포함) |
+| rust | `Cargo.toml` | `cargo test --all` |
+| go | `go.mod` | `go test ./...` |
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
-if [ ! -f "$PROJECT_ROOT/package.json" ]; then
-  echo "[dcness] package.json 부재 — TDD 게이트 skip (phase 1 = node 한정)"
+HAS_SUPPORTED=false
+[ -f "$PROJECT_ROOT/package.json" ] && HAS_SUPPORTED=true
+[ -f "$PROJECT_ROOT/pyproject.toml" ] || [ -f "$PROJECT_ROOT/setup.py" ] \
+  || [ -f "$PROJECT_ROOT/setup.cfg" ] \
+  || ls "$PROJECT_ROOT"/requirements*.txt 2>/dev/null | grep -q . \
+  && HAS_SUPPORTED=true
+[ -f "$PROJECT_ROOT/Cargo.toml" ] && HAS_SUPPORTED=true
+[ -f "$PROJECT_ROOT/go.mod" ] && HAS_SUPPORTED=true
+if [ "$HAS_SUPPORTED" = "false" ]; then
+  echo "[dcness] 지원 언어 (node/python/rust/go) 검출 안 됨 — TDD 게이트 skip"
   # Step 2.9 종료
 fi
 ```
 
-비-node 프로젝트 (Python / Rust / Go 등) 는 phase 2 후속. 본 단계 silent skip.
+지원 외 (Elixir / Ruby / Java / .NET / PHP / Swift 등) 는 phase 3 후속. 본 단계 silent skip.
 
 #### 2. 사용자 옵트인
 
-`package.json` 존재 시 사용자에게 묻는다.
+지원 언어 검출 시 사용자에게 묻는다.
 
 ```
 [dcness] GitHub Actions CI 에서 TDD 게이트 강제할까요?
-  - PR 마다 풀 테스트 스위트 (`<pm> test`) 자동 실행 — 1건이라도 FAIL 시 PR 머지 차단 (branch protection 필요)
-  - package manager 자동 검출 (pnpm-lock.yaml / yarn.lock / bun.lock(b) / 기본 npm)
-  - `package.json` `scripts.test` 미정의면 본 게이트 fail (테스트 명령 정의 의무)
+  - PR 마다 풀 테스트 스위트 자동 실행 — 1건이라도 FAIL 시 PR 머지 차단 (branch protection 필요)
+  - polyglot universal — node / python / rust / go 자동 검출 + 모두 실행
+  - node: package.json scripts.test 위임 (monorepo 면 root 에 `npm test --workspaces --if-present` 같은 위임 명령 박을 것)
+  - python: pyproject.toml / requirements*.txt 자동 install + pytest 실행 (tests/ 또는 test/ 자동 검출, unittest 도 pytest 가 cover)
+  - rust: cargo test --all
+  - go: go test ./...
   - 본 thin yml 1개만 사용자 repo 에 깔리고, 검증 본체는 alruminum/dcNess composite action 호출
   - 로컬에서만 테스트 돌리고 CI 강제 원치 않으면 n
 (Y/n)
@@ -443,11 +465,13 @@ CI workflow 깔린 것만으론 *PR 머지를 차단* 안 됨 — branch protect
 
 본 안내는 *출력만* — 메인 Claude 가 사용자 권한 확인 후 자동 실행할지 사용자 결정에 위임 (admin 권한 가정 위험 회피).
 
-#### 4. 한계 (phase 1)
+#### 4. 한계 (phase 2)
 
-- node 한정 — Python / Rust / Go 등 후속 phase 추가 예정.
-- 풀 스위트만 — incremental (`vitest --changed` / `jest --findRelatedTests`) 로컬 hook 은 phase 2.
+- 지원 언어 4 (node / python / rust / go) — Elixir / Ruby / Java / .NET / PHP / Swift 는 phase 3 후속.
+- 풀 스위트만 — incremental (`vitest --changed` / `jest --findRelatedTests`) 로컬 hook 은 phase 4.
 - branch protection 자동 설정 안 함 — admin 권한 가정 위험. 안내문만 출력.
+- python: poetry / pdm / uv 같은 modern tooling 은 phase 3. 현재 pip 만 (`pip install -e .` + `requirements*.txt`).
+- rust: toolchain pin 필요 시 사용자 workflow 에서 추가. 기본은 ubuntu-latest 의 stable.
 
 #### 5. 기존 활성화 프로젝트 — re-run 안내
 
@@ -477,8 +501,9 @@ design.md SSOT (Step 2.7 완료 시):
 - docs/PRD.md / ARCHITECTURE.md / ADR.md placeholder — 기획 논의 후 채워넣는 용도
 - 부재 시만 시드 (멱등) — 기존 파일은 보호
 
-TDD 게이트 (Step 2.9 완료 시 — node 프로젝트 한정):
+TDD 게이트 (Step 2.9 완료 시 — polyglot universal):
 - .github/workflows/tdd-gate.yml — PR 마다 풀 테스트 스위트 강제 (composite action 호출)
+- 지원 언어 4: node / python / rust / go 자동 검출. polyglot 모노레포 (jajang 같이 js + python) 도 추가 설정 없이 cover
 - branch protection 의 required status checks 등록은 사용자 수동 (안내문 출력)
 - 산업 표준 3 단 enforcement 중 *CI 풀* 단. 로컬 incremental + branch protection 결합으로 진짜 wall 완성 (#320 #1 root fix)
 
