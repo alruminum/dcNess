@@ -486,6 +486,80 @@ CI workflow 깔린 것만으론 *PR 머지를 차단* 안 됨 — branch protect
 
 이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.9 가 자동 발화하지 않음. 사용자가 본 plug-in 업데이트 받은 후 `/init-dcness` 재실행해야 발화.
 
+### Step 2.10 — Pre-commit TDD 게이트 (옵션, commit 단 차단)
+
+CI tdd-gate (Step 2.9) 가 *PR 머지 차단* 인 반면, 본 Step 2.10 은 *commit 자체 차단* — 깨진 코드가 *push 전*, *PR 전* 단계에서 거름. branch protection 의존성 0 — 진짜 자체완결 wall.
+
+> **배경 (#320 #1 phase 4)**: CI 게이트 는 branch protection 등록 *후* 만 wall. 사용자 추가 설정 의존성. 또한 `gh pr checks --watch` 강제 (git-naming-spec §6) 가 Claude 흐름 병목. commit-msg hook 으로 commit 단 차단 = 사용자 추가 설정 0 + 즉시 발화.
+
+> **진짜 TDD**: test-engineer 작성 test → engineer 구현 → test 통과해야 commit. *변경분 test 만* 실행 (5~15개 단위, 수초). 풀 스위트 아님.
+
+#### 1. 룰
+
+commit-msg hook 발화 시점에:
+
+1. **옵트인 마커 검사** — `.dcness/tdd-gate-enabled` 파일 없으면 silent PASS (다른 프로젝트 영향 회피)
+2. **skip marker 검사** — commit message 안 `[skip-test: <사유>]` 매치 → PASS (단순 typo / 문서 변경 우회)
+3. **staged 분석**:
+   - `staged_src` = staged 안 코드 확장자 파일 (test 제외)
+   - `staged_test` + `branch_diff_test` (origin/main...HEAD 의 test) → `all_test`
+4. **분기**:
+   - `staged_src` 0 → PASS (docs / config 변경)
+   - `staged_src` 1+ 있고 `all_test` 0 → BLOCK
+   - `all_test` 1+ → 그 test 실행 → 1건이라도 FAIL → BLOCK
+
+#### 2. 사용자 옵트인
+
+```
+[dcness] Pre-commit TDD 게이트 활성화할까요?
+  - staged 안 src 변경 = test 변경 함께 staged 또는 같은 branch 안 있어야 commit 통과
+  - 검출된 test 만 실행 (5~15개 단위, 수초) — 풀 스위트 X
+  - 4 언어 자동 검출 (node jest/vitest, python pytest, rust cargo, go go test)
+  - dcness 의 3-commit 구조 (docs/tests/src) 와 자연 정합 — commit2 의 test 가 branch diff 에 인식됨
+  - 우회: commit message 에 `[skip-test: <사유>]` marker
+  - 옵트인 마커 `.dcness/tdd-gate-enabled` 가 활성화 신호. 다른 프로젝트 영향 0.
+(Y/n)
+```
+
+- **Y**:
+  - `.dcness/tdd-gate-enabled` 빈 파일 작성 (git add 권장 — 팀 공유)
+  - 사용자에게 commit-msg shim 이 이미 깔려있음을 안내 (Step 2.6 의 thin shim 이 자동으로 TDD 게이트 chain 호출)
+- **n**: skip — 마커 작성 안 함. hook 은 silent pass-through.
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+mkdir -p "$PROJECT_ROOT/.dcness"
+touch "$PROJECT_ROOT/.dcness/tdd-gate-enabled"
+echo "[dcness] .dcness/tdd-gate-enabled 마커 작성 — pre-commit TDD 게이트 활성. 다음 commit 부터 발화."
+echo "[dcness] 권장: git add .dcness/tdd-gate-enabled (팀 공유)"
+```
+
+#### 3. 3-commit 구조 정합
+
+dcness 의 impl-task-loop 가 박는 3-commit (loop-procedure §3.4):
+
+| commit | stage | staged_src | all_test | TDD 게이트 |
+|---|---|---|---|---|
+| commit1 (docs) | `docs/impl/NN-*.md` | 0 | 0 | PASS |
+| commit2 (tests) | `src/__tests__/**` | 0 (test 만) | branch test | PASS + test 실행 |
+| commit3 (src) | `src/**` + stories.md | 있음 | commit2 의 test 가 branch diff 에 인식 | PASS + test 실행 |
+
+위반 (3-commit 구조 우회 / 임의 commit):
+- src 만 stage, test 0 → BLOCK
+- 사용자 `[skip-test: <사유>]` marker 또는 test 추가 후 재시도
+
+#### 4. 한계 (v0.2.13)
+
+- node test runner: jest / vitest 자동. 그 외 (mocha / ava 등) → `npm test` 폴백
+- python: `pytest <files>` 직접. unittest 만 쓰는 프로젝트 면 marker 우회
+- rust: 단순화 — `cargo test` 풀 폴백 (변경 test 파일만 실행 native 한계)
+- go: 변경 test 의 dirname → `go test ./<dir>/...`
+- 형식 강제 + 실행 강제 둘 다 — 변경분만이라 빠름 (수초)
+
+#### 5. 기존 활성화 프로젝트 — re-run 안내
+
+이미 `/init-dcness` 활성화한 기존 프로젝트는 본 Step 2.10 이 자동 발화하지 않음. plug-in 업데이트 + `/init-dcness` 재실행 시 발화. commit-msg shim 은 이미 chain 로직 박혀있어 마커만 작성하면 즉시 동작.
+
 ### Step 3 — 사용자 안내
 
 ```
@@ -517,6 +591,15 @@ TDD 게이트 (Step 2.9 완료 시 — polyglot universal + affected detection):
 - python/rust/go: 변경 파일 path 기반 root 식별 → 해당 root 만 테스트
 - branch protection 의 required status checks 등록은 사용자 수동 (안내문 출력)
 - 사용자 설정 0 — 도구 분기 / 위임 명령 작성 불필요 (#320 #1 phase 3 root fix)
+
+Pre-commit TDD 게이트 (Step 2.10 완료 시 — commit 단 차단):
+- commit-msg hook chain — git-naming 검증 후 TDD 게이트 발화
+- 옵트인 마커 `.dcness/tdd-gate-enabled` 있을 때만 발화 (다른 프로젝트 영향 0)
+- staged src 변경 = staged 또는 branch diff 안 test 함께 있어야 commit 통과
+- 검출된 변경분 test 만 실행 (5~15개 단위, 수초) — 풀 스위트 X
+- 4 언어 자동 (node jest/vitest, python pytest, rust cargo, go go test)
+- 우회: commit message 안 `[skip-test: <사유>]` marker
+- branch protection 의존성 0 — 진짜 자체완결 wall (#320 #1 phase 4 root fix)
 
 사용 가능한 skill:
 - /qa  — 이슈 분류

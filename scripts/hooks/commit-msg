@@ -18,31 +18,37 @@ if echo "$COMMIT_TITLE" | grep -qE "^Merge (branch|pull request)"; then
   exit 0
 fi
 
-resolve_plugin_script() {
-  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs" ]; then
-    echo "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs"
+resolve_plugin_root() {
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}/scripts" ]; then
+    echo "${CLAUDE_PLUGIN_ROOT}"
     return 0
   fi
   cache_dir="${HOME}/.claude/plugins/cache/dcness/dcness"
   if [ -d "$cache_dir" ]; then
     latest=$(ls -1 "$cache_dir" 2>/dev/null | sort -V | tail -1)
-    if [ -n "$latest" ] && [ -f "$cache_dir/$latest/scripts/check_git_naming.mjs" ]; then
-      echo "$cache_dir/$latest/scripts/check_git_naming.mjs"
+    if [ -n "$latest" ] && [ -d "$cache_dir/$latest/scripts" ]; then
+      echo "$cache_dir/$latest"
       return 0
     fi
   fi
-  legacy="$(git rev-parse --show-toplevel 2>/dev/null)/scripts/check_git_naming.mjs"
-  if [ -f "$legacy" ]; then
+  legacy="$(git rev-parse --show-toplevel 2>/dev/null)"
+  if [ -f "$legacy/scripts/check_git_naming.mjs" ]; then
     echo "$legacy"
     return 0
   fi
   return 1
 }
 
-SCRIPT_PATH=$(resolve_plugin_script)
-if [ -z "$SCRIPT_PATH" ]; then
-  echo "[commit-msg] WARN — check_git_naming.mjs 미발견 (plugin 미설치 또는 cache 비정상). hook skip." >&2
+PLUGIN_ROOT=$(resolve_plugin_root)
+if [ -z "$PLUGIN_ROOT" ]; then
+  echo "[commit-msg] WARN — plugin root 미발견 (plugin 미설치 또는 cache 비정상). hook skip." >&2
   exit 0
 fi
 
-node "$SCRIPT_PATH" --title "$COMMIT_TITLE"
+# 1. git-naming 검증
+node "$PLUGIN_ROOT/scripts/check_git_naming.mjs" --title "$COMMIT_TITLE" || exit 1
+
+# 2. TDD 게이트 (옵트인 `.dcness/tdd-gate-enabled` 마커 있을 때만 발화)
+if [ -f "$PLUGIN_ROOT/scripts/check_tdd_staged.mjs" ]; then
+  node "$PLUGIN_ROOT/scripts/check_tdd_staged.mjs" "$1" || exit 1
+fi
