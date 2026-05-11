@@ -28,7 +28,7 @@
 
 ### 0.3 내부 ID 를 외부 배포물에 박지 마라
 
-- **외부에 배포되는 파일** (= plug-in 사용자가 보게 되는 파일: `agents/**`, `commands/**`, `skills/**`, `hooks/**`, 그리고 plug-in 사용자가 따라야 하는 SSOT 인 `docs/plugin/issue-lifecycle.md` 등) 안에는 **내부 ID / 내부 추적 표현을 본문으로 박지 않는다**.
+- **외부에 배포되는 파일** (= plug-in 사용자가 보게 되는 파일: `agents/**`, `commands/**`, `hooks/**`, 그리고 plug-in 사용자가 따라야 하는 SSOT 인 `docs/plugin/issue-lifecycle.md` 등) 안에는 **내부 ID / 내부 추적 표현을 본문으로 박지 않는다**.
 - 외부 사용자에게 내부 추적용 표현은 **잡음**이다. 그 변경 이유 / 작동 룰만 자연어로 설명하면 충분.
 
 ### 0.4 작성 스타일 — 쉬운 한글 + § 표시 명확히
@@ -42,7 +42,7 @@
 
 - 본 저장소(dcness self) 에만 추가하면 **외부 활성화 프로젝트에서는 작동하지 않는다** — 과거 사례: 기능을 dcness 자체에 추가했는데 정작 설치한 외부 프로젝트(jajang)는 그 기능이 없어 작동 안 함.
 - 모든 기능 추가 작업은 **배포 경로 검증 의무** 가 동반된다. 다음 중 *해당하는 모든 경로* 가 갱신돼야 작업 완료:
-  1. **plug-in 본체 파일** (`agents/**`, `commands/**`, `skills/**`, `hooks/**`) — 사용자가 plug-in 업데이트 시 자동 적용. 본 저장소의 같은 경로에 변경 = plug-in 도 자동 갱신 (단 사용자가 plug-in 버전 업 받은 후).
+  1. **plug-in 본체 파일** (`agents/**`, `commands/**`, `hooks/**`) — 사용자가 plug-in 업데이트 시 자동 적용. 본 저장소의 같은 경로에 변경 = plug-in 도 자동 갱신 (단 사용자가 plug-in 버전 업 받은 후).
   2. **`/init-dcness` 스킬이 사용자 프로젝트로 *복사·배포* 하는 파일** (예: `scripts/check_*.mjs`, `scripts/hooks/commit-msg`, `.github/workflows/*.yml`) — 본 저장소에만 추가하면 신규 프로젝트는 받지만 *기존 활성화 프로젝트* 는 못 받음. **`commands/init-dcness.md` 의 deploy 스텝에 반드시 추가** + 기존 사용자가 재배포받을 방법 고지.
   3. **사용자가 따라야 하는 SSOT 문서** (예: `docs/plugin/issue-lifecycle.md`, `docs/plugin/git-naming-spec.md` 중 사용자용 부분) — 본 저장소 docs 만 갱신하면 사용자는 못 봄. plug-in 배포물 쪽으로 옮기거나 init-dcness 가 복사하도록 처리.
 - 기능 추가 PR 본문에 **"배포 경로 검증"** 항목 명시 — 어떤 경로(1/2/3) 로 사용자 환경에 도달하는지, 누락 없는지.
@@ -60,7 +60,11 @@
 
 ## 1. 작업 절차 (모든 변경 공통)
 
-0. **워크트리 (impl 류 루프 한정)** — *코드 변경 batch* (`/impl` `/impl-loop` `/auto-loop`) 진입 시만 자동 `EnterWorktree(name="<목적>-{ts_short}")`. 메인 working tree 보호 + 동시 다중 세션 충돌 회피. **`/product-plan` / 모듈 설계 / 문서·시드 작업은 워크트리 X** — 충돌 회피 목적 부재. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 (예: "워크트리 빼고") 시에만 건너뜀. 수동 `git worktree add` 우회 금지 — CC permission 시스템이 EnterWorktree 만 sub-agent 권한 자동 처리.
+0. **워크트리 (impl 류 루프 한정)**
+   - **진입 조건**: 코드 변경 batch (`/impl` / `/impl-loop` / `/auto-loop`) 진입 시 자동 `EnterWorktree(name="<목적>-{ts_short}")`. 목적: 메인 working tree 보호 + 동시 다중 세션 충돌 회피.
+   - **제외**: `/product-plan` / 모듈 설계 / 문서·시드 작업은 워크트리 X — 충돌 회피 목적 부재.
+   - **수동 우회**: 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 (예: "워크트리 빼고") 시에만 건너뜀.
+   - **금지**: 수동 `git worktree add` 우회 — CC permission 시스템이 `EnterWorktree` 만 sub-agent 권한 자동 처리.
 1. **수정 작업**.
 2. **commit 직전**: git pre-commit hook 자동 게이트 (main-block + pytest).
 3. **branch → PR → regular merge** (직접 `main` push 금지). CI PASS 후 메인이 즉시 머지 — *사용자 수동 승인 대기 X*.
@@ -71,6 +75,8 @@
 - **main-block**: `scripts/hooks/pre-commit` — main 직접 commit 차단
 - **git-naming**: `scripts/hooks/commit-msg` (로컬) + `git-naming-validation.yml` (CI) — 브랜치·커밋·PR 제목 형식 강제
 - **pytest**: `scripts/check_python_tests.sh` — harness/tests/agents 변경 시만
+- **plugin-manifest**: `scripts/check_plugin_manifest.mjs` (CI `plugin-manifest.yml`) — `.claude-plugin/plugin.json` version / manifest 정합 검증
+- **pr-body**: `scripts/check_pr_body.mjs` (CI `pr-body-validation.yml`) — PR 본문 템플릿 충족 검증
 
 > ⚠️ **금지**: `--no-verify` 등 hook 우회. main 직접 push.
 
@@ -92,6 +98,9 @@
 | [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) | 시퀀스 mini-graph + 8 loop 풀스펙 — 루프 진입 경로·분기 수정 시 |
 | [`docs/plugin/handoff-matrix.md`](docs/plugin/handoff-matrix.md) | agent 호출 분기 / retry / escalate 한도 / 접근 권한 경계 수정 시 |
 | [`docs/plugin/loop-procedure.md`](docs/plugin/loop-procedure.md) | Step 0~8 mechanics (begin-run → begin-step → Agent → end-step → finalize-run) 수정 시 |
+| [`docs/plugin/hooks.md`](docs/plugin/hooks.md) | hook 시스템 (PreToolUse / SessionStart / cc-pre-commit) 수정 시 SSOT |
+| [`docs/plugin/issue-lifecycle.md`](docs/plugin/issue-lifecycle.md) | 외부 활성 프로젝트의 epic / story / impl 흐름 변경 시 SSOT (본 저장소 자체엔 미적용 — §0.2 참조) |
+| [`docs/plugin/known-hallucinations.md`](docs/plugin/known-hallucinations.md) | 외부 도구 config / API 키 환각 의심 시 — 글로벌 제1룰 (실존 검증) 보조 카탈로그 |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태·TODO·Blockers 확인 시 |
 | [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 수정 시 |
 | [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) | PR 체크리스트 확인 시 |
@@ -104,9 +113,6 @@
 ## 4. 개발 명령어
 
 ```sh
-# Document Sync 게이트 수동 실행 (commit 전 자동 호출됨)
-node scripts/check_document_sync.mjs
-
 # git hook 설치 (clone 후 1회)
 cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 cp scripts/hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
