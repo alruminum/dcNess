@@ -4,6 +4,46 @@
 
 ---
 
+## v0.2.14 (2026-05-11)
+
+**커밋 범위**: `v0.2.13..(다음 태그)`
+**핵심 변경**: init-dcness Step 2.11 — 인프라 머지 자동화 (사용자 부담 0)
+
+- **이슈 #320 (사용자 피드백) (PR #334)** — `/init-dcness` 가 cp 만 하고 git
+  add/commit/PR 사용자 부담. 까먹으면 workflow yml 이 main 미반영 → CI 게이트
+  dead code. 본 release 가 자동 commit + PR 까지 끝까지 진행.
+  - `commands/init-dcness.md` Step 2.11 신규
+  - 변경 파일 검출: `.github/workflows/` + `.dcness/` 명시 path
+  - branch 검사: main 일 때만 자동 진행 (사용자 작업 보호)
+  - 사용자 동의 (Y/n) 후: branch → stage → commit → push → PR
+  - branch 패턴: `docs/dcness_init_{timestamp}` (git-naming-spec 정합)
+  - 자동 머지 X — 인프라 PR 은 사용자 검토 후 머지 권장
+
+**jajang 사단 (실측)**:
+- 기존: `git-naming-validation.yml` 만 main 등록. `tdd-gate.yml` + `pr-body-validation.yml` working tree 잔존
+- 본 release 후 `/init-dcness` 재실행 → Step 2.11 발화 → 자동 PR → 머지하면 모든 workflow 정상
+
+**배포 경로** (CLAUDE.md §0.5):
+- (1) plug-in 본체 — `commands/init-dcness.md` plug-in 업데이트 자동
+- (2) init-dcness 배포 — Step 2.11 신규. 기존 활성 프로젝트는 `/init-dcness` 재실행 시 발화
+- (3) SSOT 문서 — N/A
+
+**한계**:
+- 사용자가 이미 PR 만든 인프라 변경 있을 때 중복 시도 가능 (메인 Claude 가 사전 `gh pr list --search` 검사 권장)
+- `gh` CLI 미설치 환경 → push 까지만 + 사용자 수동 PR 권유
+
+**업데이트**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 활성화 프로젝트:
+```sh
+/init-dcness   # Step 2.11 발화 — working tree 인프라 변경 검출 시 자동 PR 제안
+```
+
+---
+
 ## v0.2.13 (2026-05-11)
 
 **커밋 범위**: `v0.2.12..(다음 태그)`
