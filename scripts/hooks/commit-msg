@@ -45,10 +45,5 @@ if [ -z "$PLUGIN_ROOT" ]; then
   exit 0
 fi
 
-# 1. git-naming 검증
+# 1. git-naming 검증 — TDD chain 폐기 (v0.2.16 — PreToolUse hook 으로 이전)
 node "$PLUGIN_ROOT/scripts/check_git_naming.mjs" --title "$COMMIT_TITLE" || exit 1
-
-# 2. TDD 게이트 (옵트인 `.dcness/tdd-gate-enabled` 마커 있을 때만 발화)
-if [ -f "$PLUGIN_ROOT/scripts/check_tdd_staged.mjs" ]; then
-  node "$PLUGIN_ROOT/scripts/check_tdd_staged.mjs" "$1" || exit 1
-fi
