@@ -4,6 +4,72 @@
 
 ---
 
+## v0.2.13 (2026-05-11)
+
+**커밋 범위**: `v0.2.12..(다음 태그)`
+**핵심 변경**: TDD 게이트 phase 4 — pre-commit (commit 단 차단, 자체완결 wall)
+
+- **이슈 #320 #1 phase 4 (PR #332)** — commit-msg hook chain 에 TDD 게이트 추가.
+  staged src 변경 = test 변경 함께 + 변경분 test 실행 PASS 강제. branch protection
+  의존성 0 → 진짜 자체완결 wall.
+  - `scripts/check_tdd_staged.mjs` 신규 — 본체 (옵트인 마커 + skip marker + 분기 + 실행)
+  - `scripts/hooks/commit-msg` 갱신 — git-naming 후 TDD 게이트 chain
+  - `commands/init-dcness.md` Step 2.10 신규 — 옵트인 + 3-commit 구조 정합 안내
+- **옵트인 메커니즘**: `.dcness/tdd-gate-enabled` 마커 파일 활성화 신호. 부재 시 silent pass.
+  다른 프로젝트 영향 0 (외부 활성화 프로젝트가 옵트인 안 한 경우 자동 발화 X).
+- **skip marker**: commit message 안 `[skip-test: <사유>]` 매치 시 우회 — 단순 typo /
+  문서 변경 / refactor 무영향 케이스 정당 우회.
+- **변경분만 실행**: test-engineer 작성 task 용 test (5~15개) 만 실행 = 수초. 풀
+  스위트 아님.
+- **4 언어 자동 검출**: jest / vitest (deps 검사) / pytest / cargo test / go test.
+
+**3-commit 구조 정합** (loop-procedure §3.4):
+
+| commit | stage | TDD 게이트 |
+|---|---|---|
+| commit1 (docs) | `docs/impl/NN.md` | PASS (src 0) |
+| commit2 (tests) | `src/__tests__/**` | PASS (test 만) |
+| commit3 (src) | `src/**` + stories.md | PASS (branch diff test 인지) |
+| 위반: src 만 | `src/bar.ts` | BLOCK |
+
+**6 케이스 실측 검증** 완료 (PR #332 body 참조).
+
+**layered defense 완성**:
+
+| 단 | 어디서 | dcness 도입 |
+|---|---|---|
+| 1 | **commit 단** (commit-msg hook) | **v0.2.13 phase 4 ← 본 release** |
+| 2 | CI workflow (affected) | v0.2.12 phase 3 |
+| 3 | Branch Protection | 사용자 수동 (안내문) |
+
+**배포 경로** (CLAUDE.md §0.5):
+- (1) plug-in 본체 — `scripts/check_tdd_staged.mjs` + `scripts/hooks/commit-msg`
+  chain — plug-in 업데이트 자동 반영
+- (2) init-dcness 배포 — Step 2.10 신규. 기존 활성 프로젝트는 `/init-dcness` 재실행
+  시 발화. commit-msg shim 은 이미 chain 로직 박혀있어 사용자가 옵트인 마커만 작성하면
+  즉시 동작.
+- (3) SSOT 문서 — N/A
+
+**한계 (phase 4)**:
+- node test runner: jest / vitest 자동. 그 외 (mocha / ava 등) → `npm test` 폴백
+- rust: 단순화 — `cargo test` 풀 폴백 (변경 test 파일만 native 한계)
+- python: pytest 만 (unittest 만 쓰는 프로젝트면 `[skip-test]` 우회)
+- `--watch` 룰 (git-naming-spec §6) 그대로 — commit 단 차단으로 CI 우회 위험 ↓
+  단 룰 완화는 별도 결정
+
+**업데이트**:
+```sh
+claude plugin update dcness@dcness
+```
+
+기존 활성화 프로젝트:
+```sh
+/init-dcness   # Step 2.10 발화 — 옵트인 (Y) 시 .dcness/tdd-gate-enabled 마커 작성
+git add .dcness/tdd-gate-enabled  # 팀 공유
+```
+
+---
+
 ## v0.2.12 (2026-05-11)
 
 **커밋 범위**: `v0.2.11..(다음 태그)`
