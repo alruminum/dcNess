@@ -59,7 +59,7 @@ traces = read_trace(sid, rid)
 ```
 engineer / IMPL: PASS=12 / REDO_SAME=2 / REDO_BACK=5 (redo 비율 37%)
 architect / MODULE_PLAN: PASS=8 / REDO_BACK=1 (redo 비율 11%)
-validator / CODE_VALIDATION: PASS=10 (redo 비율 0%)
+code-validator: PASS=10 (redo 비율 0%)
 ```
 
 각 redo entry 의 `reason` 자유 텍스트에서 키워드 추출 (예: "module plan 모호", "테스트 미통과", "boundary 위반"). 동일 키워드 N 회 누적 시 클러스터.

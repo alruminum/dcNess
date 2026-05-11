@@ -53,7 +53,7 @@ components:
 
 - 프론트매터 안에서 다른 토큰을 가리킬 때 사용.
 - `components` 섹션에서는 복합 토큰도 참조 가능. 예: `{typography.label-md}`
-- 참조 대상이 프론트매터에 실재해야 함 — 유효하지 않은 참조는 validator 가 오류로 처리 (§5.2).
+- 참조 대상이 프론트매터에 실재해야 함 — 유효하지 않은 참조는 code-validator 가 오류로 처리 (§5.2).
 
 ---
 
@@ -84,8 +84,8 @@ agent 는 파일 부재를 오류로 처리하지 않는다.
 ### 5.2 토큰 참조 무결성 검증
 
 `{colors.X}` 등 참조가 프론트매터에 실재해야 함.
-**검증 담당**: `agents/validator/code-validation.md` (코드 검증 단계의 체크 항목).
-`plan-validation` / `design-validation` 은 본 검증 비대상.
+**검증 담당**: `agents/code-validator.md` (코드 검증 단계의 체크 항목).
+`architecture-validator` 는 본 검증 비대상.
 
 ### 5.3 외부 import 1회 변환
 
@@ -157,7 +157,7 @@ MyApp 의 기본 색상은 보라색 계열이며 Material You 기반이다.
 
 ## 8. AI 슬롭 안티패턴 (Don'ts)
 
-§4 본문 섹션 순서 표의 8번 "Do's and Don'ts" 위치에서 **Don'ts** 카탈로그. designer / engineer 가 UI 작업 시 본 항목 회피 의무 — 위반 시 validator code-validation 이 grep 으로 검출 후 보고 (강제 X, 경고).
+§4 본문 섹션 순서 표의 8번 "Do's and Don'ts" 위치에서 **Don'ts** 카탈로그. designer / engineer 가 UI 작업 시 본 항목 회피 의무 — 위반 시 code-validator 가 grep 으로 검출 후 보고 (강제 X, 경고).
 
 | 금지 사항 | 이유 |
 |-----------|------|

@@ -2,6 +2,8 @@
 
 ## 현재 상태
 
+- **♻️ Validator 단순화 — 5 sub-doc → 2 평탄 에이전트 + enum 통일**: `agents/validator.md` + `agents/validator/` 폴더 통째 폐기. 두 평탄 에이전트로 평탄화 — `agents/code-validator.md` (impl ↔ 구현 일치, full/bugfix scope 자동 분기 — `docs/impl/NN-*.md` vs `docs/bugfix/#N-slug.md`) + `agents/architecture-validator.md` (Placeholder Leak + Spike Gate 2 항목 — 자가검증 사각지대만). UX_VALIDATION 폐기 → ux-architect 에 5 카테고리 self-check 흡수 (FAIL → 재고려 2 cycle). DESIGN_VALIDATION 의 자가검증 가능 항목 (인터페이스/에러/엣지케이스/리스크/성능) → architect SYSTEM_DESIGN 에 5 항목 self-check 흡수. PLAN_VALIDATION 폐기 (issue #247 drift 회복). 결론 enum 13개 → 3개 통일 (`PASS / FAIL / ESCALATE` — `SPEC_MISSING` 은 `ESCALATE` 사유로 흡수). harness 정합: HARNESS_ONLY_AGENTS (`engineer` + `code-validator`), §2.3.5 게이트 (architect MODULE_PLAN SD 후속 직전 architecture-validator PASS 필수), ALLOW_MATRIX. 28 파일 갱신. 437 unittest 모두 PASS. PR 진행 중.
+
 - **✅ Epic 3 Story 3.4 (#165) 완료 — marketplace.json source.ref → release 전환 + 0.2.0 bump**: `.claude-plugin/marketplace.json` plugin source 를 `{ "source": "github", "repo": "alruminum/dcNess", "ref": "release" }` 로 전환 (로컬 `./` 제거). `plugin.json` + `marketplace.json` metadata.version `0.1.0-alpha` → `0.2.0`. Epic 3 코드 작업 완료 — PR 머지 후 release-sync.yml 자동 발화로 release 브랜치 갱신. 외부 dry-run (jajang `/plugin update dcness`) 은 PR 머지 후 별도 진행. DCN-CHG-20260506-16.
 
 - **✅ Epic 3 Story 3.3 (#164) 완료 — release-sync.yml + branch protection 가이드**: `.github/workflows/release-sync.yml` 신규 (main push 시 자동 release sync, concurrency 그룹으로 중복 실행 방지). `docs/internal/branch-protection-setup.md` 신규 (release 브랜치 보호 설정 절차). PR #205.

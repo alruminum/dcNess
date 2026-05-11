@@ -40,14 +40,14 @@ class WriteReadProseTests(unittest.TestCase):
     def test_write_then_read_round_trip(self) -> None:
         prose = "## 검증 결과\n\n전체 통과.\n\n## 결론\n\nPASS\n"
         path = write_prose(
-            "validator", "run_001", prose, mode="CODE_VALIDATION", base_dir=self.base
+            "code-validator", "run_001", prose, mode=None, base_dir=self.base
         )
         self.assertTrue(path.exists())
         self.assertEqual(path.suffix, ".md")
-        self.assertIn("validator-CODE_VALIDATION.md", path.name)
+        self.assertIn("code-validator.md", path.name)
 
         result = read_prose(
-            "validator", "run_001", mode="CODE_VALIDATION", base_dir=self.base
+            "code-validator", "run_001", mode=None, base_dir=self.base
         )
         self.assertEqual(result, prose)
 
@@ -58,18 +58,18 @@ class WriteReadProseTests(unittest.TestCase):
         self.assertTrue((self.base / "deep-run" / "architect.md").exists())
 
     def test_write_unicode(self) -> None:
-        prose = "한글 결론\n\nPLAN_VALIDATION_PASS\n"
+        prose = "한글 결론\n\nPASS\n"
         write_prose(
-            "validator", "r", prose, mode="PLAN_VALIDATION", base_dir=self.base
+            "architecture-validator", "r", prose, mode=None, base_dir=self.base
         )
         out = read_prose(
-            "validator", "r", mode="PLAN_VALIDATION", base_dir=self.base
+            "architecture-validator", "r", mode=None, base_dir=self.base
         )
         self.assertEqual(out, prose)
 
     def test_write_rejects_non_string(self) -> None:
         with self.assertRaises(TypeError):
-            write_prose("validator", "r", 123, base_dir=self.base)  # type: ignore[arg-type]
+            write_prose("code-validator", "r", 123, base_dir=self.base)  # type: ignore[arg-type]
 
     def test_read_not_found(self) -> None:
         with self.assertRaises(MissingSignal) as cm:

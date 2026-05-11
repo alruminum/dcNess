@@ -29,12 +29,12 @@ cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-com
 
 이후 모든 `git commit` 이 자동 검사된다.
 
-## Prose-Only 패턴 (validator 등 검증 에이전트)
+## Prose-Only 패턴 (검증 에이전트)
 
-본 저장소는 [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) (Prose-Only 원칙) 에 따라 검증 결과를 **자유 prose** 로 emit 한다. 검증 에이전트(validator, plan-reviewer, pr-reviewer, security-reviewer 등) 호출 시:
+본 저장소는 [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) (Prose-Only 원칙) 에 따라 검증 결과를 **자유 prose** 로 emit 한다. 검증 에이전트(code-validator, architecture-validator, plan-reviewer, pr-reviewer, security-reviewer 등) 호출 시:
 
 1. **stdout 으로 prose**: 형식 자유 (markdown / 평문 / 표). harness 가 prose 파일로 저장(`.claude/harness-state/<run_id>/<agent>[-<MODE>].md`).
-2. **결론 enum**: prose 의 *마지막 단락* 에 mode-specific enum 단어 1개 명시 (예: `PASS` / `FAIL` / `SPEC_MISSING`). 모호한 표현 금지.
+2. **결론 enum**: prose 의 *마지막 단락* 에 enum 단어 1개 명시 (검증 에이전트 통일 — `PASS` / `FAIL` / `ESCALATE`). 모호한 표현 금지.
 3. **이유 필수**: 결론 근거 = 파일 path + 라인 번호 + 구체적 사실. 추측 금지.
 4. **폐기된 컨벤션**:
    - `---MARKER:X---` 마지막 줄 정형 + `MARKER_ALIASES` 폴백 (사다리 자체 폐기)
@@ -42,7 +42,7 @@ cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-com
    - `preamble.md` 자동 주입 / agent-config 별 layer (자기완결 docs)
    - 모두 사용 금지.
 
-자세한 형식 + 모드별 enum: [`agents/validator.md`](agents/validator.md), [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) §1.
+자세한 형식: [`agents/code-validator.md`](agents/code-validator.md), [`agents/architecture-validator.md`](agents/architecture-validator.md), [`docs/plugin/prose-only-principle.md`](docs/plugin/prose-only-principle.md) §1.
 
 orchestrator 측 해석은 [`harness/signal_io.py`](harness/signal_io.py) 의 `interpret_signal(prose, allowed)` 사용 — `MissingSignal` 단일 normalize (not_found / empty / ambiguous). 메타 LLM 통합은 `interpreter=` 인자로 swap.
 

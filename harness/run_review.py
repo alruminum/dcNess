@@ -53,10 +53,8 @@ EXPECTED_FINAL_ENUMS = {
                    "SPEC_GAP": "SPEC_GAP_RESOLVED", "DOCS_SYNC": "DOCS_SYNCED"},
     "test-engineer": {None: "TESTS_WRITTEN"},
     "engineer": {"IMPL": "IMPL_DONE", "POLISH": "POLISH_DONE"},
-    "validator": {"CODE_VALIDATION": "PASS", "BUGFIX_VALIDATION": "BUGFIX_PASS",
-                   "DESIGN_VALIDATION": "DESIGN_REVIEW_PASS",
-                   "PLAN_VALIDATION": "PLAN_VALIDATION_PASS",
-                   "UX_VALIDATION": "UX_REVIEW_PASS"},
+    "code-validator": {None: "PASS"},
+    "architecture-validator": {None: "PASS"},
     "pr-reviewer": {None: "LGTM"},
     "security-reviewer": {None: "SECURE"},
     "qa": {None: None},  # qa 다양 (FUNCTIONAL_BUG / CLEANUP / etc.)
@@ -78,8 +76,8 @@ INFRA_PATH_PATTERNS = [
     "harness-memory.md", "harness.config.json", "/.claude/harness/",
 ]
 
-READONLY_AGENTS = {"qa", "validator", "pr-reviewer", "security-reviewer",
-                    "plan-reviewer", "design-critic"}
+READONLY_AGENTS = {"qa", "code-validator", "architecture-validator", "pr-reviewer",
+                    "security-reviewer", "plan-reviewer", "design-critic"}
 
 # DCN-CHG-20260430-20: Phase 2 — per-Agent budget for THINKING_LOOP detection.
 # elapsed_s: 정상 sub-agent 한 번 호출 한도 (초).
@@ -89,7 +87,8 @@ EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
     "architect":       {"elapsed_s": 600, "min_output_tokens": 1500},
     "engineer":        {"elapsed_s": 900, "min_output_tokens": 2000},
     "test-engineer":   {"elapsed_s": 600, "min_output_tokens": 1500},
-    "validator":       {"elapsed_s": 300, "min_output_tokens": 800},
+    "code-validator":  {"elapsed_s": 300, "min_output_tokens": 800},
+    "architecture-validator": {"elapsed_s": 300, "min_output_tokens": 800},
     "pr-reviewer":     {"elapsed_s": 180, "min_output_tokens": 600},
     "security-reviewer": {"elapsed_s": 180, "min_output_tokens": 600},
     "qa":              {"elapsed_s": 300, "min_output_tokens": 600},
@@ -400,10 +399,9 @@ def detect_wastes(
     # 시 동일 enum 반복은 *retry 가 아닌 정상 호출* — prose 내용이 다르면 다른 step.
     ADVANCE_ENUMS = {
         "PASS", "READY_FOR_IMPL", "IMPL_DONE", "TESTS_WRITTEN", "LGTM",
-        "SECURE", "DESIGN_REVIEW_PASS", "BUGFIX_PASS", "PLAN_VALIDATION_PASS",
-        "UX_REVIEW_PASS", "SYSTEM_DESIGN_READY", "DOCS_SYNCED", "POLISH_DONE",
+        "SECURE", "SYSTEM_DESIGN_READY", "DOCS_SYNCED", "POLISH_DONE",
         "SPEC_GAP_RESOLVED", "LIGHT_PLAN_READY", "PRODUCT_PLAN_READY",
-        "PLAN_REVIEW_PASS",
+        "PLAN_REVIEW_PASS", "UX_FLOW_READY",
         "PROSE_LOGGED",  # #284 prose-only mode default sentinel — 정상 종료
     }
     for i in range(1, len(steps)):

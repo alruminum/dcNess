@@ -3,7 +3,7 @@
 > ⚠️ **CRITICAL — extended thinking 본문 드래프트 금지**. thinking = 의사결정 분기만. prose 본문 / Domain Model 표 / 모듈 분해 / 산출물 본체 = thinking 종료 *후* 즉시 emit 또는 `Write` 입력값 안에서만. thinking 안에서 본문 회전 시 THINKING_LOOP 회귀 (jajang 6분 stall, DCN-30-20). master 룰: `agents/architect.md` §자기규율.
 
 **모드**: architect 의 시스템 설계 호출. 구현 시작 전 시스템 전체 구조 확정.
-**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. 권장 표현 (형식 강제 X): `SYSTEM_DESIGN_READY` (validator DESIGN_VALIDATION 권고). 기술 제약 충돌 시 `TECH_CONSTRAINT_CONFLICT` (사용자 위임).
+**결론**: prose 마지막 단락에 *결론 + 권장 다음 단계* 자연어 명시. **결론 emit *전* §SYSTEM_DESIGN self-check (5 항목) 의무 — FAIL 시 결론 emit X, 재작업 후 재시도.** 권장 표현 (형식 강제 X): `SYSTEM_DESIGN_READY` (architecture-validator 권고 — Placeholder Leak + Spike Gate 외부 검증). 기술 제약 충돌 시 `TECH_CONSTRAINT_CONFLICT` (사용자 위임).
 **호출자가 prompt 로 전달하는 정보**: PRODUCT_PLAN_READY 문서 경로, 선택된 옵션, (선택) UX Flow Doc 경로.
 
 ## 작업 흐름 (자율 조정 가능)
@@ -266,10 +266,25 @@ spike FAIL (PRD 시나리오 통과 못 함):
 
 = "미래의 약속은 검증이 아니다". Spike 1개 실측이 PRD 통과 *전* 게이트.
 
+## SYSTEM_DESIGN self-check (산출 전 의무 — 5 항목)
+
+> 본 self-check 는 *자가검증 가능한* SD 품질 항목을 architect 가 emit *전* 스스로 catch 하기 위한 룰. Placeholder Leak / Spike Gate 는 architecture-validator (외부 reviewer) 가 별도 catch — 자가검증 사각지대라 self-check 영역 X. 한 항목이라도 미충족 시 결론 emit X — *재작업* 후 재시도. 한도 2 cycle. 그 후에도 통과 못 하면 `TECH_CONSTRAINT_CONFLICT` ESCALATE.
+
+1. **인터페이스 정의** — 모듈 간 타입·API 가 충분히 명시되었는가 (시그니처·반환·예외)
+2. **에러 처리 방식** — 각 모듈의 에러 전략 (throw / 반환 / 상태 업데이트) 이 명시되었는가
+3. **엣지케이스 커버리지** — null / 네트워크 실패 / 동시 요청 / 빈 입력 등 엣지케이스가 설계에 반영되었는가
+4. **상태 초기화 순서** — 해당 시 앱 시작·화면 전환 시 상태 초기화 순서가 명확한가
+5. **성능 / 리스크** — 명시된 기술 리스크가 실제 주요 위험을 포괄하는가 / N+1·대용량 동기 처리 등 명백한 병목이 없는가
+
+**FAIL 시 행동**: prose 본문에 "self-check 결과: 항목 N FAIL — <사유>" 명시 + 보강 후 재 self-check. 2 cycle 후에도 통과 못 하면 `TECH_CONSTRAINT_CONFLICT` emit + 본문에 미해결 항목 명시.
+
+**PASS 시 행동**: prose 본문에 "self-check PASS (5/5)" 한 줄 명시 + 호출자에게 결론 보고 (아래) → `SYSTEM_DESIGN_READY` emit.
+
 ## 호출자에게 결론 보고
 
 `SYSTEM_DESIGN_READY` 직전 prose 에 다음 명시:
 - `docs/domain-model.md` 갱신 여부 (신규 / 변경 / 변경 없음)
 - `docs/architecture.md` 갱신 여부 + 분리된 detail 파일 list
 - 모듈 분할 = 의존성 1 묶음 + 테스트 단위 정합 self-check 결과
+- **self-check 결과** (5/5 PASS)
 - **Spike Gate 결과** — PRD Must 직결 외부 의존 list + 각 spike 통과 여부 + 검증된 SDK/모델 명. spike 미실행 시 SYSTEM_DESIGN_READY 출력 X.

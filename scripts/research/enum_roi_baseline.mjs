@@ -43,9 +43,12 @@ function classify(allowed) {
   if (has('TESTS_WRITTEN')) return 'test-engineer';
   if (has('DESIGN_READY_FOR_REVIEW', 'DESIGN_LOOP_ESCALATE')) return 'designer';
   if (has('VARIANTS_APPROVED', 'VARIANTS_ALL_REJECTED')) return 'design-critic';
-  if (has('PASS', 'FAIL', 'SPEC_MISSING')) return 'validator.code';
-  if (has('DESIGN_REVIEW_PASS', 'DESIGN_REVIEW_FAIL')) return 'validator.design';
-  if (has('PASS', 'FAIL') && allowed.length === 2) return 'validator.ux-or-bugfix';
+  // validator 단순화 후 — 두 검증 에이전트 모두 PASS/FAIL/ESCALATE 통일.
+  // legacy enum (SPEC_MISSING, DESIGN_REVIEW_*) 도 호환 매칭.
+  if (has('PASS', 'FAIL', 'ESCALATE')) return 'validator';
+  if (has('PASS', 'FAIL', 'SPEC_MISSING')) return 'validator.legacy-code';
+  if (has('DESIGN_REVIEW_PASS', 'DESIGN_REVIEW_FAIL')) return 'validator.legacy-design';
+  if (has('PASS', 'FAIL') && allowed.length === 2) return 'validator.legacy-ux-or-bugfix';
   if (has('LGTM', 'CHANGES_REQUESTED')) return 'pr-reviewer';
   if (has('FUNCTIONAL_BUG', 'CLEANUP', 'DESIGN_ISSUE', 'KNOWN_ISSUE', 'SCOPE_ESCALATE')) return 'qa';
   if (has('SECURE', 'VULNERABILITIES_FOUND')) return 'security-reviewer';

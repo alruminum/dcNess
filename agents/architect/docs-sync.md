@@ -12,7 +12,7 @@
 
 하나라도 어긋나면 결론 `TECH_CONSTRAINT_CONFLICT`:
 1. `impl_path` 가 실제 존재 + `## 생성/수정 파일` 목록에 `docs_targets` 포함
-2. 대상 impl 이 이미 src 구현·merge 완료 상태 (validator 통과 이력 있음)
+2. 대상 impl 이 이미 src 구현·merge 완료 상태 (code-validator 통과 이력 있음)
 3. 수정 범위가 **기존 섹션 추가/확장**. 기존 설계 결정 변경이나 DDL 재작성 금지
 
 ## 작업 흐름 (자율 조정 가능)
