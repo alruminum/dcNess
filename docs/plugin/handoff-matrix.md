@@ -19,9 +19,9 @@
 
 PRD 외부 검증 (`FULL` 모드 default / `PRE_CHECK` 모드 — `/product-plan` 스킬의 Spike Pre-Check 단계). 세 가지 결과:
 
-- **PRD 승인** (`PLAN_REVIEW_PASS`) → 메인이 사용자에게 confirm 받고 다음 단계 진입 (system-architect 또는 이슈 등록). `PRE_CHECK` 모드면 PRD 작성 진입.
-- **PRD 변경 요청** (`PLAN_REVIEW_FAIL`) → 메인이 findings 항목별 *수용/거절 권장* + 사용자 confirm → 수용 항목만 메인이 `docs/prd.md` / `docs/stories.md` Edit patch. 재 review 필요 시 plan-reviewer 재호출 (cycle ≤ 2). `PRE_CHECK` 모드면 사용자 입력 재정리.
-- **판정 불가** (`PLAN_REVIEW_ESCALATE`) → 사용자 위임. 4 트리거: 외부 검증 실행 불가 / 권한 경계 밖 정보 의존 / cycle 한도 직전 동일 finding 반복 / `EXTERNAL_VERIFIED` URL 부재 PASS 시도.
+- **PRD 승인** (`PASS`) → 메인이 사용자에게 confirm 받고 다음 단계 진입 (system-architect 또는 이슈 등록). `PRE_CHECK` 모드면 PRD 작성 진입.
+- **PRD 변경 요청** (`FAIL`) → 메인이 findings 항목별 *수용/거절 권장* + 사용자 confirm → 수용 항목만 메인이 `docs/prd.md` / `docs/stories.md` Edit patch. 재 review 필요 시 plan-reviewer 재호출 (cycle ≤ 2). `PRE_CHECK` 모드면 사용자 입력 재정리.
+- **판정 불가** (`ESCALATE`) → 사용자 위임. 4 트리거: 외부 검증 실행 불가 / 권한 경계 밖 정보 의존 / cycle 한도 직전 동일 finding 반복 / `EXTERNAL_VERIFIED` URL 부재 PASS 시도.
 
 > Note: 옛 product-planner sub-agent 폐기. PRD/stories.md 작성은 메인 Claude 가 사용자와 직접 그릴미 대화로 진행 (`commands/product-plan.md`). 컨텍스트 손실 회피 + 인터랙션 풀 보존. plan-reviewer 만 외부 검증으로 sub-agent 유지.
 
@@ -37,14 +37,14 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
 
 전체 시스템 설계 hub — 도메인 모델 + 모듈 구조 + 기술 스택 + Story → impl 매핑 표 + Spike Gate. 기술 에픽 (기술 부채/인프라/리팩토링) 도 동일 모드로 처리 (호출자 prompt 에 "기술 에픽" 명시 시 추가로 epic+story 이슈 등록).
 
-- **READY** — 시스템 설계 산출 (`docs/architecture.md` + `## impl 목차` 표) 완료 → architecture-validator (Placeholder Leak + Spike Gate 외부 검증).
+- **PASS** — 시스템 설계 산출 (`docs/architecture.md` + `## impl 목차` 표) 완료 → architecture-validator (Placeholder Leak + Spike Gate 외부 검증).
 - **ESCALATE** — 기술 제약 충돌 / Spike FAIL / PRD 위반 → 사용자 위임 (`/product-plan` 재진입 권고).
 
 ### 1.4b module-architect
 
 모듈/태스크 단위 설계 hub. 호출자 컨텍스트 (신규 story / 버그픽스 / 기존 impl 보강 / 문서 동기화) 에 따라 분량·범위 자율 판단.
 
-- **READY** — impl 설계문서 작성/수정 완료. 다음 단계는 컨텍스트:
+- **PASS** — impl 설계문서 작성/수정 완료. 다음 단계는 컨텍스트:
   - architect-loop 안 = impl 목차 다음 행 있으면 module-architect 재호출, 마지막 행이면 loop 종료 (PR 생성/머지) → impl-task-loop 진입
   - impl-task-loop fallback = test-engineer
   - 버그픽스 케이스 = engineer (simple)
@@ -52,7 +52,7 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
   - 문서 동기화 케이스 = 후속 없음
 - **ESCALATE** — PRD 변경 필요 (`/product-plan` 재진입) / 기술 제약 충돌 (사용자) / 권한·도구 부족 (사용자).
 
-> Note: 이전 6 mode (SYSTEM_DESIGN / MODULE_PLAN / SPEC_GAP / LIGHT_PLAN / DOCS_SYNC / TECH_EPIC) → 2 agent 통합. 이전 mode 별 결론 enum (SYSTEM_DESIGN_READY / READY_FOR_IMPL / LIGHT_PLAN_READY / SPEC_GAP_RESOLVED / DOCS_SYNCED / TECH_CONSTRAINT_CONFLICT / PRODUCT_PLANNER_ESCALATION_NEEDED) → 단순 `READY` / `ESCALATE` 2종. 옛 TASK_DECOMPOSE 의 가치 (Story → impl 매핑 / NN-slug 명명 / 의존 순서) 는 system-architect 의 `## impl 목차` 표로 흡수. impl 본문 detail 은 module-architect × N 가 채움.
+> Note: 이전 6 mode (SYSTEM_DESIGN / MODULE_PLAN / SPEC_GAP / LIGHT_PLAN / DOCS_SYNC / TECH_EPIC) → 2 agent 통합. 이전 mode 별 결론 enum (SYSTEM_DESIGN_READY / READY_FOR_IMPL / LIGHT_PLAN_READY / SPEC_GAP_RESOLVED / DOCS_SYNCED / TECH_CONSTRAINT_CONFLICT / PRODUCT_PLANNER_ESCALATION_NEEDED) → 단순 `PASS` / `ESCALATE` 2종. 옛 TASK_DECOMPOSE 의 가치 (Story → impl 매핑 / NN-slug 명명 / 의존 순서) 는 system-architect 의 `## impl 목차` 표로 흡수. impl 본문 detail 은 module-architect × N 가 채움.
 
 ### 1.5 engineer
 
@@ -106,7 +106,7 @@ system-architect 산출물의 자가검증 사각지대 (Placeholder Leak + Spik
 
 merge 직전 코드 품질 + 보안 코드 패턴 심사:
 
-- **LGTM** → CI PASS 후 메인이 즉시 regular merge.
+- **PASS** → CI PASS 후 메인이 즉시 regular merge.
 - **변경 요청** → engineer POLISH 재호출.
 
 ### 1.11 qa
@@ -132,7 +132,7 @@ merge 직전 코드 품질 + 보안 코드 패턴 심사:
 | engineer SPEC_GAP_FOUND → module-architect (보강) → engineer 재진입 | 2 | `IMPLEMENTATION_ESCALATE` |
 | code-validator FAIL → engineer 재진입 | engineer attempt 흡수 | engineer attempt 한도 (3) 도달 시 escalate |
 | architecture-validator FAIL → system-architect 재진입 | 2 cycle | 사용자 위임 |
-| pr-reviewer CHANGES_REQUESTED → POLISH 라운드 | 2 | 사용자 escalate |
+| pr-reviewer FAIL → POLISH 라운드 | 2 | 사용자 escalate |
 | ESCALATE 누적 (동일 fail_type) | 2 | module-architect (보강 케이스) 자동 호출 |
 
 `.attempts.json` 형식 (예시):
@@ -156,7 +156,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 |---|---|---|
 | `IMPLEMENTATION_ESCALATE` | engineer | 재시도 한도 초과 또는 구현 불가 |
 | `UX_FLOW_ESCALATE` | ux-architect | UX Flow 정의 불가 (PRD 모순 등) |
-| `DESIGN_LOOP_ESCALATE` | designer | 시안 생성 불가 (외부 의존 부재 / 컨텍스트 모호 / 권한 부족) |
+| `ESCALATE` | designer | 시안 생성 불가 (외부 의존 부재 / 컨텍스트 모호 / 권한 부족) |
 | `SCOPE_ESCALATE` | qa | 이슈 범위가 분류 enum 5개 모두 해당 안 됨 |
 | `ESCALATE` | system-architect / module-architect | 기술 제약 충돌 / PRD 변경 필요 / Spike FAIL / 권한 부족 (본문 사유 명시) |
 

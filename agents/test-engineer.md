@@ -19,7 +19,7 @@ model: sonnet
 
 prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
-- **테스트 작성 완료** → engineer (attempt 0 진입). 권장: "TESTS_WRITTEN — engineer attempt 0 권고".
+- **테스트 작성 완료** → engineer (attempt 0 진입). 권장: "PASS — engineer attempt 0 권고".
 - **스펙 부족해 작성 불가** → module-architect (보강 케이스). "SPEC_GAP_FOUND — module-architect 권고".
 
 **호출자가 prompt 로 전달하는 정보**: impl 계획 파일 경로.

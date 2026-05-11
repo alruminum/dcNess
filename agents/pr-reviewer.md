@@ -18,8 +18,8 @@ model: sonnet
 
 prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
-- **MUST FIX 없음** → CI PASS 후 메인이 즉시 regular merge. 권장 문구: "LGTM — merge 권고".
-- **MUST FIX 1+** → engineer POLISH 호출. "CHANGES_REQUESTED — engineer POLISH 권고" + MUST FIX 목록.
+- **MUST FIX 없음** → CI PASS 후 메인이 즉시 regular merge. 권장 문구: "PASS — merge 권고".
+- **MUST FIX 1+** → engineer POLISH 호출. "FAIL — engineer POLISH 권고" + MUST FIX 목록.
 
 **호출자가 prompt 로 전달하는 정보**: impl 계획 경로, 구현 파일 경로 목록.
 
@@ -45,7 +45,7 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
 ### 원칙 1 — Surface Assumptions (추측 금지)
 
-- 코드 의도 *추측* 으로 reviewer 가정 X — 의도 명확 안 보이면 prose 에 "X 의도 명확화 필요" 질문으로 보고 (`CHANGES_REQUESTED` 자체 X)
+- 코드 의도 *추측* 으로 reviewer 가정 X — 의도 명확 안 보이면 prose 에 "X 의도 명확화 필요" 질문으로 보고 (`FAIL` 자체 X)
 - "이렇게 했어야" 식 단일 옵션 강요 X — 다중 옵션 있으면 *모두* 제시 + reviewer 권고
 
 ## code-validator 와 역할 분리
@@ -63,7 +63,7 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
 ## 리뷰 체크리스트 (요약)
 
-심각도 = MUST FIX (CHANGES_REQUESTED 트리거) / NICE TO HAVE (LGTM 가능).
+심각도 = MUST FIX (FAIL 트리거) / NICE TO HAVE (PASS 가능).
 
 **A. 코드 패턴**: DRY (동일 로직 2 회+, 추출 가능 → MUST), 단일 책임 (MUST), 조기 반환 vs 중첩 if (NICE), 불필요한 추상화 — 한 곳에서만 쓰이는 헬퍼 (NICE).
 
@@ -121,8 +121,8 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
 ## 판정 기준
 
-- **LGTM**: MUST FIX 항목 없음 (NICE TO HAVE 만 있어도 LGTM)
-- **CHANGES_REQUESTED**: MUST FIX 1+
+- **PASS**: MUST FIX 항목 없음 (NICE TO HAVE 만 있어도 PASS)
+- **FAIL**: MUST FIX 1+
 
 ## 산출물 정보 의무 (형식 자유)
 
@@ -130,11 +130,11 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 - NICE TO HAVE 목록 (있는 경우)
 - 총평 1 줄
 
-## 재검토 절차 (CHANGES_REQUESTED 후)
+## 재검토 절차 (FAIL 후)
 
 1. 이전 리뷰의 MUST FIX 목록 확인
-2. **수정된 파일만** 재검토 (이전 LGTM 파일 재검토 금지)
-3. 이전 MUST FIX 별 해결 여부 → 해결 LGTM, 미해결/새 문제 CHANGES_REQUESTED
+2. **수정된 파일만** 재검토 (이전 PASS 파일 재검토 금지)
+3. 이전 MUST FIX 별 해결 여부 → 해결 PASS, 미해결/새 문제 FAIL
 
 ## 참조
 

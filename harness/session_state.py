@@ -1465,9 +1465,9 @@ def _append_step_status(
 def _latest_step_per_role(steps: list) -> list:
     """`steps` 의 같은 (agent, mode) 쌍 중 *마지막* entry 만 골라 반환 (#272 W4).
 
-    POLISH/retry 사이클 완료 후 LGTM 으로 해소된 must_fix 가 has_must_fix 에 sticky
-    되는 문제 해결용. 최신 step 만 봄으로써 step #N 이 CHANGES_REQUESTED → step #M
-    이 LGTM 이면 latest = LGTM (must_fix=False) 로 평가.
+    POLISH/retry 사이클 완료 후 PASS 으로 해소된 must_fix 가 has_must_fix 에 sticky
+    되는 문제 해결용. 최신 step 만 봄으로써 step #N 이 FAIL → step #M
+    이 PASS 이면 latest = PASS (must_fix=False) 로 평가.
 
     입력 순서 (시간 순) 유지 — 같은 키 마지막 발생.
     """
@@ -1521,8 +1521,8 @@ def _cli_finalize_run(args: Any) -> int:
         print(json.dumps({"error": "sid/rid 미해결"}), file=sys.stderr)
         return 1
     steps = _read_steps_jsonl(sid, rid)
-    # #272 W4 — has_must_fix sticky on LGTM 수정. POLISH/retry 로 해소된 must_fix 가
-    # sticky 로 남아 LGTM final step 임에도 caveat 진입했음. 같은 (agent, mode) 의
+    # #272 W4 — has_must_fix sticky on PASS 수정. POLISH/retry 로 해소된 must_fix 가
+    # sticky 로 남아 PASS final step 임에도 caveat 진입했음. 같은 (agent, mode) 의
     # *마지막* 발생만 평가해서 후속 step 에서 해소된 신호를 정합 처리.
     latest_steps = _latest_step_per_role(steps)
     has_ambiguous = any(s.get("enum") == "AMBIGUOUS" for s in latest_steps)

@@ -57,25 +57,25 @@ flowchart TD
     impl[impl: engineer attempt 0..3]
     cv[code-validator]
     review[review: pr-reviewer]
-    merge[merge: LGTM 후 자동 + regular]
+    merge[merge: PASS 후 자동 + regular]
     cleanup[post-commit cleanup]
 
     entry -->|impl/NN-*.md 정식 경로 존재<br/>= architect-loop 통과물| test
     entry -->|impl 부재 = 즉석 task| plan
-    plan -->|READY| test
-    test -->|TESTS_WRITTEN| impl
+    plan -->|PASS| test
+    test -->|PASS| impl
     test -->|SPEC_GAP_FOUND| sg[module-architect 보강]
     impl -->|IMPL_DONE| cv
     impl -->|SPEC_GAP_FOUND| sg
     impl -->|TESTS_FAIL| impl
     impl -->|IMPLEMENTATION_ESCALATE| esc((escalate))
-    sg -->|READY| impl
+    sg -->|PASS| impl
     sg -->|ESCALATE| esc
     cv -->|PASS| review
     cv -->|FAIL| impl
     cv -->|ESCALATE| esc
-    review -->|LGTM| merge
-    review -->|CHANGES_REQUESTED| polish[engineer POLISH]
+    review -->|PASS| merge
+    review -->|FAIL| polish[engineer POLISH]
     polish -->|POLISH_DONE| review
     merge --> cleanup
 ```
@@ -93,8 +93,8 @@ flowchart TD
     impl[...]
 
     plan --> design
-    design -->|DESIGN_READY_FOR_REVIEW| pick
-    design -->|DESIGN_LOOP_ESCALATE| esc((escalate))
+    design -->|PASS| pick
+    design -->|ESCALATE| esc((escalate))
     pick -->|OK| test
     pick -->|NG, 다시| design
     test --> impl
@@ -107,7 +107,7 @@ flowchart TD
 다음은 *어떤 동적 결정* 으로도 우회 금지 — `hooks/catastrophic-gate.sh` 가 PreToolUse 강제:
 
 1. **src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 금지** (§2.3.1)
-2. **engineer 가 module-architect `READY` enum 발화 없이 src/ 작성 금지** (§2.3.3 — 신규 / 보강 / 버그픽스 모든 케이스 동일)
+2. **engineer 가 module-architect `PASS` enum 발화 없이 src/ 작성 금지** (§2.3.3 — 신규 / 보강 / 버그픽스 모든 케이스 동일)
 3. **PRD 변경 후 plan-reviewer PASS 없이 `/architect-loop` 진입 금지** (§2.3.4 — PRD 검증은 `/product-plan` 책임. 자연어 룰 — 메인 영역 강제)
 4. **module-architect × N (architect-loop §4.2 Step 6) 진입 직전 architecture-validator PASS 없이 진입 금지** (§2.3.5 — architect-loop 한정 코드 강제)
 
@@ -127,10 +127,10 @@ flowchart TD
 flowchart LR
     qa[qa] --> main[메인 Claude<br/>그릴미 대화로 PRD/stories.md 직접 Write]
     main --> pr[plan-reviewer<br/>FULL 모드 외부 검증]
-    pr -->|PLAN_REVIEW_PASS| commit[PR 생성 + 머지<br/>+ epic/story 이슈 등록]
-    pr -->|PLAN_REVIEW_FAIL| confirm[메인 + 사용자<br/>findings 항목별 confirm + Edit patch]
+    pr -->|PASS| commit[PR 생성 + 머지<br/>+ epic/story 이슈 등록]
+    pr -->|FAIL| confirm[메인 + 사용자<br/>findings 항목별 confirm + Edit patch]
     confirm --> pr
-    pr -->|PLAN_REVIEW_ESCALATE| esc((escalate))
+    pr -->|ESCALATE| esc((escalate))
     commit --> done((종료 — 사용자 결정))
     done -.->|다음 단계 권장| arch[/architect-loop §4.10/]
 ```
@@ -145,12 +145,12 @@ flowchart LR
     ux -->|UX_FLOW_READY| c1[commit 1: ux-flow.md]
     ux -->|UX_FLOW_ESCALATE| esc((escalate))
     c1 --> sd[system-architect<br/>+ self-check<br/>+ impl 목차 표]
-    sd -->|READY| dv[architecture-validator<br/>Placeholder Leak + Spike Gate]
+    sd -->|PASS| dv[architecture-validator<br/>Placeholder Leak + Spike Gate]
     dv -->|PASS| c2[commit 2: architecture.md + adr.md]
     dv -->|FAIL| sd
     dv -->|ESCALATE| esc
     c2 --> mp[module-architect × K<br/>impl 목차 행마다 1 호출]
-    mp -->|READY × K, 각 호출 후 commit| done[PR 생성 + 머지]
+    mp -->|PASS × K, 각 호출 후 commit| done[PR 생성 + 머지]
     mp -->|SPEC_GAP_FOUND / ESCALATE| esc
 ```
 
@@ -161,7 +161,7 @@ architect-loop = 1 epic 처리 단위. 워크트리 ON 자동 진입. PRD 머지
 ```mermaid
 flowchart LR
     ux[ux 스킬] --> designer
-    designer -->|DESIGN_READY_FOR_REVIEW| handoff((DESIGN_HANDOFF))
+    designer -->|PASS| handoff((DESIGN_HANDOFF))
 ```
 
 엔지니어 호출은 *사용자 결정*. 시퀀스 게이트 없음.
@@ -173,7 +173,7 @@ flowchart LR
     ux[ux 스킬 REFINE 감지] --> uxa[ux-architect UX_REFINE]
     uxa -->|UX_REFINE_READY| user((사용자 승인))
     user --> dr[designer SCREEN]
-    dr -->|DESIGN_READY_FOR_REVIEW| handoff((DESIGN_HANDOFF))
+    dr -->|PASS| handoff((DESIGN_HANDOFF))
 ```
 
 ### 3.4 일반 구현 직접 호출 → `direct-impl-loop` (§4.8)
@@ -210,12 +210,12 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 
 | loop | entry_point | task_list (Step 1) | advance | clean_enum | expected_steps |
 |------|-------------|--------------------|---------|------------|----------------|
-| `architect-loop` (§3.1.5, §4.2) | `architect-loop` (사용자 명시) | ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator / module-architect × K | `UX_FLOW_READY` → `READY` → `PASS` → `READY × K` | advance 동일 | 3 + K (K = system-architect impl 목차 행 수) |
-| `impl-task-loop` (§2.1, §4.3) | `impl` | (default) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `TESTS_WRITTEN` → `IMPL_DONE` → `PASS` → `LGTM` | advance 동일 | 4 (default) / 5 (fallback) |
-| `impl-ui-design-loop` (§2.2, §4.4) | `impl` (UI 감지) | (default) designer / 사용자 PICK / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `DESIGN_READY_FOR_REVIEW` → 사용자 PICK → `TESTS_WRITTEN` → `IMPL_DONE` → `PASS` → `LGTM` | advance 동일 | 6 (default) / 7 (fallback) |
+| `architect-loop` (§3.1.5, §4.2) | `architect-loop` (사용자 명시) | ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator / module-architect × K | `UX_FLOW_READY` → `PASS` → `PASS` → `PASS × K` | advance 동일 | 3 + K (K = system-architect impl 목차 행 수) |
+| `impl-task-loop` (§2.1, §4.3) | `impl` | (default) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 4 (default) / 5 (fallback) |
+| `impl-ui-design-loop` (§2.2, §4.4) | `impl` (UI 감지) | (default) designer / 사용자 PICK / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → 사용자 PICK → `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 6 (default) / 7 (fallback) |
 | `qa-triage` (§3.5, §4.5) | `qa` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
-| `ux-design-stage` (§3.2, §4.6) | `ux` | ux-architect:UX_FLOW / designer / 사용자 PICK | `UX_FLOW_READY` → `DESIGN_READY_FOR_REVIEW` → 사용자 PICK | advance 동일 | 3 |
-| `ux-refine-stage` (§3.3, §4.7) | `ux` (REFINE) | ux-architect:UX_REFINE / designer / 사용자 PICK | `UX_REFINE_READY` → `DESIGN_READY_FOR_REVIEW` → 사용자 PICK | advance 동일 | 3 |
+| `ux-design-stage` (§3.2, §4.6) | `ux` | ux-architect:UX_FLOW / designer / 사용자 PICK | `UX_FLOW_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
+| `ux-refine-stage` (§3.3, §4.7) | `ux` (REFINE) | ux-architect:UX_REFINE / designer / 사용자 PICK | `UX_REFINE_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
 | `direct-impl-loop` (§3.4, §4.8) | `impl_driver` (future) | `impl-task-loop` 동일 | `impl-task-loop` 동일 | `impl-task-loop` 동일 | 5 |
 
 ### 4.2 `architect-loop` 풀스펙
@@ -230,16 +230,16 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 **Step 별 allowed_enums + commit**:
 | step | agent[:mode] | allowed_enums | commit |
 |---|---|---|---|
-| 2 | ux-architect:UX_FLOW (5 카테고리 self-check 의무) | `UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE` | commit 1 (`[docs] ux-flow <epic-slug>`) — READY 직후 |
-| 3 | system-architect (self-check 의무) | `READY,ESCALATE` (산출물에 `## impl 목차` 표 — Story → impl 매핑 + K 행 + `task_index: i/total` 열) | (working tree only) |
+| 2 | ux-architect:UX_FLOW (5 카테고리 self-check 의무) | `UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE` | commit 1 (`[docs] ux-flow <epic-slug>`) — PASS 직후 |
+| 3 | system-architect (self-check 의무) | `PASS,ESCALATE` (산출물에 `## impl 목차` 표 — Story → impl 매핑 + K 행 + `task_index: i/total` 열) | (working tree only) |
 | 3.5 | architecture-validator | `PASS,FAIL,ESCALATE` | commit 2 (`[docs] architecture + adr <epic-slug>`) — PASS 직후 |
-| 4.1 ~ 4.K | module-architect (신규 케이스, occurrence 1..K) | `READY,SPEC_GAP_FOUND,ESCALATE` | commit 3..K+2 (`[docs] impl <NN>-<slug>`) — 각 READY 직후 |
+| 4.1 ~ 4.K | module-architect (신규 케이스, occurrence 1..K) | `PASS,SPEC_GAP_FOUND,ESCALATE` | commit 3..K+2 (`[docs] impl <NN>-<slug>`) — 각 PASS 직후 |
 
 **module-architect × K 단계 (Step 4)**:
 - 입력 = system-architect 산출물의 `## impl 목차` 표. 메인이 표 행 (NN, 파일명, 대응 Story, `task_index = i/total`, 의존) 순회하며 module-architect 1번씩 호출
 - 각 호출이 `docs/milestones/vNN/epics/epic-NN-*/impl/<NN>-<slug>.md` 새로 작성. **frontmatter `story: <N>, task_index: <i>/<total>` 의무** — impl-task-loop PR body Closes/Part of 판정 입력 ([`issue-lifecycle.md`](issue-lifecycle.md) §1.4)
 - 호출 순서 = impl 목차 의존 순서 (선행 impl 본문이 후행 `## 의존성` 입력 → 순차)
-- K 호출 모두 `READY` → architect-loop clean 종료 (Step 5)
+- K 호출 모두 `PASS` → architect-loop clean 종료 (Step 5)
 
 **Step 5 — commit / push / PR / 머지**:
 - `git push -u origin docs/<epic-slug>` + `gh pr create` (PR body = 설계 산출물 요약, `Part of #<epic-issue>`)
@@ -278,19 +278,19 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 | stage | 시점 | 내용 |
 |---|---|---|
 | branch + commit (src) + PR | code-validator PASS 직후 | branch 새로 + src 파일 + push + `gh pr create` |
-| merge | LGTM 직후 | `gh pr merge` |
+| merge | PASS 직후 | `gh pr merge` |
 
 > `docs/impl/NN.md` 는 `/architect-loop` 산출물이 *미리 머지* 한 상태 (main 안). impl-task-loop 안에서 별도 commit X.
 
 **Step 별 allowed_enums (default 모드)**:
 | step | agent[:mode] | allowed_enums |
 |---|---|---|
-| 2 | test-engineer | `TESTS_WRITTEN,SPEC_GAP_FOUND` |
+| 2 | test-engineer | `PASS,SPEC_GAP_FOUND` |
 | 3 | engineer:IMPL | `IMPL_DONE,IMPL_PARTIAL,SPEC_GAP_FOUND,TESTS_FAIL,IMPLEMENTATION_ESCALATE` |
 | 4 | code-validator | `PASS,FAIL,ESCALATE` |
-| 5 | pr-reviewer | `LGTM,CHANGES_REQUESTED` |
+| 5 | pr-reviewer | `PASS,FAIL` |
 
-**fallback 모드**: 위 step 앞에 `module-architect` (allowed_enums = `READY,SPEC_GAP_FOUND,ESCALATE`) 1 step 추가.
+**fallback 모드**: 위 step 앞에 `module-architect` (allowed_enums = `PASS,SPEC_GAP_FOUND,ESCALATE`) 1 step 추가.
 
 **분기**:
 - `IMPL_PARTIAL` → engineer IMPL 재호출 (split < 3, 새 context window — DCN-30-34). 초과 시 `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — system-architect 재진입 권고 / impl 목차 분할 재검토).
@@ -298,12 +298,12 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 - `TESTS_FAIL` → engineer IMPL 재시도 (attempt < 3, 초과 → `IMPLEMENTATION_ESCALATE`)
 - code-validator `ESCALATE` → 본문 사유 prose 보고 메인 분기: spec 부재면 module-architect (보강), 재시도 한도 초과면 사용자 위임
 - module-architect `ESCALATE` / `IMPLEMENTATION_ESCALATE` → 사용자 위임
-- `CHANGES_REQUESTED` → engineer POLISH cycle (≤ 2)
+- `FAIL` → engineer POLISH cycle (≤ 2)
 - code-validator `FAIL` → engineer IMPL 재시도
 
 **sub_cycles** (재호출 시 begin-step 은 동일 agent 사용 — occurrence 카운터가 `<agent>-N.md` 자동 처리. `dcness-rules.md §3.4`):
-- `module-architect` (engineer/test-engineer SPEC_GAP_FOUND 시, 보강 케이스) — allowed_enums = `READY,ESCALATE`
-- `engineer POLISH` (CHANGES_REQUESTED 시, ≤ 2 회) — allowed_enums = `POLISH_DONE,IMPLEMENTATION_ESCALATE`
+- `module-architect` (engineer/test-engineer SPEC_GAP_FOUND 시, 보강 케이스) — allowed_enums = `PASS,ESCALATE`
+- `engineer POLISH` (FAIL 시, ≤ 2 회) — allowed_enums = `POLISH_DONE,IMPLEMENTATION_ESCALATE`
 - `engineer IMPL` 재시도 (TESTS_FAIL/FAIL 시, attempt < 3) — engineer IMPL 동일
 - `engineer IMPL` split (IMPL_PARTIAL 시, split < 3, DCN-30-34) — engineer IMPL 동일. prose 의 `## 남은 작업` 컨텍스트로 진입.
 
@@ -316,19 +316,19 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 **Step 별 allowed_enums (default 모드)**:
 | step | agent[:mode] | allowed_enums |
 |---|---|---|
-| 2 | designer | `DESIGN_READY_FOR_REVIEW,DESIGN_LOOP_ESCALATE` |
+| 2 | designer | `PASS,ESCALATE` |
 | 2.5 | (사용자 PICK) | — (메인이 시안 경로 안내 + 사용자 OK/NG. NG 시 designer 재호출 자유) |
 | 3 | test-engineer | §4.3 동일 |
 | 4 | engineer:IMPL | §4.3 동일 |
 | 5 | code-validator | §4.3 동일 |
 | 6 | pr-reviewer | §4.3 동일 |
 
-**fallback 모드**: 위 step 앞에 `module-architect` (allowed_enums = `READY,SPEC_GAP_FOUND,ESCALATE`) 1 step 추가.
+**fallback 모드**: 위 step 앞에 `module-architect` (allowed_enums = `PASS,SPEC_GAP_FOUND,ESCALATE`) 1 step 추가.
 
-**Step 2.5 — 사용자 PICK**: designer DESIGN_READY_FOR_REVIEW 후 test-engineer 진입 *전* 메인이 사용자에게 시안 경로 (Pencil 캔버스 또는 `design-variants/<screen>-v<N>.html`) + node-id 안내 + OK/NG 받음. NG 시 designer 재호출 — round 한도 명시 X (사용자 자유 결정). step 컨벤션 = `user-pick-2.5` (helper begin/end-step 비대상).
+**Step 2.5 — 사용자 PICK**: designer PASS 후 test-engineer 진입 *전* 메인이 사용자에게 시안 경로 (Pencil 캔버스 또는 `design-variants/<screen>-v<N>.html`) + node-id 안내 + OK/NG 받음. NG 시 designer 재호출 — round 한도 명시 X (사용자 자유 결정). step 컨벤션 = `user-pick-2.5` (helper begin/end-step 비대상).
 
 **분기**:
-- `DESIGN_LOOP_ESCALATE` → 사용자 위임
+- `ESCALATE` → 사용자 위임
 - 나머지 = §4.3 분기 동일
 
 **sub_cycles**: §4.3 동일 + `designer-ROUND-<n>` (사용자 NG 시 재생성, 사용자 자유 결정).
@@ -359,16 +359,16 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 | step | agent[:mode] | allowed_enums |
 |---|---|---|
 | 2 | ux-architect:UX_FLOW | `UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE` |
-| 3 | designer | `DESIGN_READY_FOR_REVIEW,DESIGN_LOOP_ESCALATE` |
+| 3 | designer | `PASS,ESCALATE` |
 | 3.5 | (사용자 PICK) | — (메인이 시안 경로 안내 + OK/NG. NG 시 designer 재호출 자유) |
 
 **designer 환경 감지**: `docs/design.md` frontmatter `medium: pencil|html` 따라 분기. 박힘 X 면 designer Step 0 에서 detect + 사용자 역질문 (가용 시).
 
 **분기**:
-- `DESIGN_READY_FOR_REVIEW` + 사용자 OK → DESIGN_HANDOFF 패키지 (이슈 코멘트 + design.md + 시안 파일) → 종료
-- `DESIGN_READY_FOR_REVIEW` + 사용자 NG → designer 재호출 (사용자 자유 결정)
+- `PASS` + 사용자 OK → DESIGN_HANDOFF 패키지 (이슈 코멘트 + design.md + 시안 파일) → 종료
+- `PASS` + 사용자 NG → designer 재호출 (사용자 자유 결정)
 - `UX_REFINE_READY` (ux-architect) → ux-refine-stage 진입
-- `DESIGN_LOOP_ESCALATE` / `UX_FLOW_ESCALATE` → 사용자 위임
+- `ESCALATE` / `UX_FLOW_ESCALATE` → 사용자 위임
 
 **sub_cycles**: `designer-ROUND-<n>` (사용자 NG 시 재생성, 사용자 자유 결정).
 
@@ -381,7 +381,7 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 |---|---|---|
 | 2 | ux-architect:UX_REFINE | `UX_REFINE_READY,UX_FLOW_ESCALATE` |
 | 2.5 | (사용자 승인) | — (메인이 사용자에게 ux refine 결과 검토 요청. 거절 시 ux-architect 재호출) |
-| 3 | designer | `DESIGN_READY_FOR_REVIEW,DESIGN_LOOP_ESCALATE` |
+| 3 | designer | `PASS,ESCALATE` |
 | 3.5 | (사용자 PICK) | — (§4.6 동일) |
 
 **designer 환경 감지**: §4.6 동일.
