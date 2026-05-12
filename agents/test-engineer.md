@@ -107,4 +107,4 @@ impl 인터페이스 모호 시 *추측 금지*:
 ## 참조
 
 - 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md)
-- prose-only 발상: [`docs/plugin/dcness-rules.md`](../docs/plugin/dcness-rules.md) §1
+- prose-only 발상: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §0 (강제 영역 2가지)

@@ -245,4 +245,4 @@ DESIGN_HANDOFF 단일 파일 패키지는 폐지. 아래 3 경로로 분산:
 
 - 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md), [`docs/plugin/handoff-matrix.md`](../docs/plugin/handoff-matrix.md)
 - 디자인 시스템 SSOT: [`docs/plugin/design.md`](../docs/plugin/design.md)
-- prose-only 발상: [`docs/plugin/dcness-rules.md`](../docs/plugin/dcness-rules.md) §1
+- prose-only 발상: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §0 (강제 영역 2가지)

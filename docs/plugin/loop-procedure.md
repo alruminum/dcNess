@@ -2,7 +2,7 @@
 
 > **Status**: ACTIVE
 > **Scope**: dcness 8 loop 의 *공통 실행 절차* SSOT — Step 0~8 mechanics. 메인 Claude 가 skill 트리거 또는 직접 발화로 루프 시작 시 본 문서를 컨베이어 매뉴얼처럼 따른다.
-> **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) + 시퀀스 mini-graph + 결정표 = [`orchestration.md`](orchestration.md) §2~§4. 에이전트 호출 결과 echo + 세션 주입 강조 룰 = [`dcness-rules.md`](dcness-rules.md).
+> **Cross-ref**: 8 loop 별 행별 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) + 시퀀스 mermaid + 결정표 = [`orchestration.md`](orchestration.md) §2~§4.
 
 ---
 
@@ -12,7 +12,7 @@ skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`orchestration.md`
 
 - **skill 경유**: `commands/<skill>.md` 의 `Loop` 필드가 orchestration §4 행 가리킴. skill 은 input 정형화 + 라우팅 추천만 — 절차는 본 SSOT, loop spec 은 orchestration §4.
 - **직접 발화** ("이거 impl 로 가자"): orchestration.md §3 mini-graph + §4.1 인덱스 보고 메인이 자율 구성. 강제 X.
-- **dcness-rules.md (SessionStart inject)**: 본 문서 + catalog 모두 read 의무 명시. 매 세션 진입 시 메인 자동 인지.
+- **SessionStart inject**: 슬림 본문 (강제 영역 / 메인 Claude 필수 / 진입 매트릭스 / 안티패턴) 매 세션 자동 노출. 첫 응답 첫 줄 `[dcness 활성 확인]` 토큰 의무.
 
 ---
 
@@ -76,24 +76,98 @@ TaskCreate("<agent>: <mode 또는 짧은 설명>")
 TaskUpdate("<task>", in_progress)
 "$HELPER" begin-step <agent> [<MODE>]
 Agent(subagent_type="<agent>", mode="<MODE>", description="...")
-"$HELPER" end-step <agent> [<MODE>]   # prose-only mode (이슈 #284 정착 후 권장, stdout=PROSE_LOGGED)
+"$HELPER" end-step <agent> [<MODE>]   # prose-only mode (stdout=PROSE_LOGGED)
 # legacy compat: ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>")
-# guidelines §1 의무 echo (5~12 줄)
+# 의무 echo (5~12 줄) — 아래 "결과 echo + 평가" 섹션
 TaskUpdate("<task>", completed)
 ```
 
-begin-step stdout 에 `[INSIGHTS: <agent>/<mode>]` 섹션이 있으면 Agent prompt 끝에 그대로 포함시킨다. 해당 agent 의 과거 루프 학습 내용 — "하지 말 것" / "잘 됐던 것" — 이 프로젝트 레벨로 누적된 것.
+begin-step stdout 에 `[INSIGHTS: <agent>/<mode>]` 섹션이 있으면 Agent prompt 끝에 그대로 포함시킨다. 해당 agent 의 과거 루프 학습 — "하지 말 것" / "잘 됐던 것" — 이 프로젝트 레벨로 누적된 것.
 
 메인이 prose를 직접 Write 할 필요 없음 — PostToolUse Agent hook 이 sub 종료 시 `tool_response.text` 에서 prose 를 자동으로 `<run_dir>/<agent>[-<MODE>].md` 에 저장하고 `live.json.current_step.prose_file` 에 경로 기록. `end-step` 이 이 경로를 자동 읽는다.
 
-### 3.2 prose 파일 자동 명명 규칙
+**호출 prompt 작성 — MUST**: 호출 직전 해당 `agent.md` §"호출자가 prompt 로 전달하는 정보" 항목 read 후 prompt 작성 (형식 자유, 정보 명시 의무).
 
-PostToolUse hook 이 `signal_io.signal_path` 기준으로 파일명 결정:
+**worktree 활성 시 worktree 절대 경로 prompt 에 추가 명시 — MUST**: cwd 가 `.claude/worktrees/<name>/` 안이면 sub-agent prompt 에 worktree 절대 경로 명시. main repo abs path 사용 금지 — 머지 전 옛 코드 read 로 false positive (CC #31546 / #48096). 근거: CC Task tool 에 cwd parameter 부재 (#12748), subagent frontmatter cwd field 부재 (#31940) — 메인이 명시 책임.
+
+**prose-only mode** (이슈 #284): `--allowed-enums` 미지정 시 stdout = `PROSE_LOGGED`. 메인 Claude 가 prose 자체 (`<run_dir>/<agent>[-<MODE>].md`) 를 직접 읽고 routing 결정 — [`handoff-matrix.md`](handoff-matrix.md) §1 자연어 가이드 참조. 결정 못 하면 `harness.routing_telemetry record-cascade --reason "..."` 으로 cascade marker 박고 사용자 위임.
+
+#### 결과 echo + 평가 — MUST (5~12줄)
+
+```
+[<task-id>.<agent>] echo
+
+▎ <prose 의 ## 결론 / ## Summary / ## 변경 요약 섹션 본문 5~12줄>
+▎ <섹션 부재 시 prose 첫 5~10줄 fallback>
+▎ <필요 시 추가 본문 인용 — 12줄 cap>
+
+결론: <ENUM>
+평가: PASS / REDO_SAME / REDO_BACK / REDO_DIFF — <사유>
+```
+
+- `<task-id>` = standalone 시 step 이름, `/impl-loop` 안 시 `b<i>.<agent>`
+- `▎` 글자 (U+258E) 그대로 — 사용자 인식 패턴
+- 5줄 미만 / 12줄 초과 = 룰 위반
+
+**평가 기준**: 에이전트 결과를 받으면 바로 다음 step으로 넘어가지 않고 충분한지 먼저 판단한다. 미진한 결과를 통과시키면 다음 step이 그 위에 쌓여 나중에 더 큰 redo 비용이 발생한다.
+
+| 평가 | 의미 |
+|---|---|
+| `PASS` | 결과 충분, 다음 step 진입 |
+| `REDO_SAME` | 같은 접근으로 재시도 |
+| `REDO_BACK` | 이전 step으로 돌아가 재실행 |
+| `REDO_DIFF` | 다른 접근 / 다른 에이전트로 재시도 |
+
+REDO 판단 신호: 결과가 질문에 제대로 답하지 못함 / 같은 tool 5회+ 반복 / boundary 위반 stderr / 기대 enum 불일치. 루프 순서 변경도 자유 — system-architect / module-architect 재실행 등 적극.
+
+**echo 안티패턴**: ❌ 압축 paraphrase 1~2줄 / ❌ table / code block 통째 생략 / ❌ 결론만 echo / ❌ 평가 줄 빠뜨리기.
+
+#### 자가 점검 (TaskUpdate(completed) 전)
+
+```
+□ prose read 했는가?
+□ ## 결론 / ## Summary / ## 변경 요약 섹션 우선 추출했는가?
+□ 5~12줄 echo 했는가?
+□ 결론 enum + 평가 포함됐는가?
+```
+
+#### AMBIGUOUS 처리 (legacy enum mode 한정)
+
+`--allowed-enums` 박은 legacy 호출에서 `end-step` stdout = `AMBIGUOUS` 시: 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS → 사용자 위임 (enum 후보 + prose 발췌). prose-only mode 는 AMBIGUOUS 자체 X — `record-cascade` 로 cascade marker 박고 사용자 위임.
+
+#### helper 안전망 (자동 검출)
+
+- **drift WARN**: live.json `current_step` 과 `args.agent` 불일치 → stderr WARN
+- **step count WARN**: `finalize-run --expected-steps N` row count 미달 → stderr WARN
+- 자동 보정 X — 메인이 사후 인지 + `/run-review` 진단
+
+### 3.2 step 명명 + prose 파일 자동 명명
+
+**step 명명 규칙**: begin/end-step 은 `agent mode` 두 인자 형식만 허용.
+
+```bash
+"$HELPER" begin-step <agent> [<MODE>]
+"$HELPER" end-step   <agent> [<MODE>] [--allowed-enums "..."]
+```
+
+- `agent` — 소문자·하이픈만 (`^[a-z][a-z0-9-]{0,63}$`)
+- `mode` — 대문자·숫자·언더스코어만 (`^[A-Z][A-Z0-9_]{0,63}$`)
+- 콜론 표기 금지 — `"engineer:POLISH-1"` 형식은 `_validate_agent` 거부 → prose 미기록
+
+**prose 파일 자동 명명** (PostToolUse hook 이 `signal_io.signal_path` 기준 결정):
 - 단순: `<run_dir>/<agent>.md`
 - mode 보유: `<run_dir>/<agent>-<MODE>.md`
-- 같은 (agent, mode) N번째 반복: `<run_dir>/<agent>[-<MODE>]-N.md`
+- 같은 (agent, mode) N번째 반복: `<run_dir>/<agent>[-<MODE>]-N.md` (occurrence 카운터 자동 충돌 처리)
 
-각각 별도 begin/end-step 1쌍 필수 (DCN-30-25 안전망). `--prose-file` 명시적 전달은 legacy/override 용도로 여전히 허용.
+| 상황 | begin/end-step | 생성 파일 |
+|---|---|---|
+| POLISH 1회 | `begin-step engineer POLISH` | `engineer-POLISH.md` |
+| POLISH 2회 | `begin-step engineer POLISH` | `engineer-POLISH-1.md` |
+| IMPL 재시도 | `begin-step engineer IMPL` | `engineer-IMPL-1.md` |
+
+재호출마다 별도 begin/end-step 1쌍 필수 (DCN-30-25 안전망). `--prose-file` 명시적 전달은 legacy/override 용도로 여전히 허용.
+
+**안티패턴** (begin/end-step 쌍 누락): ❌ engineer commit/PR 후 git status 확인 → end-step skip / ❌ FAIL 후 POLISH Agent 호출 시 begin/end-step 미포함 / ❌ end-step 보류 중 다음 step 진입으로 망각 / ❌ task 간 보고 작성 후 begin-step 재호출 누락.
 
 ### 3.3 ENUM 분기
 
@@ -334,9 +408,28 @@ worktree 처리도 사용자 결정.
 
 ## 6. Step 8 — review 결과 인지
 
-`--auto-review` stdout 자동 출력. 메인이 guidelines §4 룰대로 character-for-character echo. review 리포트의 must-fix / waste finding / per-Agent metric 즉시 인지 + 다음 run 회귀 방지에 활용.
+`--auto-review` stdout 자동 출력. 메인이 review 결과를 **세션에 직접 출력 — MUST**.
 
-review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정상 출력. 메인이 사후 인지 후 수동 `dcness-review` 1회 재시도 권장.
+수동 호출 (auto-review 없이 실행됐을 경우):
+```bash
+"$(dirname "$HELPER")/dcness-review" --run-id "$RUN_ID" --repo "$(pwd)"
+```
+
+skip 금지 — 사용자 보고 전 1회 의무.
+
+**세션에 직접 출력 — MUST**: Bash stdout 은 CC UI 에서 collapsed (펼쳐야 보임). 리뷰 결과를 **텍스트 응답으로 그대로 복사**해서 출력한다.
+- 섹션 생략 / 축약 / 재배치 금지
+- 자체 해석 ("핵심은~", "정리하면~") 본문 사이 삽입 금지
+
+**개선점 코멘트 — MUST**: 리뷰 출력 끝에 메인 Claude 가 1~3줄 코멘트 추가.
+
+```
+💡 이번 run 개선점:
+- <이번 run 에서 발견된 반복 실수 / 낭비 요약>
+- <다음 run 에서 주의할 점>
+```
+
+review 리포트의 must-fix / waste finding / per-Agent metric 즉시 인지 + 다음 run 회귀 방지에 활용. review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정상 출력. 메인이 사후 인지 후 수동 `dcness-review` 1회 재시도 권장.
 
 ---
 
@@ -357,7 +450,7 @@ review_main 실패 (예외) 시 helper stderr WARN — STATUS JSON 자체는 정
 ## 8. 참조
 
 - [`orchestration.md`](orchestration.md) §2~§4 — 시퀀스 mini-graph / 8 loop 행별 풀스펙 / handoff cross-ref
-- [`dcness-rules.md`](dcness-rules.md) — echo / Step 기록 / yolo / AMBIGUOUS / worktree / 결과 출력 / 권한 요청 / Karpathy
+- 본 문서 §3.1 + §6 — echo / 자가점검 / REDO 분류 / 개선점 코멘트 (옛 dcness-rules §3/§4 흡수)
 - [`../archive/conveyor-design.md`](../archive/conveyor-design.md) §2 / §3 / §7 — 컨베이어 디자인 + catastrophic gate (역사 자료)
 - `harness/session_state.py` — helper CLI (`begin-run` / `end-run` / `begin-step` / `end-step` / `finalize-run` / `run-dir` / `auto-resolve`)
 - `harness/run_review.py` — review 엔진 (`--auto-review` 호출 대상)

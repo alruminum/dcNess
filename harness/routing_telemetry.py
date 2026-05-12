@@ -2,7 +2,7 @@
 
 이슈 #281 (epic #280): enum 시스템 폐기 *전후* routing 정확도 비교 baseline.
 
-기록 대상 (raw 데이터만 — 정형 검증 X, dcness-rules.md §1 원칙 2 정합):
+기록 대상 (raw 데이터만 — 정형 검증 X, orchestration.md §0 정합):
 
     1. agent_call    PostToolUse Agent 발화 시 1줄 — 어떤 sub 가 어떤 prose 결론
                      으로 종료했는지. 이후 메인이 prose 보고 다음 routing 결정.

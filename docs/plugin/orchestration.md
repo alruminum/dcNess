@@ -8,13 +8,20 @@
 
 ## 0. 정체성 — 강제하는 것 / 강제 안 하는 것
 
-> **🔴 대 원칙** ([`dcness-rules.md`](dcness-rules.md) §1 §1 직접 인용):
+> **🔴 대 원칙** (dcness 의 SSOT — 매 세션 SessionStart inject 로 자동 노출):
 > **harness 가 강제하는 것은 단 2가지 — (1) 작업 순서, (2) 접근 영역. 그 외 모두 agent 자율.**
 > - **작업 순서** = 시퀀스 (code-validator → engineer → pr-reviewer 등) + retry 정책
 > - **접근 영역** = file path 경계 (agent-boundary ALLOW/READ_DENY) + 외부 시스템 mutation 차단 (push, gh issue, plugin 디렉토리)
 > - **출력 형식 / handoff 형식 / preamble 구조 / marker / status JSON / Flag = agent 자율, harness 강제 X.**
 
-본 SSOT 는 위 2 개 강제 영역만 정의. 형식 강제 (마커 / status JSON / Flag) 는 [`dcness-rules.md`](dcness-rules.md) §1 에 의해 폐기 — 본 문서 안에서도 그 어휘는 사용하지 않는다.
+### 안티패턴 (룰 추가 시 피하기)
+
+1. **룰이 룰을 부르는 reactive cycle** — 신규 룰 추가 전 기존 룰 제거 가능성 먼저 검토. 추가→제거 비대칭이 기술 부채.
+2. **강제 vs 권고 혼동** — 강제(block) = catastrophic 만. 권고(warn) = 형식 위반 / 비용 폭증 등은 측정 + 경고 + 사용자 개입. 권고 → 강제 자동 승격 금지.
+3. **에이전트 자율성 침해** — agent prompt 안 강제 형식 박기 금지. 결론 + 이유 명확히 쓰도록 가이드만 (형식이 아니라 의미).
+4. **불필요한 흐름 강제** — 시퀀스 보존은 catastrophic 만. 시퀀스 내부 행동 = 에이전트 자율.
+
+본 SSOT 는 위 2 개 강제 영역만 정의. 형식 강제 (마커 / status JSON / Flag) 는 도입 안 함.
 
 ---
 
@@ -170,7 +177,7 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 - module-architect `SPEC_GAP_FOUND` → module-architect (보강 케이스) cycle (≤ 2) → 신규 케이스 재진입
 - module-architect `ESCALATE` → 사용자 위임
 
-**sub_cycles**: 위 분기 재호출 시 동일 agent 로 별도 begin/end-step 1쌍. occurrence 카운터가 파일명 충돌 자동 처리 ([`dcness-rules.md`](dcness-rules.md) §3.4). module-architect × K 의 K 호출 = `module-architect.md` / `module-architect-2.md` ... 자동 명명.
+**sub_cycles**: 위 분기 재호출 시 동일 agent 로 별도 begin/end-step 1쌍. occurrence 카운터가 파일명 충돌 자동 처리 ([`loop-procedure.md`](loop-procedure.md) §3.2). module-architect × K 의 K 호출 = `module-architect.md` / `module-architect-2.md` ... 자동 명명.
 
 ### 4.3 `impl-task-loop` 풀스펙
 
@@ -216,7 +223,7 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 - `FAIL` → engineer POLISH cycle (≤ 2)
 - code-validator `FAIL` → engineer IMPL 재시도
 
-**sub_cycles** (재호출 시 begin-step 은 동일 agent 사용 — occurrence 카운터가 `<agent>-N.md` 자동 처리. `dcness-rules.md §3.4`):
+**sub_cycles** (재호출 시 begin-step 은 동일 agent 사용 — occurrence 카운터가 `<agent>-N.md` 자동 처리. `loop-procedure.md §3.2`):
 - `module-architect` (engineer/test-engineer SPEC_GAP_FOUND 시, 보강 케이스) — allowed_enums = `PASS,ESCALATE`
 - `engineer POLISH` (FAIL 시, ≤ 2 회) — allowed_enums = `POLISH_DONE,IMPLEMENTATION_ESCALATE`
 - `engineer IMPL` 재시도 (TESTS_FAIL/FAIL 시, attempt < 3) — engineer IMPL 동일
@@ -264,7 +271,7 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 - `KNOWN_ISSUE` → 종료
 - `SCOPE_ESCALATE` → 사용자 위임 (큰 변경 / 다중 모듈)
 
-**sub_cycles**: 없음. AMBIGUOUS 시 [`dcness-rules.md`](dcness-rules.md) §6 cascade.
+**sub_cycles**: 없음. AMBIGUOUS 시 [`loop-procedure.md`](loop-procedure.md) §3.1 AMBIGUOUS 처리.
 
 ### 4.6 `ux-design-stage` 풀스펙
 
@@ -317,7 +324,7 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 - **자율 (agent)**: prose 형식 / handoff 페이로드 구조 / preamble / agent 가 사용하는 도구 순서 (단 §4 권한 안).
 - **권고 (강제 X)**: handoff-matrix §1 라우팅 / §2 retry 한도 — 측정 + 사용자 개입.
 
-자세히 = [`dcness-rules.md`](dcness-rules.md) §1.
+자세히 = 본 문서 §0 + [`handoff-matrix.md`](handoff-matrix.md) §1~§4.
 
 ---
 
@@ -331,10 +338,10 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 
 - [`handoff-matrix.md`](handoff-matrix.md) — agent 결정표 / Retry / Escalate / 접근 권한 SSOT
 - [`loop-procedure.md`](loop-procedure.md) — 루프 실행 Step 0~8 mechanics
-- [`dcness-rules.md`](dcness-rules.md) §1 — 본 SSOT 의 강제 영역 정의 현행 SSOT (대 원칙 + Anti-Pattern 5원칙)
+- 본 문서 §0 — 강제 영역 2가지 + 안티패턴 4건 (옛 dcness-rules.md §1 흡수)
 - [`../archive/status-json-mutate-pattern.md`](../archive/status-json-mutate-pattern.md) — Prose-Only 원전 proposal (Phase 분할 / §11.4 도입 기준 / Risks) (역사 자료)
 - [`../archive/conveyor-design.md`](../archive/conveyor-design.md) — 코드 driver 디자인 + 폐기된 옵션 카탈로그 (역사 자료)
-- [`dcness-rules.md`](dcness-rules.md) — cross-cutting 룰 (echo / yolo / self-verify)
+- [`loop-procedure.md`](loop-procedure.md) §3 — cross-cutting 룰 (echo / 자가점검 / REDO 분류 / yolo)
 - [`../../CLAUDE.md`](../../CLAUDE.md) — 작업 절차 + 게이트 SSOT
 - [`../archive/plugin-dryrun-guide.md`](../archive/plugin-dryrun-guide.md) — plugin 배포 dry-run (역사 자료)
 - [`../archive/migration-decisions.md`](../archive/migration-decisions.md) §2.1 — RWHarness 모듈 분류 (impl_loop.py DISCARD) (역사 자료)

@@ -116,4 +116,4 @@ CRITICAL 이슈 발견 시 다른 이슈 분석 즉시 중단 + 보고.
 ## 참조
 
 - 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md)
-- prose-only 발상: [`docs/plugin/dcness-rules.md`](../docs/plugin/dcness-rules.md) §1
+- prose-only 발상: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §0 (강제 영역 2가지)

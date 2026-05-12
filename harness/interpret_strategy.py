@@ -15,7 +15,7 @@
     - 99.2% hit rate 는 enum 가치가 아니라 prompt 강제력. 자유 prose 도 동등 routing
       정확도 가능.
     - matrix ↔ 코드 drift 9 종 누적. enum 변경 시 다중 SSOT 동기 의무 = 실 비용.
-    - dcness-rules.md §1 원칙 2 (LLM 자율 + 최소 가이드레일) 와 충돌.
+    - orchestration.md §0 (LLM 자율 + 최소 가이드레일) 와 충돌.
 
 Outcome 분류 (legacy):
     - heuristic_hit       : 휴리스틱 단어경계 단일 매칭 → 즉시 결론

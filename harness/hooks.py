@@ -614,7 +614,7 @@ def handle_posttooluse_agent(
     # rid 활성 시만 측정 inject + redo_log auto append
     # #272 W1 자율 친화 재설계 — hook 은 *raw 측정 데이터* 만 inject.
     # "REDO_SUSPECT" 같은 결정 X. 임계값 X. prose-only 화이트리스트 X.
-    # 메인 LLM 이 dcness-rules.md §3.3 가이드 보고 자율 판단.
+    # 메인 LLM 이 loop-procedure.md §3.1 가이드 보고 자율 판단.
     histogram_str = ""
     input_repeats_str = ""
     pending_match = ""
@@ -691,7 +691,7 @@ def handle_posttooluse_agent(
         pass
 
     # additionalContext — *raw 측정 데이터* + 가이드 1줄. 결정 메시지 X.
-    # 메인 LLM 이 dcness-rules.md §3.3 가이드 (REDO 판단 신호) 보고 자율 판단.
+    # 메인 LLM 이 loop-procedure.md §3.1 가이드 (REDO 판단 신호) 보고 자율 판단.
     if histogram_str:
         ctx = f"[감시자 hook] sub={sub_type or '?'} tool histogram: {histogram_str}"
         if input_repeats_str:

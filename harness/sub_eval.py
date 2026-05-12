@@ -3,9 +3,9 @@
 PostToolUse Agent hook 가 sub 종료 시 trace 집계 → tool histogram + 같은 input
 반복 카운트 → additionalContext inject. *결정 X — raw data 만*.
 
-dcness-rules.md §1 정합 (가이드레일만, 메인 LLM 자율 판단):
+orchestration.md §0 정합 (가이드레일만, 메인 LLM 자율 판단):
     - 임계값 hardcode X (Read 15 같은 우리 가정 박지 X)
-    - "REDO_SUSPECT" 자동 결정 X (메인이 dcness-rules §3.3 가이드 보고 자율)
+    - "REDO_SUSPECT" 자동 결정 X (메인이 loop-procedure.md §3.1 가이드 보고 자율)
     - 화이트리스트 / 약속-실측 검사 X (룰 박을수록 자율 침해)
 
 이전 (PR #274 시점) anomaly 룰 (임계 차등 / prose-only 화이트리스트 /

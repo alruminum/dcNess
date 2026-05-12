@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-# dcNess SessionStart 훅 — sid 추출 + by-pid 작성 + live.json 초기화
+# dcNess SessionStart 훅 — sid 추출 + by-pid 작성 + live.json 초기화 + 슬림 inject
 #
 # 트리거: Claude Code SessionStart event
 # stdin: CC payload (sessionId 포함)
-# 동작: harness/hooks.py 의 handle_session_start 호출
+# 동작: harness/hooks.py 의 handle_session_start 호출 + 슬림 본문 inject
 #
 # 실패 시 silent (exit 0) — CC 동작 방해 안 함.
-#
-# 등록: .claude/settings.json 의 hooks.SessionStart 에 본 스크립트 경로 박음.
-#       plugin 활성 시 자동 등록되도록 .claude-plugin/plugin.json 에서도 명시.
 
 set -uo pipefail
 
@@ -26,74 +23,40 @@ CC_PID=$PPID
 # Python 으로 stdin 처리 + 핸들러 호출 (silent — stdout 안 씀)
 python3 -m harness.hooks session-start --cc-pid "$CC_PID"
 
-# DCN-CHG-20260430-26 (신설), DCN-CHG-20260430-40 (schema fix + 압축),
-# DCN-CHG-20260501-17 (lazy-load 최적화), DCN-CHG-20260502-01 (blocking gate 강화):
-# dcness 활성 프로젝트 매 세션 SessionStart 시 SSOT read 의무 directive 를
-# system-reminder 로 inject.
-#
-# DCN-CHG-20260502-01 변경: 단순 "지금 읽어라" 지시 → BLOCKING 게이트 3원칙 적용.
-#   1. "텍스트 출력 금지" 조건 — 읽기 전 출력 자체를 막는 언어
-#   2. 검증 토큰 — 첫 응답 첫 줄에 토큰 의무 출력 (유저 즉시 확인 가능)
-#   3. 예외 없음 명시 — "인사도 예외 없음" 패턴 매칭 차단
-#
-# JSON schema:
-#   {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}
-# Read 도구는 절대 경로만 허용 — CLAUDE_PROJECT_DIR 로 절대 경로 구성.
-PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-
-# dcness-rules.md 는 plugin SSOT — 사용자 repo cp 폐지 (#198 OMC 식 thin shim).
-# Plugin path 우선 → cache lookup fallback → legacy 사용자 repo 경로.
-resolve_guidelines_path() {
-  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/docs/plugin/dcness-rules.md" ]; then
-    echo "${CLAUDE_PLUGIN_ROOT}/docs/plugin/dcness-rules.md"; return 0
-  fi
-  cache_dir="${HOME}/.claude/plugins/cache/dcness/dcness"
-  if [ -d "$cache_dir" ]; then
-    latest=$(ls -1 "$cache_dir" 2>/dev/null | sort -V | tail -1)
-    if [ -n "$latest" ] && [ -f "$cache_dir/$latest/docs/plugin/dcness-rules.md" ]; then
-      echo "$cache_dir/$latest/docs/plugin/dcness-rules.md"; return 0
-    fi
-  fi
-  legacy="${PROJ}/docs/plugin/dcness-rules.md"
-  [ -f "$legacy" ] && echo "$legacy" && return 0
-  return 1
-}
-GUIDELINES_PATH=$(resolve_guidelines_path)
-if [ -z "$GUIDELINES_PATH" ]; then
-  # plugin / cache / legacy 모두 부재 — silent skip (BLOCKING gate 발화 안 함)
-  exit 0
-fi
-
+# 슬림 inject — dcness-rules.md 폐기 (PR-3). 매 세션 system-reminder 로 본문 자동 노출.
+# 외부 plug-in 사용자가 매 세션 강제 영역 + 메인 Claude 필수 + 진입 매트릭스 인지.
 python3 -c "
-import json, sys
-guidelines_path = sys.argv[1]
-msg = '''## [BLOCKING GATE] dcness 세션 시작 강제
+import json
+msg = '''## [dcness 활성 환경]
 
-**유저의 첫 메시지 종류에 관계없이 — 인사·잡담·질문·작업 요청 전부 포함 —**
-**첫 텍스트를 출력하기 전에 아래 두 단계를 반드시 완료한다.**
+첫 응답 첫 줄에 토큰 \`[dcness 활성 확인]\` 출력 의무 (사용자 즉시 룰 위반 확인 가능).
 
----
+### 강제 영역 (코드 hook 차단)
+- **작업 순서**: agent 시퀀스 + retry 정책 — catastrophic 3 룰 = \`docs/plugin/orchestration.md\` §2.1
+- **접근 영역**: file 경계 (ALLOW/READ_DENY) + 인프라 차단 (DCNESS_INFRA_PATTERNS) = \`docs/plugin/handoff-matrix.md\` §4
+- 그 외 = agent 자율 (출력 형식 / handoff / preamble / marker 강제 X)
 
-### STEP 1: 파일 읽기 [스킵 불가 / 예외 없음]
+### 메인 Claude 필수 (dcness 특화)
+- **채널별 형식 분기**: 사용자 chat = 평문 백틱 \`경로\` / 본문(docs / agents / commands / 이슈) = 마크다운 링크. 혼용 시 cmd-click 깨짐
+- **행동지침 md 300줄 cap** (orchestration.md 만 500줄 예외) — 대상: \`agents/**\` / \`commands/*.md\` / \`docs/plugin/*.md\`
+- **Step 7 회고 → 메모리 candidate emit 의무**: caveat 또는 review report 의 waste finding 발견 시 *메모리 candidate* 양식 emit (없으면 \"없음\" 1줄). prose 본문만 적고 끝내면 다음 세션 회귀.
 
-Read 도구로 다음 파일을 *지금 바로* 호출한다 (절대 경로):
-  Read(\"''' + guidelines_path + '''\")
+### 안티패턴 (피하기)
+- 룰이 룰을 부르는 reactive cycle — 신규 룰 추가 전 기존 룰 제거 가능성 먼저 검토
+- 강제 vs 권고 혼동 — catastrophic 만 block, 그 외 = 측정 + 경고 + 사용자 개입
+- 에이전트 자율성 침해 — agent prompt 안 강제 형식 박기 금지
 
-- 이 도구 호출 완료 전까지 텍스트 출력 금지.
-- \"이미 알고 있다\" → 예외 아님. 항상 다시 읽는다.
-- 유저가 \"안녕\" / \"hi\" / \"hello\" / 짧은 질문 → 예외 아님. 읽고 나서 응답.
+### 작업 진입 매트릭스 (lazy read)
+| 상황 | 읽어야 할 문서 |
+|---|---|
+| 루프 진입 / 시퀀스 / catastrophic 룰 | \`docs/plugin/orchestration.md\` §2 + §4 |
+| Step 0~8 mechanics / echo 5~12줄 / REDO 분류 | \`docs/plugin/loop-procedure.md\` |
+| agent 결론 → 다음 agent / retry / 권한 | \`docs/plugin/handoff-matrix.md\` |
+| hook 시점 / 차단 동작 | \`docs/plugin/hooks.md\` |
+| 이슈 lifecycle / PR 트레일러 | \`docs/plugin/issue-lifecycle.md\` |
+| 브랜치/커밋/PR 네이밍 | \`docs/plugin/git-naming-spec.md\` |
 
-### STEP 2: 확인 토큰 출력 [스킵 불가]
-
-읽은 후 첫 응답의 **첫 줄**에 반드시 다음 토큰을 출력한다:
-  [dcness-rules 로드 완료]
-
-이 토큰 없이 응답 = 즉시 룰 위반 (유저가 즉시 확인 가능).
-
----
-
-**나머지 loop 실행 docs (loop-procedure / orchestration / handoff-matrix) 는 지금 읽지 말 것.**
-각 skill 의 ## 사전 read 섹션이 진입 시 직접 경로를 안내한다.
+skill 트리거 시 해당 skill 파일의 ## 사전 read 섹션이 정확한 경로 안내.
 '''
 print(json.dumps({
     'hookSpecificOutput': {
@@ -101,7 +64,7 @@ print(json.dumps({
         'additionalContext': msg,
     }
 }))
-" "$GUIDELINES_PATH" 2>/dev/null
+" 2>/dev/null
 
 # 모든 실패는 silent
 exit 0
