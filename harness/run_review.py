@@ -1112,6 +1112,10 @@ def render_report(report: RunReport) -> str:
             lines.append(f"- step {n.step_idx} {n.agent} `{n.pattern}` — {n.detail}")
         lines.append("")
 
+    # issue #396 — 메인 인사이트 prompt (REVIEW_READY 시 메인 시야 진입)
+    # 메인 Claude 가 review.md 본 후 자연어 한 줄 평가 박는 매커니즘 안내.
+    # 미박음 = noop (자율 영역, 강제 X).
+
     # 잘못한 점 (차단성 검출 — catastrophic / drift)
     if report.wastes:
         lines.append("## 잘못한 점 (Waste Findings)")
@@ -1127,6 +1131,22 @@ def render_report(report: RunReport) -> str:
     else:
         lines.append("## 잘못한 점 — 없음 ✅")
         lines.append("")
+
+    # issue #396 — 메인 인사이트 prompt (review.md 끝 임베드)
+    # 메인 Claude 가 보고 자율 평가 박음. agent+mode 선택 자율.
+    lines.append("## 📝 메인 인사이트 (1줄 자율 평가)")
+    lines.append("")
+    lines.append("이번 run 의 *구체적 학습 1줄* (다음 run 같은 실수 회피용) — 박을지 메인 자율:")
+    lines.append("")
+    lines.append("```bash")
+    lines.append("$HELPER insight <agent>[-<mode>] \"<자연어 한 줄>\"")
+    lines.append("# 예: $HELPER insight engineer-IMPL \"🚨 stub 파일로 TDD guard 우회 시도 — 절대 반복 X\"")
+    lines.append("```")
+    lines.append("")
+    lines.append("- agent+mode 별 `.claude/loop-insights/<agent>[-<mode>].md` 에 누적 (FIFO 10 cap)")
+    lines.append("- 다음 run begin-step 시 자동 inject — 같은 agent 호출 시 sub-agent prompt 끝에 박힘")
+    lines.append("- 미박음 = noop (자율, 강제 X)")
+    lines.append("")
 
     return "\n".join(lines)
 

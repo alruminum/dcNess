@@ -23,11 +23,13 @@ from typing import Optional
 from harness.session_state import _resolve_project_root
 
 
-__all__ = ["insights_path", "read", "append_findings"]
-# issue #392 — `append_from_run` 폐기 (auto 누적 매커니즘 폐기).
-# 메인 자율 평가는 PR3 의 `insight` CLI 로 대체.
+__all__ = ["insights_path", "read", "append_findings", "append_insight", "INSIGHT_FIFO_CAP"]
 
 _INSIGHTS_DIR = Path(".claude") / "loop-insights"
+
+# issue #396 — agent+mode 별 인사이트 FIFO cap. 컨텍스트 폭증 차단.
+# 100 run 돌려도 각 파일 ≤ 10줄 유지. 200 tokens / agent inject (sustainable).
+INSIGHT_FIFO_CAP = 10
 
 
 def _normalize_cwd(cwd: Path) -> Path:
@@ -105,3 +107,66 @@ def append_findings(
 
 
 # issue #392 — `append_from_run` 폐기. PR3 의 `insight` CLI 로 대체.
+
+
+def append_insight(
+    agent: str,
+    mode: Optional[str],
+    text: str,
+    cwd: Path = Path("."),
+    fifo_cap: int = INSIGHT_FIFO_CAP,
+) -> Path:
+    """issue #396 — 메인 자율 인사이트 1줄 append. FIFO cap (가장 오래된 자동 제거).
+
+    Args:
+        agent: subagent_type (engineer / code-validator / ...)
+        mode: optional mode (IMPL / POLISH / CODE_VALIDATION / ...)
+        text: 자연어 한 줄. 줄바꿈 strip, 빈 텍스트면 noop.
+        cwd: main repo root (worktree 자동 정규화).
+        fifo_cap: 최대 줄 수 (default INSIGHT_FIFO_CAP=10).
+
+    Returns:
+        insights_path (변경된 파일).
+
+    매커니즘:
+        - text 1줄로 strip (multiline 들어와도 첫 줄만 보존, 공백 trim)
+        - 빈 text → noop, 파일 미생성
+        - 신규 파일: header + insight 1줄
+        - 기존 파일: append + cap 초과 시 가장 오래된 줄 제거 (FIFO)
+    """
+    import time
+
+    one_line = (text or "").strip().splitlines()
+    one_line = one_line[0].strip() if one_line else ""
+    if not one_line:
+        return insights_path(agent, mode, cwd)
+
+    p = insights_path(agent, mode, cwd)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    new_entry = f"- {one_line} ({today})"
+
+    if not p.exists():
+        header = f"# Loop Insights: {agent}" + (f" / {mode}" if mode else "")
+        body = f"{header}\n\n## 인사이트 (최신 {fifo_cap}개, FIFO)\n\n{new_entry}\n"
+        p.write_text(body, encoding="utf-8")
+        return p
+
+    existing = p.read_text(encoding="utf-8")
+    lines = existing.splitlines()
+
+    # 본문에서 "- " 시작 줄만 entry 로 카운트
+    entries = [l for l in lines if l.startswith("- ")]
+    non_entries = [l for l in lines if not l.startswith("- ")]
+
+    entries.append(new_entry)
+    # cap 초과 시 FIFO (가장 오래된 = 앞부터 제거)
+    while len(entries) > fifo_cap:
+        entries.pop(0)
+
+    # 본문 재구성: header / heading 보존 + entries
+    # 단순화 — non_entries 다음에 entries 박음
+    header_part = "\n".join(non_entries).rstrip() + "\n\n" if non_entries else ""
+    body = header_part + "\n".join(entries) + "\n"
+    p.write_text(body, encoding="utf-8")
+    return p

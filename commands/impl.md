@@ -89,19 +89,27 @@ tail -50 "<task-path>"
 
 ## 종료 조건 (MUST — 메인 Claude 의무)
 
-> ⚠️ **함정 경고**: §3.4 에서 PR merge 까지 자동 완료된다. 메인 본능 "merge = 작업 끝" 으로 *반드시* 다음 2개 명령을 skip 한다. skip = 자동 회고 + loop-insights 학습 누적 마비 → 다음 run 회귀 방지 기능 손실.
+> ⚠️ **함정 경고**: §3.4 에서 PR merge 까지 자동 완료된다. 메인 본능 "merge = 작업 끝" 으로 *반드시* 다음 명령을 skip 한다. skip = 자동 회고 마비 → 다음 run 회귀 방지 기능 손실.
 
-PR merge 직후 *반드시* 다음 시퀀스 실행:
+PR merge 직후 *반드시* 다음 1개 명령 실행 (issue #396 — 단일화):
 
 ```bash
-"$HELPER" finalize-run --expected-steps <N> --auto-review
 "$HELPER" end-run
 ```
 
-- `<N>` = catalog 행 `expected_steps` 컬럼 (`impl-task-loop` 풀스펙 [`orchestration.md`](../docs/plugin/orchestration.md) §4.3 참조).
-- `--auto-review` 가 in-process `harness.run_review` 호출 → `<run_dir>/review.md` 저장 + stderr `[REVIEW_READY] <path>` 신호 emit.
-- **end-run 안전망** (`session_state.py:1001`): finalize-run 미호출 시 end-run 이 자동 보강. 단 end-run 자체 skip 은 보강 0.
+- end-run 안전망 (`session_state.py:1001`) 이 finalize-run --auto-review 자동 발사 → `<run_dir>/review.md` 저장 + stderr `[REVIEW_READY] <path>` 신호 emit.
+- (예전 2개 명령 — `finalize-run --expected-steps <N> --auto-review` + `end-run` — 폐기. end-run 1개로 단순화)
 
-**REVIEW_READY 후속 — echo MUST**: stderr `[REVIEW_READY] <run_dir>/review.md` 감지 시 `review.md` 본문을 *character-for-character* 세션 응답에 복사 ([`loop-procedure.md`](../docs/plugin/loop-procedure.md) §6). 압축 / 요약 / 재배치 / 마크다운 테이블 → ASCII 변환 절대 금지. dcness echo 룰 MUST (DCN-30-15) — 토큰 절약 본능 차단.
+**REVIEW_READY 후속 — echo MUST**: stderr `[REVIEW_READY] <run_dir>/review.md` 감지 시 `review.md` 본문을 *character-for-character* 세션 응답에 복사 ([`loop-procedure.md`](../docs/plugin/loop-procedure.md) §6). 압축 / 요약 / 재배치 / 마크다운 테이블 → ASCII 변환 절대 금지. dcness echo 룰 MUST (DCN-30-15).
 
-근거: §3.4 PR merge 자동 완료 후 메인이 Step 5 (finalize-run) + Step 6 (review echo) 를 skip 하는 회귀가 반복 발생. hook 미진입 영역이므로 본문 강제로 보완.
+**메인 인사이트 (자율, issue #396)**: review.md 끝의 `## 📝 메인 인사이트` prompt 보고 *구체적 학습 1줄* 박을 수 있음:
+
+```bash
+"$HELPER" insight <agent>[-<mode>] "<자연어 한 줄>"
+# 예: "$HELPER" insight engineer-IMPL "🚨 stub 파일로 TDD guard 우회 — 절대 반복 X"
+```
+
+- agent+mode 별 FIFO 10 cap. 다음 run begin-step 자동 inject.
+- 미박음 = noop (자율, 강제 X). 박으면 다음 run 학습 환류.
+
+근거: §3.4 PR merge 자동 완료 후 메인이 review echo 를 skip 하는 회귀가 반복 발생. hook 미진입 영역이므로 본문 강제로 보완 + 자율 인사이트 매커니즘 안내.

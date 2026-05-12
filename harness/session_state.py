@@ -1024,6 +1024,49 @@ def _cli_end_run(args: Any) -> int:
     return 0
 
 
+def _cli_insight(args: Any) -> int:
+    """issue #396 — 메인 자율 인사이트 1줄 append.
+
+    Usage: dcness-helper insight <agent>[-<mode>] "<자연어 한 줄>"
+
+    예시:
+        dcness-helper insight engineer-IMPL "🚨 stub 파일로 TDD guard 우회 시도 — 절대 반복 X"
+        dcness-helper insight code-validator "PR 후 prose 결론 enum 빠뜨림 — 다음엔 IMPL_DONE 명시"
+    """
+    from harness.loop_insights import append_insight
+
+    raw = (args.agent_mode or "").strip()
+    if not raw:
+        print("[session_state] agent_mode 미지정", file=sys.stderr)
+        return 1
+
+    # "agent-mode" 또는 "agent" 분리
+    if "-" in raw:
+        # 정식 agent 이름에 - 있을 수 있음 (code-validator / module-architect 등).
+        # 매트릭스 매칭: 정식 이름 prefix 시도.
+        from harness.run_review import DCNESS_AGENT_NAMES, LEGACY_AGENT_ALIASES
+        agent = None
+        mode = None
+        for known in sorted(DCNESS_AGENT_NAMES | set(LEGACY_AGENT_ALIASES.keys()), key=len, reverse=True):
+            if raw == known:
+                agent, mode = known, None
+                break
+            if raw.startswith(known + "-"):
+                agent = known
+                mode = raw[len(known) + 1:]
+                break
+        if not agent:
+            # fallback: 첫 - 분리
+            parts = raw.split("-", 1)
+            agent, mode = parts[0], parts[1] if len(parts) > 1 else None
+    else:
+        agent, mode = raw, None
+
+    path = append_insight(agent, mode, args.text, cwd=Path.cwd())
+    print(f"[insight] appended → {path}", file=sys.stderr)
+    return 0
+
+
 def _prior_engineer_tool_use_count(sid: str) -> Optional[int]:
     """현재 sid 의 CC session JSONL 에서 직전 engineer sub-agent invocation 의
     `totalToolUseCount` 추출 (DCN-CHG-20260430-36).
@@ -1726,6 +1769,15 @@ def _build_arg_parser() -> Any:
 
     p_er = sub.add_parser("end-run", help="complete_run + clear by-pid-current-run")
     p_er.set_defaults(func=_cli_end_run)
+
+    # issue #396 — insight CLI (메인 자율 평가 매커니즘)
+    p_in = sub.add_parser(
+        "insight",
+        help="agent+mode 별 인사이트 한 줄 append (FIFO 10 cap, 메인 자율 평가)",
+    )
+    p_in.add_argument("agent_mode", help='agent 또는 "agent-mode" (예: engineer, engineer-IMPL)')
+    p_in.add_argument("text", help="자연어 한 줄 (예: \"🚨 stub 파일로 TDD guard 우회 시도 — 절대 반복 X\")")
+    p_in.set_defaults(func=_cli_insight)
 
     p_bs = sub.add_parser("begin-step", help="current_step + heartbeat 갱신")
     p_bs.add_argument("agent")
