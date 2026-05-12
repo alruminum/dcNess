@@ -4,6 +4,53 @@
 
 ---
 
+## v0.2.20 (2026-05-13)
+
+**커밋 범위**: `v0.2.19..v0.2.20`
+**핵심 변경**: `_summarize_input` cwd 기준 relative path 단축 (#408)
+
+### v0.2.19 실증 결과 (본 세션 dcness self repo)
+
+#401 (skill 진입 docs 통째 read 폐기) 처방 효과 강력 확인:
+- 이전 (처방 전 jajang): `orchestration.md` 24.7k + `loop-procedure.md` 17.8k *통째 read*
+- 현재 (처방 후 본 세션): `docs/plugin/*` 6회 모두 *부분 read* (max 1.5k chars). 통째 read 0회.
+- → 메인이 lazy read 가이드 정합 행동 채택. 처방 작동.
+
+cache_read 추이 (본 세션 967 turns):
+- 초반 14k → 중반 497k → 후반 172k (감소)
+- 메인 행동에 따라 cumulative cache_read 가 ↓ 가능 — cost-aware 의 효과 정합.
+
+### path 단축 hotfix (PR #409, #408)
+
+`harness/hooks.py:_summarize_input` 의 file_path/path 영역에 cwd 기준 relative 단축:
+
+이전:
+```
+같은 input 반복: /Users/dc.kim/project/jajang/.claude/worktrees/impl-issue259/src/foo.ts ×3
+```
+
+후:
+```
+같은 input 반복: src/foo.ts ×3
+```
+
+- `_shorten_path` 함수 신규
+- `_summarize_input` Read/Edit/Write/NotebookEdit 의 file_path/path 영역만 적용
+- Bash command 는 단축 X (command 전체 의미 보존)
+- cwd 외부 path 는 그대로 (절대 path 보존)
+
+효과: ~6k chars / 세션 cache_read 감축 (~1.5k tok). 의미 손실 X.
+
+### 테스트
+- 6 신규 (`tests.test_hooks.ShortenPathTests`)
+- 410 / 410 tests PASS
+
+### 활성 사용자 권장
+- `claude plugin update` 한 번 → v0.2.20 적용
+- v0.2.19 까지 미적용 사용자는 한 번 update 로 #400 + #402 + #404 + #408 누적 처방 모두 받음
+
+---
+
 ## v0.2.19 (2026-05-13)
 
 **커밋 범위**: `v0.2.18..v0.2.19`
