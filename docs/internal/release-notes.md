@@ -4,6 +4,61 @@
 
 ---
 
+## v0.2.19 (2026-05-13)
+
+**커밋 범위**: `v0.2.18..v0.2.19`
+**핵심 변경**: cost / cache_read leak 감축 3종 처방 누적 (#400 / #402 / #404)
+
+### 배경 — cost 분석
+
+세션 분석 결과 (jajang 1106 events / dcness self 4989 events):
+- 후반 turn cache_read 평균 267k~507k (초반 32k~57k 의 4.7~16배)
+- cache hit 95% 인데도 cost 폭증 ($15~71 / run) = **컨텍스트 양** 자체가 본질
+- 메인 turn cost 비중 98% (sub-agent 격리는 잘 작동 중)
+
+### skill 진입 docs 통째 read 폐기 (PR #401, #400)
+
+5 commands 의 "사전 read (skill 진입 즉시)" 룰 → "lazy — 필요시만":
+
+- 이전: `docs/plugin/loop-procedure.md` + `orchestration.md` + `handoff-matrix.md` + `issue-lifecycle.md` read 후 진행 (~65.9k chars / ~16.5k tok 통째 read)
+- 후: 본 skill 본문 + 인용된 §번호 만으로 진행. 룰 모호 / 분기 발생 시에만 grep + offset/limit 부분 read.
+- 영향: `architect-loop.md` / `impl-loop.md` / `impl.md` / `issue-report.md` / `product-plan.md`
+- 효과: skill 진입 시 메인 cache_read baseline 약 16.5k tok 한 번에 절감.
+
+### SessionStart inject 다이어트 + cost-aware 가이드 (PR #403, #402)
+
+`hooks/session-start.sh` 의 inject 본문 1425 → 1106 chars (-22%):
+
+- 각 섹션 제목 단축 / verbose 부분 축약
+- **cost-aware 행동 룰 1줄 신규**:
+  > 큰 plan/docs 통째 read 회피 → grep + offset/limit. Bash output 길면 `| head` 잘라내기. sub-agent 위임 우선 (메인 직접 도구 ↓ → 메인 cache_read 누적 ↓)
+- 직접: 매 turn cache_read ~-80 tok / 세션 turn 수만큼 누적 감축
+- 간접: 메인이 cost-aware 행동 채택 → 큰 도구 결과 누적 회피 → cumulative cache_read 더 큰 감소
+
+### hook 정상 통과 시 suppressOutput 시도 (PR #405, #404)
+
+CC 본체 알려진 버그 (`anthropics/claude-code#34859`, `#34713` 등 9+ open) 회피 가설:
+
+- hook exit 0 + 빈 stdout 정석 따라도 transcript 에 `Output truncated (0KB total)` 165자 wrapper attachment 박힘
+- 3 PreToolUse hook (`catastrophic-gate.sh` / `file-guard.sh` / `tdd-guard.sh`) 정상 통과 path 에서 `{"suppressOutput": true, ...}` JSON emit
+- 차단 path (deny / exit 1) 는 기존 동작 유지
+- 실증 필요 — 다음 /impl 1 회 transcript 비교
+
+### 알려진 한계 (Anthropic 영역)
+
+- CC 본체가 모든 도구 호출에 165자 wrapper attachment 박는 패턴 = dcness 비활성 환경에서도 동일
+- 회피 = 본체 fix 대기 또는 suppressOutput 시도 (#405)
+- dcness 영역 처방 = 메인 행동 가이드 + skill 진입 docs lazy + hook output suppress
+
+### 테스트
+- 404 / 404 tests PASS (변경 X)
+
+### 활성 사용자 권장
+- `claude plugin update` 한 번 → 다음 세션부터 cost-aware 룰 + lazy docs read 자동 적용
+- 사용자 실증: 다음 /impl 1 회 transcript 비교 (특히 attachment leak 감소 여부)
+
+---
+
 ## v0.2.18 (2026-05-12)
 
 **커밋 범위**: `v0.2.17..v0.2.18`
