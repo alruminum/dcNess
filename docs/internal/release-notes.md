@@ -62,7 +62,7 @@ agent 13 → 9.
 - `subagent_type: "dcness:design-critic"` → designer 1 시안 + 사용자 PICK
 - `subagent_type: "dcness:security-reviewer"` → `pr-reviewer §F-Security` 흡수
 
-해당 호출자 = `/qa` / `/impl` / `/product-plan` / `/architect-loop` skill 진입으로 자동 라우팅.
+해당 호출자 = `/issue-report` / `/impl` / `/product-plan` / `/architect-loop` skill 진입으로 자동 라우팅.
 
 ### `harness/hooks.py` catastrophic gate 단순화 (본 PR)
 

@@ -1,6 +1,6 @@
 ---
 name: product-plan
-description: 새 기능 / PRD 변경 / 큰 기획을 받아 메인 Claude 가 사용자와 직접 그릴미 대화하며 `docs/prd.md` + `docs/stories.md` 작성 → plan-reviewer 외부 검증 → 사용자 피드백 confirm → 후속 단계 (system-architect / 이슈 등록 / `/impl-loop`) 시퀀스로 진행하는 스킬. 사용자가 "기획자야", "새 기능", "피쳐 추가", "이런 기능이 필요할 것 같아", "기획해줘", "프로덕트 플랜", "/product-plan" 등을 말할 때 반드시 이 스킬을 사용한다. 구현 진입은 별도 (`/impl` / `/impl-loop`).
+description: 새 기능 / PRD 변경 / 큰 기획을 받아 메인 Claude 가 사용자와 직접 그릴미 대화하며 `docs/prd.md` + `docs/stories.md` 작성 → plan-reviewer 외부 검증 → 사용자 피드백 confirm → 후속 단계 (이슈 등록 / `/architect-loop` / `/impl-loop`) 시퀀스로 진행하는 스킬. 사용자가 "기획자야", "새 기능", "피쳐 추가", "이런 기능이 필요할 것 같아", "기획해줘", "프로덕트 플랜", "/product-plan" 등을 말할 때 반드시 이 스킬을 사용한다. 구현 진입은 별도 (`/impl` / `/impl-loop`).
 ---
 
 # Product Plan Skill — 메인 직접 인터랙션 + plan-reviewer 외부 검증
@@ -210,8 +210,8 @@ PRD + stories.md + 이슈 등록 완료. 이제 설계 루프 진입할까요?
 
 ## 비대상 (다른 skill 추천)
 
-- 버그 → `/qa` (`qa-triage`)
-- 한 줄 수정 / 버그픽스 → `/qa` (분류 후 impl-task-loop fallback)
+- 버그 → `/issue-report` (`qa-triage`)
+- 한 줄 수정 / 버그픽스 → `/issue-report` (분류 후 impl-task-loop fallback)
 - 디자인만 → designer 직접 (Pencil 또는 `design-variants/*.html`)
 
 ## 후속 라우팅

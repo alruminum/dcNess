@@ -621,7 +621,7 @@ TDD Guard (Step 2.9 — PreToolUse hook):
 - 현재 branch = main 일 때만 자동 진행 (사용자 작업 중 branch 보호)
 
 사용 가능한 skill:
-- /qa — 이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE)
+- /issue-report — 이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE)
 - /impl — 단일 task 구현 (impl-task-loop, default = test-engineer 직진 / fallback = module-architect 선두)
 - /impl-loop — 다중 task 자동 chain
 - /product-plan — 새 기능 spec/design
