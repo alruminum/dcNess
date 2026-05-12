@@ -11,8 +11,14 @@
 
 set -u
 
+# #404 — 정상 통과 시 suppressOutput: true 박아 transcript attachment 숨김 시도.
+allow() {
+  echo '{"suppressOutput": true, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+  exit 0
+}
+
 INPUT=$(cat)
-[ -z "$INPUT" ] && exit 0
+[ -z "$INPUT" ] && allow
 
 PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 
@@ -47,31 +53,31 @@ for key in ("file_path", "path", "filename"):
 PY
 )
 
-[ -z "$FILE_PATH" ] && exit 0
+[ -z "$FILE_PATH" ] && allow
 
 # 자동 skip — test 파일 자체
 case "$FILE_PATH" in
-  *test*|*spec*|*.test.*|*.spec.*|*__tests__*) exit 0 ;;
+  *test*|*spec*|*.test.*|*.spec.*|*__tests__*) allow ;;
 esac
 
 # 자동 skip — 설정 / 비-코드 / 타입 / Next.js 특수
 case "$FILE_PATH" in
-  *.json|*.css|*.scss|*.md|*.yml|*.yaml|*.env*|*.config.*|*tailwind*|*postcss*|*next.config*|*tsconfig*) exit 0 ;;
-  */types/*|*/types.ts|*/types.d.ts|*.d.ts) exit 0 ;;
-  */layout.tsx|*/layout.ts|*/page.tsx|*/page.ts|*/loading.tsx|*/error.tsx|*/not-found.tsx|*/globals.css) exit 0 ;;
+  *.json|*.css|*.scss|*.md|*.yml|*.yaml|*.env*|*.config.*|*tailwind*|*postcss*|*next.config*|*tsconfig*) allow ;;
+  */types/*|*/types.ts|*/types.d.ts|*.d.ts) allow ;;
+  */layout.tsx|*/layout.ts|*/page.tsx|*/page.ts|*/loading.tsx|*/error.tsx|*/not-found.tsx|*/globals.css) allow ;;
 esac
 
 # 자동 skip — plug-in 시드 boilerplate / 디자인 시안 폴더
 # templates/ = dcness self repo 의 사용자 프로젝트 배포용 시드 (cp 후 활성화)
 # design-variants/ = 활성화 프로젝트의 디자인 시안 폴더 (UI prototype, production 테스트 의무 X)
 case "$FILE_PATH" in
-  */templates/*|*/design-variants/*) exit 0 ;;
+  */templates/*|*/design-variants/*) allow ;;
 esac
 
 # TS/JS 한정 — 그 외 silent skip
 case "$FILE_PATH" in
   *.ts|*.tsx|*.js|*.jsx) ;;
-  *) exit 0 ;;
+  *) allow ;;
 esac
 
 # 매칭 test 파일 존재 검사
@@ -108,4 +114,4 @@ if ! has_test_for "$FILE_PATH"; then
   exit 0
 fi
 
-exit 0
+allow
