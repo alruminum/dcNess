@@ -25,7 +25,7 @@ PRD 외부 검증 (`FULL` 모드 default / `PRE_CHECK` 모드 — `/product-plan
 
 > Note: 옛 product-planner sub-agent 폐기. PRD/stories.md 작성은 메인 Claude 가 사용자와 직접 그릴미 대화로 진행 (`commands/product-plan.md`). 컨텍스트 손실 회피 + 인터랙션 풀 보존. plan-reviewer 만 외부 검증으로 sub-agent 유지.
 
-### 1.3 ux-architect
+### 1.2 ux-architect
 
 UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 (외부 validator 부재 — 자가검증). 다음 4 결과:
 
@@ -33,14 +33,14 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
 - **UI refine 완료 (기존 디자인 다듬기)** → 사용자 승인 후 designer SCREEN.
 - **Flow 정의 불가 (PRD 모순 등) 또는 self-check 2 cycle 후에도 FAIL** → escalate (사용자 위임).
 
-### 1.4 system-architect
+### 1.3 system-architect
 
-전체 시스템 설계 hub — 도메인 모델 + 모듈 구조 + 기술 스택 + Story → impl 매핑 표 + Spike Gate. 기술 에픽 (기술 부채/인프라/리팩토링) 도 동일 모드로 처리 (호출자 prompt 에 "기술 에픽" 명시 시 추가로 epic+story 이슈 등록).
+전체 시스템 설계 hub — 도메인 모델 + 모듈 구조 + 기술 스택 + Story → impl 매핑 표 + Spike Gate. 기술 에픽 케이스는 [`agents/system-architect.md`](../../agents/system-architect.md) 본문 참조.
 
-- **PASS** — 시스템 설계 산출 (`docs/architecture.md` + `## impl 목차` 표) 완료 → architecture-validator (Placeholder Leak + Spike Gate 외부 검증).
+- **PASS** — 시스템 설계 산출 (`docs/architecture.md` + `## impl 목차` 표) 완료 → architecture-validator.
 - **ESCALATE** — 기술 제약 충돌 / Spike FAIL / PRD 위반 → 사용자 위임 (`/product-plan` 재진입 권고).
 
-### 1.4b module-architect
+### 1.4 module-architect
 
 모듈/태스크 단위 설계 hub. 호출자 컨텍스트 (신규 story / 버그픽스 / 기존 impl 보강 / 문서 동기화) 에 따라 분량·범위 자율 판단.
 
@@ -127,16 +127,7 @@ merge 직전 코드 품질 + 보안 코드 패턴 심사:
 | pr-reviewer FAIL → POLISH 라운드 | 2 | 사용자 escalate |
 | ESCALATE 누적 (동일 fail_type) | 2 | module-architect (보강 케이스) 자동 호출 |
 
-`.attempts.json` 형식 (예시):
-```json
-{
-  "code_validation": 2,
-  "spec_gap": 1,
-  "design_round": 0
-}
-```
-
-force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
+`.attempts.json` = fail_type → 카운터 매핑 (예: `{"code_validation": 2, "spec_gap": 1}`). force-retry 시 리셋.
 
 ---
 
@@ -182,20 +173,7 @@ force-retry 시 카운터 리셋 (RWHarness PR #11 패턴 정합).
 
 ### 4.3 인프라 패턴 (전 에이전트 공통 차단)
 
-> **코드 SSOT**: 실제 강제 패턴은 `harness/agent_boundary.py:DCNESS_INFRA_PATTERNS`. 본 §4.3 와 코드는 항상 동기 — 변경 시 양쪽 함께.
-
-```python
-DCNESS_INFRA_PATTERNS = [
-    r'(^|/)\.claude/',
-    r'(^|/)hooks/',
-    r'(^|/)harness/(signal_io|interpret_strategy|hooks|session_state|agent_boundary)\.py$',
-    r'(^|/)docs/plugin/orchestration\.md$',
-    r'(^|/)docs/plugin/handoff-matrix\.md$',
-    r'(^|/)docs/plugin/loop-procedure\.md$',
-    r'(^|/)docs/plugin/dcness-rules\.md$',
-    r'(^|/)scripts/(setup_branch_protection|analyze_metrics)\.mjs$',
-]
-```
+전 sub-agent 의 인프라 path Write 차단 (`.claude/`, `hooks/`, `harness/*.py`, `docs/plugin/*.md`, `scripts/*.mjs` 등). 정확한 패턴 = **코드 SSOT [`harness/agent_boundary.py`](../../harness/agent_boundary.py) `DCNESS_INFRA_PATTERNS`**.
 
 > RWHarness 의 `HARNESS_INFRA_PATTERNS` 안 `r'orchestration-rules\.md'` 잔재는 dcness 가 정정 — 파일명은 `docs/plugin/orchestration.md` + `docs/plugin/handoff-matrix.md` (split 후 양쪽). loop-procedure / dcness-rules / hooks·session_state·agent_boundary 도 dcness 가 추가 보호.
 

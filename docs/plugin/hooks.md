@@ -26,11 +26,7 @@ dcness 가 사용하는 CC hook event 3종:
 | `PreToolUse` | tool 호출 *직전*. matcher 매치 시 fire. | ✓ (`exit 1` 또는 `permissionDecision: deny` 로 차단) | catastrophic-gate / file-guard / tdd-guard |
 | `PostToolUse` | tool 호출 *직후* (결과 반환 후, 메인 다음 turn 시작 전). | X (inject 만) | post-agent-clear / post-file-op-trace |
 
-**사용 안 하는 event** (dcness 가 미사용):
-- `UserPromptSubmit` — user prompt 검사. dcness 는 prompt 단계 강제 0.
-- `PreCompact` — context compact 직전. compact 는 CC 내장 동작이라 dcness 개입 X.
-- `Stop` / `SubagentStop` — 종료 hook. dcness 는 PostToolUse 로 충분.
-- `Notification` / `SessionEnd` — 보조 event. dcness 미사용.
+**미사용 event**: `UserPromptSubmit` / `PreCompact` / `Stop` / `SubagentStop` / `Notification` / `SessionEnd` — dcness 강제 백본은 PreToolUse + SessionStart + PostToolUse 3종으로 충족.
 
 **차단 권한 비대칭**:
 - PreToolUse 만 *차단* 가능 → catastrophic-gate / file-guard / tdd-guard 가 실제 강제 백본.
@@ -83,10 +79,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
   2. `~/.claude/plugins/cache/dcness/dcness/<latest>/docs/plugin/dcness-rules.md`
   3. 사용자 repo legacy `${CLAUDE_PROJECT_DIR}/docs/plugin/dcness-rules.md`
 
-**차단 동작**: SessionStart 는 차단 권한 X. `additionalContext` inject 만.
-**실패 시**: silent (`exit 0`) — CC 동작 방해 X.
-
-**외부 사용자 영향**: 활성 프로젝트의 매 세션 시작 시 메인 Claude 가 dcness-rules 강제 read + 토큰 출력. 미활성 프로젝트는 영향 0.
+**차단 동작**: SessionStart 는 차단 권한 X. `additionalContext` inject 만. 실패 시 silent (`exit 0`).
 
 ---
 
@@ -104,8 +97,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 | §2.1.3 | engineer 가 module-architect `PASS` 없이 src/ 작성 |
 | §2.1.5 | architect-loop 안 module-architect × N 첫 호출 직전 architecture-validator PASS 부재 |
 
-**차단 동작**: `exit 1` → CC 가 Agent 호출 거부 + stderr 메시지 사용자 노출.
-**외부 사용자 영향**: 활성 프로젝트의 시퀀스 위반 시 sub-agent 호출 자체가 막힘. 메인 Claude 가 직접 회복 시도하거나 사용자 위임.
+**차단 동작**: `exit 1` → CC 가 Agent 호출 거부 + stderr 메시지 노출. 메인이 회복 또는 사용자 위임.
 
 ---
 
@@ -124,13 +116,10 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 | §4.2 | `READ_DENY_MATRIX` | agent 별 Read 금지 (예 designer 는 `src/` 못 읽음) |
 | §4.4 | `is_infra_project()` | dcness 자체 작업 시 위 모두 해제 |
 
-**메인 Claude turn** (sub-agent 비활성): pass-through. governance Document Sync 가 별도 보호.
-**mcp__.* tool**: `file_path` 인자 부재 → boundary 검사 skip, trace 만.
-**차단 동작**: `exit 1` → CC 가 tool 호출 거부.
+**메인 Claude turn** (sub-agent 비활성): pass-through. `mcp__.*` tool: `file_path` 부재 시 boundary skip, trace 만.
+**차단 동작**: `exit 1` → tool 호출 거부. custom agent 추가 시 §4.1 행 등록 의무 (미정의 시 차단).
 
-**외부 사용자 영향**: 활성 프로젝트의 sub-agent 가 권한 외 path 시도 시 자동 차단. ALLOW_MATRIX 정의 안 된 agent 가 새로 호출되면 차단되므로, custom agent 추가 시 §4.1 행 등록 의무.
-
-**코드 SSOT**: [`harness/agent_boundary.py`](../../harness/agent_boundary.py) `DCNESS_INFRA_PATTERNS` (handoff-matrix §4.3 와 동기 의무).
+**코드 SSOT**: [`harness/agent_boundary.py`](../../harness/agent_boundary.py) — handoff-matrix §4.3 와 동기 의무.
 
 ---
 
@@ -159,10 +148,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 <root>/src/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
 ```
 
-**차단 동작**: `permissionDecision: deny` JSON 출력 + 한국어 안내 메시지 (테스트 부재 + 검사 위치 8곳 명시).
-**파급 사례**: `/quick` 스킬 폐기 직접 원인 (PR #349) — quick-bugfix-loop 에 test-engineer 부재라 engineer 의 src 작성이 자동 deny.
-
-**외부 사용자 영향**: 활성 프로젝트의 TS / JS src 작성 시 test 동반 강제. TDD 미이행 환경에선 plug-in 활성화 후 광범위한 deny 발생 가능.
+**차단 동작**: `permissionDecision: deny` + 한국어 안내 (테스트 부재 + 검사 위치 8곳). TDD 미이행 환경에선 plug-in 활성화 후 광범위한 deny 발생 가능.
 
 ---
 
@@ -179,11 +165,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 - (d) **`additionalContext` inject** (`hookSpecificOutput` JSON) — 메인 다음 turn 의 Agent tool result 옆에 system reminder 로 보임
 - (e) `redo_log` 1줄 자동 append — 메인이 잊는 행동 자동화
 
-**차단 동작**: X (PostToolUse).
-**stdout**: JSON (`hookSpecificOutput`) — CC 가 메인 컨텍스트 inject.
-**stderr**: `/tmp/dcness-hook-stderr.log` 보존 (디버그용).
-
-**외부 사용자 영향**: 메인 Claude 가 sub-agent prose 를 직접 Write 안 해도 자동 저장됨. trace + anomaly 가 다음 turn 의 컨텍스트로 inject 되어 메인이 review 정보 자동 인지.
+**차단 동작**: X (PostToolUse). stdout = JSON (`hookSpecificOutput`) inject. stderr = `/tmp/dcness-hook-stderr.log` 보존 (디버그용).
 
 ---
 
@@ -197,10 +179,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 - 메인 Claude turn (active_agent 미설정) = noop
 - 비활성 프로젝트 = noop
 
-**차단 동작**: X.
-**용도**: agent 별 행동 trace 누적 → review report ([`harness/run_review.py`](../../harness/run_review.py)) 의 tool histogram + anomaly 검출 입력.
-
-**외부 사용자 영향**: 직접 가시 영향 0. sub-agent 행동 trace 가 누적되어 `dcness-review` / `/run-review` 출력에 반영.
+**차단 동작**: X. agent 별 행동 trace 누적 → review report ([`harness/run_review.py`](../../harness/run_review.py)) 의 tool histogram + anomaly 검출 입력.
 
 ---
 
@@ -237,12 +216,9 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 
 | 메커니즘 | 적용 범위 | 효과 |
 |---|---|---|
-| **미활성 프로젝트** | 자동 | `is-active` 게이트가 즉시 통과 — 모든 hook no-op |
-| **`.no-dcness-guard`** (cwd marker 파일) | 임시 | file-guard 만 우회. cwd 에 본 빈 파일 두면 boundary 검사 건너뜀 |
-| **`DCNESS_INFRA=1`** (환경변수) | 영구 | dcness 자체 작업 모드 — DCNESS_INFRA_PATTERNS 해제 (자기 인프라 편집 가능) |
-| **`~/.claude/.dcness-infra`** (marker 파일) | 영구 | `DCNESS_INFRA=1` 동일 효과 |
-| **`CLAUDE_PLUGIN_ROOT` non-empty** | 영구 | dcness 자체 plug-in 실행 시 자동 — `is_infra_project()` true |
-| **cwd whitelist 매칭** | 영구 | `/Users/<user>/project/dcness` 또는 화이트리스트 매칭 시 인프라 모드 |
+| **미활성 프로젝트** | 자동 | `is-active` 게이트 즉시 통과 — 모든 hook no-op |
+| **`.no-dcness-guard`** (cwd marker) | 임시 | file-guard 만 우회. cwd 에 빈 파일 |
+| **인프라 모드** (`DCNESS_INFRA=1` 환경변수 / `~/.claude/.dcness-infra` marker / `CLAUDE_PLUGIN_ROOT` non-empty / cwd whitelist 매칭 중 1+) | 영구 | dcness 자체 작업 — `DCNESS_INFRA_PATTERNS` 해제 |
 
 **우회 불가**:
 - `--no-verify` 등 git hook bypass — [`CLAUDE.md`](../../CLAUDE.md) §2 명시 금지
@@ -250,20 +226,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 
 ---
 
-## 6. 한눈 요약
-
-| # | Hook | Event | Matcher | 차단 | 핵심 역할 |
-|---|---|---|---|---|---|
-| 1 | session-start | SessionStart | — | X (inject) | dcness-rules 강제 read + 토큰 의무 + state bootstrap |
-| 2 | catastrophic-gate | PreToolUse | Agent | ✓ | orchestration §2.1 catastrophic 룰 위반 시 Agent 호출 차단 |
-| 3 | file-guard | PreToolUse | Edit/Write/Read/Bash/mcp__.* | ✓ | handoff-matrix §4 경계 (ALLOW/READ_DENY/INFRA) 강제 |
-| 4 | tdd-guard | PreToolUse | Edit/Write/NotebookEdit | ✓ | TS / JS src 변경 시 매칭 test 부재면 deny |
-| 5 | post-agent-clear | PostToolUse | Agent | X (inject) | sub-agent prose 자동 저장 + trace inject |
-| 6 | post-file-op-trace | PostToolUse | Edit/Write/Read/Bash/mcp__.* | X | sub-agent 활성 시 tool trace 누적 |
-
----
-
-## 7. 참조
+## 6. 참조
 
 **자연어 SSOT (본 hook 들이 강제하는 룰의 spec)**:
 - [`dcness-rules.md`](dcness-rules.md) §1 — 대원칙 (강제 영역 2가지)
