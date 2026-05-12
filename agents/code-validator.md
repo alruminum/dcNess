@@ -133,4 +133,4 @@ light 버전 — 수정 범위만 검증.
 ## 참조
 
 - 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md)
-- prose-only 발상: [`docs/plugin/dcness-rules.md`](../docs/plugin/dcness-rules.md) §1
+- prose-only 발상: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §0 (강제 영역 2가지)

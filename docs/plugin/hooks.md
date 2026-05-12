@@ -2,17 +2,17 @@
 
 > **Status**: ACTIVE
 > **Scope**: dcness plug-in 이 활성 프로젝트에 적용하는 6 hook 의 시점 / 역할 / 차단 동작 / 우회 메커니즘 SSOT.
-> **Cross-ref**: [`orchestration.md`](orchestration.md) §2.1 (catastrophic 시퀀스), [`handoff-matrix.md`](handoff-matrix.md) §4 (권한 매트릭스), [`dcness-rules.md`](dcness-rules.md) §1 (대원칙).
+> **Cross-ref**: [`orchestration.md`](orchestration.md) §0 (대원칙) + §2.1 (catastrophic 시퀀스), [`handoff-matrix.md`](handoff-matrix.md) §4 (권한 매트릭스).
 
 ---
 
 ## 0. 정체성 — hook 은 dcness 의 *유일한* 코드 강제 백본
 
-dcness 가 강제하는 영역은 단 2가지 ([`dcness-rules.md`](dcness-rules.md) §1):
+dcness 가 강제하는 영역은 단 2가지 ([`orchestration.md`](orchestration.md) §0):
 1. **작업 순서** — agent 시퀀스 + retry 정책
 2. **접근 영역** — 파일 경계 (ALLOW/READ_DENY) + 외부 시스템 mutation 차단
 
-그 *외* 모든 영역 = agent 자율 / 권고 / 측정. hook 은 위 2 영역의 *유일한 코드 구현*. 다른 모든 SSOT (orchestration / handoff-matrix / loop-procedure / dcness-rules) 는 hook 동작을 *문서화* 한 자연어 spec 이며, 위반 시 실제로 *차단* 하는 주체는 본 문서가 다루는 6 hook.
+그 *외* 모든 영역 = agent 자율 / 권고 / 측정. hook 은 위 2 영역의 *유일한 코드 구현*. 다른 모든 SSOT (orchestration / handoff-matrix / loop-procedure) 는 hook 동작을 *문서화* 한 자연어 spec 이며, 위반 시 실제로 *차단* 하는 주체는 본 문서가 다루는 6 hook.
 
 ---
 
@@ -71,13 +71,8 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 
 **역할**:
 - (a) sid 추출 + `.by-pid-current-run` 작성 + `live.json` 초기화 (state machine bootstrap)
-- (b) **BLOCKING GATE inject** — `hookSpecificOutput.additionalContext` 로 [`dcness-rules.md`](dcness-rules.md) 강제 read 지시
-  - 메인 Claude 첫 응답 첫 줄에 토큰 `[dcness-rules 로드 완료]` 출력 의무
-  - 토큰 부재 시 사용자가 즉시 룰 위반 확인 가능
-- (c) `dcness-rules.md` path resolve 3단계:
-  1. `${CLAUDE_PLUGIN_ROOT}/docs/plugin/dcness-rules.md`
-  2. `~/.claude/plugins/cache/dcness/dcness/<latest>/docs/plugin/dcness-rules.md`
-  3. 사용자 repo legacy `${CLAUDE_PROJECT_DIR}/docs/plugin/dcness-rules.md`
+- (b) **슬림 inject** — `hookSpecificOutput.additionalContext` 로 강제 영역 / 메인 Claude 필수 / 진입 매트릭스 / 안티패턴 본문 직접 inject (~30줄)
+  - 메인 Claude 첫 응답 첫 줄에 토큰 `[dcness 활성 확인]` 출력 의무 — 토큰 부재 시 사용자가 즉시 룰 위반 확인 가능
 
 **차단 동작**: SessionStart 는 차단 권한 X. `additionalContext` inject 만. 실패 시 silent (`exit 0`).
 
@@ -229,7 +224,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 ## 6. 참조
 
 **자연어 SSOT (본 hook 들이 강제하는 룰의 spec)**:
-- [`dcness-rules.md`](dcness-rules.md) §1 — 대원칙 (강제 영역 2가지)
+- [`orchestration.md`](orchestration.md) §0 — 대원칙 (강제 영역 2가지)
 - [`orchestration.md`](orchestration.md) §2.1 — catastrophic 시퀀스 (catastrophic-gate 강제 대상)
 - [`handoff-matrix.md`](handoff-matrix.md) §4 — 권한 매트릭스 (file-guard 강제 대상)
 - [`loop-procedure.md`](loop-procedure.md) — Step 0~8 mechanics (hook 시점이 절차 어디에 끼는지)

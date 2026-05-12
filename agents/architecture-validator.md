@@ -127,4 +127,4 @@ prose 마지막 단락에 자기 언어로 명시. 권장 표현:
 
 - Spike Gate 룰: [`agents/system-architect.md`](system-architect.md) §Spike Gate
 - 시퀀스 / 핸드오프: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md)
-- prose-only 발상: [`docs/plugin/dcness-rules.md`](../docs/plugin/dcness-rules.md) §1
+- prose-only 발상: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §0 (강제 영역 2가지)

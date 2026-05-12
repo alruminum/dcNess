@@ -846,7 +846,7 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
 
     def test_low_call_no_anomaly_inject(self):
         """#272 W1 자율 친화 — file-op 1건 같은 케이스도 hook 이 결정 X.
-        메인 LLM 이 dcness-rules.md §3.3 보고 자율 판단."""
+        메인 LLM 이 loop-procedure.md §3.1 보고 자율 판단."""
         self._simulate_pre("architect")
         self._seed_trace("architect", ["Read"])
         rc = handle_posttooluse_agent(
@@ -971,7 +971,7 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
     def test_prose_only_subtype_no_decision_inject(self):
         """#272 W1 자율 친화 — prose-only sub 든 일반 sub 든 hook 은 결정 박지 X.
         화이트리스트 자체가 *우리가 박은 룰* 이라 자율 영역 침해. 본 fix 후 룰 자체
-        제거 — 메인이 dcness-rules §3.3 보고 자율 판단."""
+        제거 — 메인이 loop-procedure.md §3.1 보고 자율 판단."""
         self._simulate_pre("qa", tool_use_id="toolu_qa")
         self._seed_trace("qa", ["Read", "Read", "Read"])
         rc = handle_posttooluse_agent(
