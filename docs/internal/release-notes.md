@@ -4,6 +4,52 @@
 
 ---
 
+## v0.2.18 (2026-05-12)
+
+**커밋 범위**: `v0.2.17..v0.2.18`
+**핵심 변경**: review.md 다이어트 + 메인 자율 인사이트 매커니즘 (#392 / #394 / #396)
+
+### review.md 폐기 통합 (PR #393, #392)
+
+dcness 정신 정합 X 패턴 통합 폐기:
+
+- **잘한점 5 패턴 전체 폐기**: ENUM_CLEAN / PROSE_ECHO_OK / DDD_PHASE_A / DEPENDENCY_CAUSAL / EXTERNAL_VERIFIED_PRESENT. jajang 실측 loop-insights 100% PROSE_ECHO_OK baseline 노이즈가 직접 동기.
+- **6 정신 위반 waste 패턴 폐기**: ECHO_VIOLATION / PLACEHOLDER_LEAK / EXTERNAL_VERIFIED_MISSING / MISSING_SELF_VERIFY / MAIN_SED_MISDIAGNOSIS / PARTIAL_LOOP. agent 자율 영역 침해 + hardcoded 임계 = sub_eval.py:6~10 정신 위반.
+- **redo_log + routing_telemetry 폐기**: jajang "하지 말 것" 0건 + record_cascade 0건 = 매커니즘 죽음.
+- **`commands/audit-redo.md` skill 폐기**: redo_log 의존 매커니즘 죽음.
+- 약 -800 lines (코드 + 테스트 + docs).
+
+### review.md 측정 noted + 도구 분포 표 (PR #395, #394)
+
+- **TOOL_USE_OVERFLOW + THINKING_LOOP → "측정 noted" 섹션**: severity 폐기, raw 알림. 사용자 요청에 따라 hardcoded 임계 유지하되 "결정" 형식 폐기.
+- **도구 사용 분포 표 신규**: `agent-trace.jsonl` 의 PreToolUse pre entry 집계. step 별 윈도우 Read/Write/Edit/Bash/Glob/Grep 카운트. raw 측정 — 임계 X.
+- `NoteFinding` dataclass 신규.
+
+### 메인 자율 인사이트 매커니즘 (PR #397, #396)
+
+자동 누적 폐기 후 대체:
+
+- **`$HELPER insight <agent>[-<mode>] "<자연어 한 줄>"` CLI 신규**: 메인 자율 평가.
+- **FIFO 10 cap 누적**: agent+mode 별 `.claude/loop-insights/<agent>[-<mode>].md`. 100 run 돌려도 ≤10줄 (200 tokens / agent inject).
+- **agent+mode 분리 파일**: `engineer-IMPL.md` / `engineer-POLISH.md` 따로. 다음 run 의 같은 agent+mode begin-step 만 정확 inject.
+- **review.md 끝 prompt 임베드**: REVIEW_READY 시 메인 시야 진입 — `## 📝 메인 인사이트 (1줄 자율 평가)`.
+
+### end-run 단일화 (PR #397, #396)
+
+- 옛 2개 명령 (`finalize-run --expected-steps <N> --auto-review` + `end-run`) → 1개 (`end-run`) 단순화.
+- end-run 안전망 (`session_state.py:1001`) 이 finalize-run --auto-review 자동 발사.
+- `commands/impl.md` §종료 조건 + `loop-procedure.md` §5.1 명시 갱신.
+
+### 테스트
+- 456 → 404 tests (폐기 -58 + 신규 +6)
+- jajang run-459cce99 실데이터 검증: 다이어트 후 양식 정상 + 새 매커니즘 정상 작동
+
+### 배경
+
+이번 변경의 *원래 의도* = #321 의 본래 핵심: "단순 룰 정합 표시는 학습 가치 0. dcness self-improvement = 메인 LLM 자율 평가". sub_eval.py:6~10 자율 친화 재설계 (#272 W1) 정신을 review.md / loop-insights 영역까지 확장 적용.
+
+---
+
 ## v0.2.17 (2026-05-12)
 
 **커밋 범위**: `v0.2.16..v0.2.17`
