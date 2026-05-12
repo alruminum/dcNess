@@ -33,8 +33,11 @@ from harness.loop_insights import (
     insights_path,
     read,
     append_findings,
+    append_insight,
+    INSIGHT_FIFO_CAP,
 )
 # issue #392 — append_from_run 폐기
+# issue #396 — append_insight 신규 (FIFO 10 cap, 메인 자율 평가)
 
 
 class TestInsightsPath(unittest.TestCase):
@@ -115,6 +118,66 @@ class TestAppendFindings(unittest.TestCase):
 
 
 # issue #392 — TestAppendFromRun 클래스 전체 폐기 (append_from_run 폐기 정합).
+
+
+class TestAppendInsight(unittest.TestCase):
+    """issue #396 — append_insight (FIFO 10 cap, 메인 자율 평가)."""
+
+    def test_creates_file_with_first_entry(self):
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            p = append_insight("engineer", "IMPL", "🚨 첫 인사이트", cwd=td_path)
+            self.assertTrue(p.exists())
+            content = p.read_text()
+            self.assertIn("# Loop Insights: engineer / IMPL", content)
+            self.assertIn("🚨 첫 인사이트", content)
+
+    def test_no_mode_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            p = append_insight("pr-reviewer", None, "LGTM 정합", cwd=td_path)
+            self.assertEqual(p.name, "pr-reviewer.md")
+
+    def test_empty_text_is_noop(self):
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            p = append_insight("engineer", "IMPL", "", cwd=td_path)
+            self.assertFalse(p.exists())
+
+    def test_multiline_takes_first_line(self):
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            p = append_insight("engineer", "IMPL", "한 줄\n무시될 두 번째 줄", cwd=td_path)
+            content = p.read_text()
+            self.assertIn("한 줄", content)
+            self.assertNotIn("무시될 두 번째 줄", content)
+
+    def test_fifo_cap_drops_oldest(self):
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            for i in range(INSIGHT_FIFO_CAP + 3):
+                append_insight("engineer", "IMPL", f"item{i:03d}", cwd=td_path)
+            content = insights_path("engineer", "IMPL", cwd=td_path).read_text()
+            entries = [l for l in content.splitlines() if l.startswith("- ")]
+            self.assertEqual(len(entries), INSIGHT_FIFO_CAP)
+            # 가장 오래된 item000/001/002 제거됨 (3자리 zero-padded 정확 매칭)
+            self.assertNotIn("item000", content)
+            self.assertNotIn("item001", content)
+            self.assertNotIn("item002", content)
+            # 최신 entry 보존
+            self.assertIn(f"item{INSIGHT_FIFO_CAP + 2:03d}", content)
+
+    def test_agent_mode_separated_files(self):
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            append_insight("engineer", "IMPL", "IMPL 전용", cwd=td_path)
+            append_insight("engineer", "POLISH", "POLISH 전용", cwd=td_path)
+            impl_content = insights_path("engineer", "IMPL", cwd=td_path).read_text()
+            polish_content = insights_path("engineer", "POLISH", cwd=td_path).read_text()
+            self.assertIn("IMPL 전용", impl_content)
+            self.assertNotIn("POLISH 전용", impl_content)
+            self.assertIn("POLISH 전용", polish_content)
+            self.assertNotIn("IMPL 전용", polish_content)
 
 
 class TestWorktreeNormalization(unittest.TestCase):
