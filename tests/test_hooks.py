@@ -39,6 +39,7 @@ from harness.hooks import (
     handle_pretooluse_agent,
     handle_pretooluse_file_op,
     handle_session_start,
+    handle_stop,
 )
 from harness.agent_trace import append as trace_append
 from harness.agent_trace import read_all as read_trace
@@ -1366,6 +1367,35 @@ class ExtractProseTextTests(unittest.TestCase):
         # depth 16 초과는 "" 반환 (crash X)
         result = _extract_prose_text(deep)
         self.assertIsInstance(result, str)
+
+
+# ---------------------------------------------------------------------------
+# handle_stop — issue #382 Stop hook (가드 로직 단위 테스트)
+# ---------------------------------------------------------------------------
+
+
+class StopHookGuardTests(unittest.TestCase):
+    """Stop hook 의 *조건 검사 가드* 만 단위 검증.
+
+    실제 end-run 발사 (in-process _cli_end_run) 는 integration 영역 —
+    jajang 같은 활성 프로젝트에서 round-trip 검증.
+    """
+
+    def test_stop_hook_active_skips_immediately(self):
+        # 무한 루프 가드 — Claude Code 공식 docs §"Stop hook runs forever"
+        rc = handle_stop(stdin_data={"stop_hook_active": True})
+        self.assertEqual(rc, 0)
+
+    def test_invalid_stdin_skips(self):
+        rc = handle_stop(stdin_data=None)
+        self.assertEqual(rc, 0)
+        rc = handle_stop(stdin_data="not a dict")  # type: ignore[arg-type]
+        self.assertEqual(rc, 0)
+
+    def test_empty_dict_no_sid_skips(self):
+        # sid/rid auto-detect 실패 → skip
+        rc = handle_stop(stdin_data={})
+        self.assertEqual(rc, 0)
 
 
 if __name__ == "__main__":
