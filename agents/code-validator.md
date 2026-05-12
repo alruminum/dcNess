@@ -128,7 +128,7 @@ light 버전 — 수정 범위만 검증.
 
 ## 외부 도구 config 키 schema 검증 (자율)
 
-`git diff` 또는 module-architect prose 의 변경 파일에 외부 도구 config (jest / tsconfig / eslint / vite / metro / babel 등) 변경 발견 시, 변경 키가 schema 에 *실존* 하는지 자율 판단으로 검증. hallucination 의심 시 공식 docs 1회 확인 또는 [`docs/plugin/known-hallucinations.md`](../docs/plugin/known-hallucinations.md) 카탈로그 매칭. 잘못된 키 발견 시 FAIL + 정확한 키 제안.
+`git diff` 또는 module-architect prose 의 변경 파일에 외부 도구 config (jest / tsconfig / eslint / vite / metro / babel 등) 변경 발견 시, 변경 키가 schema 에 *실존* 하는지 자율 판단으로 검증. hallucination 의심 시 공식 docs 1회 WebFetch 로 확인 (글로벌 제1룰 — 실존 검증). 잘못된 키 발견 시 FAIL + 정확한 키 제안.
 
 ## 참조
 
