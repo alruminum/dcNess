@@ -32,11 +32,11 @@ prose 마지막 단락에 자기 언어로 명시. 권장 표현:
 - **FAIL** — system-architect 재진입 권고 (cycle 한도 2). 본문에 (placeholder 위치 / 어느 PRD Must 기능 직결 / spike 권고) 명시.
 - **ESCALATE** — 사용자 위임. system-architect 재설계 (max 1 회) 후에도 동일 FAIL, 또는 본 에이전트 권한·정보 부족. 본문에 *사유* 명시.
 
-호출자가 prompt 로 전달하는 정보: system-architect READY 문서 경로, 실행 식별자.
+호출자가 prompt 로 전달하는 정보: system-architect PASS 산출물 경로, 실행 식별자.
 
 ## 작업 흐름
 
-1. system-architect READY 문서 (`docs/architecture.md` 또는 impl 목차 포함 산출물) 읽기
+1. system-architect PASS 산출물 (`docs/architecture.md` 또는 impl 목차 포함 산출물) 읽기
 2. PRD 읽기 (`docs/prd.md`) — Must / Should / Could 분류 확인
 3. SD 가 참조하는 SDK / API 명세 문서 읽기 (`docs/sdk.md`, `docs/reference.md`)
 4. 2 항목 체크리스트 적용
@@ -64,7 +64,7 @@ prose 마지막 단락에 자기 언어로 명시. 권장 표현:
 
 ### 2. Spike Gate
 
-> 추상 인터페이스 (ABC / Protocol) + Mock 구현만으로 system-architect READY 통과 금지. PRD Must 기능 핵심 가치 직결 외부 의존 (모델·SDK·API) 은 *실제 1개 spike* 실측 후 통과.
+> 추상 인터페이스 (ABC / Protocol) + Mock 구현만으로 system-architect PASS 통과 금지. PRD Must 기능 핵심 가치 직결 외부 의존 (모델·SDK·API) 은 *실제 1개 spike* 실측 후 통과.
 
 **적용 대상** (모두 해당 시 spike 의무):
 
