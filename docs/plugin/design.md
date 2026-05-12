@@ -92,13 +92,7 @@ agent 는 파일 부재를 오류로 처리하지 않는다.
 VoltAgent ecosystem (getdesign.md) 등 외부 `design.md` 가져올 때 LLM 1회 변환으로 dcness 룰 정합.
 호환 변환 레이어 별도 신설 없음.
 
-### 5.4 작성 스타일
-
-명확한 한글 사용 — 외래어 (Caveats / Disclaimer / TBD 등) 는 "주의사항" / "추후 결정" 으로 풀어 쓴다.
-외부 spec 에서 인용하는 라인 (Atmosphere / Tonal Layers 등) 은 영어 그대로 유지 (의미 정확성 우선).
-산업 표준 약어 (API / SDK / SSOT / PR / CI 등) 는 그대로 사용.
-
-### 5.5 권장 토큰 이름 (Google spec `# Recommended Token Names (Non-Normative)`)
+### 5.4 권장 토큰 이름 (Google spec `# Recommended Token Names (Non-Normative)`)
 
 표준 권장 이름을 따르면 외부 ecosystem import / export 호환성이 높아진다. 다른 이름도 spec 상 허용.
 
