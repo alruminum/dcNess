@@ -4,10 +4,10 @@
 
 ---
 
-## v0.2.17 (2026-05-12, 예정)
+## v0.2.17 (2026-05-12)
 
-**커밋 범위**: `v0.2.16..(다음 태그)`
-**핵심 변경**: agent 다이어트 + 기획·설계 루프 재편 (breaking change 묶음)
+**커밋 범위**: `v0.2.16..v0.2.17`
+**핵심 변경**: agent 다이어트 + 기획·설계 루프 재편 + **SSOT 다이어트 (9→7, 28% 감소)**
 
 ### 폐기된 agent (4)
 
@@ -82,6 +82,50 @@ claude plugin update dcness@dcness
 ```
 
 기존 활성 프로젝트의 진행 중 epic 은 옛 룰 그대로 종료. 신규 epic 부터 `/product-plan` → `/architect-loop` → `/impl-loop` 시퀀스 적용.
+
+### SSOT 다이어트 5 PR (#366~#371)
+
+자연어 SSOT 9개 → **7개**, 총 2,388줄 → **1,714줄** (28% 감소). 외부 사용자 시야 5 SSOT (orchestration / loop-procedure / handoff-matrix / hooks / issue-lifecycle).
+
+#### PR-0 (#366) — enum 현행화 잔재 정리
+- `agents/architecture-validator.md` `system-architect READY` → `PASS` (3곳)
+- `docs/plugin/handoff-matrix.md` §1.4b/§1.9 Note (옛 6 mode / 옛 validator 5 모드 폐기 알림) → 제거
+- `docs/plugin/orchestration.md` + `commands/impl.md` 옛 `MODULE_PLAN_READY` 마커 표현 제거
+
+#### PR-1 (#367) — `known-hallucinations.md` 폐기
+- 39줄, entry 1건 (jest) — SSOT 별도 파일 ROI △. agent body 의 *공식 docs WebFetch* 가이드가 진본
+- 3 agent (code-validator / module-architect / system-architect) cross-ref 제거
+
+#### PR-2 (#368) — `orchestration.md` 다이어트 + 시퀀스 재구성
+- 463 → 351줄 (24% 감소)
+- §2 시퀀스 재편: §2.1 catastrophic (원칙) / §2.2 기획 mermaid / §2.3 설계 mermaid / §2.4 구현 mermaid
+- §3 mini-graph 6개 폐기 (§4 풀스펙 표가 진본). §4.8 direct-impl-loop 폐기 (§4.3 와 100% 동일)
+- **§2.3 catastrophic → §2.1** cross-ref 갱신 (코드/테스트/문서 ~25 곳, stderr 메시지 + 테스트 매치 정합)
+
+#### PR-4 (#369) — 작은 SSOT 4개 다이어트
+- `hooks.md` (281→239): 미사용 event 압축 / 외부 사용자 영향 반복 단락 폐기 / 우회 표 통합 / 한눈요약 폐기
+- `handoff-matrix.md` (225→201): §1.2 번호 정렬 / §1.4 "기술 에픽" 단락 폐기 / §4.3 코드 인용 → link
+- `issue-lifecycle.md` (191→181): §1.3.1 sub-issue 절차 압축 / §2.3 1줄 압축
+- `design.md` §5.4 작성 스타일 폐기 (글로벌 메모리 중복)
+
+#### PR-3 (#371) — `dcness-rules.md` 폐기 + 슬림 inject + loop-procedure 흡수
+- `dcness-rules.md` (263줄) 폐기
+- **SessionStart inject**: 263줄 BLOCKING GATE Read 강제 → **~30줄 슬림 본문 직접 inject** (92% 감소)
+- 토큰: `[dcness-rules 로드 완료]` → `[dcness 활성 확인]`
+- §1 강제 영역 2가지 + 안티패턴 4건 → `orchestration.md §0` 본문 흡수
+- §3 mechanics + 행동지침 (echo 5~12줄 / REDO 분류 / 자가점검 / AMBIGUOUS / step 명명) → `loop-procedure.md §3.1/§3.2` 흡수
+- §4 리뷰 출력 + 개선점 코멘트 → `loop-procedure.md §6` 흡수
+- 10 agent cross-ref redirect + 코드 SSOT (`agent_boundary.py`, `hooks.py`, etc.) 갱신
+
+### 사용자 영향 — SSOT 다이어트
+
+**외부 활성 프로젝트** (jajang 등):
+- 매 세션 SessionStart inject: 263줄 → ~30줄 (**92% 감소**)
+- 새 토큰 `[dcness 활성 확인]` (옛 `[dcness-rules 로드 완료]` 대체)
+- catastrophic 룰 번호 `§2.3.x` → `§2.1.x` (코드 stderr 메시지 자동)
+- agent body cross-ref redirect 완료 — agent 동작 변경 0
+
+**plug-in update 시 자동 적용** — 사용자 수동 작업 0.
 
 ---
 
