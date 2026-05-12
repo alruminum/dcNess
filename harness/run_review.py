@@ -278,11 +278,44 @@ def _parse_iso(ts: str) -> Optional[datetime]:
 # pr-reviewer 는 LGTM 도 사용. 마지막 N줄에서 단어 단위 매칭 — 부정문 (예: "FAIL 없음",
 # "0 FAIL") 회피 위해 같은 줄에 부정 마커 있으면 skip.
 _CONCLUSION_ENUMS: tuple[tuple[str, str], ...] = (
+    # issue #383 follow-up — agent 별 결론 enum 12개 매트릭스 (agents/*.md 실측):
+    #   engineer (IMPL): IMPL_DONE / IMPL_PARTIAL / TESTS_FAIL
+    #   engineer (POLISH): POLISH_DONE / IMPLEMENTATION_ESCALATE
+    #   test-engineer: TESTS_WRITTEN
+    #   code-validator / architecture-validator / module-architect / system-architect
+    #     / plan-reviewer: PASS / FAIL / ESCALATE
+    #   pr-reviewer: LGTM / FAIL / ESCALATE
+    #   ux-architect: UX_FLOW_DONE / UX_FLOW_ESCALATE
+    #   designer: PASS
+    # 우선순위 — 구체적 enum 먼저 (TESTS_FAIL 이 FAIL 보다 먼저 매칭).
+    # 일반 PASS/FAIL/ESCALATE 는 마지막 fallback.
     ("LGTM", re.compile(r"\bLGTM\b")),
+    # engineer IMPL
+    ("IMPL_DONE", re.compile(r"\bIMPL_DONE\b")),
+    ("IMPL_PARTIAL", re.compile(r"\bIMPL_PARTIAL\b")),
+    ("TESTS_FAIL", re.compile(r"\bTESTS_FAIL\b")),
+    # engineer POLISH
+    ("POLISH_DONE", re.compile(r"\bPOLISH_DONE\b")),
+    ("IMPLEMENTATION_ESCALATE", re.compile(r"\bIMPLEMENTATION_ESCALATE\b")),
+    # test-engineer
+    ("TESTS_WRITTEN", re.compile(r"\bTESTS_WRITTEN\b")),
+    # ux-architect
+    ("UX_FLOW_DONE", re.compile(r"\bUX_FLOW_DONE\b")),
+    ("UX_FLOW_ESCALATE", re.compile(r"\bUX_FLOW_ESCALATE\b")),
+    # 일반 (PR #361 enum 통일 — code/architecture-validator / system/module-architect
+    # / plan-reviewer / pr-reviewer / designer 공통)
     ("PASS", re.compile(r"\bPASS\b")),
     ("FAIL", re.compile(r"\bFAIL\b")),
     ("ESCALATE", re.compile(r"\bESCALATE\b")),
 )
+# 단독 결론 (negation 검사 skip 대상) — 단어 자체가 부정 형태 가질 수 없음.
+_STANDALONE_CONCLUSIONS: frozenset[str] = frozenset({
+    "LGTM",
+    "IMPL_DONE", "IMPL_PARTIAL",
+    "POLISH_DONE", "IMPLEMENTATION_ESCALATE",
+    "TESTS_WRITTEN", "TESTS_FAIL",
+    "UX_FLOW_DONE", "UX_FLOW_ESCALATE",
+})
 _NEGATION_RE = re.compile(
     r"(없|미발견|아님|아니|불필요|"           # 한글 부정
     r"\bno\b|\bnot\b|\bzero\b|\b0\s*\b|"     # 영어 부정
@@ -307,10 +340,11 @@ def _extract_conclusion_enum(prose: str) -> str:
     for label, pattern in _CONCLUSION_ENUMS:
         for line in tail:
             if pattern.search(line):
-                # 단독 LGTM 은 negation 검사 skip (보통 "LGTM —" 패턴)
-                if label == "LGTM":
+                # 단독 결론 enum (TESTS_WRITTEN / IMPL_DONE 등) 은 negation 검사 skip.
+                # 단어 자체가 부정 형태 가질 수 없음 — "TESTS_WRITTEN 없음" 어색.
+                if label in _STANDALONE_CONCLUSIONS:
                     return label
-                # 같은 줄에 부정 마커 있으면 skip
+                # 일반 PASS/FAIL/ESCALATE — 같은 줄에 부정 마커 있으면 skip
                 if _NEGATION_RE.search(line):
                     continue
                 return label

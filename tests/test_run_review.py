@@ -896,6 +896,53 @@ class ConclusionEnumExtractionTests(unittest.TestCase):
         self.assertEqual(_extract_conclusion_enum(""), "")
         self.assertEqual(_extract_conclusion_enum("아무 결론 없음"), "")
 
+    # issue #383 follow-up — agent 별 결론 enum 12 매트릭스 매핑 회귀 차단.
+    def test_extracts_tests_written(self):
+        # test-engineer 결론 (jajang run-459cce99 step 0 실측 케이스)
+        prose = "분석 완료.\n\n나머지 12 it 는 RED. TESTS_WRITTEN — engineer attempt 0 권고."
+        self.assertEqual(_extract_conclusion_enum(prose), "TESTS_WRITTEN")
+
+    def test_extracts_impl_done(self):
+        # engineer IMPL 결론
+        prose = "구현 완료.\n\nIMPL_DONE — code-validator 검증 권고."
+        self.assertEqual(_extract_conclusion_enum(prose), "IMPL_DONE")
+
+    def test_extracts_impl_partial(self):
+        prose = "분량 초과.\n\nIMPL_PARTIAL — 남은 작업: foo.ts §3.2 ~ §3.5"
+        self.assertEqual(_extract_conclusion_enum(prose), "IMPL_PARTIAL")
+
+    def test_extracts_polish_done(self):
+        prose = "POLISH 완료.\n\nN passed / 변경 범위 src/foo.ts. POLISH_DONE."
+        self.assertEqual(_extract_conclusion_enum(prose), "POLISH_DONE")
+
+    def test_extracts_implementation_escalate(self):
+        prose = "재시도 한도 초과.\n\nIMPLEMENTATION_ESCALATE — 사용자 위임."
+        self.assertEqual(_extract_conclusion_enum(prose), "IMPLEMENTATION_ESCALATE")
+
+    def test_extracts_tests_fail(self):
+        # TESTS_FAIL 이 FAIL 보다 우선 매칭
+        prose = "테스트 결과.\n\n3회 후에도 동일 FAIL — TESTS_FAIL 결론."
+        self.assertEqual(_extract_conclusion_enum(prose), "TESTS_FAIL")
+
+    def test_extracts_ux_flow_done(self):
+        prose = "UX_FLOW 작성 완료.\n\nself-check 5 카테고리 통과. UX_FLOW_DONE."
+        self.assertEqual(_extract_conclusion_enum(prose), "UX_FLOW_DONE")
+
+    def test_extracts_ux_flow_escalate(self):
+        prose = "self-check 2 cycle.\n\n카테고리 3 미해결. UX_FLOW_ESCALATE."
+        self.assertEqual(_extract_conclusion_enum(prose), "UX_FLOW_ESCALATE")
+
+    def test_standalone_enum_ignores_negation_marker_on_same_line(self):
+        # IMPL_DONE 같은 단독 enum 은 부정 마커 (예: "FAIL 없음") 있어도 추출.
+        # 단어 자체가 부정 형태 가질 수 없음.
+        prose = "임시 분석.\n\n빌드 통과, FAIL 없음. IMPL_DONE — 다음 단계 권고."
+        self.assertEqual(_extract_conclusion_enum(prose), "IMPL_DONE")
+
+    def test_priority_specific_over_generic(self):
+        # 같은 줄에 TESTS_FAIL 과 FAIL 둘 다 있으면 TESTS_FAIL 우선 매칭.
+        prose = "결과.\n\nTESTS_FAIL — 3회 FAIL 후 종료."
+        self.assertEqual(_extract_conclusion_enum(prose), "TESTS_FAIL")
+
     def test_parse_steps_populates_conclusion_enum(self):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
