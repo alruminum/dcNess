@@ -967,5 +967,80 @@ class ConclusionEnumExtractionTests(unittest.TestCase):
             self.assertEqual(steps[0].enum, "PROSE_LOGGED")  # sentinel 그대로 보존
 
 
+class MissingConclusionEnumTests(unittest.TestCase):
+    """issue #387 — engineer prose 끝 결론 enum 부재 검출.
+
+    agents/engineer.md §21~32: IMPL/POLISH 모드 모두 prose 마지막 단락에
+    결론 enum (IMPL_DONE / IMPL_PARTIAL / SPEC_GAP_FOUND / TESTS_FAIL /
+    IMPLEMENTATION_ESCALATE / POLISH_DONE) 의무. jajang run-459cce99 step 1
+    engineer-IMPL prose 가 어떤 enum 도 박지 않은 caveat 케이스 직접 동기.
+    """
+
+    def test_missing_conclusion_enum_engineer_caveat(self):
+        # engineer prose 끝 = "사용자에게 요청하는 결정 사항" — 결론 enum 부재
+        prose = (
+            "구현 작업 중.\n\n"
+            "TypeScript 에러 발생.\n\n"
+            "**사용자에게 요청하는 결정 사항**\n"
+            "1. stub 파일 허용 여부\n"
+            "2. @theme/tokens 상대 경로 수정 허용 여부"
+        )
+        s = StepRecord(
+            idx=0, ts="2026-04-30T10:05:00+00:00",
+            agent="engineer", mode="IMPL",
+            enum="PROSE_LOGGED", must_fix=False,
+            prose_excerpt="x", prose_full=prose,
+            conclusion_enum="",  # 추출 실패
+        )
+        wastes = detect_wastes([s])
+        missing = [w for w in wastes if w.pattern == "MISSING_CONCLUSION_ENUM"]
+        self.assertEqual(len(missing), 1)
+        self.assertEqual(missing[0].severity, "MEDIUM")
+        self.assertEqual(missing[0].agent, "engineer")
+
+    def test_no_missing_when_enum_present(self):
+        prose = "구현 완료.\n\nIMPL_DONE — code-validator 권고."
+        s = StepRecord(
+            idx=0, ts="2026-04-30T10:05:00+00:00",
+            agent="engineer", mode="IMPL",
+            enum="PROSE_LOGGED", must_fix=False,
+            prose_excerpt="x", prose_full=prose,
+            conclusion_enum="IMPL_DONE",
+        )
+        wastes = detect_wastes([s])
+        missing = [w for w in wastes if w.pattern == "MISSING_CONCLUSION_ENUM"]
+        self.assertEqual(len(missing), 0)
+
+    def test_missing_skips_non_engineer(self):
+        # validator / pr-reviewer / architect 류는 자율 영역 — skip
+        prose = "검증 진행.\n\n특별한 enum 박지 않음."
+        steps = [
+            StepRecord(idx=0, ts="2026-04-30T10:05:00+00:00",
+                       agent="code-validator", mode="CODE_VALIDATION",
+                       enum="PROSE_LOGGED", must_fix=False,
+                       prose_excerpt="x", prose_full=prose, conclusion_enum=""),
+            StepRecord(idx=1, ts="2026-04-30T10:15:00+00:00",
+                       agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=False,
+                       prose_excerpt="y", prose_full=prose, conclusion_enum=""),
+        ]
+        wastes = detect_wastes(steps)
+        missing = [w for w in wastes if w.pattern == "MISSING_CONCLUSION_ENUM"]
+        self.assertEqual(len(missing), 0)
+
+    def test_missing_skips_no_prose_full(self):
+        # prose_full 부재 시 검사 불가 — skip
+        s = StepRecord(
+            idx=0, ts="2026-04-30T10:05:00+00:00",
+            agent="engineer", mode="IMPL",
+            enum="PROSE_LOGGED", must_fix=False,
+            prose_excerpt="x", prose_full="",
+            conclusion_enum="",
+        )
+        wastes = detect_wastes([s])
+        missing = [w for w in wastes if w.pattern == "MISSING_CONCLUSION_ENUM"]
+        self.assertEqual(len(missing), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

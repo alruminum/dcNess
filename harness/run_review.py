@@ -528,6 +528,34 @@ def detect_wastes(
             fix=f"agents/{cur.agent}.md fail 전략 강화 또는 impl 보강",
         ))
 
+    # issue #387 — MISSING_CONCLUSION_ENUM. engineer prose 끝 결론 enum (IMPL_DONE
+    # / IMPL_PARTIAL / SPEC_GAP_FOUND / TESTS_FAIL / IMPLEMENTATION_ESCALATE
+    # / POLISH_DONE) 부재 검출. agents/engineer.md §21~32 명시 강제.
+    # validator/architect 류는 PR #361 enum 통일로 자율 영역 — 본 패턴 미적용.
+    for s in steps:
+        if s.agent != "engineer":
+            continue
+        if not s.prose_full:
+            continue  # prose 부재 시 검사 불가
+        if s.conclusion_enum:
+            continue  # 결론 enum 정상 박힘
+        findings.append(WasteFinding(
+            pattern="MISSING_CONCLUSION_ENUM",
+            severity="MEDIUM",
+            step_idx=s.idx,
+            agent=s.agent,
+            detail=(
+                f"engineer step {s.idx} prose 끝 결론 enum 부재 — "
+                "agents/engineer.md §21~32 명시 의무 위반 "
+                "(IMPL_DONE / IMPL_PARTIAL / SPEC_GAP_FOUND / TESTS_FAIL / "
+                "IMPLEMENTATION_ESCALATE / POLISH_DONE 중 1)"
+            ),
+            fix=(
+                "engineer 재호출 시 prompt 에 결론 enum 강제 의무 명시 또는 "
+                "메인 Claude 가 prose routing 결정 시 enum 부재 인지 + 재호출"
+            ),
+        ))
+
     # ECHO_VIOLATION — prose 전체 줄 수 기준 (prose_full). prose_full 없는 레코드는 skip.
     for s in steps:
         if not s.prose_full:
