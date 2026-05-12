@@ -203,6 +203,17 @@ class WasteFinding:
     fix: str
 
 
+# issue #394 — `NoteFinding` 신규. severity 없는 raw 알림 (결정 X).
+# TOOL_USE_OVERFLOW / THINKING_LOOP 처럼 hardcoded 임계값 있지만 사용자 요청에 따라
+# 보존된 패턴 — wastes 분리하고 "측정 noted" 섹션에 단순 알림 형식으로 표시.
+@dataclass
+class NoteFinding:
+    pattern: str
+    step_idx: int
+    agent: str
+    detail: str
+
+
 # issue #392 — `GoodFinding` dataclass 폐기. `detect_goods` 폐기와 정합.
 
 
@@ -213,6 +224,8 @@ class RunReport:
     run_dir: Path
     steps: list[StepRecord] = field(default_factory=list)
     wastes: list[WasteFinding] = field(default_factory=list)
+    # issue #394 — notes: raw 측정 알림 (severity 없음).
+    notes: list[NoteFinding] = field(default_factory=list)
     # issue #392 — `goods` field 폐기. `detect_goods` / `GoodFinding` 폐기와 정합.
     total_cost_usd: float = 0.0
     total_input_tokens: int = 0
@@ -637,55 +650,7 @@ def detect_wastes(
 
     # issue #392 — EXTERNAL_VERIFIED_MISSING 폐기 (정신 위반 — 약속-실측 검사).
 
-    # THINKING_LOOP (DCN-30-20) — sub-agent 가 오래 돌았는데 output token 적음 = stall / thinking 무한 loop
-    # 사용자 사례 (jajang product-planner): 6분 elapsed + ↓624 tokens.
-    for s in steps:
-        if not s.matched_invocation:
-            continue
-        budget = EXPECTED_AGENT_BUDGETS.get(s.agent)
-        if not budget:
-            continue
-        duration_s = s.duration_ms / 1000 if s.duration_ms else 0
-        out_tok = s.output_tokens
-        # 조건 — duration 이 expected × 1.5 초과 AND output token 이 기대치 30% 미만
-        # OR duration > 5분 + output < 1k (절대 한도)
-        thinking_loop = False
-        reason = ""
-        if duration_s > budget["elapsed_s"] * 1.5 and out_tok < budget["min_output_tokens"] * 0.3:
-            thinking_loop = True
-            reason = (f"duration {duration_s:.0f}s > budget {budget['elapsed_s']}s × 1.5 + "
-                      f"output {out_tok} < min {budget['min_output_tokens']} × 0.3")
-        elif duration_s > 300 and out_tok < 1000:
-            thinking_loop = True
-            reason = f"duration {duration_s:.0f}s > 300s + output {out_tok} < 1000"
-        if thinking_loop:
-            findings.append(WasteFinding(
-                pattern="THINKING_LOOP",
-                severity="HIGH",
-                step_idx=s.idx,
-                agent=s.agent,
-                detail=f"{s.agent} stall 의심 — {reason}",
-                fix=(f"agents/{s.agent}.md 'thinking 본문 드래프트 금지' 룰 ⚠️ CRITICAL banner 격상 + "
-                      "Agent description 에 'extended thinking 의사결정 분기만, prose 즉시 emit' 추가"),
-            ))
-
-    # TOOL_USE_OVERFLOW (DCN-CHG-20260430-37) — step 의 tool_use_count ≥ 100.
-    # 자장 epic-08/09 실측 — 102/119/153/170/223 모두 PR PARTIAL 회귀.
-    # DCN-30-36 hint 와 짝 — 사후 측정.
-    for s in steps:
-        if not s.matched_invocation or s.tool_use_count < 100:
-            continue
-        findings.append(WasteFinding(
-            pattern="TOOL_USE_OVERFLOW",
-            severity="HIGH",
-            step_idx=s.idx,
-            agent=s.agent,
-            detail=f"{s.agent} step {s.idx} tool_use_count={s.tool_use_count} (≥ 100). "
-                   f"context overflow / IMPL_PARTIAL 회귀 위험 (자장 실측 임계).",
-            fix="DCN-30-36 prior count hint 활용 + agent prompt 분할 자율 판단 강화. "
-                "임계 ≥ 100 = 자장 실측 5건 모두 PR PARTIAL.",
-        ))
-
+    # issue #394 — THINKING_LOOP / TOOL_USE_OVERFLOW 는 detect_notes 로 이동.
     # issue #392 — PARTIAL_LOOP 폐기 (hardcoded ≥3 임계값 = 정신 위반).
 
     # END_STEP_SKIP (DCN-CHG-20260430-37) — sub-agent invocation > .steps.jsonl row.
@@ -717,6 +682,58 @@ def detect_wastes(
 
 
 # ── Good 탐지 ─────────────────────────────────────────────────────────
+
+def detect_notes(steps: list[StepRecord]) -> list[NoteFinding]:
+    """issue #394 — "측정 noted" raw 알림 (severity 없음).
+
+    사용자 요청: hardcoded 임계 유지하되 결정 X. 메인이 보고 자율 판단.
+
+    포함 패턴:
+    - THINKING_LOOP — duration > budget × 1.5 + output_tokens < budget × 0.3
+    - TOOL_USE_OVERFLOW — tool_use_count ≥ 100
+    """
+    notes: list[NoteFinding] = []
+
+    # THINKING_LOOP — sub-agent 가 오래 돌았는데 output token 적음
+    for s in steps:
+        if not s.matched_invocation:
+            continue
+        budget = EXPECTED_AGENT_BUDGETS.get(s.agent)
+        if not budget:
+            continue
+        duration_s = s.duration_ms / 1000 if s.duration_ms else 0
+        out_tok = s.output_tokens
+        thinking_loop = False
+        reason = ""
+        if duration_s > budget["elapsed_s"] * 1.5 and out_tok < budget["min_output_tokens"] * 0.3:
+            thinking_loop = True
+            reason = (f"duration {duration_s:.0f}s > budget {budget['elapsed_s']}s × 1.5 + "
+                      f"output {out_tok} < min {budget['min_output_tokens']} × 0.3")
+        elif duration_s > 300 and out_tok < 1000:
+            thinking_loop = True
+            reason = f"duration {duration_s:.0f}s > 300s + output {out_tok} < 1000"
+        if thinking_loop:
+            notes.append(NoteFinding(
+                pattern="THINKING_LOOP",
+                step_idx=s.idx,
+                agent=s.agent,
+                detail=f"{s.agent} stall 의심 — {reason}",
+            ))
+
+    # TOOL_USE_OVERFLOW — step 의 tool_use_count ≥ 100
+    for s in steps:
+        if not s.matched_invocation or s.tool_use_count < 100:
+            continue
+        notes.append(NoteFinding(
+            pattern="TOOL_USE_OVERFLOW",
+            step_idx=s.idx,
+            agent=s.agent,
+            detail=f"{s.agent} step {s.idx} tool_use_count={s.tool_use_count} (≥ 100, "
+                   f"jajang 실측 임계 — context overflow / IMPL_PARTIAL 위험)",
+        ))
+
+    return notes
+
 
 # issue #392 — `detect_goods` 함수 + 5 good patterns 전체 폐기.
 # 사유: dcness 정신 정합 X — orchestration.md §0 "임계값 hardcode 금지 + 자율 친화".
@@ -951,6 +968,72 @@ def compute_run_cost(run_dir: Path, repo_path: Path) -> tuple[float, int, int]:
 
 # ── Report 생성 ───────────────────────────────────────────────────────
 
+def _build_tool_histogram_table(report: RunReport) -> list[str]:
+    """issue #394 — agent-trace.jsonl 집계 → step 별 도구 사용 분포 표.
+
+    각 step 의 prose timestamp 윈도우 안 agent-trace 의 PreToolUse pre entry 만
+    카운트. raw 데이터 — 임계 X. 메인이 보고 자율 판단.
+
+    return: markdown table line 리스트. 빈 trace 시 빈 리스트.
+    """
+    if not report.steps:
+        return []
+
+    from harness.agent_trace import read_all as _trace_read
+
+    try:
+        trace = _trace_read(
+            report.session_id, report.run_id,
+            base_dir=report.run_dir.parent.parent.parent.parent,
+        )
+    except Exception:
+        return []
+    if not trace:
+        return []
+
+    # step 별 시작/종료 ts 윈도우
+    pre_entries = [e for e in trace if e.get("phase") == "pre"]
+
+    lines: list[str] = []
+    lines.append("| step | agent | mode | Read | Write | Edit | Bash | Glob | Grep | 기타 |")
+    lines.append("|---|---|---|---|---|---|---|---|---|---|")
+
+    for i, s in enumerate(report.steps):
+        # 현 step 종료 ts ~ 다음 step 시작 ts 사이의 pre entry 카운트
+        start_ts = s.ts
+        end_ts = report.steps[i + 1].ts if i + 1 < len(report.steps) else None
+
+        from collections import Counter
+        hist: Counter = Counter()
+        for e in pre_entries:
+            e_ts = e.get("ts", "")
+            if e_ts < start_ts:
+                continue
+            if end_ts and e_ts >= end_ts:
+                continue
+            tool = e.get("tool", "?")
+            hist[tool] += 1
+
+        # 표시 안 함 = 빈 step
+        if not hist:
+            continue
+
+        def _g(k: str) -> str:
+            return str(hist.get(k, 0)) if hist.get(k, 0) else "-"
+
+        common = ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
+        other = sum(v for k, v in hist.items() if k not in common)
+        other_str = str(other) if other else "-"
+
+        lines.append(
+            f"| {s.idx} | {s.agent} | {s.mode or '-'} | "
+            f"{_g('Read')} | {_g('Write')} | {_g('Edit')} | "
+            f"{_g('Bash')} | {_g('Glob')} | {_g('Grep')} | {other_str} |"
+        )
+
+    return lines if len(lines) > 2 else []
+
+
 def render_report(report: RunReport) -> str:
     lines = []
     lines.append(f"# Run Review: {report.run_id}")
@@ -1015,7 +1098,21 @@ def render_report(report: RunReport) -> str:
 
     # issue #392 — "잘한 점" 섹션 폐기. detect_goods + GoodFinding 폐기와 정합.
 
-    # 잘못한 점
+    # issue #394 — 도구 사용 분포 표 (agent-trace.jsonl 집계, raw)
+    tool_table = _build_tool_histogram_table(report)
+    if tool_table:
+        lines.append("## 🔧 도구 사용 분포 (raw — 임계 X)")
+        lines.extend(tool_table)
+        lines.append("")
+
+    # issue #394 — 측정 noted (TOOL_USE_OVERFLOW / THINKING_LOOP, severity 없음)
+    if report.notes:
+        lines.append("## ⚠️ 측정 noted (임계 도달 — 결정 X, 메인 자율 판단)")
+        for n in report.notes:
+            lines.append(f"- step {n.step_idx} {n.agent} `{n.pattern}` — {n.detail}")
+        lines.append("")
+
+    # 잘못한 점 (차단성 검출 — catastrophic / drift)
     if report.wastes:
         lines.append("## 잘못한 점 (Waste Findings)")
         lines.append("| # | 심각도 | 패턴 | step | agent | 상세 | 수정 |")
@@ -1058,6 +1155,7 @@ def build_report(run_dir: Path, repo_path: Path) -> RunReport:
     # DCN-CHG-20260430-37: detect_wastes 에 invocations + repo_path + window 전달
     # (END_STEP_SKIP / MAIN_SED_MISDIAGNOSIS run-level 패턴 검출 위해).
     wastes = detect_wastes(steps, invocations=invocations, repo_path=repo_path, window=window)
+    notes = detect_notes(steps)  # issue #394 — TOOL_USE_OVERFLOW / THINKING_LOOP raw 알림
     # issue #392 — detect_goods 호출 폐기.
     cost, in_tok, out_tok = compute_run_cost(run_dir, repo_path)
 
@@ -1085,6 +1183,7 @@ def build_report(run_dir: Path, repo_path: Path) -> RunReport:
         run_dir=run_dir,
         steps=steps,
         wastes=wastes,
+        notes=notes,
         total_cost_usd=cost,
         total_input_tokens=in_tok,
         total_output_tokens=out_tok,

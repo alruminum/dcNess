@@ -11,13 +11,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from harness.run_review import (  # noqa: E402
-    RunReport, StepRecord, build_report, detect_wastes,
+    RunReport, StepRecord, build_report, detect_wastes, detect_notes,
     parse_steps, render_report, list_runs, find_run_dir,
     _normalize_agent_type, assign_invocations_to_steps,
     EXPECTED_AGENT_BUDGETS, DCNESS_AGENT_NAMES, LEGACY_AGENT_ALIASES,
     WINDOW_TS_PADDING, _extract_conclusion_enum,
 )
 # issue #392 — detect_goods 폐기
+# issue #394 — detect_notes 신규 (TOOL_USE_OVERFLOW / THINKING_LOOP)
 
 
 def _make_run_dir(tmp: Path, sid: str, rid: str, step_records: list[dict],
@@ -434,9 +435,10 @@ class AssignInvocationsTests(unittest.TestCase):
 
 
 class ThinkingLoopDetectionTests(unittest.TestCase):
+    """issue #394 — THINKING_LOOP 는 detect_notes 로 이동 (severity 없는 알림)."""
+
     def test_thinking_loop_high_duration_low_output(self):
         # 사용자 jajang 사례 시뮬레이션 — architect 6분 + 624 tokens
-        budget = EXPECTED_AGENT_BUDGETS["architect"]
         s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
                         enum="PASS", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6")
@@ -444,8 +446,8 @@ class ThinkingLoopDetectionTests(unittest.TestCase):
         s.duration_ms = 360000  # 6분
         s.output_tokens = 624
         s.total_tokens = 1000
-        wastes = detect_wastes([s])
-        kinds = {w.pattern for w in wastes}
+        notes = detect_notes([s])
+        kinds = {n.pattern for n in notes}
         self.assertIn("THINKING_LOOP", kinds)
 
     def test_no_thinking_loop_when_healthy(self):
@@ -457,8 +459,8 @@ class ThinkingLoopDetectionTests(unittest.TestCase):
         s.duration_ms = 60000
         s.output_tokens = 5000
         s.total_tokens = 30000
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "THINKING_LOOP" for w in wastes))
+        notes = detect_notes([s])
+        self.assertFalse(any(n.pattern == "THINKING_LOOP" for n in notes))
 
     def test_no_thinking_loop_when_unmatched(self):
         # matched_invocation=False 면 detection skip
@@ -468,43 +470,43 @@ class ThinkingLoopDetectionTests(unittest.TestCase):
         s.matched_invocation = False
         s.duration_ms = 0
         s.output_tokens = 0
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "THINKING_LOOP" for w in wastes))
+        notes = detect_notes([s])
+        self.assertFalse(any(n.pattern == "THINKING_LOOP" for n in notes))
 
 
 class RegressionPatternsTests(unittest.TestCase):
     """DCN-CHG-20260430-37 — 4 신규 회귀 패턴."""
 
     def test_tool_use_overflow_emits_finding(self):
-        # 자장 실측 임계 ≥ 100. 102/119/153/170/223 모두 PARTIAL 회귀.
+        # issue #394 — TOOL_USE_OVERFLOW 는 detect_notes 로 이동.
         s = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
                         enum="IMPL_DONE", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5")
         s.matched_invocation = True
         s.tool_use_count = 119
-        wastes = detect_wastes([s])
-        kinds = {w.pattern for w in wastes}
+        notes = detect_notes([s])
+        kinds = {n.pattern for n in notes}
         self.assertIn("TOOL_USE_OVERFLOW", kinds)
 
     def test_tool_use_overflow_below_threshold(self):
-        # ≤ 99 = silent. 정상 invocation 36~64 영역.
+        # ≤ 99 = silent.
         s = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
                         enum="IMPL_DONE", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5")
         s.matched_invocation = True
         s.tool_use_count = 64
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "TOOL_USE_OVERFLOW" for w in wastes))
+        notes = detect_notes([s])
+        self.assertFalse(any(n.pattern == "TOOL_USE_OVERFLOW" for n in notes))
 
     def test_tool_use_overflow_unmatched_invocation_skipped(self):
-        # matched_invocation=False → tool_use_count 신뢰 X → skip
+        # matched_invocation=False → skip
         s = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
                         enum="IMPL_DONE", must_fix=False,
                         prose_excerpt="line1\nline2\nline3\nline4\nline5")
         s.matched_invocation = False
         s.tool_use_count = 200
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "TOOL_USE_OVERFLOW" for w in wastes))
+        notes = detect_notes([s])
+        self.assertFalse(any(n.pattern == "TOOL_USE_OVERFLOW" for n in notes))
 
     # issue #392 — test_partial_loop_* 폐기 (PARTIAL_LOOP 패턴 폐기 정합).
 
