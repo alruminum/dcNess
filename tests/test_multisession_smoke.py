@@ -272,7 +272,7 @@ class MultiSessionIsolationTests(unittest.TestCase):
 
 
 class CatastrophicRuleE2eTests(unittest.TestCase):
-    """실 bash 훅 → python 파이프라인으로 §2.3 룰 발화 검증."""
+    """실 bash 훅 → python 파이프라인으로 §2.1 룰 발화 검증."""
 
     def setUp(self) -> None:
         self._td = TemporaryDirectory()
@@ -320,7 +320,7 @@ class CatastrophicRuleE2eTests(unittest.TestCase):
             cwd=self.cwd,
         )
         self.assertEqual(result.returncode, 1, f"stdout: {result.stdout}")
-        self.assertIn("§2.3.3", result.stderr)
+        self.assertIn("§2.1.3", result.stderr)
 
     def test_engineer_with_plan_passes_e2e(self) -> None:
         # module-architect.md 작성
@@ -365,7 +365,7 @@ class CatastrophicRuleE2eTests(unittest.TestCase):
             cwd=self.cwd,
         )
         self.assertEqual(result.returncode, 1)
-        self.assertIn("§2.3.1", result.stderr)
+        self.assertIn("§2.1.1", result.stderr)
 
 if __name__ == "__main__":
     unittest.main()

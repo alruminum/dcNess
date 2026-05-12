@@ -2,7 +2,7 @@
 
 > **Status**: ACTIVE
 > **Scope**: dcness plug-in 이 활성 프로젝트에 적용하는 6 hook 의 시점 / 역할 / 차단 동작 / 우회 메커니즘 SSOT.
-> **Cross-ref**: [`orchestration.md`](orchestration.md) §2.3 (catastrophic 5 룰), [`handoff-matrix.md`](handoff-matrix.md) §4 (권한 매트릭스), [`dcness-rules.md`](dcness-rules.md) §1 (대원칙).
+> **Cross-ref**: [`orchestration.md`](orchestration.md) §2.1 (catastrophic 시퀀스), [`handoff-matrix.md`](handoff-matrix.md) §4 (권한 매트릭스), [`dcness-rules.md`](dcness-rules.md) §1 (대원칙).
 
 ---
 
@@ -96,13 +96,13 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 **Matcher**: `Agent`
 **시점**: 메인 Claude 가 sub-agent 호출 (Task tool with `subagent_type`) *직전*.
 
-**역할**: [`orchestration.md`](orchestration.md) §2.3 catastrophic 시퀀스 강제
+**역할**: [`orchestration.md`](orchestration.md) §2.1 catastrophic 시퀀스 강제
 
 | 룰 | 차단 조건 |
 |---|---|
-| §2.3.1 | src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 |
-| §2.3.3 | engineer 가 module-architect `PASS` 없이 src/ 작성 |
-| §2.3.5 | architect-loop 안 module-architect × N 첫 호출 직전 architecture-validator PASS 부재 |
+| §2.1.1 | src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 |
+| §2.1.3 | engineer 가 module-architect `PASS` 없이 src/ 작성 |
+| §2.1.5 | architect-loop 안 module-architect × N 첫 호출 직전 architecture-validator PASS 부재 |
 
 **차단 동작**: `exit 1` → CC 가 Agent 호출 거부 + stderr 메시지 사용자 노출.
 **외부 사용자 영향**: 활성 프로젝트의 시퀀스 위반 시 sub-agent 호출 자체가 막힘. 메인 Claude 가 직접 회복 시도하거나 사용자 위임.
@@ -255,7 +255,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 | # | Hook | Event | Matcher | 차단 | 핵심 역할 |
 |---|---|---|---|---|---|
 | 1 | session-start | SessionStart | — | X (inject) | dcness-rules 강제 read + 토큰 의무 + state bootstrap |
-| 2 | catastrophic-gate | PreToolUse | Agent | ✓ | orchestration §2.3 5 룰 위반 시 Agent 호출 차단 |
+| 2 | catastrophic-gate | PreToolUse | Agent | ✓ | orchestration §2.1 catastrophic 룰 위반 시 Agent 호출 차단 |
 | 3 | file-guard | PreToolUse | Edit/Write/Read/Bash/mcp__.* | ✓ | handoff-matrix §4 경계 (ALLOW/READ_DENY/INFRA) 강제 |
 | 4 | tdd-guard | PreToolUse | Edit/Write/NotebookEdit | ✓ | TS / JS src 변경 시 매칭 test 부재면 deny |
 | 5 | post-agent-clear | PostToolUse | Agent | X (inject) | sub-agent prose 자동 저장 + trace inject |
@@ -267,7 +267,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 
 **자연어 SSOT (본 hook 들이 강제하는 룰의 spec)**:
 - [`dcness-rules.md`](dcness-rules.md) §1 — 대원칙 (강제 영역 2가지)
-- [`orchestration.md`](orchestration.md) §2.3 — catastrophic 5 룰 (catastrophic-gate 강제 대상)
+- [`orchestration.md`](orchestration.md) §2.1 — catastrophic 시퀀스 (catastrophic-gate 강제 대상)
 - [`handoff-matrix.md`](handoff-matrix.md) §4 — 권한 매트릭스 (file-guard 강제 대상)
 - [`loop-procedure.md`](loop-procedure.md) — Step 0~8 mechanics (hook 시점이 절차 어디에 끼는지)
 
