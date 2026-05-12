@@ -13,7 +13,7 @@
 > **이슈 #280 정착 후 작동 모델**:
 > - agent 는 prose 마지막 단락에 *어떤 결과로 끝났는지 + 메인이 누구를 부르는 게 적절한지* 자기 언어로 명시.
 > - 메인은 prose + 본 §1 가이드만으로 routing 결정. enum 형식 검증 없음.
-> - prose 가 모호하거나 결론을 추출 못 하면 메인이 사용자에게 위임 (cascade — `harness/routing_telemetry.py:record_cascade`).
+> - prose 가 모호하거나 결론을 추출 못 하면 메인이 사용자에게 위임 (prose 본문 "결정 불가" 명시, issue #392 — routing_telemetry cascade marker 폐기).
 
 ### 1.1 plan-reviewer
 
@@ -197,5 +197,5 @@ RWHarness 4 신호 OR 정합:
 - [`orchestration.md`](orchestration.md) §0 — 강제 영역 2가지 (대 원칙)
 - [`../archive/status-json-mutate-pattern.md`](../archive/status-json-mutate-pattern.md) — Prose-Only 원전 proposal (역사 자료)
 - `agents/*.md` — 각 agent 의 결론 prose 표현 가이드
-- `harness/routing_telemetry.py` — prose-only routing 회귀 검증 telemetry (이슈 #281)
 - `harness/signal_io.py` / `harness/interpret_strategy.py` — 옛 enum 추출 인프라 (이슈 #284 폐기 진행 중)
+- (issue #392 — `harness/routing_telemetry.py` 폐기. baseline 비교 끝남 + cascade marker 실측 0건)

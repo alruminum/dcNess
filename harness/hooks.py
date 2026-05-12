@@ -591,21 +591,8 @@ def handle_posttooluse_agent(
                         active[rid] = slot
                         update_live(sid, base_dir=base_dir, active_runs=active)
 
-                        # issue #281 — prose-only routing 회귀 검증 telemetry.
-                        # 매 agent 종료 시 prose tail 보존. enum heuristic-calls.jsonl
-                        # 와 분리된 별도 파일 (.metrics/routing-decisions.jsonl).
-                        try:
-                            from harness.routing_telemetry import record_agent_call
-                            record_agent_call(
-                                sub=step_agent,
-                                prose=prose_text,
-                                mode=step_mode,
-                                tool_use_id=stdin_data.get("tool_use_id", "") or "",
-                                run_id=rid,
-                                session_id=sid,
-                            )
-                        except Exception:  # noqa: BLE001 — silent, hook 본 흐름 보호
-                            pass
+                        # issue #392 — routing_telemetry.record_agent_call 폐기.
+                        # #281 baseline 비교 끝남 + jajang 실측 record_cascade 0건.
             except Exception as e:  # noqa: BLE001
                 print(
                     f"[hook prose stage] write 예외: {type(e).__name__}: {e}",
@@ -664,24 +651,8 @@ def handle_posttooluse_agent(
 
             if hist or sub_type:
                 histogram_str = format_histogram(hist) if hist else "(none)"
-                # redo_log auto append — *측정 데이터만*. decision/anomalies 필드 X
-                # (자율 영역). 메인이 직접 판단해서 박을 때만 decision 들어감.
-                try:
-                    from harness.redo_log import append as _redo_append
-                    _redo_append(sid, rid, {
-                        "auto": True,
-                        "tool_use_id": tuid_now or (
-                            pending.get("tool_use_id", "")
-                            if isinstance(pending, dict) else ""
-                        ),
-                        "sub": sub_type,
-                        "tool_uses": sum(hist.values()),
-                        "histogram": hist,
-                        "input_repeats": input_repeats_str,
-                        "match": pending_match,
-                    }, base_dir=base_dir)
-                except Exception:  # noqa: BLE001 — silent, hook 본 흐름 방해 X
-                    pass
+                # issue #392 — redo_log auto append 폐기. 메커니즘 죽음 (jajang
+                # 실측 "하지 말 것" 0건). 학습 환류는 insight CLI (PR3) 로 대체.
         except Exception:  # noqa: BLE001 — silent
             pass
 

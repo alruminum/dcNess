@@ -33,8 +33,8 @@ from harness.loop_insights import (
     insights_path,
     read,
     append_findings,
-    append_from_run,
 )
+# issue #392 — append_from_run 폐기
 
 
 class TestInsightsPath(unittest.TestCase):
@@ -114,103 +114,7 @@ class TestAppendFindings(unittest.TestCase):
             self.assertFalse(p.exists())
 
 
-class TestAppendFromRun(unittest.TestCase):
-    def _make_redo_entry(self, sub, mode, decision, reason):
-        return {
-            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "sub": sub,
-            "mode": mode,
-            "decision": decision,
-            "reason": reason,
-        }
-
-    def test_redo_entries_accumulated(self):
-        with tempfile.TemporaryDirectory() as td:
-            td_path = Path(td)
-
-            fake_entries = [
-                self._make_redo_entry("engineer", "IMPL", "REDO_SAME", "pytest 실패 무시"),
-                self._make_redo_entry("engineer", "IMPL", "PASS", "정상"),
-            ]
-
-            with patch("harness.loop_insights.redo_log") as mock_rl, \
-                 patch("harness.loop_insights.rv") as mock_rv, \
-                 patch("harness.loop_insights.get_run_dir") as mock_rd:
-
-                mock_rd.return_value = td_path
-                mock_rl.read_all.return_value = fake_entries
-                mock_rv.parse_steps.return_value = []
-                mock_rv.detect_wastes.return_value = []
-                mock_rv.detect_goods.return_value = []
-
-                modified = append_from_run("sid1", "rid1", cwd=td_path)
-
-            self.assertTrue(len(modified) > 0)
-            content = insights_path("engineer", "IMPL", cwd=td_path).read_text()
-            self.assertIn("pytest 실패 무시", content)
-            self.assertIn("REDO_SAME", content)
-
-    def test_pass_entries_skipped(self):
-        with tempfile.TemporaryDirectory() as td:
-            td_path = Path(td)
-
-            fake_entries = [
-                self._make_redo_entry("engineer", "IMPL", "PASS", "정상 완료"),
-            ]
-
-            with patch("harness.loop_insights.redo_log") as mock_rl, \
-                 patch("harness.loop_insights.rv") as mock_rv, \
-                 patch("harness.loop_insights.get_run_dir") as mock_rd:
-
-                mock_rd.return_value = td_path
-                mock_rl.read_all.return_value = fake_entries
-                mock_rv.parse_steps.return_value = []
-                mock_rv.detect_wastes.return_value = []
-                mock_rv.detect_goods.return_value = []
-
-                modified = append_from_run("sid1", "rid1", cwd=td_path)
-
-            self.assertEqual(modified, [])
-
-    def test_empty_reason_skipped(self):
-        with tempfile.TemporaryDirectory() as td:
-            td_path = Path(td)
-
-            fake_entries = [
-                self._make_redo_entry("engineer", "IMPL", "REDO_SAME", ""),
-            ]
-
-            with patch("harness.loop_insights.redo_log") as mock_rl, \
-                 patch("harness.loop_insights.rv") as mock_rv, \
-                 patch("harness.loop_insights.get_run_dir") as mock_rd:
-
-                mock_rd.return_value = td_path
-                mock_rl.read_all.return_value = fake_entries
-                mock_rv.parse_steps.return_value = []
-                mock_rv.detect_wastes.return_value = []
-                mock_rv.detect_goods.return_value = []
-
-                modified = append_from_run("sid1", "rid1", cwd=td_path)
-
-            self.assertEqual(modified, [])
-
-    def test_empty_log_returns_empty(self):
-        with tempfile.TemporaryDirectory() as td:
-            td_path = Path(td)
-
-            with patch("harness.loop_insights.redo_log") as mock_rl, \
-                 patch("harness.loop_insights.rv") as mock_rv, \
-                 patch("harness.loop_insights.get_run_dir") as mock_rd:
-
-                mock_rd.return_value = td_path
-                mock_rl.read_all.return_value = []
-                mock_rv.parse_steps.return_value = []
-                mock_rv.detect_wastes.return_value = []
-                mock_rv.detect_goods.return_value = []
-
-                modified = append_from_run("sid1", "rid1", cwd=td_path)
-
-            self.assertEqual(modified, [])
+# issue #392 — TestAppendFromRun 클래스 전체 폐기 (append_from_run 폐기 정합).
 
 
 class TestWorktreeNormalization(unittest.TestCase):

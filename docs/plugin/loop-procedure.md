@@ -90,7 +90,7 @@ begin-step stdout 에 `[INSIGHTS: <agent>/<mode>]` 섹션이 있으면 Agent pro
 
 **worktree 활성 시 worktree 절대 경로 prompt 에 추가 명시 — MUST**: cwd 가 `.claude/worktrees/<name>/` 안이면 sub-agent prompt 에 worktree 절대 경로 명시. main repo abs path 사용 금지 — 머지 전 옛 코드 read 로 false positive (CC #31546 / #48096). 근거: CC Task tool 에 cwd parameter 부재 (#12748), subagent frontmatter cwd field 부재 (#31940) — 메인이 명시 책임.
 
-**prose-only mode** (이슈 #284): `--allowed-enums` 미지정 시 stdout = `PROSE_LOGGED`. 메인 Claude 가 prose 자체 (`<run_dir>/<agent>[-<MODE>].md`) 를 직접 읽고 routing 결정 — [`handoff-matrix.md`](handoff-matrix.md) §1 자연어 가이드 참조. 결정 못 하면 `harness.routing_telemetry record-cascade --reason "..."` 으로 cascade marker 박고 사용자 위임.
+**prose-only mode** (이슈 #284): `--allowed-enums` 미지정 시 stdout = `PROSE_LOGGED`. 메인 Claude 가 prose 자체 (`<run_dir>/<agent>[-<MODE>].md`) 를 직접 읽고 routing 결정 — [`handoff-matrix.md`](handoff-matrix.md) §1 자연어 가이드 참조. 결정 못 하면 사용자에게 위임 (prose 본문에 "결정 불가" 명시 — issue #392: routing_telemetry cascade marker 폐기, 자연어 위임만).
 
 #### 결과 echo + 평가 — MUST (5~12줄)
 
@@ -133,7 +133,7 @@ REDO 판단 신호: 결과가 질문에 제대로 답하지 못함 / 같은 tool
 
 #### AMBIGUOUS 처리 (legacy enum mode 한정)
 
-`--allowed-enums` 박은 legacy 호출에서 `end-step` stdout = `AMBIGUOUS` 시: 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS → 사용자 위임 (enum 후보 + prose 발췌). prose-only mode 는 AMBIGUOUS 자체 X — `record-cascade` 로 cascade marker 박고 사용자 위임.
+`--allowed-enums` 박은 legacy 호출에서 `end-step` stdout = `AMBIGUOUS` 시: 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS → 사용자 위임 (enum 후보 + prose 발췌). prose-only mode 는 AMBIGUOUS 자체 X — 결정 못 하면 prose 본문에 "결정 불가" 명시 후 사용자 위임 (issue #392).
 
 #### helper 안전망 (자동 검출)
 

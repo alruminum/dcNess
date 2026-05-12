@@ -11,12 +11,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from harness.run_review import (  # noqa: E402
-    RunReport, StepRecord, build_report, detect_goods, detect_wastes,
+    RunReport, StepRecord, build_report, detect_wastes,
     parse_steps, render_report, list_runs, find_run_dir,
     _normalize_agent_type, assign_invocations_to_steps,
     EXPECTED_AGENT_BUDGETS, DCNESS_AGENT_NAMES, LEGACY_AGENT_ALIASES,
     WINDOW_TS_PADDING, _extract_conclusion_enum,
 )
+# issue #392 — detect_goods 폐기
 
 
 def _make_run_dir(tmp: Path, sid: str, rid: str, step_records: list[dict],
@@ -184,25 +185,7 @@ class WasteDetectionTests(unittest.TestCase):
         self.assertNotIn("RETRY_SAME_FAIL", kinds,
                          "다른 task / 다른 prose = 다른 invocation, retry 아님")
 
-    def test_echo_violation(self):
-        # prose_full 이 짧을 때만 ECHO_VIOLATION (prose_excerpt 기준 X)
-        steps = [
-            StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                       enum="PASS", must_fix=False,
-                       prose_excerpt="too short",
-                       prose_full="too short\n"),
-        ]
-        wastes = detect_wastes(steps)
-        self.assertTrue(any(w.pattern == "ECHO_VIOLATION" for w in wastes))
-
-    def test_echo_violation_no_prose_full_skipped(self):
-        # prose_full 없으면 오탐 방지 — skip
-        steps = [
-            StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                       enum="PASS", must_fix=False, prose_excerpt="too short"),
-        ]
-        wastes = detect_wastes(steps)
-        self.assertFalse(any(w.pattern == "ECHO_VIOLATION" for w in wastes))
+    # issue #392 — test_echo_violation / test_echo_violation_no_prose_full_skipped 폐기.
 
     def test_stray_dir_leak_detected(self):
         """이슈 #321 C STRAY_DIR_LEAK — `.claire` 같은 .claude typo 검출."""
@@ -242,17 +225,7 @@ class WasteDetectionTests(unittest.TestCase):
         kinds = {w.pattern for w in wastes}
         self.assertNotIn("STRAY_DIR_LEAK", kinds)
 
-    def test_placeholder_leak(self):
-        steps = [
-            StepRecord(idx=0, ts="t", agent="architect", mode="SYSTEM_DESIGN",
-                       enum="SYSTEM_DESIGN_READY", must_fix=False,
-                       prose_excerpt="a\nb\nc\nd\ne",
-                       prose_full="## Voice Cloning\n외부 의존: [미기록] — M0 이후 결정"),
-        ]
-        wastes = detect_wastes(steps)
-        leak = [w for w in wastes if w.pattern == "PLACEHOLDER_LEAK"]
-        self.assertEqual(len(leak), 1)
-        self.assertEqual(leak[0].severity, "HIGH")
+    # issue #392 — test_placeholder_leak 폐기 (PLACEHOLDER_LEAK 패턴 폐기 정합).
 
     def test_must_fix_ghost(self):
         steps = [
@@ -273,54 +246,10 @@ class WasteDetectionTests(unittest.TestCase):
         wastes = detect_wastes(steps)
         self.assertTrue(any(w.pattern == "SPEC_GAP_LOOP" for w in wastes))
 
-    def test_external_verified_missing(self):
-        steps = [
-            StepRecord(idx=0, ts="t", agent="plan-reviewer", mode=None,
-                       enum="PASS", must_fix=False,
-                       prose_excerpt="a\nb\nc\nd\ne",
-                       prose_full="## 8 차원 판정\n모두 PASS"),
-        ]
-        wastes = detect_wastes(steps)
-        self.assertTrue(any(w.pattern == "EXTERNAL_VERIFIED_MISSING" for w in wastes))
+    # issue #392 — test_external_verified_missing 폐기 (EXTERNAL_VERIFIED_MISSING 패턴 폐기 정합).
 
 
-class GoodDetectionTests(unittest.TestCase):
-    def test_enum_clean(self):
-        steps = [
-            StepRecord(idx=0, ts="t", agent="module-architect", mode=None,
-                       enum="PASS", must_fix=False, prose_excerpt="a\nb\nc\nd\ne"),
-        ]
-        goods = detect_goods(steps)
-        self.assertTrue(any(g.pattern == "ENUM_CLEAN" for g in goods))
-
-    def test_prose_echo_ok(self):
-        steps = [
-            StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
-                       enum="IMPL_DONE", must_fix=False,
-                       prose_excerpt="line1\nline2\nline3\nline4\nline5\nline6"),
-        ]
-        goods = detect_goods(steps)
-        self.assertTrue(any(g.pattern == "PROSE_ECHO_OK" for g in goods))
-
-    def test_ddd_phase_a(self):
-        steps = [
-            StepRecord(idx=0, ts="t", agent="architect", mode="SYSTEM_DESIGN",
-                       enum="SYSTEM_DESIGN_READY", must_fix=False,
-                       prose_excerpt="a\nb\nc\nd\ne",
-                       prose_full="## Domain Model\nEntity / VO / Aggregate ..."),
-        ]
-        goods = detect_goods(steps)
-        self.assertTrue(any(g.pattern == "DDD_PHASE_A" for g in goods))
-
-    def test_dependency_causal(self):
-        steps = [
-            StepRecord(idx=0, ts="t", agent="architect", mode="SYSTEM_DESIGN",
-                       enum="SYSTEM_DESIGN_READY", must_fix=False,
-                       prose_excerpt="a\nb\nc\nd\ne",
-                       prose_full="A → B (B 의 결과를 입력으로 사용 — 비즈니스 흐름상 필수)"),
-        ]
-        goods = detect_goods(steps)
-        self.assertTrue(any(g.pattern == "DEPENDENCY_CAUSAL" for g in goods))
+# issue #392 — GoodDetectionTests 전체 폐기. detect_goods 함수 폐기와 정합.
 
 
 class LocalTimeRenderTests(unittest.TestCase):
@@ -577,28 +506,7 @@ class RegressionPatternsTests(unittest.TestCase):
         wastes = detect_wastes([s])
         self.assertFalse(any(w.pattern == "TOOL_USE_OVERFLOW" for w in wastes))
 
-    def test_partial_loop_three_or_more(self):
-        # IMPL_PARTIAL ≥ 3 회 → PARTIAL_LOOP 검출
-        steps = [
-            StepRecord(idx=i, ts=f"t{i}", agent="engineer", mode="IMPL",
-                        enum="IMPL_PARTIAL", must_fix=False,
-                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
-            for i in range(3)
-        ]
-        wastes = detect_wastes(steps)
-        kinds = {w.pattern for w in wastes}
-        self.assertIn("PARTIAL_LOOP", kinds)
-
-    def test_partial_loop_two_silent(self):
-        # 2회는 정상 (cycle 한도 ≤ 3 권고 안)
-        steps = [
-            StepRecord(idx=i, ts=f"t{i}", agent="engineer", mode="IMPL",
-                        enum="IMPL_PARTIAL", must_fix=False,
-                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
-            for i in range(2)
-        ]
-        wastes = detect_wastes(steps)
-        self.assertFalse(any(w.pattern == "PARTIAL_LOOP" for w in wastes))
+    # issue #392 — test_partial_loop_* 폐기 (PARTIAL_LOOP 패턴 폐기 정합).
 
     def test_end_step_skip_when_invocations_exceed_steps(self):
         # invocations 3 vs steps 1 (engineer) — 2 누락 의심
@@ -647,119 +555,10 @@ class RegressionPatternsTests(unittest.TestCase):
         wastes = detect_wastes(steps, invocations=invocations)
         self.assertFalse(any(w.pattern == "END_STEP_SKIP" for w in wastes))
 
-    def test_main_sed_misdiagnosis_detects_self_correction(self):
-        # CC JSONL 안 메인 self-correction 패턴 — 실제 fixture 박음
-        from datetime import datetime
-        from harness.run_review import encode_repo_path_dcness
-        with tempfile.TemporaryDirectory() as td:
-            tmp = Path(td)
-            os.chdir(tmp)
-            try:
-                # CC JSONL fake — 메인 정정 발화
-                encoded = encode_repo_path_dcness(str(tmp))
-                proj = Path.home() / ".claude" / "projects" / encoded
-                proj.mkdir(parents=True, exist_ok=True)
-                jsonl = proj / "fake-sid.jsonl"
-                jsonl.write_text(json.dumps({
-                    "type": "assistant",
-                    "timestamp": "2026-04-30T10:05:00.000Z",
-                    "message": {"content": [
-                        {"type": "text", "text": "**중요 정정** — sed 변경사항 0 (실제 0개)."}
-                    ]},
-                }, ensure_ascii=False) + "\n", encoding="utf-8")
-                try:
-                    steps = [
-                        StepRecord(idx=0, ts="2026-04-30T10:00:00", agent="engineer", mode="IMPL",
-                                    enum="IMPL_DONE", must_fix=False,
-                                    prose_excerpt="line1\nline2\nline3\nline4\nline5"),
-                    ]
-                    window = (datetime(2026, 4, 30, 10, 0, 0), datetime(2026, 4, 30, 10, 30, 0))
-                    wastes = detect_wastes(steps, repo_path=tmp, window=window)
-                    kinds = {w.pattern for w in wastes}
-                    self.assertIn("MAIN_SED_MISDIAGNOSIS", kinds)
-                finally:
-                    jsonl.unlink(missing_ok=True)
-            finally:
-                os.chdir(REPO_ROOT)
+    # issue #392 — test_main_sed_misdiagnosis_detects_self_correction 폐기.
 
 
-class MissingSelfVerifyTests(unittest.TestCase):
-    """DCN-CHG-20260430-38 — engineer self-verify anchor 자율화 + 회귀 검출."""
-
-    def _engineer_step(self, prose_full: str, enum: str = "IMPL_DONE") -> StepRecord:
-        s = StepRecord(idx=0, ts="t", agent="engineer", mode="IMPL",
-                        enum=enum, must_fix=False,
-                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
-        s.prose_full = prose_full
-        return s
-
-    def test_missing_anchor_emits_finding(self):
-        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n구현 완료.")
-        wastes = detect_wastes([s])
-        kinds = {w.pattern for w in wastes}
-        self.assertIn("MISSING_SELF_VERIFY", kinds)
-
-    def test_korean_anchor_passes(self):
-        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## 자가 검증\ngrep → 0\n")
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
-
-    def test_english_verification_anchor_passes(self):
-        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## Verification\nnpm test → PASS\n")
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
-
-    def test_self_verify_anchor_passes(self):
-        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n### Self-Verify\noutput\n")
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
-
-    def test_short_검증_anchor_passes(self):
-        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## 검증\noutput\n")
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
-
-    def test_acceptance_criteria_anchor_passes(self):
-        # issue #249 — `## 수용 기준 검증` 같이 heading 에 "검증" 포함된 변형도 통과해야 함.
-        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## 수용 기준 검증\n- grep 0줄 ✓\n")
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
-
-    def test_self_verification_anchor_passes(self):
-        s = self._engineer_step(prose_full="## 결론\nIMPL_DONE\n## Self Verification\noutput\n")
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
-
-    def test_skipped_when_no_prose_full(self):
-        # prose_full 부재 시 skip (parse 실패 case 등)
-        s = self._engineer_step(prose_full="")
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
-
-    def test_skipped_for_non_engineer(self):
-        s = StepRecord(idx=0, ts="t", agent="architect", mode="MODULE_PLAN",
-                        enum="PASS", must_fix=False,
-                        prose_excerpt="line1\nline2\nline3\nline4\nline5")
-        s.prose_full = "## 결론\nREADY"  # no self-verify anchor
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
-
-    def test_skipped_for_non_impl_enum(self):
-        # SPEC_GAP_FOUND 같은 escalate enum 은 self-verify 의무 비대상
-        s = self._engineer_step(prose_full="## 결론\nSPEC_GAP_FOUND",
-                                 enum="SPEC_GAP_FOUND")
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
-
-    def test_skipped_for_polish_done(self):
-        # #252 — POLISH 짧은 정리 보고는 본문 자체가 검증. anchor 강제 잉여.
-        s = self._engineer_step(
-            prose_full="## POLISH — earphone 헬퍼 추출\n중복 제거. 테스트 34 passed.",
-            enum="POLISH_DONE",
-        )
-        s.mode = "POLISH"
-        wastes = detect_wastes([s])
-        self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+# issue #392 — MissingSelfVerifyTests 클래스 전체 폐기 (MISSING_SELF_VERIFY 패턴 폐기).
 
 
 # ── issue #383 회귀 차단 테스트 (B1~B4) ──────────────────────────────

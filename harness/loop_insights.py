@@ -1,7 +1,12 @@
 """loop_insights — 루프별 agent 학습 누적 (DCN-CHG-20260502-02).
 
-각 루프 종료 시 redo-log + WASTE/GOOD findings → agent별 파일에 누적.
-begin-step 에서 읽어 메인 Claude 에게 주입.
+issue #392 — 자동 누적 매커니즘 폐기. redo_log + WASTE/GOOD auto 누적 → 100% baseline
+노이즈 (사용자 분노). 메인 자율 평가는 insight CLI (PR3) 로 대체.
+
+본 모듈의 책무:
+- `append_findings` (저수준): 본문 directly append. 외부 호출용 (PR3 insight CLI).
+- `read`: begin-step 시 inject 읽기.
+- `insights_path`: 파일 경로 계산.
 
 저장 위치: <main_repo_root>/.claude/loop-insights/<agent>[-<mode>].md
 
@@ -12,17 +17,15 @@ worktree 진입 후에도 main repo root 기준으로 저장 — ExitWorktree(re
 """
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Optional
 
-from harness import redo_log
-from harness import run_review as rv
-from harness.session_state import run_dir as get_run_dir
 from harness.session_state import _resolve_project_root
 
 
-__all__ = ["insights_path", "read", "append_findings", "append_from_run"]
+__all__ = ["insights_path", "read", "append_findings"]
+# issue #392 — `append_from_run` 폐기 (auto 누적 매커니즘 폐기).
+# 메인 자율 평가는 PR3 의 `insight` CLI 로 대체.
 
 _INSIGHTS_DIR = Path(".claude") / "loop-insights"
 
@@ -101,60 +104,4 @@ def append_findings(
     p.write_text(result, encoding="utf-8")
 
 
-def append_from_run(
-    sid: str, rid: str, cwd: Path = Path(".")
-) -> list[str]:
-    """finalize-run --accumulate 진입점. 수정된 파일 경로 목록 반환."""
-    rd = get_run_dir(sid, rid)
-    today = time.strftime("%Y-%m-%d", time.gmtime())
-
-    # 1. redo-log → REDO_* 항목에서 (agent, mode, reason) 추출
-    redo_entries = redo_log.read_all(sid, rid)
-    redo_bads: dict[tuple[str, Optional[str]], list[str]] = {}
-    for e in redo_entries:
-        decision = e.get("decision", "")
-        if not str(decision).startswith("REDO"):
-            continue
-        sub = e.get("sub") or "unknown"
-        mode: Optional[str] = e.get("mode") or None
-        reason = str(e.get("reason", "")).strip()
-        if not reason:
-            continue
-        key = (sub, mode)
-        redo_bads.setdefault(key, []).append(f"{reason} ({decision}, {today})")
-
-    # 2. steps → WASTE/GOOD findings (mode는 step에서 조회)
-    steps = rv.parse_steps(rd)
-    wastes = rv.detect_wastes(steps)
-    goods = rv.detect_goods(steps)
-
-    waste_bads: dict[tuple[str, Optional[str]], list[str]] = {}
-    for w in wastes:
-        m = steps[w.step_idx].mode if w.step_idx < len(steps) else None
-        key = (w.agent, m)
-        waste_bads.setdefault(key, []).append(
-            f"{w.detail} [{w.pattern}] ({today})"
-        )
-
-    good_items: dict[tuple[str, Optional[str]], list[str]] = {}
-    for g in goods:
-        m = steps[g.step_idx].mode if g.step_idx < len(steps) else None
-        key = (g.agent, m)
-        good_items.setdefault(key, []).append(
-            f"{g.detail} [{g.pattern}] ({today})"
-        )
-
-    # 3. 전체 key 수집 → append
-    all_keys: set[tuple[str, Optional[str]]] = (
-        set(redo_bads) | set(waste_bads) | set(good_items)
-    )
-    modified: list[str] = []
-    for key in all_keys:
-        agent, mode = key
-        bads = redo_bads.get(key, []) + waste_bads.get(key, [])
-        gs = good_items.get(key, [])
-        if bads or gs:
-            append_findings(agent, mode, bads, gs, cwd=cwd)
-            modified.append(str(insights_path(agent, mode, cwd)))
-
-    return modified
+# issue #392 — `append_from_run` 폐기. PR3 의 `insight` CLI 로 대체.

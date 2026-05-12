@@ -1012,8 +1012,6 @@ def _cli_end_run(args: Any) -> int:
             _fake = _ap.Namespace(
                 expected_steps=None,
                 auto_review=True,
-                accumulate=False,
-                no_accumulate=False,
             )
             _cli_finalize_run(_fake)
     except Exception as exc:
@@ -1598,32 +1596,9 @@ def _cli_finalize_run(args: Any) -> int:
                 file=sys.stderr,
             )
 
-    # DCN-CHG-20260502-02 + issue #225: --accumulate — redo-log + WASTE/GOOD
-    # findings → .claude/loop-insights/<agent>[-<mode>].md 에 누적 (프로젝트
-    # 레벨 학습).
-    # issue #225: --auto-review 켜진 경우 자동 accumulate (review 와 학습 누적
-    # = 동일 라이프사이클). --no-accumulate 로 명시 opt-out 가능.
-    _explicit_accumulate = getattr(args, "accumulate", False)
-    _auto_accumulate = (
-        getattr(args, "auto_review", False)
-        and not getattr(args, "no_accumulate", False)
-    )
-    if _explicit_accumulate or _auto_accumulate:
-        print()
-        print("--- loop-insights accumulate ---")
-        try:
-            from harness.loop_insights import append_from_run as _li_accumulate
-            modified = _li_accumulate(sid, rid, cwd=Path.cwd())
-            if modified:
-                for p in modified:
-                    print(f"[loop-insights] updated: {p}")
-            else:
-                print("[loop-insights] 누적 항목 없음 (redo 0건 + WASTE 0건)")
-        except Exception as exc:
-            print(
-                f"[session_state] ACCUMULATE_FAIL — {type(exc).__name__}: {exc}.",
-                file=sys.stderr,
-            )
+    # issue #392 — auto accumulate 매커니즘 폐기. 자동 redo/wastes/goods 누적이
+    # jajang 실측 100% baseline 노이즈 (PROSE_ECHO_OK) 만 만들어냄. 메인 자율
+    # 평가는 PR3 의 `insight` CLI 로 대체.
 
     return 0
 
@@ -1806,17 +1781,7 @@ def _build_arg_parser() -> Any:
         action="store_true",
         help="finalize 직후 in-process 로 /run-review 호출 — STATUS JSON 뒤에 chained (DCN-30-29)",
     )
-    p_fr.add_argument(
-        "--accumulate",
-        action="store_true",
-        help="redo-log + WASTE/GOOD → .claude/loop-insights/<agent>.md 누적 (DCN-CHG-20260502-02). issue #225: --auto-review 켜지면 자동 발동 — 본 flag 명시 호출은 --auto-review 없는 환경에서만 의미.",
-    )
-    p_fr.add_argument(
-        "--no-accumulate",
-        action="store_true",
-        dest="no_accumulate",
-        help="--auto-review 자동 accumulate 비활성 (issue #225). 명시 opt-out 시에만 사용.",
-    )
+    # issue #392 — --accumulate / --no-accumulate flag 폐기 (auto accumulate 폐기와 정합).
     p_fr.set_defaults(func=_cli_finalize_run)
 
     p_ar = sub.add_parser(

@@ -136,14 +136,13 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 | `/impl-loop` | multi-task sequential auto chain (각 task 마다 /impl 호출 + clean 자동 진행) |
 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
 | `/efficiency` | Claude Code 세션 토큰/캐시/비용 분석 + HTML 대시보드 + 6 절감 휴리스틱 |
-| `/run-review` | dcness conveyor run 사후 분석 — 각 step 잘한 점·잘못한 점·비용 추출, self-improvement 루프 시작점 |
-| `/audit-redo` | redo-log + agent-trace 결합 분석 — (sub, mode) 별 redo 빈도 + Layer 1/2 개선 후보 제안 |
+| `/run-review` | dcness conveyor run 사후 분석 — 각 step 비용·차단 검출 표시 |
 
 행동형 skill (`/impl` `/impl-loop`) 공통 (`/product-plan` 은 워크트리 X):
 - yolo keyword (`yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서`) 검출 시 CLARITY/AMBIGUOUS/ESCALATE 자동 대체 (catastrophic 룰은 hard safety)
 - **워크트리 기본 켜짐** — 진입 시 자동 EnterWorktree. 거부 표현 정규식 `워크트리\s*(빼|없|말)` (예: "워크트리 빼고") 매치 시에만 건너뜀
 
-읽기형 skill (`/issue-report` `/smart-compact` `/efficiency` `/run-review` `/audit-redo`) 은 keyword 무관 (read-only 분석).
+읽기형 skill (`/issue-report` `/smart-compact` `/efficiency` `/run-review`) 은 keyword 무관 (read-only 분석).
 
 ## 참조 문서
 

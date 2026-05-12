@@ -43,7 +43,7 @@ from harness.hooks import (
 )
 from harness.agent_trace import append as trace_append
 from harness.agent_trace import read_all as read_trace
-from harness.redo_log import read_all as read_redos
+# issue #392 — redo_log 폐기
 from harness.session_state import (
     read_live,
     read_pid_session,
@@ -824,57 +824,10 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
             },
         }
 
-    def test_redo_log_records_measurement_only(self):
-        """#272 W1 자율 친화 — redo_log 는 *측정 데이터만*. decision/anomalies 필드 X
-        (메인이 직접 판단해서 박을 때만 그 필드 들어감)."""
-        self._simulate_pre("engineer")
-        self._seed_trace("engineer", ["Read", "Read", "Write", "Bash"])
-        rc = handle_posttooluse_agent(
-            stdin_data=self._post_payload("engineer"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 0)
-        redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        self.assertEqual(len(redos), 1)
-        self.assertTrue(redos[0]["auto"])
-        self.assertEqual(redos[0]["sub"], "engineer")
-        self.assertEqual(redos[0]["tool_uses"], 4)
-        self.assertEqual(redos[0]["match"], "ok")
-        # 자율 영역 — hook 이 박지 않는 필드
-        self.assertNotIn("decision", redos[0])
-        self.assertNotIn("anomalies", redos[0])
-
-    def test_low_call_no_anomaly_inject(self):
-        """#272 W1 자율 친화 — file-op 1건 같은 케이스도 hook 이 결정 X.
-        메인 LLM 이 loop-procedure.md §3.1 보고 자율 판단."""
-        self._simulate_pre("architect")
-        self._seed_trace("architect", ["Read"])
-        rc = handle_posttooluse_agent(
-            stdin_data=self._post_payload("architect"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 0)
-        redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        # hook 의 anomalies/decision X — 측정만
-        self.assertNotIn("decision", redos[0])
-        self.assertEqual(redos[0]["histogram"], {"Read": 1})
-
-    def test_high_repeat_no_decision_inject(self):
-        """Read×20 같은 다중 호출도 hook 결정 X — 임계값 hardcode 없음."""
-        self._simulate_pre("architect")
-        self._seed_trace("architect", ["Read"] * 20)
-        rc = handle_posttooluse_agent(
-            stdin_data=self._post_payload("architect"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 0)
-        redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        # 임계값 박지 X — 그냥 measurement
-        self.assertNotIn("decision", redos[0])
-        self.assertEqual(redos[0]["tool_uses"], 20)
+    # issue #392 — redo_log auto append 폐기. 관련 3 tests 삭제:
+    #   - test_redo_log_records_measurement_only
+    #   - test_low_call_no_anomaly_inject
+    #   - test_high_repeat_no_decision_inject
 
     def test_clears_active_agent_still_works(self):
         update_live(
@@ -893,16 +846,15 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         self.assertNotIn("active_agent", live)
         self.assertNotIn("active_mode", live)
 
-    def test_no_trace_no_redo_log(self):
-        # PreToolUse 안 박혔고 trace 비어있으면 → since_ts="" → hist={} → eval
-        # 발화 안 함 (sub_type 도 없으므로). 자동 redo_log 미추가.
+    def test_no_trace_no_event(self):
+        # PreToolUse 안 박혔고 trace 비어있으면 → since_ts="" → hist={} → eval 발화 안 함.
+        # issue #392 — redo_log auto append 폐기 후 검증 단순화 (read_redos 사용 X).
         rc = handle_posttooluse_agent(
             stdin_data={"sessionId": self.sid, "tool_name": "Agent"},
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        self.assertEqual(read_redos(self.sid, self.rid, base_dir=self.base), [])
 
     def test_prior_step_trace_excluded(self):
         """#272 W3 진짜 회귀 — 직전 step (engineer) 의 trace 가 *다음* sub 의
@@ -921,14 +873,12 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        # pr-reviewer 의 histogram 에는 직전 engineer trace 가 *반영 안 됨*.
-        # prose-only 라 file-op 0건이 정상.
-        self.assertEqual(redos[0]["sub"], "pr-reviewer")
-        self.assertEqual(redos[0]["histogram"], {},
-            msg="직전 engineer trace 가 pr-reviewer histogram 으로 새어들어옴 (#272 W3)")
-        self.assertEqual(redos[0]["tool_use_id"], "toolu_pr1")
-        self.assertEqual(redos[0]["match"], "ok")
+        # issue #392 — redo_log auto append 폐기로 측정 결과 검증 단순화.
+        # pending_agent 가 정상 clear 되는지만 검증 (#272 W3 핵심).
+        from harness.session_state import read_live as _rl
+        live = _rl(self.sid, base_dir=self.base)
+        slot = live.get("active_runs", {}).get(self.rid, {})
+        self.assertNotIn("pending_agent", slot)
 
     def test_tool_use_id_drift_logged(self):
         """tool_use_id 가 PreToolUse 와 PostToolUse 사이 다르면 stderr WARN."""
@@ -949,8 +899,7 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         stderr = buf.getvalue()
         self.assertIn("[hook agent-id]", stderr)
         self.assertIn("tool_use_id 불일치", stderr)
-        redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        self.assertEqual(redos[0]["match"], "drift")
+        # issue #392 — redo_log auto append 폐기. drift 신호는 stderr WARN 으로만 확인.
 
     def test_pending_agent_cleared_after_post(self):
         """PostToolUse Agent 후 live.json.active_runs[rid].pending_agent 제거."""
@@ -969,25 +918,8 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         slot2 = live2.get("active_runs", {}).get(self.rid, {})
         self.assertNotIn("pending_agent", slot2)
 
-    def test_prose_only_subtype_no_decision_inject(self):
-        """#272 W1 자율 친화 — prose-only sub 든 일반 sub 든 hook 은 결정 박지 X.
-        화이트리스트 자체가 *우리가 박은 룰* 이라 자율 영역 침해. 본 fix 후 룰 자체
-        제거 — 메인이 loop-procedure.md §3.1 보고 자율 판단."""
-        self._simulate_pre("qa", tool_use_id="toolu_qa")
-        self._seed_trace("qa", ["Read", "Read", "Read"])
-        rc = handle_posttooluse_agent(
-            stdin_data=self._post_payload(
-                "qa", tool_use_id="toolu_qa", prompt="분석 작성해줘",
-            ),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 0)
-        redos = read_redos(self.sid, self.rid, base_dir=self.base)
-        # hook 결정 X — 측정만
-        self.assertNotIn("decision", redos[0])
-        self.assertNotIn("anomalies", redos[0])
-        self.assertEqual(redos[0]["tool_uses"], 3)
+    # issue #392 — test_prose_only_subtype_no_decision_inject 폐기.
+    # redo_log auto append 매커니즘 자체 폐기되어 본 테스트 의미 없음.
 
 
 # ---------------------------------------------------------------------------
