@@ -48,6 +48,7 @@ __all__ = [
     "handle_pretooluse_file_op",
     "handle_posttooluse_agent",
     "handle_posttooluse_file_op",
+    "handle_stop",
 ]
 
 
@@ -764,6 +765,119 @@ def _module_architect_first_call(rd: Path) -> bool:
     return not (rd / "module-architect.md").exists()
 
 
+# ── Stop hook (issue #382) ────────────────────────────────────────────
+
+
+def handle_stop(
+    stdin_data: Optional[Dict[str, Any]] = None,
+    *,
+    base_dir: Optional[Path] = None,
+) -> int:
+    """Stop hook — 메인 응답 종료 시 자동 end-run.
+
+    배경 (issue #382): /impl / /impl-loop / /architect-loop 등 컨베이어 루프
+    종료 후 메인 Claude 가 `end-run` 까먹는 회귀 반복 발생. loop-procedure.md §5.1
+    의 prose 의무로는 본능 (PR merge 후 "작업 끝" 인지) 패배.
+
+    Stop hook 으로 *코드 강제 승격*:
+    1. stop_hook_active=true → 무한 루프 방지, skip
+    2. active_runs[rid] 슬롯 부재 / finalized_at 박힘 → skip (이미 종료)
+    3. `.steps.jsonl` 마지막 row 의 (agent, mode) 가 live.json.current_step.
+       (agent, mode) 와 일치 → end-step 완료 상태 = 종료 후보 / 불일치 →
+       begin-step 후 end-step 미호출 진행 중 → skip (false positive 회피)
+    4. 위 모두 통과 → in-process `_cli_end_run` 호출.
+       session_state.py:1001 안전망 → finalize-run --auto-review 자동 →
+       `<run_dir>/review.md` 생성 + stderr `[REVIEW_READY]` 신호
+
+    Stop hook 자체는 메인 시야에 inject 안 함 (additionalContext 미지원).
+    review.md 본문 echo 는 *기존 prose 의무* (loop-procedure.md §6 +
+    run-review.md §51 + commands/impl.md §종료 조건) 에 의존.
+
+    return: 항상 0 (block 안 함, 정상 종료 허용).
+    """
+    if stdin_data is None:
+        try:
+            raw = sys.stdin.read()
+            stdin_data = json.loads(raw) if raw.strip() else {}
+        except (json.JSONDecodeError, OSError):
+            return 0
+
+    if not isinstance(stdin_data, dict):
+        return 0
+
+    # 무한 루프 가드 (Claude Code 공식 docs §"Stop hook runs forever")
+    if stdin_data.get("stop_hook_active"):
+        return 0
+
+    # 지연 import — session_state 가 무거움
+    try:
+        from harness.session_state import (
+            auto_detect_session_id,
+            auto_detect_run_id,
+            read_live,
+            _read_steps_jsonl,
+            _cli_end_run,
+        )
+    except Exception:
+        return 0
+
+    try:
+        sid = auto_detect_session_id(base_dir=base_dir) if base_dir else auto_detect_session_id()
+        rid = auto_detect_run_id(base_dir=base_dir) if base_dir else auto_detect_run_id()
+    except Exception:
+        return 0
+
+    if not (sid and rid):
+        return 0
+
+    # active_runs 슬롯 검사
+    try:
+        live = read_live(sid, base_dir=base_dir) if base_dir else read_live(sid)
+    except Exception:
+        return 0
+    if not live:
+        return 0
+    active = live.get("active_runs", {}) if isinstance(live, dict) else {}
+    slot = active.get(rid) if isinstance(active, dict) else None
+    if not isinstance(slot, dict):
+        return 0  # begin-run 미호출 — skip
+    if slot.get("finalized_at"):
+        return 0  # 이미 finalize-run 호출됨 — skip
+
+    # end-step 완료 매칭 검사 (false positive 회피)
+    # _read_steps_jsonl 마지막 row.(agent, mode) vs live.current_step.(agent, mode).
+    # 일치 = end-step 호출됨 (step 종료 상태) / 불일치 = begin-step 후 end-step
+    # 미호출 (sub-agent 진행 중 응답 종료 케이스 — end-run 발사 false positive).
+    try:
+        steps = _read_steps_jsonl(sid, rid)
+    except Exception:
+        return 0
+    if not steps:
+        return 0  # step 0개 — begin-step 안 부른 상태
+
+    last = steps[-1]
+    cur_step = slot.get("current_step") if isinstance(slot, dict) else None
+    if isinstance(cur_step, dict):
+        cur_agent = cur_step.get("agent")
+        cur_mode = cur_step.get("mode")
+        last_agent = last.get("agent")
+        last_mode = last.get("mode")
+        # 정확 일치 검사 (mode None 도 비교)
+        if cur_agent != last_agent or cur_mode != last_mode:
+            return 0  # begin-step 후 end-step 미호출 — 진행 중
+
+    # 모든 조건 충족 — end-run in-process 호출
+    try:
+        import argparse as _ap
+        _fake = _ap.Namespace()
+        _cli_end_run(_fake)
+        print("[stop-hook] end-run 자동 호출 — issue #382", file=sys.stderr)
+    except Exception as exc:
+        print(f"[stop-hook] end-run FAIL — {exc}", file=sys.stderr)
+
+    return 0
+
+
 # ── CLI 진입점 (bash 훅 → python -m harness.hooks <subcommand>) ─────
 
 
@@ -795,6 +909,10 @@ def _main(argv: Optional[list] = None) -> int:
                           help="PostToolUse Edit/Write/Read/Bash — agent-trace post append")
     p_pf.add_argument("--cc-pid", type=int, default=None)
 
+    p_st = sub.add_parser("stop",
+                          help="Stop 훅 — 메인 응답 종료 시 자동 end-run (issue #382)")
+    p_st.add_argument("--cc-pid", type=int, default=None)
+
     args = parser.parse_args(argv)
 
     # cc_pid 미명시 시 PPID 사용 (bash 훅 의 PPID = CC main)
@@ -810,6 +928,8 @@ def _main(argv: Optional[list] = None) -> int:
         return handle_posttooluse_agent(cc_pid=cc_pid)
     elif args.cmd == "posttooluse-file-op":
         return handle_posttooluse_file_op(cc_pid=cc_pid)
+    elif args.cmd == "stop":
+        return handle_stop()
     return 0
 
 
