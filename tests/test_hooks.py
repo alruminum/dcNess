@@ -1330,5 +1330,45 @@ class StopHookGuardTests(unittest.TestCase):
         self.assertEqual(rc, 0)
 
 
+# ---------------------------------------------------------------------------
+# _shorten_path / _summarize_input path 단축 — issue #408
+# ---------------------------------------------------------------------------
+
+
+class ShortenPathTests(unittest.TestCase):
+    """#408 — absolute path → cwd 기준 relative 단축."""
+
+    def test_cwd_path_shortened(self):
+        from harness.hooks import _shorten_path
+        cwd = str(Path.cwd().resolve())
+        self.assertEqual(_shorten_path(cwd + "/src/foo.ts"), "src/foo.ts")
+
+    def test_outside_cwd_preserved(self):
+        from harness.hooks import _shorten_path
+        self.assertEqual(_shorten_path("/tmp/outside.txt"), "/tmp/outside.txt")
+
+    def test_relative_path_preserved(self):
+        from harness.hooks import _shorten_path
+        self.assertEqual(_shorten_path("relative.ts"), "relative.ts")
+
+    def test_empty_preserved(self):
+        from harness.hooks import _shorten_path
+        self.assertEqual(_shorten_path(""), "")
+
+    def test_summarize_input_read_uses_shortened(self):
+        from harness.hooks import _summarize_input
+        cwd = str(Path.cwd().resolve())
+        result = _summarize_input("Read", {"file_path": cwd + "/harness/hooks.py"})
+        self.assertEqual(result, "harness/hooks.py")
+
+    def test_summarize_input_bash_not_shortened(self):
+        # Bash command 안 path 는 command 전체 의미라 단축 X
+        from harness.hooks import _summarize_input
+        cwd = str(Path.cwd().resolve())
+        result = _summarize_input("Bash", {"command": f"cat {cwd}/foo.ts"})
+        # command 그대로 — Bash 는 _shorten_path 미적용
+        self.assertIn(cwd, result)
+
+
 if __name__ == "__main__":
     unittest.main()

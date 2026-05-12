@@ -58,6 +58,23 @@ __all__ = [
 _TRACE_INPUT_MAX = 200  # entry size cap (POSIX append atomic = 4096 bytes 이내)
 
 
+def _shorten_path(s: str) -> str:
+    """absolute path → cwd 기준 relative path. cwd 외부 또는 absolute 아니면 그대로.
+
+    #408 — PostToolUse:Agent histogram 본문 cache_read 감축.
+    예: '/Users/foo/proj/src/x.ts' (cwd='/Users/foo/proj') → 'src/x.ts'
+    """
+    if not s or not s.startswith("/"):
+        return s
+    try:
+        cwd_str = str(Path.cwd().resolve())
+        if s.startswith(cwd_str + "/"):
+            return s[len(cwd_str) + 1:]
+    except (OSError, ValueError):
+        pass
+    return s
+
+
 def _summarize_input(tool_name: str, tool_input: Dict[str, Any]) -> str:
     """tool_input 핵심을 _TRACE_INPUT_MAX bytes 이하로 요약."""
     if not isinstance(tool_input, dict):
@@ -65,7 +82,7 @@ def _summarize_input(tool_name: str, tool_input: Dict[str, Any]) -> str:
     if tool_name == "Bash":
         s = str(tool_input.get("command", ""))
     elif tool_name in ("Edit", "Write", "NotebookEdit", "Read"):
-        s = str(tool_input.get("file_path", "") or tool_input.get("path", ""))
+        s = _shorten_path(str(tool_input.get("file_path", "") or tool_input.get("path", "")))
     elif tool_name in ("Glob", "Grep"):
         s = str(tool_input.get("pattern", ""))
     else:
