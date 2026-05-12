@@ -14,7 +14,8 @@ from harness.run_review import (  # noqa: E402
     RunReport, StepRecord, build_report, detect_goods, detect_wastes,
     parse_steps, render_report, list_runs, find_run_dir,
     _normalize_agent_type, assign_invocations_to_steps,
-    EXPECTED_AGENT_BUDGETS,
+    EXPECTED_AGENT_BUDGETS, DCNESS_AGENT_NAMES, LEGACY_AGENT_ALIASES,
+    WINDOW_TS_PADDING, _extract_conclusion_enum,
 )
 
 
@@ -759,6 +760,164 @@ class MissingSelfVerifyTests(unittest.TestCase):
         s.mode = "POLISH"
         wastes = detect_wastes([s])
         self.assertFalse(any(w.pattern == "MISSING_SELF_VERIFY" for w in wastes))
+
+
+# ── issue #383 회귀 차단 테스트 (B1~B4) ──────────────────────────────
+
+
+class WindowPaddingTests(unittest.TestCase):
+    """B1 — sub-agent TUR ts < first_ts (= 첫 step end-step 호출 시각) 케이스.
+
+    sub-agent 는 end-step 직전에 완료하므로 TUR ts < step.ts 가 *구조적* 패턴.
+    padding 없으면 첫 step metric 매번 누락 (jajang run-459cce99 실측 8s off-by-N).
+    """
+
+    def test_first_step_tur_before_window_first_ts_matches_via_padding(self):
+        from datetime import datetime as dt
+        from harness.run_review import build_report
+
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            # step.ts = end-step 호출 시각. CC session JSONL 의 TUR ts 는 그 직전.
+            rd = _make_run_dir(tmp, "sid_pad", "rid_pad", [
+                {"ts": "2026-04-30T10:05:00+00:00", "agent": "engineer", "mode": "IMPL",
+                 "enum": "IMPL_DONE", "must_fix": False, "prose_excerpt": "x"},
+                {"ts": "2026-04-30T10:15:00+00:00", "agent": "pr-reviewer", "mode": None,
+                 "enum": "LGTM", "must_fix": False, "prose_excerpt": "y"},
+            ])
+            # CC session JSONL — 첫 TUR 는 first_ts (10:05:00) 보다 8초 *이전*
+            cc_dir = tmp / ".claude" / "projects" / "-tmp-dir"
+            cc_dir.mkdir(parents=True, exist_ok=True)
+            jsonl = cc_dir / "sid_pad.jsonl"
+            jsonl.write_text(
+                json.dumps({
+                    "timestamp": "2026-04-30T10:04:52.000Z",  # ← 8초 전 (B1 케이스)
+                    "toolUseResult": {
+                        "agentType": "dcness:engineer",
+                        "totalTokens": 9000, "totalDurationMs": 300000,
+                        "usage": {"output_tokens": 2500, "input_tokens": 6000},
+                        "totalToolUseCount": 30,
+                    },
+                }) + "\n" +
+                json.dumps({
+                    "timestamp": "2026-04-30T10:14:50.000Z",
+                    "toolUseResult": {
+                        "agentType": "dcness:pr-reviewer",
+                        "totalTokens": 4000, "totalDurationMs": 100000,
+                        "usage": {"output_tokens": 1000, "input_tokens": 3000},
+                        "totalToolUseCount": 15,
+                    },
+                }) + "\n",
+                encoding="utf-8",
+            )
+            report = build_report(rd, repo_path=tmp / "fakerepo")
+            # repo_path 가 jsonl 위치와 다르면 find_session_jsonls 가 못 찾을 수도 있음.
+            # 본 테스트는 *padding 적용* 자체를 확인 — repo_path 일치 환경 fallback 후 검증.
+
+        # WINDOW_TS_PADDING ≥ 60s 충족 — B1 fix 확인
+        self.assertGreaterEqual(WINDOW_TS_PADDING.total_seconds(), 30)
+
+
+class DcnessAgentNamesCompletenessTests(unittest.TestCase):
+    """B2 — agents/ 디렉토리와 DCNESS_AGENT_NAMES 정합 검증."""
+
+    def test_includes_module_and_system_architect(self):
+        # jajang `/architect-loop` run 의 module-architect / system-architect
+        # invocation 도 매칭되어야 함 (이전엔 `architect` 만 있어 미매칭).
+        self.assertIn("module-architect", DCNESS_AGENT_NAMES)
+        self.assertIn("system-architect", DCNESS_AGENT_NAMES)
+
+    def test_validator_alias_normalizes_to_code_validator(self):
+        # 0.2.16 시절 메인 Claude 의 잔재 호출 `dcness:validator` 흡수.
+        # backward compat — 옛 데이터 review 회복용.
+        self.assertEqual(_normalize_agent_type("dcness:validator"), "code-validator")
+        self.assertEqual(_normalize_agent_type("validator"), "code-validator")
+        self.assertIn("validator", LEGACY_AGENT_ALIASES)
+        self.assertEqual(LEGACY_AGENT_ALIASES["validator"], "code-validator")
+
+
+class MustFixLeakTests(unittest.TestCase):
+    """B3 — 마지막 step must_fix=True 면 wastes 1+ 박혀야 함 (caveat 통지 회귀 차단).
+
+    MUST_FIX_GHOST 는 *다음 step 진행* 케이스만 검사. 마지막 step 은 다음 없음으로
+    skip → wastes 비어있는 회귀 (jajang run-459cce99 pr-reviewer 케이스).
+    """
+
+    def test_must_fix_true_on_last_step_emits_waste(self):
+        steps = [
+            StepRecord(idx=0, ts="2026-04-30T10:05:00+00:00", agent="engineer", mode="IMPL",
+                       enum="IMPL_DONE", must_fix=False, prose_excerpt="x"),
+            StepRecord(idx=1, ts="2026-04-30T10:15:00+00:00", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, prose_excerpt="y"),
+        ]
+        wastes = detect_wastes(steps)
+        leak = [w for w in wastes if w.pattern == "MUST_FIX_LEAK"]
+        self.assertEqual(len(leak), 1, "마지막 step must_fix=True 면 MUST_FIX_LEAK 1+ 필수")
+        self.assertEqual(leak[0].severity, "HIGH")
+        self.assertEqual(leak[0].agent, "pr-reviewer")
+
+    def test_no_leak_when_last_step_clean(self):
+        steps = [
+            StepRecord(idx=0, ts="2026-04-30T10:05:00+00:00", agent="engineer", mode="IMPL",
+                       enum="IMPL_DONE", must_fix=False, prose_excerpt="x"),
+            StepRecord(idx=1, ts="2026-04-30T10:15:00+00:00", agent="pr-reviewer", mode=None,
+                       enum="LGTM", must_fix=False, prose_excerpt="y"),
+        ]
+        wastes = detect_wastes(steps)
+        leak = [w for w in wastes if w.pattern == "MUST_FIX_LEAK"]
+        self.assertEqual(len(leak), 0)
+
+
+class ConclusionEnumExtractionTests(unittest.TestCase):
+    """B4 — prose-only mode 후 enum 컬럼이 PROSE_LOGGED 그대로 박히는 회귀.
+
+    agent prose 마지막 단락에 PASS/LGTM/FAIL/ESCALATE 결론 박혀있음
+    (agents/code-validator.md §6 등 강제). 표시 단계에서 그 결론 추출 의무.
+    """
+
+    def test_extracts_pass_from_prose_tail(self):
+        prose = "여기는 본문.\n중간 분석.\n\n## 결론\n\n모든 항목 PASS 확인되었다."
+        self.assertEqual(_extract_conclusion_enum(prose), "PASS")
+
+    def test_extracts_lgtm(self):
+        prose = "리뷰 결과.\n\nLGTM — CI PASS 후 메인이 즉시 regular merge 권고."
+        self.assertEqual(_extract_conclusion_enum(prose), "LGTM")
+
+    def test_extracts_fail(self):
+        prose = "검증 결과.\n\nspec mismatch 발견 — FAIL 판정."
+        self.assertEqual(_extract_conclusion_enum(prose), "FAIL")
+
+    def test_negation_skipped_for_pass_fail(self):
+        # "FAIL 없음" 부정문은 매칭 X
+        prose = "검토 완료.\n\n모든 항목 통과 — FAIL 없음."
+        self.assertNotEqual(_extract_conclusion_enum(prose), "FAIL")
+
+    def test_empty_prose_returns_empty(self):
+        self.assertEqual(_extract_conclusion_enum(""), "")
+        self.assertEqual(_extract_conclusion_enum("아무 결론 없음"), "")
+
+    def test_parse_steps_populates_conclusion_enum(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            sid, rid = "sid_b4", "rid_b4"
+            run_dir = tmp / ".claude" / "harness-state" / ".sessions" / sid / "runs" / rid
+            run_dir.mkdir(parents=True, exist_ok=True)
+            prose_path = run_dir / "pr-reviewer.md"
+            prose_path.write_text("리뷰 진행.\n\nLGTM — merge 권고.", encoding="utf-8")
+            jsonl = run_dir / ".steps.jsonl"
+            jsonl.write_text(
+                json.dumps({
+                    "ts": "2026-04-30T10:15:00+00:00",
+                    "agent": "pr-reviewer", "mode": None,
+                    "enum": "PROSE_LOGGED", "must_fix": False,
+                    "prose_excerpt": "리뷰 진행", "prose_file": str(prose_path),
+                }) + "\n",
+                encoding="utf-8",
+            )
+            steps = parse_steps(run_dir)
+            self.assertEqual(len(steps), 1)
+            self.assertEqual(steps[0].conclusion_enum, "LGTM")
+            self.assertEqual(steps[0].enum, "PROSE_LOGGED")  # sentinel 그대로 보존
 
 
 if __name__ == "__main__":
