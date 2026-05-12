@@ -52,8 +52,6 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
   - 문서 동기화 케이스 = 후속 없음
 - **ESCALATE** — PRD 변경 필요 (`/product-plan` 재진입) / 기술 제약 충돌 (사용자) / 권한·도구 부족 (사용자).
 
-> Note: 이전 6 mode (SYSTEM_DESIGN / MODULE_PLAN / SPEC_GAP / LIGHT_PLAN / DOCS_SYNC / TECH_EPIC) → 2 agent 통합. 이전 mode 별 결론 enum (SYSTEM_DESIGN_READY / READY_FOR_IMPL / LIGHT_PLAN_READY / SPEC_GAP_RESOLVED / DOCS_SYNCED / TECH_CONSTRAINT_CONFLICT / PRODUCT_PLANNER_ESCALATION_NEEDED) → 단순 `PASS` / `ESCALATE` 2종. 옛 TASK_DECOMPOSE 의 가치 (Story → impl 매핑 / NN-slug 명명 / 의존 순서) 는 system-architect 의 `## impl 목차` 표로 흡수. impl 본문 detail 은 module-architect × N 가 채움.
-
 ### 1.5 engineer
 
 구현 hub. 결과 종류:
@@ -95,12 +93,6 @@ system-architect 산출물의 자가검증 사각지대 (Placeholder Leak + Spik
 - **PASS** → module-architect × N (impl 목차 첫 행부터 순차).
 - **FAIL** → system-architect 재진입 (cycle 한도 2). 본문에 placeholder 위치 / Must 기능 직결 / spike 권고 명시.
 - **ESCALATE** → system-architect 재설계 1 cycle 후에도 동일 FAIL → 사용자 위임.
-
-> Note: 옛 validator 5 모드 (CODE/DESIGN/UX/BUGFIX/PLAN) 폐기 (validator 단순화).
-> - PLAN_VALIDATION 은 컨베이어 task_list 에 *원래부터* 빠져있던 drift (issue #247) — 정합 회복.
-> - UX_VALIDATION 은 ux-architect self-check 흡수 (5 카테고리, FAIL 시 재고려).
-> - DESIGN_VALIDATION 의 자가검증 가능 항목 (인터페이스/에러/엣지케이스/리스크/성능) 은 system-architect self-check 흡수. *자가검증 사각지대* (Placeholder Leak + Spike Gate) 만 architecture-validator 가 외부 검증.
-> - BUGFIX_VALIDATION 은 code-validator 의 bugfix scope (impl 파일 경로 `docs/bugfix/`) 로 통합.
 
 ### 1.10 pr-reviewer
 

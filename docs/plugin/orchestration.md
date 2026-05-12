@@ -272,7 +272,7 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 | default | task 경로 매치 + 정식 위치 (`docs/milestones/v\d+/epics/epic-\d+-*/impl/\d+-*.md`) 파일 존재 | test-engineer | 4 |
 | fallback | 위 매치 실패 (즉석 task / direct-impl-loop / impl 부재) | module-architect | 5 |
 
-**근거**: architect-loop §4.2 의 Step 4 (module-architect × K) 가 정식 위치 impl 파일 본문 detail 까지 채움. 즉 정식 경로 + 파일 존재 = 본문 detail 보장 + architecture-validator PASS 통과물. module-architect 재호출 redundant. (이전 `MODULE_PLAN_READY` 마커 grep 룰 — DCN-30-13 — 폐기. 위치 자체가 도장.)
+**근거**: architect-loop §4.2 의 Step 4 (module-architect × K) 가 정식 위치 impl 파일 본문 detail 까지 채움. 즉 정식 경로 + 파일 존재 = 본문 detail 보장 + architecture-validator PASS 통과물. module-architect 재호출 redundant. 위치 자체가 도장.
 
 **commit 구조** ([`loop-procedure.md`](loop-procedure.md) §3.4):
 | stage | 시점 | 내용 |

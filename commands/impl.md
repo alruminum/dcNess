@@ -22,7 +22,7 @@ UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (orchestration §4.4)
 ## 진입 모드 — default vs fallback (위치 도장)
 - task 경로 매치 + 정식 위치 (`docs/milestones/v\d+/epics/epic-\d+-*/impl/\d+-*.md`) 파일 존재 → **default**: test-engineer 직진 (module-architect skip).
 - 매치 실패 / 파일 부재 → **fallback**: module-architect 1번 호출 후 test-engineer 진입.
-- 근거: architect-loop §4.2 의 Step 4 (module-architect × K) 가 정식 위치 impl 파일 본문 detail 까지 채움. 정식 경로 + 파일 존재 = 통과 보장. (옛 `MODULE_PLAN_READY` 마커 grep 룰 폐기 — 위치 자체가 도장.)
+- 근거: architect-loop §4.2 의 Step 4 (module-architect × K) 가 정식 위치 impl 파일 본문 detail 까지 채움. 정식 경로 + 파일 존재 = 통과 보장 (위치 자체가 도장).
 
 ## 후속 라우팅
 - 본 loop clean → 자동 commit/PR (branch prefix = orchestration §4.3 decision rule: feat/chore/fix)
