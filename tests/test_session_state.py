@@ -1019,81 +1019,10 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertFalse(called["hit"])
         self.assertNotIn("/run-review (auto)", out.getvalue())
 
-    def test_finalize_run_auto_review_triggers_accumulate(self) -> None:
-        # issue #225: --auto-review 가 켜지면 loop-insights accumulate 자동 발동.
-        from harness import session_state as ss
-        from types import SimpleNamespace
-        from io import StringIO
-        from contextlib import redirect_stderr, redirect_stdout
-        from unittest.mock import patch
-
-        called = {"li_hit": False}
-
-        def fake_li(sid, rid, cwd):
-            called["li_hit"] = True
-            return []
-
-        out = StringIO()
-        err = StringIO()
-        with patch("harness.run_review.main", return_value=0), \
-             patch("harness.loop_insights.append_from_run", side_effect=fake_li):
-            with redirect_stderr(err), redirect_stdout(out):
-                rc = ss._cli_finalize_run(SimpleNamespace(
-                    expected_steps=None, auto_review=True,
-                ))
-        self.assertEqual(rc, 0)
-        self.assertTrue(called["li_hit"], "auto-review 켜졌으면 accumulate 자동 발동 (issue #225)")
-        self.assertIn("--- loop-insights accumulate ---", out.getvalue())
-
-    def test_finalize_run_no_accumulate_opt_out(self) -> None:
-        # issue #225: --no-accumulate 명시 시 auto-review 켜져도 accumulate skip.
-        from harness import session_state as ss
-        from types import SimpleNamespace
-        from io import StringIO
-        from contextlib import redirect_stderr, redirect_stdout
-        from unittest.mock import patch
-
-        called = {"li_hit": False}
-
-        def fake_li(sid, rid, cwd):
-            called["li_hit"] = True
-            return []
-
-        out = StringIO()
-        err = StringIO()
-        with patch("harness.run_review.main", return_value=0), \
-             patch("harness.loop_insights.append_from_run", side_effect=fake_li):
-            with redirect_stderr(err), redirect_stdout(out):
-                rc = ss._cli_finalize_run(SimpleNamespace(
-                    expected_steps=None, auto_review=True, no_accumulate=True,
-                ))
-        self.assertEqual(rc, 0)
-        self.assertFalse(called["li_hit"], "--no-accumulate opt-out 시 발동 안 함")
-        self.assertNotIn("--- loop-insights accumulate ---", out.getvalue())
-
-    def test_finalize_run_explicit_accumulate_without_auto_review(self) -> None:
-        # back-compat: --auto-review 없이 --accumulate 만 박아도 발동 (기존 호출 보존).
-        from harness import session_state as ss
-        from types import SimpleNamespace
-        from io import StringIO
-        from contextlib import redirect_stderr, redirect_stdout
-        from unittest.mock import patch
-
-        called = {"li_hit": False}
-
-        def fake_li(sid, rid, cwd):
-            called["li_hit"] = True
-            return []
-
-        out = StringIO()
-        err = StringIO()
-        with patch("harness.loop_insights.append_from_run", side_effect=fake_li):
-            with redirect_stderr(err), redirect_stdout(out):
-                rc = ss._cli_finalize_run(SimpleNamespace(
-                    expected_steps=None, auto_review=False, accumulate=True,
-                ))
-        self.assertEqual(rc, 0)
-        self.assertTrue(called["li_hit"], "명시 --accumulate 호출 보존")
+    # issue #392 — auto accumulate 매커니즘 폐기로 관련 3 tests 삭제:
+    #   - test_finalize_run_auto_review_triggers_accumulate
+    #   - test_finalize_run_no_accumulate_opt_out
+    #   - test_finalize_run_explicit_accumulate_without_auto_review
 
     def _setup_fake_cc_jsonl(self, sid: str, engineer_counts: list) -> Path:
         """CC session JSONL fake — engineer toolUseResult 행 N개 박음. ts 오름차순."""

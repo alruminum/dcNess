@@ -158,7 +158,7 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 - (b) **sub-agent prose 자동 저장** — `tool_response.text` → `<run_dir>/<agent>[-<MODE>].md` + `live.json.current_step.prose_file` 기록. 메인이 직접 Write 불필요.
 - (c) agent-trace 집계 → tool histogram + anomaly 검출
 - (d) **`additionalContext` inject** (`hookSpecificOutput` JSON) — 메인 다음 turn 의 Agent tool result 옆에 system reminder 로 보임
-- (e) `redo_log` 1줄 자동 append — 메인이 잊는 행동 자동화
+- (issue #392 — redo_log auto append + routing_telemetry.record_agent_call 폐기. baseline + 매커니즘 실측 0건)
 
 **차단 동작**: X (PostToolUse). stdout = JSON (`hookSpecificOutput`) inject. stderr = `/tmp/dcness-hook-stderr.log` 보존 (디버그용).
 

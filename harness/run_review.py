@@ -203,12 +203,7 @@ class WasteFinding:
     fix: str
 
 
-@dataclass
-class GoodFinding:
-    pattern: str
-    step_idx: int
-    agent: str
-    detail: str
+# issue #392 — `GoodFinding` dataclass 폐기. `detect_goods` 폐기와 정합.
 
 
 @dataclass
@@ -218,7 +213,7 @@ class RunReport:
     run_dir: Path
     steps: list[StepRecord] = field(default_factory=list)
     wastes: list[WasteFinding] = field(default_factory=list)
-    goods: list[GoodFinding] = field(default_factory=list)
+    # issue #392 — `goods` field 폐기. `detect_goods` / `GoodFinding` 폐기와 정합.
     total_cost_usd: float = 0.0
     total_input_tokens: int = 0
     total_output_tokens: int = 0
@@ -556,34 +551,9 @@ def detect_wastes(
             ),
         ))
 
-    # ECHO_VIOLATION — prose 전체 줄 수 기준 (prose_full). prose_full 없는 레코드는 skip.
-    for s in steps:
-        if not s.prose_full:
-            continue
-        line_count = len([l for l in s.prose_full.splitlines() if l.strip()])
-        if line_count < 5 and s.enum != "AMBIGUOUS":
-            findings.append(WasteFinding(
-                pattern="ECHO_VIOLATION",
-                severity="MEDIUM",
-                step_idx=s.idx,
-                agent=s.agent,
-                detail=f"{s.agent} prose {line_count}줄 (5줄 미만 — 충분한 분석 필요)",
-                fix=f"agents/{s.agent}.md 가시성 룰 강화 또는 prose 내용 보강",
-            ))
-
-    # PLACEHOLDER_LEAK (DCN-30-18) — Must 직결 placeholder 흔적
-    for s in steps:
-        for pat in PLACEHOLDER_PATTERNS:
-            if re.search(pat, s.prose_full, re.IGNORECASE):
-                findings.append(WasteFinding(
-                    pattern="PLACEHOLDER_LEAK",
-                    severity="HIGH" if s.agent == "architect" else "MEDIUM",
-                    step_idx=s.idx,
-                    agent=s.agent,
-                    detail=f"{s.agent} prose 안 placeholder 발견: `{pat}` (DCN-30-18 — Spike Gate 룰)",
-                    fix="agents/architect/system-design.md §Spike Gate 정합 — concrete 구현 + sdk.md 갱신",
-                ))
-                break
+    # issue #392 — ECHO_VIOLATION / PLACEHOLDER_LEAK 폐기.
+    # 사유: agent 자율 영역 침해. ECHO_VIOLATION (prose <5줄) = "agent 자율 침해",
+    # PLACEHOLDER_LEAK = "약속-실측 검사" — sub_eval.py:6~10 정신 위반.
 
     # STRAY_DIR_LEAK — `.claude` 와 typo 의심 디렉토리 흔적 (#321 C)
     # 실측: jajang run-dbd49faf task 1/2/3 `.claire` 3 회 연속.
@@ -665,17 +635,7 @@ def detect_wastes(
                 fix=f"agents/{s.agent}.md Bash 사용 금지 명시 강화",
             ))
 
-    # EXTERNAL_VERIFIED_MISSING (DCN-30-18) — plan-reviewer prose 에 EXTERNAL_VERIFIED 섹션 부재
-    for s in steps:
-        if s.agent == "plan-reviewer" and "EXTERNAL_VERIFIED" not in s.prose_full:
-            findings.append(WasteFinding(
-                pattern="EXTERNAL_VERIFIED_MISSING",
-                severity="HIGH",
-                step_idx=s.idx,
-                agent=s.agent,
-                detail="plan-reviewer prose 에 EXTERNAL_VERIFIED 섹션 부재 (DCN-30-18 산출물 의무)",
-                fix="agents/plan-reviewer.md §산출물 EXTERNAL_VERIFIED 섹션 의무 재강조",
-            ))
+    # issue #392 — EXTERNAL_VERIFIED_MISSING 폐기 (정신 위반 — 약속-실측 검사).
 
     # THINKING_LOOP (DCN-30-20) — sub-agent 가 오래 돌았는데 output token 적음 = stall / thinking 무한 loop
     # 사용자 사례 (jajang product-planner): 6분 elapsed + ↓624 tokens.
@@ -726,19 +686,7 @@ def detect_wastes(
                 "임계 ≥ 100 = 자장 실측 5건 모두 PR PARTIAL.",
         ))
 
-    # PARTIAL_LOOP (DCN-CHG-20260430-37) — IMPL_PARTIAL ≥ 3 in same run.
-    # 자장 패턴 "overflow → PARTIAL → 추가 epic → 또 overflow → 무한 반복".
-    partial_count = sum(1 for s in steps if s.enum == "IMPL_PARTIAL")
-    if partial_count >= 3:
-        findings.append(WasteFinding(
-            pattern="PARTIAL_LOOP",
-            severity="HIGH",
-            step_idx=-1,
-            agent="engineer",
-            detail=f"IMPL_PARTIAL {partial_count}회 — 같은 run 무한 분할 의심.",
-            fix="task 자체 split 필요 (epic 단위 재계획). architect TASK_DECOMPOSE 재진입 또는 "
-                "사용자 위임. DCN-30-34 권고 cycle ≤ 3 정합.",
-        ))
+    # issue #392 — PARTIAL_LOOP 폐기 (hardcoded ≥3 임계값 = 정신 위반).
 
     # END_STEP_SKIP (DCN-CHG-20260430-37) — sub-agent invocation > .steps.jsonl row.
     # 메인 distract → end-step 호출 skip → .steps.jsonl 누락. DCN-30-25 STEP COUNT WARN /
@@ -762,112 +710,20 @@ def detect_wastes(
                         "메인 distract 회피 — Agent 직후 즉시 end-step.",
                 ))
 
-    # MISSING_SELF_VERIFY (DCN-CHG-20260430-38) — engineer prose 에 self-verify anchor 부재.
-    # DCN-30-34 의무 (anchor 자율, substance 의무) 회귀 검출. prose_full 부재 시 skip.
-    # POLISH_DONE 은 제외 (#252) — POLISH 결과 prose 는 짧은 정리 보고 (테스트 N passed 본문 서술)
-    # 자체가 검증 substance. heading anchor 강제는 잉여 형식 + 회귀 false positive.
-    for s in steps:
-        if s.agent != "engineer":
-            continue
-        if s.enum not in ("IMPL_DONE", "IMPL_PARTIAL"):
-            continue
-        if not s.prose_full:
-            continue
-        if not _has_self_verify_anchor(s.prose_full):
-            findings.append(WasteFinding(
-                pattern="MISSING_SELF_VERIFY",
-                severity="MEDIUM",
-                step_idx=s.idx,
-                agent="engineer",
-                detail=f"engineer step {s.idx} ({s.enum}) prose 에 자가 검증 anchor 부재 — "
-                       f"DCN-30-34 의무 (anchor 자율: `## 자가 검증` / `## Verification` / "
-                       f"`## 검증` / `## 수용 기준 검증` / `## Self-Verify` 등 — heading 에 "
-                       f"검증/verification/self-verify 단어 포함하면 OK).",
-                fix="agents/engineer.md § 자가 검증 echo 의무 — prose 끝에 anchor 추가 + "
-                    "실측 명령 + 결과 수치 인용. substance (검증 결과) 만 의무.",
-            ))
-
-    # MAIN_SED_MISDIAGNOSIS (DCN-CHG-20260430-37) — 메인 self-correction 패턴.
-    # I5 회귀 — "130개 fix" → 실측 0개 → 정정. CC JSONL 텍스트 검출.
-    sed_hits = _scan_main_sed_misdiagnosis(repo_path, window)
-    if sed_hits:
-        findings.append(WasteFinding(
-            pattern="MAIN_SED_MISDIAGNOSIS",
-            severity="HIGH",
-            step_idx=-1,
-            agent="main",
-            detail=f"메인 self-correction 패턴 {len(sed_hits)}회 — 추측 진단 → 사용자 알림 → "
-                   f"실측 시 0 발견 → 정정. 첫 발췌: {sed_hits[0][:120]}...",
-            fix="orchestration.md §00 self-verify 원칙 — Bash sed/awk 후 "
-                "*전·후* 실측 의무 (git diff --stat / 결과 grep). 글로벌 ~/.claude/CLAUDE.md "
-                "제1룰 정합.",
-        ))
+    # issue #392 — MISSING_SELF_VERIFY 폐기 (agent 자율 영역 침해).
+    # issue #392 — MAIN_SED_MISDIAGNOSIS 폐기 (메인 자율 영역 + 검출 모호함).
 
     return findings
 
 
 # ── Good 탐지 ─────────────────────────────────────────────────────────
 
-def detect_goods(steps: list[StepRecord]) -> list[GoodFinding]:
-    goods: list[GoodFinding] = []
-
-    # ENUM_CLEAN — 각 step 의 enum 이 expected 정합
-    for s in steps:
-        expected_map = EXPECTED_FINAL_ENUMS.get(s.agent, {})
-        expected = expected_map.get(s.mode) or expected_map.get(None)
-        if expected and s.enum == expected and not s.must_fix:
-            goods.append(GoodFinding(
-                pattern="ENUM_CLEAN",
-                step_idx=s.idx,
-                agent=s.agent,
-                detail=f"{s.agent} enum={s.enum} (expected 정합)",
-            ))
-
-    # PROSE_ECHO_OK — prose 충분 (5줄 이상)
-    for s in steps:
-        check_text = s.prose_full or s.prose_excerpt
-        line_count = len([l for l in check_text.splitlines() if l.strip()])
-        if line_count >= 5:
-            goods.append(GoodFinding(
-                pattern="PROSE_ECHO_OK",
-                step_idx=s.idx,
-                agent=s.agent,
-                detail=f"{s.agent} prose {line_count}줄 (충분한 분석 포함)",
-            ))
-
-    # DDD_PHASE_A — architect SYSTEM_DESIGN prose 안 Domain Model 섹션 존재
-    for s in steps:
-        if s.agent == "architect" and s.mode == "SYSTEM_DESIGN":
-            if re.search(r"##\s*Domain\s*Model|##\s*도메인\s*모델|Phase\s*A", s.prose_full, re.IGNORECASE):
-                goods.append(GoodFinding(
-                    pattern="DDD_PHASE_A",
-                    step_idx=s.idx,
-                    agent=s.agent,
-                    detail="architect SYSTEM_DESIGN prose 에 Domain Model Phase A 섹션 존재 (DCN-30-16 룰 정합)",
-                ))
-
-    # DEPENDENCY_CAUSAL — system-design prose 의존성에 인과관계 표기
-    for s in steps:
-        if s.agent == "architect" and s.mode == "SYSTEM_DESIGN":
-            if re.search(r"→.*\(.*(필요|의존|구독|입력)", s.prose_full):
-                goods.append(GoodFinding(
-                    pattern="DEPENDENCY_CAUSAL",
-                    step_idx=s.idx,
-                    agent=s.agent,
-                    detail="architect prose 의존성 화살표에 인과관계 1줄 (DCN-30-16 룰 정합)",
-                ))
-
-    # EXTERNAL_VERIFIED_PRESENT — plan-reviewer 산출물 의무 충족
-    for s in steps:
-        if s.agent == "plan-reviewer" and "EXTERNAL_VERIFIED" in s.prose_full:
-            goods.append(GoodFinding(
-                pattern="EXTERNAL_VERIFIED_PRESENT",
-                step_idx=s.idx,
-                agent=s.agent,
-                detail="plan-reviewer EXTERNAL_VERIFIED 섹션 존재 (DCN-30-18 룰 정합)",
-            ))
-
-    return goods
+# issue #392 — `detect_goods` 함수 + 5 good patterns 전체 폐기.
+# 사유: dcness 정신 정합 X — orchestration.md §0 "임계값 hardcode 금지 + 자율 친화".
+# jajang 실측: loop-insights 100% PROSE_ECHO_OK (baseline) = 학습 가치 0.
+# 본 함수의 5 patterns (ENUM_CLEAN / PROSE_ECHO_OK / DDD_PHASE_A / DEPENDENCY_CAUSAL /
+# EXTERNAL_VERIFIED_PRESENT) 모두 폐기. 잘한점 섹션은 review.md render 에서도 제거.
+# 메인 자율 평가는 insight CLI (PR3) 로 대체.
 
 
 # ── Per-Agent invocation extraction (DCN-CHG-20260430-20, Phase 2) ────
@@ -1157,17 +1013,7 @@ def render_report(report: RunReport) -> str:
         )
     lines.append("")
 
-    # 잘한 점
-    if report.goods:
-        lines.append("## 잘한 점 (Good Findings)")
-        lines.append("| # | 패턴 | step | agent | 상세 |")
-        lines.append("|---|---|---|---|---|")
-        for i, g in enumerate(report.goods, 1):
-            lines.append(f"| {i} | `{g.pattern}` | {g.step_idx} | {g.agent} | {g.detail} |")
-        lines.append("")
-    else:
-        lines.append("## 잘한 점 — 없음")
-        lines.append("")
+    # issue #392 — "잘한 점" 섹션 폐기. detect_goods + GoodFinding 폐기와 정합.
 
     # 잘못한 점
     if report.wastes:
@@ -1212,7 +1058,7 @@ def build_report(run_dir: Path, repo_path: Path) -> RunReport:
     # DCN-CHG-20260430-37: detect_wastes 에 invocations + repo_path + window 전달
     # (END_STEP_SKIP / MAIN_SED_MISDIAGNOSIS run-level 패턴 검출 위해).
     wastes = detect_wastes(steps, invocations=invocations, repo_path=repo_path, window=window)
-    goods = detect_goods(steps)
+    # issue #392 — detect_goods 호출 폐기.
     cost, in_tok, out_tok = compute_run_cost(run_dir, repo_path)
 
     elapsed = 0
@@ -1239,7 +1085,6 @@ def build_report(run_dir: Path, repo_path: Path) -> RunReport:
         run_dir=run_dir,
         steps=steps,
         wastes=wastes,
-        goods=goods,
         total_cost_usd=cost,
         total_input_tokens=in_tok,
         total_output_tokens=out_tok,
