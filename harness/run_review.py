@@ -24,7 +24,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
@@ -83,6 +83,8 @@ READONLY_AGENTS = {"qa", "code-validator", "architecture-validator", "pr-reviewe
 # min_output_tokens: 정상 sub-agent 가 emit 할 최소 output token (이하 = stall 의심).
 EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
     "architect":       {"elapsed_s": 600, "min_output_tokens": 1500},
+    "module-architect": {"elapsed_s": 600, "min_output_tokens": 1500},
+    "system-architect": {"elapsed_s": 600, "min_output_tokens": 1500},
     "engineer":        {"elapsed_s": 900, "min_output_tokens": 2000},
     "test-engineer":   {"elapsed_s": 600, "min_output_tokens": 1500},
     "code-validator":  {"elapsed_s": 300, "min_output_tokens": 800},
@@ -95,6 +97,19 @@ EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
 }
 
 DCNESS_AGENT_NAMES = set(EXPECTED_AGENT_BUDGETS.keys())
+
+# issue #383 — 옛 통합형 agent 이름 alias. 0.2.16 loop-procedure.md 의 bare
+# `validator` 표현 학습으로 메인 Claude 가 `dcness:validator` 호출한 잔재
+# (jajang 21건 trace 확인). 0.2.17 docs cleanup 이후 미래 호출은 차단됐지만
+# 옛 데이터 review 회복 + backward compat 위해 정식 이름으로 흡수.
+LEGACY_AGENT_ALIASES: dict[str, str] = {
+    "validator": "code-validator",
+}
+
+# issue #383 B1 — window padding. step.ts = end-step 호출 시각이므로
+# sub-agent TUR ts (완료 시각) 는 first_ts 보다 약간 이전. padding 없으면
+# 첫 step metric 매번 누락. ±60s 여유로 jajang 실측 8s off-by-N 흡수.
+WINDOW_TS_PADDING = timedelta(seconds=60)
 
 # DCN-CHG-20260430-38: engineer self-verify echo anchor 옵션 (DCN-30-34 강제 → DCN-30-38 자율화).
 # prose 끝에 *어느 한 anchor* 라도 있으면 통과. 형식 자율 + substance 의무.
@@ -170,6 +185,12 @@ class StepRecord:
     matched_invocation: bool = False
     # DCN-CHG-20260430-37: tool_use_count — TOOL_USE_OVERFLOW 검출 + DCN-30-36 hint 짝.
     tool_use_count: int = 0
+    # issue #383 B4 — prose 본문 끝 결론 enum (PASS/LGTM/FAIL/ESCALATE).
+    # 옛 enum mode 는 helper stdout 에서 enum 직접 박음. prose-only mode
+    # (이슈 #284) 이후 helper sentinel = `PROSE_LOGGED` 통일 → agent prose
+    # 마지막 단락 결론 (agents/code-validator.md §6 "PASS / FAIL / ESCALATE")
+    # 을 표시 단계에서 추출. 부재 시 빈 문자열 (= sentinel 그대로 표시 fallback).
+    conclusion_enum: str = ""
 
 
 @dataclass
@@ -252,6 +273,50 @@ def _parse_iso(ts: str) -> Optional[datetime]:
         return None
 
 
+# issue #383 B4 — prose 본문 결론 enum 추출.
+# agents/code-validator.md §6 등: "prose 마지막 단락에 결론 (PASS / FAIL / ESCALATE)".
+# pr-reviewer 는 LGTM 도 사용. 마지막 N줄에서 단어 단위 매칭 — 부정문 (예: "FAIL 없음",
+# "0 FAIL") 회피 위해 같은 줄에 부정 마커 있으면 skip.
+_CONCLUSION_ENUMS: tuple[tuple[str, str], ...] = (
+    ("LGTM", re.compile(r"\bLGTM\b")),
+    ("PASS", re.compile(r"\bPASS\b")),
+    ("FAIL", re.compile(r"\bFAIL\b")),
+    ("ESCALATE", re.compile(r"\bESCALATE\b")),
+)
+_NEGATION_RE = re.compile(
+    r"(없|미발견|아님|아니|불필요|"           # 한글 부정
+    r"\bno\b|\bnot\b|\bzero\b|\b0\s*\b|"     # 영어 부정
+    r"없음)",
+    re.IGNORECASE,
+)
+
+
+def _extract_conclusion_enum(prose: str) -> str:
+    """prose 본문 끝 ~15줄에서 positive 결론 enum 추출.
+
+    매칭 룰:
+    - 끝 15줄 (마지막 단락 가정)
+    - 결론 enum 단어 매칭 + 같은 줄 부정 마커 부재
+    - LGTM > PASS > FAIL > ESCALATE 우선순위 (LGTM 단독, PASS/FAIL 부정 가능)
+    - 다 매칭 실패 시 빈 문자열 반환 (= 호출자가 helper sentinel 그대로 표시)
+    """
+    if not prose:
+        return ""
+    lines = prose.splitlines()
+    tail = lines[-15:] if len(lines) > 15 else lines
+    for label, pattern in _CONCLUSION_ENUMS:
+        for line in tail:
+            if pattern.search(line):
+                # 단독 LGTM 은 negation 검사 skip (보통 "LGTM —" 패턴)
+                if label == "LGTM":
+                    return label
+                # 같은 줄에 부정 마커 있으면 skip
+                if _NEGATION_RE.search(line):
+                    continue
+                return label
+    return ""
+
+
 def parse_steps(run_dir: Path) -> list[StepRecord]:
     steps: list[StepRecord] = []
     jsonl = run_dir / ".steps.jsonl"
@@ -269,6 +334,11 @@ def parse_steps(run_dir: Path) -> list[StepRecord]:
 
     for idx, rec in enumerate(raw):
         agent = rec.get("agent", "?")
+        # issue #383 B2 — step.agent 도 alias normalize. jajang `.steps.jsonl`
+        # 의 `validator` (0.2.16 잔재) 를 `code-validator` 로 흡수해야
+        # assign_invocations_to_steps 의 `inv.agent != step.agent` 비교가
+        # 정합 일치 (invocation 측은 _normalize_agent_type 에서 이미 normalize).
+        agent = LEGACY_AGENT_ALIASES.get(agent, agent)
         mode = rec.get("mode")
         prose_full = ""
 
@@ -306,6 +376,7 @@ def parse_steps(run_dir: Path) -> list[StepRecord]:
             must_fix=must_fix,
             prose_excerpt=rec.get("prose_excerpt", ""),
             prose_full=prose_full,
+            conclusion_enum=_extract_conclusion_enum(prose_full),
         ))
 
     # elapsed 계산 — 다음 step ts 와의 차이
@@ -478,6 +549,21 @@ def detect_wastes(
                 detail=f"step {i} ({s.agent}) MUST_FIX 발견됐는데 step {i+1} 진행 — 멈춤 위반",
                 fix="commands/{skill}.md caveat 멈춤 룰 강화",
             ))
+
+    # issue #383 B3 — MUST_FIX_LEAK. 마지막 step 의 must_fix=True (= caveat 신호)
+    # 는 MUST_FIX_GHOST 룰이 *다음 step 없음* 으로 skip → wastes 비어있는
+    # 회귀 발생 (jajang run-459cce99 pr-reviewer 케이스). 사용자에게 caveat
+    # 통지 누락 회피 위해 wastes 1+ 박아 회귀 차단.
+    last = steps[-1] if steps else None
+    if last and last.must_fix:
+        findings.append(WasteFinding(
+            pattern="MUST_FIX_LEAK",
+            severity="HIGH",
+            step_idx=len(steps) - 1,
+            agent=last.agent,
+            detail=f"마지막 step ({last.agent}) must_fix=True — caveat 통지 의무",
+            fix="loop-procedure.md §5.4 7b 분기 — 사용자 위임 + 메모리 candidate emit",
+        ))
 
     # SPEC_GAP_LOOP — architect SPEC_GAP cycle 한도 초과
     spec_gap_count = sum(1 for s in steps if s.agent == "architect" and s.mode == "SPEC_GAP")
@@ -726,13 +812,18 @@ def detect_goods(steps: list[StepRecord]) -> list[GoodFinding]:
 
 
 def _normalize_agent_type(agent_type: Optional[str]) -> Optional[str]:
-    """`dcness:architect:system-design` → `architect`. None / 비-dcness → 원형 그대로."""
+    """`dcness:architect:system-design` → `architect`. None / 비-dcness → 원형 그대로.
+
+    issue #383: LEGACY_AGENT_ALIASES 도 적용 — 옛 `dcness:validator` → `code-validator`.
+    """
     if not agent_type:
         return None
     if agent_type.startswith("dcness:"):
         parts = agent_type.split(":")
-        return parts[1] if len(parts) > 1 else agent_type
-    return agent_type
+        normalized = parts[1] if len(parts) > 1 else agent_type
+    else:
+        normalized = agent_type
+    return LEGACY_AGENT_ALIASES.get(normalized, normalized)
 
 
 def _compute_invocation_cost(model: str, usage: dict) -> float:
@@ -960,14 +1051,17 @@ def render_report(report: RunReport) -> str:
     lines.append(f"| clean 판정 | {'✅' if report.final_clean else '❌'} |")
     lines.append("")
 
-    # 호출 흐름
+    # 호출 흐름 — issue #383 B4: prose 결론 enum 우선 표시.
+    # helper sentinel `PROSE_LOGGED` 는 prose-only mode 신호일 뿐 사용자 가독성 0.
+    # parse_steps 가 prose 본문 끝 결론 (PASS/LGTM/FAIL/ESCALATE) 추출 → 우선.
     lines.append("## 호출 흐름")
     lines.append("```")
     for i, s in enumerate(report.steps):
         marker = "└─" if i == len(report.steps) - 1 else "├─"
         mode_str = f" [{s.mode}]" if s.mode else ""
         flag = " ⚠️" if s.must_fix else ""
-        lines.append(f"{marker} {s.agent}{mode_str} ({s.elapsed_s}s) → {s.enum}{flag}")
+        display_enum = s.conclusion_enum or s.enum
+        lines.append(f"{marker} {s.agent}{mode_str} ({s.elapsed_s}s) → {display_enum}{flag}")
     lines.append("```")
     lines.append("")
 
@@ -992,10 +1086,12 @@ def render_report(report: RunReport) -> str:
         if ts_dt:
             # UTC ISO → system local time (Mac 기본: 한국 KST)
             ts_local = ts_dt.astimezone().strftime("%H:%M:%S")
+        # issue #383 B4 — prose 결론 enum 우선 표시 (sentinel fallback).
+        display_enum = s.conclusion_enum or s.enum
         lines.append(
             f"| {s.idx} | {ts_local} | {s.agent} | {s.mode or '-'} | {s.elapsed_s} | "
             f"{dur_s} | {out_tok} | {tot_tok} | {tu_str} | {cost} | "
-            f"`{s.enum}` | {'⚠️' if s.must_fix else ''} | {line_count} |"
+            f"`{display_enum}` | {'⚠️' if s.must_fix else ''} | {line_count} |"
         )
     lines.append("")
 
@@ -1042,7 +1138,12 @@ def build_report(run_dir: Path, repo_path: Path) -> RunReport:
         first_ts = _parse_iso(steps[0].ts)
         last_ts = _parse_iso(steps[-1].ts)
         if first_ts and last_ts:
-            window = (first_ts, last_ts)
+            # issue #383 B1 — window padding. step.ts = end-step 호출 시각.
+            # sub-agent TUR ts 는 end-step 호출 직전 (= first_ts 보다 약간 이전).
+            # padding 없이 [first_ts, last_ts] 로 잡으면 첫 step TUR 가 *항상*
+            # window 밖으로 필터아웃되어 구조적으로 첫 step metric 누락.
+            # jajang run-459cce99 실측 — test-engineer TUR 02:40:18 vs first_ts 02:40:26 (8s diff).
+            window = (first_ts - WINDOW_TS_PADDING, last_ts + WINDOW_TS_PADDING)
             invocations = extract_agent_invocations(repo_path, window)
             assign_invocations_to_steps(steps, invocations)
 
@@ -1059,7 +1160,11 @@ def build_report(run_dir: Path, repo_path: Path) -> RunReport:
         if a and b:
             elapsed = int((b - a).total_seconds())
 
-    final_enum = steps[-1].enum if steps else ""
+    # issue #383 B4 — final_enum 표시도 conclusion 우선. clean 판정 로직 자체는
+    # has_must_fix / has_ambiguous (= helper sentinel 기반) 그대로 — 의미 변경 없음.
+    final_enum = ""
+    if steps:
+        final_enum = steps[-1].conclusion_enum or steps[-1].enum
     has_must_fix = any(s.must_fix for s in steps)
     has_ambiguous = any(s.enum == "AMBIGUOUS" for s in steps)
     final_clean = (final_enum and not has_must_fix and not has_ambiguous
