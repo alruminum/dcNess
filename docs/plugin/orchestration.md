@@ -16,38 +16,71 @@
 
 본 SSOT 는 위 2 개 강제 영역만 정의. 형식 강제 (마커 / status JSON / Flag) 는 [`dcness-rules.md`](dcness-rules.md) §1 에 의해 폐기 — 본 문서 안에서도 그 어휘는 사용하지 않는다.
 
-### 0.1 형식 변환 메모 (RWHarness → dcness)
-
-- 마커 (`---MARKER:X---`) → **prose 마지막 단락 enum 단어** + `harness/signal_io.py interpret_signal`
-- 핸드오프 페이로드 → **`.claude/harness-state/<run_id>/<agent>[-<MODE>].md` prose 디렉토리** (구조 자유)
-- Flag 시스템 → **`.attempts.json` 단순 카운터** (recovery state 만)
-- enum 해석 = `harness/interpret_strategy.py` heuristic-only (LLM fallback 폐기 — ambiguous 시 메인이 cascade)
-
 ---
 
 ## 1. 적용 모드
 
-### 1.1 Plugin 사용자 프로젝트 모드 (본 SSOT 정 scope)
-
 dcNess 가 plugin (`dcness@dcness`) 으로 사용자 프로젝트에 활성화된 환경. 다음 모두 강제:
 
-- 본 문서 §2 게이트 시퀀스 (catastrophic 보존)
+- 본 문서 §2 시퀀스 (catastrophic 보존)
 - handoff-matrix §4 권한 매트릭스 (agent-boundary hook 으로 강제)
-- proposal §2.5 catastrophic 원칙 (src/ 외 mutation 차단, plugin-write-guard, READ_DENY)
+- src/ 외 mutation 차단 + plugin-write-guard + READ_DENY
 
-### 1.2 메인 dcNess 자체 작업 모드 (현재 본 저장소)
-
-dcNess 저장소 자체에서 메인 Claude 가 직접 작업하는 환경. 본 문서는 *권고*.
-
-- CLAUDE.md §0 정합 — "system-architect / module-architect / code-validator / engineer 위임 강제 없음"
-- 거버넌스 (main-block + git-naming + pytest) 만 강제 (`CLAUDE.md §1~§2`)
-- 시퀀스 / 권한 매트릭스는 *읽고 따르는 가이드*. 위반 시 hook 차단 X.
+> dcness 자체 저장소 작업은 본 SSOT 미적용 — `CLAUDE.md §0` 가 진본.
 
 ---
 
-## 2. 게이트 시퀀스 (큰 흐름)
+## 2. 시퀀스
 
-### 2.1 최소 패스 (구현 루프)
+### 2.1 catastrophic 시퀀스 (보존 의무 — 원칙)
+
+다음은 *어떤 동적 결정* 으로도 우회 금지 — `hooks/catastrophic-gate.sh` 가 PreToolUse 강제:
+
+1. **src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 금지** (§2.1.1)
+2. **engineer 가 module-architect `PASS` enum 발화 없이 src/ 작성 금지** (§2.1.3 — 신규 / 보강 / 버그픽스 모든 케이스 동일)
+3. **PRD 변경 후 plan-reviewer PASS 없이 `/architect-loop` 진입 금지** (§2.1.4 — PRD 검증은 `/product-plan` 책임. 자연어 룰 — 메인 영역 강제)
+4. **module-architect × N (architect-loop §4.2 Step 6) 진입 직전 architecture-validator PASS 없이 진입 금지** (§2.1.5 — architect-loop 한정 코드 강제)
+
+원칙: "흐름 강제는 catastrophic 시퀀스만". 그 외 모든 시퀀스 = agent 자율.
+
+### 2.2 기획 — `/product-plan` (§4.2 풀스펙)
+
+```mermaid
+flowchart LR
+    entry[/product-plan 진입<br/>사용자 발화 또는 skill/] --> main[메인 Claude<br/>그릴미 대화로 PRD/stories.md Write]
+    main -.->|외부 의존 의심 시| pre[plan-reviewer PRE_CHECK]
+    pre -->|PASS| main
+    pre -->|FAIL/ESCALATE| esc((사용자 위임))
+    main --> pr[plan-reviewer FULL<br/>외부 검증]
+    pr -->|PASS| commit[PR 생성/머지<br/>+ epic/story 이슈 등록]
+    pr -->|FAIL| confirm[메인 + 사용자<br/>findings 항목별 confirm + Edit patch]
+    confirm --> pr
+    pr -->|ESCALATE| esc
+    commit --> done((종료 — 사용자가<br/>/architect-loop 호출 결정))
+```
+
+진입: 사용자 발화 ("기획해줘", "기능 추가" 등) 또는 `/product-plan` skill. 종료 후 `/architect-loop` 자동 진입 X (사용자 명시 호출).
+
+### 2.3 설계 — `/architect-loop` (§4.2 풀스펙)
+
+```mermaid
+flowchart LR
+    entry[/architect-loop 진입/] --> ux[ux-architect UX_FLOW<br/>+ 5 카테고리 self-check]
+    ux -->|UX_FLOW_READY| c1[commit 1: ux-flow.md]
+    ux -->|UX_FLOW_ESCALATE| esc((escalate))
+    c1 --> sd[system-architect<br/>+ self-check<br/>+ impl 목차 표]
+    sd -->|PASS| dv[architecture-validator<br/>Placeholder Leak + Spike Gate]
+    dv -->|PASS| c2[commit 2: architecture.md + adr.md]
+    dv -->|FAIL| sd
+    dv -->|ESCALATE| esc
+    c2 --> mp[module-architect × K<br/>impl 목차 행마다 1 호출]
+    mp -->|PASS × K, 각 호출 후 commit| done[PR 생성/머지]
+    mp -->|SPEC_GAP_FOUND / ESCALATE| esc
+```
+
+architect-loop = 1 epic 처리 단위. 워크트리 ON 자동. 진입 전제: PRD/stories.md + epic/story 이슈 등록 완료 (`/product-plan` 책임). catastrophic §2.1.5 — module-architect × K 진입 직전 architecture-validator PASS 필수. 진입: 사용자 `/architect-loop <epic-path>` 명시.
+
+### 2.4 구현 — `impl-task-loop` (§4.3 풀스펙)
 
 ```mermaid
 flowchart TD
@@ -80,143 +113,25 @@ flowchart TD
     merge --> cleanup
 ```
 
-> default 진입 = test-engineer (impl/NN-*.md 정식 경로 존재 = architect-loop §4.2 가 module-architect × N 마쳐 본문 detail 까지 채운 산출물). fallback (즉석 task / 정식 경로 부재) 만 module-architect 호출.
-
-### 2.2 UI 작업 추가 시 design 단계 삽입
-
-```mermaid
-flowchart TD
-    plan[plan: module-architect]
-    design[design: designer 1 시안]
-    pick[사용자 직접 PICK]
-    test[test: test-engineer]
-    impl[...]
-
-    plan --> design
-    design -->|PASS| pick
-    design -->|ESCALATE| esc((escalate))
-    pick -->|OK| test
-    pick -->|NG, 다시| design
-    test --> impl
-```
-
-`[design]` 단계가 `[plan]` 과 `[test]` 사이에 삽입. designer 1 시안 → 사용자 직접 PICK (Pencil 캔버스 또는 `design-variants/<screen>-v<N>.html`). 거절 시 사용자가 designer 재호출 자유 결정 — 명시 round 한도 X.
-
-### 2.3 catastrophic 시퀀스 (보존 의무)
-
-다음은 *어떤 동적 결정* 으로도 우회 금지 — `hooks/catastrophic-gate.sh` 가 PreToolUse 강제:
-
-1. **src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 금지** (§2.3.1)
-2. **engineer 가 module-architect `PASS` enum 발화 없이 src/ 작성 금지** (§2.3.3 — 신규 / 보강 / 버그픽스 모든 케이스 동일)
-3. **PRD 변경 후 plan-reviewer PASS 없이 `/architect-loop` 진입 금지** (§2.3.4 — PRD 검증은 `/product-plan` 책임. 자연어 룰 — 메인 영역 강제)
-4. **module-architect × N (architect-loop §4.2 Step 6) 진입 직전 architecture-validator PASS 없이 진입 금지** (§2.3.5 — architect-loop 한정 코드 강제)
-
-이는 proposal §2.5 원칙 4 ("흐름 강제는 catastrophic 시퀀스만") 의 catastrophic 백본.
+default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task / 정식 경로 부재) 만 module-architect 호출. UI 작업 시 `impl-ui-design-loop` (§4.4) — designer + 사용자 PICK 단계 삽입.
 
 ---
 
-## 3. 진입 경로별 시나리오 (mini-graph 6 개)
-
-> 8 loop 행별 풀스펙 = 본 문서 §4. 본 §3 = mini-graph (what), §4 = 행별 풀스펙 (how) 1:1.
-> 7 loop name (`architect-loop` §3.1.5, `impl-task-loop` §2.1, `impl-ui-design-loop` §2.2, `qa-triage` §3.5, `ux-design-stage` §3.2, `ux-refine-stage` §3.3, `direct-impl-loop` §3.4) — §4 행 ID.
-> 실행 절차 (Step 0~8 mechanics) = [`loop-procedure.md`](loop-procedure.md).
-
-### 3.1 신규 기능 / PRD 변경 → `/product-plan` (§4.2)
-
-```mermaid
-flowchart LR
-    qa[qa] --> main[메인 Claude<br/>그릴미 대화로 PRD/stories.md 직접 Write]
-    main --> pr[plan-reviewer<br/>FULL 모드 외부 검증]
-    pr -->|PASS| commit[PR 생성 + 머지<br/>+ epic/story 이슈 등록]
-    pr -->|FAIL| confirm[메인 + 사용자<br/>findings 항목별 confirm + Edit patch]
-    confirm --> pr
-    pr -->|ESCALATE| esc((escalate))
-    commit --> done((종료 — 사용자 결정))
-    done -.->|다음 단계 권장| arch[/architect-loop §4.10/]
-```
-
-진입: `/product-plan` 스킬 또는 사용자 "기능 추가" 발화. 종료 후 사용자가 `/architect-loop` 호출 결정 (자동 진입 X).
-
-### 3.1.5 PRD 머지 후 설계 단계 → `/architect-loop` (§4.10)
-
-```mermaid
-flowchart LR
-    entry[/architect-loop 진입/] --> ux[ux-architect UX_FLOW<br/>+ 5 카테고리 self-check]
-    ux -->|UX_FLOW_READY| c1[commit 1: ux-flow.md]
-    ux -->|UX_FLOW_ESCALATE| esc((escalate))
-    c1 --> sd[system-architect<br/>+ self-check<br/>+ impl 목차 표]
-    sd -->|PASS| dv[architecture-validator<br/>Placeholder Leak + Spike Gate]
-    dv -->|PASS| c2[commit 2: architecture.md + adr.md]
-    dv -->|FAIL| sd
-    dv -->|ESCALATE| esc
-    c2 --> mp[module-architect × K<br/>impl 목차 행마다 1 호출]
-    mp -->|PASS × K, 각 호출 후 commit| done[PR 생성 + 머지]
-    mp -->|SPEC_GAP_FOUND / ESCALATE| esc
-```
-
-architect-loop = 1 epic 처리 단위. 워크트리 ON 자동 진입. PRD 머지 + epic/story 이슈 등록은 진입 전제 (`/product-plan` 책임). catastrophic §2.3.5 — module-architect × K 진입 직전 architecture-validator PASS 필수. 종료 = 1 PR (ux-flow + arch+adr + impl K = K+2 commit). 진입: 사용자 `/architect-loop <epic-path>` 명시.
-
-### 3.2 UI 만 변경 → `ux-design-stage` (§4.6, 하네스 루프 없음)
-
-```mermaid
-flowchart LR
-    ux[ux 스킬] --> designer
-    designer -->|PASS| handoff((DESIGN_HANDOFF))
-```
-
-엔지니어 호출은 *사용자 결정*. 시퀀스 게이트 없음.
-
-### 3.3 화면 리디자인 → `ux-refine-stage` (§4.7)
-
-```mermaid
-flowchart LR
-    ux[ux 스킬 REFINE 감지] --> uxa[ux-architect UX_REFINE]
-    uxa -->|UX_REFINE_READY| user((사용자 승인))
-    user --> dr[designer SCREEN]
-    dr -->|PASS| handoff((DESIGN_HANDOFF))
-```
-
-### 3.4 일반 구현 직접 호출 → `direct-impl-loop` (§4.8)
-
-```mermaid
-flowchart LR
-    cli["impl_driver --impl <path> --issue <N>"] --> impl[구현 루프 §2.1]
-```
-
-`impl_driver` 코드는 후속 Task — §6 옵션 (a)/(b)/(c) 중 채택 후 구현.
-
-### 3.5 버그 보고 분류 → `qa-triage` (§4.5)
-
-```mermaid
-flowchart LR
-    qa[qa 스킬] --> qaa[qa agent]
-    qaa -->|FUNCTIONAL_BUG| lp[impl-task-loop §4.3 fallback]
-    qaa -->|CLEANUP| lp
-    qaa -->|DESIGN_ISSUE| ds[designer 시퀀스 §3.2/3.3]
-    qaa -->|KNOWN_ISSUE| stop((종료))
-    qaa -->|SCOPE_ESCALATE| esc((escalate))
-```
-
-FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부재 시 module-architect 선두 추가). TDD Guard (`hooks/tdd-guard.sh`) 강제로 light path 별도 분기 폐기.
-
----
-
-## 4. 8 loop 행별 풀스펙
+## 4. 7 loop 행별 풀스펙
 
 > *행별 풀스펙* SSOT (entry_point / task_list / advance / clean_enum / branch_prefix / Step 별 allowed_enums / 분기 / sub_cycles).
-> 시퀀스 mini-graph + 진입 경로 = §3. 실행 절차 = [`loop-procedure.md`](loop-procedure.md). Step 4.5 sync 룰 = 폐기 (2026-05-12, 본 SSOT 단일화).
+> 시퀀스 = §2. 실행 절차 = [`loop-procedure.md`](loop-procedure.md).
 
 ### 4.1 한눈 인덱스
 
 | loop | entry_point | task_list (Step 1) | advance | clean_enum | expected_steps |
 |------|-------------|--------------------|---------|------------|----------------|
-| `architect-loop` (§3.1.5, §4.2) | `architect-loop` (사용자 명시) | ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator / module-architect × K | `UX_FLOW_READY` → `PASS` → `PASS` → `PASS × K` | advance 동일 | 3 + K (K = system-architect impl 목차 행 수) |
-| `impl-task-loop` (§2.1, §4.3) | `impl` | (default) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 4 (default) / 5 (fallback) |
-| `impl-ui-design-loop` (§2.2, §4.4) | `impl` (UI 감지) | (default) designer / 사용자 PICK / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → 사용자 PICK → `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 6 (default) / 7 (fallback) |
-| `qa-triage` (§3.5, §4.5) | `qa` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
-| `ux-design-stage` (§3.2, §4.6) | `ux` | ux-architect:UX_FLOW / designer / 사용자 PICK | `UX_FLOW_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
-| `ux-refine-stage` (§3.3, §4.7) | `ux` (REFINE) | ux-architect:UX_REFINE / designer / 사용자 PICK | `UX_REFINE_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
-| `direct-impl-loop` (§3.4, §4.8) | `impl_driver` (future) | `impl-task-loop` 동일 | `impl-task-loop` 동일 | `impl-task-loop` 동일 | 5 |
+| `architect-loop` (§4.2) | `architect-loop` (사용자 명시) | ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator / module-architect × K | `UX_FLOW_READY` → `PASS` → `PASS` → `PASS × K` | advance 동일 | 3 + K (K = system-architect impl 목차 행 수) |
+| `impl-task-loop` (§4.3) | `impl` | (default) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 4 (default) / 5 (fallback) |
+| `impl-ui-design-loop` (§4.4) | `impl` (UI 감지) | (default) designer / 사용자 PICK / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → 사용자 PICK → `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 6 (default) / 7 (fallback) |
+| `qa-triage` (§4.5) | `qa` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
+| `ux-design-stage` (§4.6) | `ux` | ux-architect:UX_FLOW / designer / 사용자 PICK | `UX_FLOW_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
+| `ux-refine-stage` (§4.7) | `ux` (REFINE) | ux-architect:UX_REFINE / designer / 사용자 PICK | `UX_REFINE_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
 
 ### 4.2 `architect-loop` 풀스펙
 
@@ -390,59 +305,25 @@ FUNCTIONAL_BUG / CLEANUP 둘 다 `impl-task-loop` fallback path 진입 (impl 부
 
 **분기**: §4.6 동일.
 
-### 4.8 `direct-impl-loop` 풀스펙
-
-§4.3 (`impl-task-loop`) 와 100% 동일. 차이점:
-- entry_point = `impl_driver` CLI (현재 미구현, 후속 Task 예정)
-- 사용자 task 경로 직접 명시 (skill UI 없음)
-
-allowed_enums / 분기 / sub_cycles / branch_prefix decision rule = §4.3 인용.
-
-### 4.9 다중 task chain (`impl-loop`)
+### 4.8 다중 task chain (`impl-loop`)
 
 `/impl-loop` = `impl-task-loop` × N. outer task `impl-<i>: <task>` + inner sub-task `b<i>.<agent>` (DCN-CHG-30-12). default = 4 sub-task (test-engineer / engineer / code-validator / pr-reviewer), fallback = 5 (module-architect 선두 추가). 각 task clean → 자동 7a + 다음 task. caveat → 멈춤 + 사용자 위임 (Step 2.5 — `commands/impl-loop.md` 참조).
 
 ---
 
-## 5. Catastrophic vs 자율 영역
+## 5. 강제 vs 자율 vs 권고
 
-> proposal §2.5 원칙 4: **"impl_loop 시퀀스 (code-validator → engineer → pr-reviewer) = 보존, 시퀀스 *내부* 행동 = agent 자율"**
+- **강제 (코드)**: §2.1 catastrophic 시퀀스 + handoff-matrix §4 권한 매트릭스 (ALLOW / READ_DENY / DCNESS_INFRA_PATTERNS). escalate 결론은 자동 복구 금지.
+- **자율 (agent)**: prose 형식 / handoff 페이로드 구조 / preamble / agent 가 사용하는 도구 순서 (단 §4 권한 안).
+- **권고 (강제 X)**: handoff-matrix §1 라우팅 / §2 retry 한도 — 측정 + 사용자 개입.
 
-### 5.1 보존 (catastrophic — 코드 강제)
-
-- §2.3 catastrophic 시퀀스 5 항목 (code-validator / architecture-validator / pr-reviewer 우회 금지 등)
-- handoff-matrix §4.1 ALLOW_MATRIX (Write 경계)
-- handoff-matrix §4.2 READ_DENY_MATRIX (Read 격리)
-- handoff-matrix §4.3 DCNESS_INFRA_PATTERNS (인프라 보호)
-- handoff-matrix §3 escalate 결론은 자동 복구 금지
-
-### 5.2 자율 (agent 결정)
-
-- prose 출력 형식 (markdown / 평문 / 표 자유)
-- handoff 페이로드 형식 (prose 디렉토리 path 만 강제, 본문 구조 자유)
-- preamble 구조 / agent prompt 안 thinking 분량
-- agent 가 어떤 도구를 어떤 순서로 호출할지 (단 handoff-matrix §4 권한 매트릭스 안에서)
-- mode 별 결론 enum 외 추가 emit (예: code-validator 가 PASS 외 보강 설명)
-
-### 5.3 권고 (강제 X, 측정 + 사용자 개입)
-
-- handoff-matrix §1 결정표의 "다음 trigger" — driver 자동 호출 시 따름. 메인 직접 작업 모드는 *권고*.
-- handoff-matrix §2 retry 한도 — 카운터 측정. 한도 도달 시 escalate, 사용자 결정.
-- 휴리스틱 hit rate 90%+ 목표 (`scripts/analyze_metrics.mjs` fitness)
+자세히 = [`dcness-rules.md`](dcness-rules.md) §1.
 
 ---
 
-## 6. 코드 Driver — 메인-주도 컨베이어 + PreToolUse 훅
+## 6. 코드 Driver
 
-> **메인 클로드 = 시퀀스 결정자. 컨베이어 (Python) = 멍청한 순회기. catastrophic backbone = PreToolUse 훅 강제.**
-
-- 메인이 handoff-matrix §1 결정표 보고 `list[Step]` 짜서 컨베이어 호출
-- 컨베이어 = 시퀀스 순회 + Agent 호출 + `signal_io.interpret_signal` 로 enum 추출 + `Step.advance_when` 비교
-- enum ∈ advance_when 이면 다음 step. 아니면 `ConveyorPause` 반환 (예외 아님) — 메인이 받아 자율 처리
-- §2.3 catastrophic 시퀀스 = `hooks/catastrophic-gate.sh` (PreToolUse Agent) 가 코드 hardcode 0 으로 강제
-- 형식 강제 LLM 출력 (JSON 등) **사용 안 함** — proposal §2.5 (prose-only) 정합
-
-상세 디자인 + 폐기된 옵션 카탈로그 (3 옵션 — RWHarness fork / 정적 dict / Orchestration Agent) = [`../archive/conveyor-design.md`](../archive/conveyor-design.md).
+§2.1 catastrophic = `hooks/catastrophic-gate.sh` (PreToolUse Agent) 강제. 메인 Claude = 시퀀스 결정자. 상세 = [`../archive/conveyor-design.md`](../archive/conveyor-design.md).
 
 ---
 

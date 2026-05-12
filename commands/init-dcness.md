@@ -588,7 +588,7 @@ EOF
 
 다음 세션부터 발화하는 것:
 - SessionStart 훅 — by-pid / live.json 자동 생성
-- PreToolUse Agent 훅 — catastrophic 룰 (orchestration.md §2.3) 검사
+- PreToolUse Agent 훅 — catastrophic 룰 (orchestration.md §2.1) 검사
 
 git-naming 강제 (Step 2.6 완료 시):
 - 로컬: .git/hooks/commit-msg (thin shim) — 커밋 제목 형식 위반 차단. 본체 로직 plugin SSOT 안.
