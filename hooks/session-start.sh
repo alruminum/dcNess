@@ -23,11 +23,52 @@ CC_PID=$PPID
 # Python 으로 stdin 처리 + 핸들러 호출 (silent — stdout 안 씀)
 python3 -m harness.hooks session-start --cc-pid "$CC_PID"
 
+# === plug-in update 알림 (1회 / 일 캐싱, #376) ===
+# 외부 활성 프로젝트가 옛 dcness plug-in 버전 잔재로 운영 룰 drift 되는 문제 회피.
+# main branch 의 plugin.json version 과 비교 → 다르면 알림 박음.
+# gh CLI 부재 / API 실패 시 silent skip.
+DCNESS_UPDATE_MSG=""
+INSTALLED_VERSION=$(jq -r .version "${CLAUDE_PLUGIN_ROOT:-.}/.claude-plugin/plugin.json" 2>/dev/null || echo "")
+if [[ -n "$INSTALLED_VERSION" && "$INSTALLED_VERSION" != "null" ]]; then
+  CACHE_DIR="${HOME}/.claude/plugins/data/dcness-dcness"
+  CACHE_FILE="${CACHE_DIR}/last-update-check.txt"
+  CHECK_INTERVAL=86400  # 24h
+  NOW=$(date +%s 2>/dev/null || echo 0)
+  LAST_CHECK=0
+  LATEST_VERSION=""
+
+  if [[ -f "$CACHE_FILE" ]]; then
+    LAST_CHECK=$(awk '{print $1}' "$CACHE_FILE" 2>/dev/null || echo 0)
+    LATEST_VERSION=$(awk '{print $2}' "$CACHE_FILE" 2>/dev/null || echo "")
+  fi
+
+  # 캐시 stale (24h+) — gh api 로 main 의 plugin.json fetch
+  if (( NOW > 0 && NOW - LAST_CHECK > CHECK_INTERVAL )); then
+    FETCHED=$(gh api repos/alruminum/dcNess/contents/.claude-plugin/plugin.json --jq '.content' 2>/dev/null \
+              | base64 -d 2>/dev/null \
+              | jq -r '.version' 2>/dev/null \
+              || echo "")
+    if [[ -n "$FETCHED" && "$FETCHED" != "null" ]]; then
+      mkdir -p "$CACHE_DIR" 2>/dev/null
+      echo "$NOW $FETCHED" > "$CACHE_FILE" 2>/dev/null
+      LATEST_VERSION="$FETCHED"
+    fi
+  fi
+
+  # 버전 다르면 알림
+  if [[ -n "$LATEST_VERSION" && "$INSTALLED_VERSION" != "$LATEST_VERSION" ]]; then
+    DCNESS_UPDATE_MSG="[dcness update available: ${INSTALLED_VERSION} → ${LATEST_VERSION}. \`claude plugin update\` 권장 — 옛 운영 룰 잔재 회피]"
+  fi
+fi
+export DCNESS_UPDATE_MSG
+
 # 슬림 inject — dcness-rules.md 폐기 (PR-3). 매 세션 system-reminder 로 본문 자동 노출.
 # 외부 plug-in 사용자가 매 세션 강제 영역 + 메인 Claude 필수 + 진입 매트릭스 인지.
 python3 -c "
-import json
-msg = '''## [dcness 활성 환경]
+import json, os
+update_msg = os.environ.get('DCNESS_UPDATE_MSG', '').strip()
+header = (update_msg + '\n\n---\n\n') if update_msg else ''
+msg = header + '''## [dcness 활성 환경]
 
 첫 응답 첫 줄에 토큰 \`[dcness 활성 확인]\` 출력 의무 (사용자 즉시 룰 위반 확인 가능).
 
