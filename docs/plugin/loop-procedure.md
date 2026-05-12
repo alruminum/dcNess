@@ -53,7 +53,7 @@ RUN_ID=$("$HELPER" begin-run <entry_point> [--issue-num N])
 echo "[<entry>] run started: $RUN_ID"
 ```
 
-`<entry_point>` = §7 매트릭스 행의 `entry_point` 컬럼 (예: `impl`, `impl-loop`, `qa`, `product-plan`). begin-run 동작: sid auto-detect + run_id 발급 + `live.json.active_runs` 슬롯 + `.by-pid-current-run/{cc_pid}` 박음.
+`<entry_point>` = §7 매트릭스 행의 `entry_point` 컬럼 (예: `impl`, `impl-loop`, `issue-report`, `product-plan`). begin-run 동작: sid auto-detect + run_id 발급 + `live.json.active_runs` 슬롯 + `.by-pid-current-run/{cc_pid}` 박음.
 
 ---
 

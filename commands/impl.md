@@ -1,6 +1,6 @@
 ---
 name: impl
-description: impl task (architect-loop §4.2 Step 4 module-architect × K 산출물) 1개를 받아 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = module-architect 선두 추가) 자동 진행하는 스킬. 사용자가 "구현해줘", "/impl <task>", "이 task 구현", "impl 루프", "버그픽스", "한 줄 수정" 등을 말할 때 반드시 이 스킬을 사용한다. /architect-loop 의 후속 — architect-loop 가 `impl/NN-*.md` 본문 detail 까지 채운 산출물의 task list 1개씩 처리. 버그픽스 케이스 = /qa 분류 후 본 스킬 fallback path (module-architect 선두 추가) 진입.
+description: impl task (architect-loop §4.2 Step 4 module-architect × K 산출물) 1개를 받아 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = module-architect 선두 추가) 자동 진행하는 스킬. 사용자가 "구현해줘", "/impl <task>", "이 task 구현", "impl 루프", "버그픽스", "한 줄 수정" 등을 말할 때 반드시 이 스킬을 사용한다. /architect-loop 의 후속 — architect-loop 가 `impl/NN-*.md` 본문 detail 까지 채운 산출물의 task list 1개씩 처리. 버그픽스 케이스 = /issue-report 분류 후 본 스킬 fallback path (module-architect 선두 추가) 진입.
 ---
 
 # Impl Skill
@@ -17,7 +17,7 @@ UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (orchestration §4.4)
 ## 비대상 (다른 skill 추천)
 - spec / design 단계 → `/product-plan` (PRD) 또는 `/architect-loop` (설계)
 - 다중 task 자동 chain → `/impl-loop`
-- task 부재 (계획 X) → `/qa` (분류 후 impl-task-loop fallback) 또는 `/product-plan`
+- task 부재 (계획 X) → `/issue-report` (분류 후 impl-task-loop fallback) 또는 `/product-plan`
 
 ## 진입 모드 — default vs fallback (위치 도장)
 - task 경로 매치 + 정식 위치 (`docs/milestones/v\d+/epics/epic-\d+-*/impl/\d+-*.md`) 파일 존재 → **default**: test-engineer 직진 (module-architect skip).

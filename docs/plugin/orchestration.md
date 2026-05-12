@@ -136,7 +136,7 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 | `architect-loop` (§4.2) | `architect-loop` (사용자 명시) | ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator / module-architect × K | `UX_FLOW_READY` → `PASS` → `PASS` → `PASS × K` | advance 동일 | 3 + K (K = system-architect impl 목차 행 수) |
 | `impl-task-loop` (§4.3) | `impl` | (default) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 4 (default) / 5 (fallback) |
 | `impl-ui-design-loop` (§4.4) | `impl` (UI 감지) | (default) designer / 사용자 PICK / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → 사용자 PICK → `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 6 (default) / 7 (fallback) |
-| `qa-triage` (§4.5) | `qa` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
+| `qa-triage` (§4.5) | `issue-report` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
 | `ux-design-stage` (§4.6) | `ux` | ux-architect:UX_FLOW / designer / 사용자 PICK | `UX_FLOW_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
 | `ux-refine-stage` (§4.7) | `ux` (REFINE) | ux-architect:UX_REFINE / designer / 사용자 PICK | `UX_REFINE_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
 
