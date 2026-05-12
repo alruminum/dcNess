@@ -95,9 +95,9 @@ task-level 세부 진행 추적 X (PR + GitHub Issue close 시스템 SSOT — [`
 
 ## 작성 절차 (메인 직접)
 
-### Step 0 — 사전 read
+### Step 0 — 사전 read (lazy — 필요시만, #400)
 
-`docs/plugin/loop-procedure.md` + `docs/plugin/orchestration.md` §2~§3 + §4.2 + `docs/plugin/handoff-matrix.md` + `docs/plugin/issue-lifecycle.md` read.
+정상 흐름은 본 skill 본문 + 인용된 docs §번호 만으로 진행. *룰 모호 / 분기 발생* 시에만 `docs/plugin/loop-procedure.md` / `orchestration.md` §2~§3 + §4.2 / `handoff-matrix.md` / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read baseline 감축.
 
 ### Step 1 — 사용자와 그릴 대화
 
