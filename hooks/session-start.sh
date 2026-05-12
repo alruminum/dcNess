@@ -70,34 +70,35 @@ update_msg = os.environ.get('DCNESS_UPDATE_MSG', '').strip()
 header = (update_msg + '\n\n---\n\n') if update_msg else ''
 msg = header + '''## [dcness 활성 환경]
 
-첫 응답 첫 줄에 토큰 \`[dcness 활성 확인]\` 출력 의무 (사용자 즉시 룰 위반 확인 가능).
+첫 응답 첫 줄에 토큰 \`[dcness 활성 확인]\` 출력 의무.
 
-### 강제 영역 (코드 hook 차단)
-- **작업 순서**: agent 시퀀스 + retry 정책 — catastrophic 3 룰 = \`docs/plugin/orchestration.md\` §2.1
-- **접근 영역**: file 경계 (ALLOW/READ_DENY) + 인프라 차단 (DCNESS_INFRA_PATTERNS) = \`docs/plugin/handoff-matrix.md\` §4
-- 그 외 = agent 자율 (출력 형식 / handoff / preamble / marker 강제 X)
+### 강제 (코드 hook 차단)
+- **시퀀스**: catastrophic 3 룰 = \`docs/plugin/orchestration.md\` §2.1
+- **접근 영역**: file 경계 + 인프라 차단 = \`docs/plugin/handoff-matrix.md\` §4
+- 그 외 = agent 자율 (형식 / handoff / marker 강제 X)
 
-### 메인 Claude 필수 (dcness 특화)
-- **채널별 형식 분기**: 사용자 chat = 평문 백틱 \`경로\` / 본문(docs / agents / commands / 이슈) = 마크다운 링크. 혼용 시 cmd-click 깨짐
-- **행동지침 md 300줄 cap** (orchestration.md 만 500줄 예외) — 대상: \`agents/**\` / \`commands/*.md\` / \`docs/plugin/*.md\`
-- **Step 7 회고 → 메모리 candidate emit 의무**: caveat 또는 review report 의 waste finding 발견 시 *메모리 candidate* 양식 emit (없으면 \"없음\" 1줄). prose 본문만 적고 끝내면 다음 세션 회귀.
+### 메인 Claude 필수
+- **채널 형식**: chat = 백틱 \`경로\` / 본문 = 마크다운 링크
+- **md 300줄 cap** (orchestration.md 만 500): \`agents/**\` / \`commands/*.md\` / \`docs/plugin/*.md\`
+- **Step 7 회고 → 메모리 candidate emit** 의무 (없으면 \"없음\" 1줄)
+- **cost-aware 행동** (#402): 큰 plan/docs 통째 read 회피 → grep + offset/limit. Bash output 길면 \`| head\` 잘라내기. sub-agent 위임 우선 (메인 직접 도구 ↓ → 메인 cache_read 누적 ↓)
 
-### 안티패턴 (피하기)
-- 룰이 룰을 부르는 reactive cycle — 신규 룰 추가 전 기존 룰 제거 가능성 먼저 검토
-- 강제 vs 권고 혼동 — catastrophic 만 block, 그 외 = 측정 + 경고 + 사용자 개입
-- 에이전트 자율성 침해 — agent prompt 안 강제 형식 박기 금지
+### 안티패턴
+- reactive cycle (신규 룰 전 기존 룰 검토)
+- 강제 vs 권고 혼동 (catastrophic 만 block)
+- agent 자율성 침해 (agent prompt 강제 형식 X)
 
-### 작업 진입 매트릭스 (lazy read)
-| 상황 | 읽어야 할 문서 |
+### 작업 진입 매트릭스 (lazy — 통째 read 폐기, #400)
+| 상황 | docs |
 |---|---|
-| 루프 진입 / 시퀀스 / catastrophic 룰 | \`docs/plugin/orchestration.md\` §2 + §4 |
-| Step 0~8 mechanics / echo 5~12줄 / REDO 분류 | \`docs/plugin/loop-procedure.md\` |
-| agent 결론 → 다음 agent / retry / 권한 | \`docs/plugin/handoff-matrix.md\` |
-| hook 시점 / 차단 동작 | \`docs/plugin/hooks.md\` |
-| 이슈 lifecycle / PR 트레일러 | \`docs/plugin/issue-lifecycle.md\` |
-| 브랜치/커밋/PR 네이밍 | \`docs/plugin/git-naming-spec.md\` |
+| 시퀀스 / catastrophic | \`orchestration.md\` §2 + §4 |
+| Step 0~8 / echo / REDO | \`loop-procedure.md\` |
+| agent 결론 → 다음 | \`handoff-matrix.md\` |
+| hook 시점 / 차단 | \`hooks.md\` |
+| 이슈 lifecycle / PR | \`issue-lifecycle.md\` |
+| 브랜치/커밋 네이밍 | \`git-naming-spec.md\` |
 
-skill 트리거 시 해당 skill 파일의 ## 사전 read 섹션이 정확한 경로 안내.
+skill 트리거 시 해당 skill 의 ## 사전 read 가 정확 경로 안내.
 '''
 print(json.dumps({
     'hookSpecificOutput': {
