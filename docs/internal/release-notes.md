@@ -4,6 +4,47 @@
 
 ---
 
+## v0.2.23 (2026-05-14)
+
+**커밋 범위**: `v0.2.22..v0.2.23`
+**핵심 변경**: 헤드리스 자식 실시간 가시화 + conveyor + inner 4-step 안전망 (#430 + #432)
+
+### 1. 헤드리스 자식 stdout 실시간 line stream (#422 follow-up → PR #430)
+
+`scripts/impl_loop_headless.py:spawn_child()`:
+- `subprocess.run(capture_output=True)` → `subprocess.Popen + threading drain` 으로 교체 (line-buffered stream)
+- 자식 line 마다 `[child] <line>` / `[child:err] <line>` 접두 박아 stream_to (default sys.stderr) 로 즉시 echo
+
+`commands/impl-loop.md` / `commands/impl.md` 절차 — Bash tool `run_in_background=true` + Monitor stream MUST 명시.
+
+배경: 메인 세션 헤드리스 진행 시 외부 progress (`11m 42s · ↓ 8.8k tokens`) 만 보이고 자식 sub-agent 흐름 안 보임 → 자식 line stream + Monitor 로 인터랙티브 `/impl` 과 동일 가시화.
+
+### 2. 헤드리스 자식 conveyor + inner 4-step 안전망 (#431 → PR #432)
+
+`scripts/impl_loop_headless.py:build_invocation`:
+- `--append-system-prompt` 에 의무 4 항목 inject (commands/impl.md 본문보다 우선):
+  1. 진입 즉시 begin-run 호출
+  2. inner 4-step 모두 호출 (test-engineer → engineer → code-validator → pr-reviewer)
+  3. PR merge 직후 end-run 호출
+  4. 종료 prose enum (PASS/FAIL/ESCALATE)
+
+`scripts/impl_loop_headless.py:process_task`:
+- 자식 stdout 에 `code-validator` / `pr-reviewer` 흔적 부재 시 → blocked 강등 (parent text fragility 검사)
+
+`commands/impl.md` §Inner loop 4-step 모두 호출 (MUST) 섹션 신규.
+
+배경: jajang epic 19 task 06 자식이 test-engineer + engineer 만 호출하고 commit/push/PR 안 만들고 PASS 박고 종료 → headless parent false-clean 판정 → 메인 수동 수습. 자식 cost \$15~20/1회 실측인데 dcness-review 에 \$0 표시 = 측정 거버넌스 catastrophic 결함.
+
+결함 1 (`dcness-review --latest` 가 자식 run 못 찾음) 은 결함 2 (자식 begin-run 미호출 → `.steps.jsonl` 부재) fix 로 자동 해소.
+
+### 사용자 업데이트 가이드
+
+```sh
+claude plugin update dcness@dcness
+```
+
+---
+
 ## v0.2.22 (2026-05-14)
 
 **커밋 범위**: `v0.2.21..v0.2.22`
