@@ -999,17 +999,18 @@ def _build_tool_histogram_table(report: RunReport) -> list[str]:
     lines.append("|---|---|---|---|---|---|---|---|---|---|")
 
     for i, s in enumerate(report.steps):
-        # 현 step 종료 ts ~ 다음 step 시작 ts 사이의 pre entry 카운트
-        start_ts = s.ts
-        end_ts = report.steps[i + 1].ts if i + 1 < len(report.steps) else None
+        # #415 — step.ts = end-step 시각. sub-agent 도구 호출 ts < step.ts.
+        # 윈도우 = 이전 step end ~ 현재 step end (i=0 은 빈 string = 모두 포함).
+        start_ts = report.steps[i - 1].ts if i > 0 else ""
+        end_ts = s.ts
 
         from collections import Counter
         hist: Counter = Counter()
         for e in pre_entries:
             e_ts = e.get("ts", "")
-            if e_ts < start_ts:
+            if start_ts and e_ts <= start_ts:
                 continue
-            if end_ts and e_ts >= end_ts:
+            if e_ts > end_ts:
                 continue
             tool = e.get("tool", "?")
             hist[tool] += 1
