@@ -46,9 +46,10 @@ PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dc
 python3 "$PLUGIN_ROOT/scripts/impl_loop_headless.py" '<task-path>'
 ```
 
-스크립트가 1 task glob 도 처리 — task 1개도 자식 세션 cold start 로 처리하고 결과만 메인에 회수. 메인은 결과 회수 + 사용자 보고만. 자세히 = [`commands/impl-loop.md`](impl-loop.md) §절차.
+- Bash tool `run_in_background=true` + Monitor stream 권장 — 메인 세션 UI 에 자식 진행 (`[child] ...` 접두) line-by-line notification. foreground 호출 시 자식 종료까지 외부 progress 만 보이고 자식 prose 안 보임 (회귀)
+- 스크립트가 1 task glob 도 처리 — task 1개도 자식 세션 cold start 로 처리하고 결과만 메인에 회수. 메인은 결과 회수 + 사용자 보고만. 자세히 = [`commands/impl-loop.md`](impl-loop.md) §절차
 
-trade-off: 매 task 30~120s cold start latency 추가. 컨텍스트 누적 보호 + 사후 분석 자연 분리 가치와 trade-off.
+trade-off: 매 task 30~120s cold start latency 추가. 컨텍스트 누적 보호 + 사후 분석 자연 분리 + 실시간 가시화 가치와 trade-off.
 
 ## Pre-flight gate (Step 0 직후)
 [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §6 매치 강제 — 부모 epic stories.md 상단 `**GitHub Epic Issue:** [#\d+]` 또는 `미등록 (사유: …)` 매치 0건 시 즉시 STOP + 사용자 보고. silent skip 금지.
