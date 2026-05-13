@@ -35,6 +35,8 @@ UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (orchestration §4.4)
 ## 워크트리 (기본 켜짐)
 Step 0 진입 시 자동 `EnterWorktree(name="impl-{ts_short}")`. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
 
+**Base ref 분기 (MUST, #424)**: `docs/stories.md` `**Base Branch:** feature/<slug>` 마커 매치 시 통합 브랜치 모드 — outer worktree base ref 도 integration branch 와 정합 필요. 절차 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.1.
+
 ## 헤드리스 실행 옵션 (단발 task, #422)
 
 사용자 발화에 정규식 `헤드리스|headless` 매치 시 메인 Claude 가 본 skill 본문 직접 진행 대신 **헤드리스 자식 세션** 으로 위임. 메인 컨텍스트 누적 회피 + 단발 task 도 `/run-review` 사후 분석 자연 분리.

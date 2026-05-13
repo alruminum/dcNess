@@ -30,7 +30,35 @@ EnterWorktree(name="<skill>-{ts_short}")   # impl 류만
 
 **거부 표현 시에만 건너뜀** — 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 (예: "워크트리 빼고", "워크트리 없이", "워크트리 말고") 시 EnterWorktree 호출 0, 일반 cwd 그대로 진행.
 
-수동 `git worktree add` 우회 금지 — CC permission 시스템이 EnterWorktree 만 자동 권한 처리. 수동 워크트리는 sub-agent Write 거부 회귀 (#255 W1).
+수동 `git worktree add` 우회 금지 — CC permission 시스템이 EnterWorktree 만 자동 권한 처리. 수동 워크트리는 sub-agent Write 거부 회귀 (#255 W1). **예외 = §1.1.1 base-ref 분기** (사전 `git worktree add` 후 `EnterWorktree(path=)` 진입 — CC 가 path= 도 권한 처리, #255 회귀 아님).
+
+### 1.1.1 base-ref 분기 (통합 브랜치 모드, #424)
+
+`docs/stories.md` 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = **통합 브랜치 모드** (long-lived integration branch + sub-PR 누적 패턴, `commands/product-plan.md` Step 6.5/7). 이 경우 outer worktree base ref 도 integration branch 와 정합해야 함 — `EnterWorktree(name=)` default 인 `worktree.baseRef=fresh` (origin/main 기반) 은 base mismatch → sub-PR diff 거대화 ("삭제 변경" false).
+
+EnterWorktree tool 은 base parameter 미지원 → 사전 `git worktree add` 후 `EnterWorktree(path=)` 진입 패턴:
+
+```bash
+# stories.md base branch 매치
+BASE_BRANCH=$(grep -m1 -E '^\*\*Base Branch:\*\*' docs/stories.md 2>/dev/null \
+  | sed -E 's/.*Base Branch:\*\*[[:space:]]+//')
+
+if [ -n "$BASE_BRANCH" ] && [ "$BASE_BRANCH" != "main" ]; then
+  # 통합 브랜치 모드 — outer worktree base = integration branch
+  git fetch origin "$BASE_BRANCH"
+  TS=$(date +%s | tail -c 6)
+  WORKTREE_PATH=".claude/worktrees/<skill>-${TS}"
+  git worktree add -b "<skill>-${TS}" "$WORKTREE_PATH" "origin/${BASE_BRANCH}"
+  # EnterWorktree(path="$WORKTREE_PATH")  — 기존 worktree 진입
+else
+  # default trunk-based — fresh = origin/main 기반
+  # EnterWorktree(name="<skill>-{ts_short}")
+fi
+```
+
+→ sub-PR diff = (worktree HEAD) vs (`feature/<slug>` HEAD) = 본 task 변경만 표시. 정상.
+
+자식 자체 sub-worktree 패턴 (자식이 `git worktree add` 호출해 sibling worktree 만드는) 도 옵션이나, outer 가 base 정합되면 main repo 안 직접 작업 위험 + 자식 cwd 분기 복잡도 회피.
 
 종료 시 squash 흡수 검사 후 자동:
 
