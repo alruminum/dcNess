@@ -24,6 +24,22 @@ UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (orchestration §4.4)
 - 매치 실패 / 파일 부재 → **fallback**: module-architect 1번 호출 후 test-engineer 진입.
 - 근거: architect-loop §4.2 의 Step 4 (module-architect × K) 가 정식 위치 impl 파일 본문 detail 까지 채움. 정식 경로 + 파일 존재 = 통과 보장 (위치 자체가 도장).
 
+## Inner loop 4-step 모두 호출 (MUST — false-clean 차단, #431)
+
+default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → pr-reviewer**. 4 단계 *모두 호출* 의무.
+
+❌ 안티패턴 (jajang epic 19 task 06 사단, #431 결함 3): test-engineer + engineer 만 호출하고 commit/push/PR 안 만들고 prose "PASS" 박고 종료. 자식 spawn 의 핵심 보장 (1 자식 = 1 PR + 1 이슈 close) 깨짐 + 메인이 수동 commit/push/PR 강요됨.
+
+✅ 정상 흐름:
+1. test-engineer (TESTS_WRITTEN) → 테스트 선작성
+2. engineer:IMPL (IMPL_DONE) → 구현 + 테스트 PASS
+3. **code-validator (PASS)** — impl 계획 ↔ 구현 정합 검증
+4. **pr-reviewer (LGTM)** — 코드 품질·보안 + commit/push/PR 생성·머지
+
+후반 2 단계 (3+4) skip 차단:
+- `scripts/impl_loop_headless.py:process_task` 가 자식 stdout text 에 `code-validator` / `pr-reviewer` 흔적 부재 시 → false-clean 의심 → blocked 강등 (#431)
+- 헤드리스 parent 가 메인에 `ESCALATE` 보고 → 사용자 개입
+
 ## 후속 라우팅
 - 본 loop clean → 자동 commit/PR (branch prefix = orchestration §4.3 decision rule: feat/chore/fix)
 - caveat → 사용자 결정 (수동 7b)

@@ -23,34 +23,63 @@ import impl_loop_headless as ilh  # noqa: E402
 
 
 class BuildInvocationTests(unittest.TestCase):
-    """build_invocation — 슬래시 직호출 + retry context 안전성."""
+    """build_invocation — 슬래시 직호출 + system prompt 의무 (#431)."""
 
-    def test_first_attempt_slash_only(self):
-        """첫 시도: prompt = `/dcness:impl <path>`, extra_args = 빈 리스트."""
-        extra_args, prompt = ilh.build_invocation("docs/impl/01-foo.md")
-        self.assertEqual(extra_args, [])
-        self.assertEqual(prompt, "/dcness:impl docs/impl/01-foo.md")
-
-    def test_retry_appends_system_prompt(self):
-        """retry: extra_args 에 --append-system-prompt + 이전 에러 inject."""
+    def test_first_attempt_slash_with_mandate(self):
+        """첫 시도: prompt = `/dcness:impl <path>`, extra_args 에 의무 system prompt."""
         extra_args, prompt = ilh.build_invocation(
             "docs/impl/01-foo.md",
+            issue_nums={"task": 272},
+        )
+        self.assertEqual(prompt, "/dcness:impl docs/impl/01-foo.md")
+        # system prompt 의무 박힘
+        self.assertEqual(extra_args[0], "--append-system-prompt")
+        mandate = extra_args[1]
+        # 의무 4 항목
+        self.assertIn("begin-run impl --issue-num 272", mandate)
+        self.assertIn("end-run", mandate)
+        self.assertIn("test-engineer", mandate)
+        self.assertIn("engineer", mandate)
+        self.assertIn("code-validator", mandate)
+        self.assertIn("pr-reviewer", mandate)
+        # enum 의무
+        self.assertIn("PASS:", mandate)
+        self.assertIn("FAIL:", mandate)
+        self.assertIn("ESCALATE:", mandate)
+
+    def test_no_issue_num_omits_arg(self):
+        """task 이슈 번호 부재 시 begin-run impl (no --issue-num)."""
+        extra_args, _ = ilh.build_invocation(
+            "docs/impl/01-foo.md",
+            issue_nums={"task": None},
+        )
+        mandate = extra_args[1]
+        self.assertIn("begin-run impl)", mandate)
+        self.assertNotIn("begin-run impl --issue-num", mandate)
+
+    def test_retry_prepends_prev_error(self):
+        """retry: 이전 에러가 의무 앞에 prepend."""
+        extra_args, _ = ilh.build_invocation(
+            "docs/impl/01-foo.md",
+            issue_nums={"task": 100},
             retry_attempt=1,
             prev_error="exit 1\npytest 실패",
         )
-        self.assertEqual(extra_args[0], "--append-system-prompt")
-        self.assertIn("이전 시도 실패 (attempt 1)", extra_args[1])
-        self.assertIn("pytest 실패", extra_args[1])
-        self.assertEqual(prompt, "/dcness:impl docs/impl/01-foo.md")
+        mandate = extra_args[1]
+        self.assertIn("이전 시도 실패 (attempt 1)", mandate)
+        self.assertIn("pytest 실패", mandate)
+        # 의무 본문 여전히 박힘
+        self.assertIn("begin-run impl", mandate)
 
-    def test_retry_attempt_zero_no_extra_args(self):
+    def test_retry_attempt_zero_no_prev_error_prepend(self):
         """attempt 0 + prev_error 있어도 retry 머리말 inject 안 함 (첫 시도)."""
         extra_args, _ = ilh.build_invocation(
             "docs/impl/01-foo.md",
+            issue_nums={},
             retry_attempt=0,
             prev_error="should be ignored",
         )
-        self.assertEqual(extra_args, [])
+        self.assertNotIn("이전 시도 실패", extra_args[1])
 
 
 class ParseResultTests(unittest.TestCase):
@@ -248,8 +277,16 @@ class SpawnChildStreamTests(unittest.TestCase):
 class FalseCleanDowngradeTests(unittest.TestCase):
     """process_task — #422 false-clean 강등 검증."""
 
+    # stdout fixture — inner 4-step 전부 완료 흔적 (enum 미포함). #431 검사 통과용.
+    _4STEP_ECHO = (
+        "[b1.test-engineer] echo TESTS_WRITTEN\n"
+        "[b2.engineer:IMPL] echo IMPL_DONE\n"
+        "[b3.code-validator] echo PASS\n"
+        "[b4.pr-reviewer] echo LGTM\n"
+    )
+
     def test_pass_prose_but_issue_open_downgrades_to_blocked(self):
-        """PASS prose + task 이슈 OPEN → clean 아닌 blocked 강등."""
+        """PASS prose + 4-step 전부 + task 이슈 OPEN → blocked 강등 (#422)."""
         with tempfile.TemporaryDirectory() as tmp:
             task_path = Path(tmp) / "01-foo.md"
             task_path.write_text(
@@ -258,7 +295,7 @@ class FalseCleanDowngradeTests(unittest.TestCase):
 
             with mock.patch.object(
                 ilh, "spawn_child",
-                return_value=(0, "...\nPASS: 머지 완료\n", ""),
+                return_value=(0, self._4STEP_ECHO + "PASS: 머지 완료\n", ""),
             ), mock.patch.object(
                 ilh, "confirm_issue_closed", return_value=False,
             ):
@@ -283,7 +320,7 @@ class FalseCleanDowngradeTests(unittest.TestCase):
 
             with mock.patch.object(
                 ilh, "spawn_child",
-                return_value=(0, "사용자에게 위임합니다 enum 없음\n", ""),
+                return_value=(0, self._4STEP_ECHO + "사용자 위임 enum 없음\n", ""),
             ), mock.patch.object(
                 ilh, "confirm_issue_closed", return_value=False,
             ):
@@ -298,7 +335,7 @@ class FalseCleanDowngradeTests(unittest.TestCase):
                 self.assertIn("#888", r["message"])
 
     def test_pass_with_closed_issue_stays_clean(self):
-        """PASS prose + task 이슈 CLOSED → 정상 clean (회귀 방지)."""
+        """PASS prose + 4-step + task 이슈 CLOSED → 정상 clean (회귀 방지)."""
         with tempfile.TemporaryDirectory() as tmp:
             task_path = Path(tmp) / "01-foo.md"
             task_path.write_text(
@@ -307,7 +344,7 @@ class FalseCleanDowngradeTests(unittest.TestCase):
 
             with mock.patch.object(
                 ilh, "spawn_child",
-                return_value=(0, "PASS: 정상 머지\n", ""),
+                return_value=(0, self._4STEP_ECHO + "PASS: 정상 머지\n", ""),
             ), mock.patch.object(
                 ilh, "confirm_issue_closed", return_value=True,
             ):
@@ -320,6 +357,63 @@ class FalseCleanDowngradeTests(unittest.TestCase):
                 )
                 self.assertEqual(r["enum"], "clean")
 
+    def test_inner_4step_partial_call_downgrades_to_blocked(self):
+        """#431: test-engineer + engineer 만 호출하고 PASS 박는 안티패턴 차단."""
+        with tempfile.TemporaryDirectory() as tmp:
+            task_path = Path(tmp) / "01-foo.md"
+            task_path.write_text(
+                "# 01-foo\n\n**GitHub Issue:** [#555]\n", encoding="utf-8",
+            )
+
+            # 4-step 중 test-engineer + engineer 만 호출 (#431 사단 재현)
+            partial_stdout = (
+                "[b1.test-engineer] echo TESTS_WRITTEN\n"
+                "[b2.engineer:IMPL] echo IMPL_DONE\n"
+                "PASS: 구현 완료\n"
+            )
+            with mock.patch.object(
+                ilh, "spawn_child", return_value=(0, partial_stdout, ""),
+            ):
+                r = ilh.process_task(
+                    str(task_path),
+                    cwd=tmp,
+                    retry_limit=0,
+                    escalate_signals={"blocked"},
+                    timeout=10,
+                )
+                self.assertEqual(r["enum"], "blocked")
+                self.assertIn("inner 4-step", r["message"])
+                self.assertIn("code-validator", r["message"])
+                self.assertIn("pr-reviewer", r["message"])
+                self.assertIn("#431", r["message"])
+
+    def test_inner_4step_only_validator_missing(self):
+        """#431: pr-reviewer 호출은 있는데 code-validator 만 누락 — 그래도 blocked."""
+        with tempfile.TemporaryDirectory() as tmp:
+            task_path = Path(tmp) / "01-foo.md"
+            task_path.write_text(
+                "# 01-foo\n\n**GitHub Issue:** [#556]\n", encoding="utf-8",
+            )
+
+            partial_stdout = (
+                "[b1.test-engineer] echo TESTS_WRITTEN\n"
+                "[b2.engineer:IMPL] echo IMPL_DONE\n"
+                "[b4.pr-reviewer] echo LGTM\n"  # code-validator skip
+                "PASS: 머지 완료\n"
+            )
+            with mock.patch.object(
+                ilh, "spawn_child", return_value=(0, partial_stdout, ""),
+            ):
+                r = ilh.process_task(
+                    str(task_path),
+                    cwd=tmp,
+                    retry_limit=0,
+                    escalate_signals={"blocked"},
+                    timeout=10,
+                )
+                self.assertEqual(r["enum"], "blocked")
+                self.assertIn("code-validator", r["message"])
+
     def test_no_issue_num_with_uncommitted_files_downgrades(self):
         """task 이슈 번호 부재 + cwd uncommitted files → blocked 강등."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -328,7 +422,7 @@ class FalseCleanDowngradeTests(unittest.TestCase):
 
             with mock.patch.object(
                 ilh, "spawn_child",
-                return_value=(0, "PASS: 완료\n", ""),
+                return_value=(0, self._4STEP_ECHO + "PASS: 완료\n", ""),
             ), mock.patch.object(
                 ilh.subprocess, "run",
                 return_value=mock.Mock(stdout=" M some_file.py\n"),
@@ -351,7 +445,7 @@ class FalseCleanDowngradeTests(unittest.TestCase):
 
             with mock.patch.object(
                 ilh, "spawn_child",
-                return_value=(0, "PASS: 완료\n", ""),
+                return_value=(0, self._4STEP_ECHO + "PASS: 완료\n", ""),
             ), mock.patch.object(
                 ilh.subprocess, "run",
                 return_value=mock.Mock(stdout=""),
