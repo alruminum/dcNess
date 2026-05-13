@@ -77,6 +77,27 @@ task 는 GitHub 이슈 X — §1.4 PR 트레일러로만 추적.
 >
 > 예외 — issue 없는 infra-only / follow-up split PR 등은 PR body 에 `Document-Exception-PR-Close: <사유>` line 박으면 게이트 우회.
 
+#### 통합 브랜치 케이스 — base ≠ main sub-PR 의 auto-close 한계 (MUST)
+
+stories.md 상단에 `**Base Branch:** feature/<slug>` 마커 박힌 epic (= 통합 브랜치 모드, `commands/product-plan.md` Step 6.5/7) 의 sub-PR 은 *base = `feature/<slug>`* 로 머지된다. **GitHub auto-close 는 base = default branch (main) 인 PR 만 인식** — base ≠ main sub-PR 의 PR body `Closes #N` 은 머지 시 발동 X.
+
+흐름:
+
+1. **각 sub-PR (base = `feature/<slug>`)** — PR body 에 평소대로 `Part of #<story>` / `Closes #<story>` 박되 머지 시 *발동 안 됨* 전제. `Document-Exception-PR-Close: 통합 브랜치 sub-PR — main 머지 시 일괄 close` 박아 `check_pr_body.mjs` 게이트 우회 가능 (자유 선택).
+2. **마지막 통합 → main 머지 PR (base = main)** — PR body 에 **모든 story + epic 을 일괄 close**:
+   ```
+   Closes #<story1>
+   Closes #<story2>
+   ...
+   Closes #<storyN>
+   Closes #<epic>
+   ```
+   main 머지 시 GitHub 가 일괄 처리. *bulk close = epic atomic transaction 의도와 정합* — main 입장에선 epic 전체가 한 시점에 들어옴.
+
+근거: GitHub 의 [linking-a-pull-request-to-an-issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue) 문서 — *"The pull request must be on the default branch."* 통합 브랜치 base sub-PR 은 미충족.
+
+> 별도 자동화 (sub-issue API 기반 base 무관 close 정책) 는 *추후* 자매 이슈에서 다룸. 본 단락은 *최소 명문화* — 통합 브랜치 모드 진입 사용자가 *마지막 머지 PR 에 bulk close* 박는 패턴만 인지하면 충분.
+
 #### 적용 절차 — PR 생성 직전 사전 체크 (impl 파일 frontmatter 기반)
 
 판정 입력 = **impl 파일 frontmatter `task_index: <i>/<total>` + `story: <N>`**. module-architect × K 시점 (architect-loop §4.2 Step 4) 에 박힘. stories.md `[ ]` 카운트 룰 폐기 (2026-05-12) — 새 stories.md 양식엔 task `[ ]` 자체 없음 (user story 만, [`commands/product-plan.md`](../../commands/product-plan.md) §stories.md 산출물).
