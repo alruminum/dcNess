@@ -35,7 +35,7 @@ git log --oneline --grep "$TASK_SLUG" | head -5
 tail -50 "<task-path>"
 ```
 
-이미 머지됨 발견 시 → 해당 task skip + 다음 task 진입. 부분 진행 + tail section 후속 결정 → 자식 세션 [A] 명령문에 inject + 정상 진입.
+이미 머지됨 발견 시 → 해당 task skip + 다음 task 진입. 부분 진행 + tail section 후속 결정 → 자식 세션이 `/dcness:impl <path>` 슬래시 직호출 받으면 `commands/impl.md` §진입 직전 task 진행 상태 1회 확인 룰 따라 자체 inject + 정상 진입.
 
 ## 절차 — 헤드리스 spawn
 
@@ -53,12 +53,14 @@ python3 "$PLUGIN_ROOT/scripts/impl_loop_headless.py" '<impl-glob>' \
    - cwd `CLAUDE.md` auto-load (system-reminder `claudeMd` 섹션)
    - plug-in `SessionStart` hook 자동 inject (dcness 운영 룰 + `[dcness 활성 확인]` 토큰)
    - dcness skill 10개 자동 등록 (자식이 `/impl` 본문 의무 따름)
-4. **명령문 첫머리 inline** ([A]~[E] 5 묶음):
-   - [A] 이번 task impl 본문 전문
-   - [B] 부모 epic / story / task GitHub 이슈 번호 + `gh issue view` read 명령
-   - [C] `docs/architecture.md` + `docs/adr.md` 다시 read 강조
-   - [D] 종료 신호 규칙 (`PASS:` / `FAIL:` / `ESCALATE:`)
-   - [E] 본 task 명령
+4. **자식 prompt = 슬래시 직호출** (#422 follow-up — chain 깊이 0):
+   - 자식이 받는 user message = `/dcness:impl <task-path>` 1줄
+   - CC 가 슬래시 파싱 → `commands/impl.md` 본문이 자식 system-reminder 에 자동 inject
+   - 사전 read 의무 (architecture.md / adr.md / prd.md / 의존 task PR / 형제 story PR) /
+     conveyor cycle (begin-run / begin-step / end-step / end-run) / enum 규칙
+     모두 자식 instruction 으로 1st-class 도달
+   - retry 시 `--append-system-prompt` 로 이전 에러 컨텍스트만 추가
+   - 옛 [A]~[E] 5 묶음 자연어 본문 폐기 — 중복 + chain 3 단계 누락 위험
 5. **결과 회수 3 layer**:
    - 1차 stdout 마지막 prose enum (PASS / FAIL / ESCALATE)
    - 2차 자식 종료 코드 (0 = clean / !=0 = error)
@@ -92,7 +94,7 @@ python3 "$PLUGIN_ROOT/scripts/impl_loop_headless.py" '<impl-glob>' \
 - 매치 → `gh pr create --base <매치 값>` (통합 브랜치 케이스)
 - 매치 없음 → `gh pr create --base main` (default, trunk-based)
 
-명령문 [A] 묶음 (이번 task impl 본문 전문) 에 자식 세션이 [`commands/impl.md`](impl.md) §"PR 생성 직전 — base 분기 체크" 본문을 따르도록 안내. 메인 outer 단계는 base 분기 결정 X — 자식 세션의 자율 영역.
+슬래시 직호출 시 자식이 [`commands/impl.md`](impl.md) §"PR 생성 직전 — base 분기 체크" 본문을 자동 instruction 으로 받음. 메인 outer 단계는 base 분기 결정 X — 자식 세션의 자율 영역.
 
 ## 후속 라우팅
 - 각 task clean → 다음 task 자동 진입

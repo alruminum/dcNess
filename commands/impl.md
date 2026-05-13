@@ -35,6 +35,19 @@ UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (orchestration §4.4)
 ## 워크트리 (기본 켜짐)
 Step 0 진입 시 자동 `EnterWorktree(name="impl-{ts_short}")`. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
 
+## 헤드리스 실행 옵션 (단발 task, #422)
+
+사용자 발화에 정규식 `헤드리스|headless` 매치 시 메인 Claude 가 본 skill 본문 직접 진행 대신 **헤드리스 자식 세션** 으로 위임. 메인 컨텍스트 누적 회피 + 단발 task 도 `/run-review` 사후 분석 자연 분리.
+
+```bash
+PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)"
+python3 "$PLUGIN_ROOT/scripts/impl_loop_headless.py" '<task-path>'
+```
+
+스크립트가 1 task glob 도 처리 — task 1개도 자식 세션 cold start 로 처리하고 결과만 메인에 회수. 메인은 결과 회수 + 사용자 보고만. 자세히 = [`commands/impl-loop.md`](impl-loop.md) §절차.
+
+trade-off: 매 task 30~120s cold start latency 추가. 컨텍스트 누적 보호 + 사후 분석 자연 분리 가치와 trade-off.
+
 ## Pre-flight gate (Step 0 직후)
 [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §6 매치 강제 — 부모 epic stories.md 상단 `**GitHub Epic Issue:** [#\d+]` 또는 `미등록 (사유: …)` 매치 0건 시 즉시 STOP + 사용자 보고. silent skip 금지.
 
@@ -60,6 +73,7 @@ gh issue view <task-num> | head -80
 2. `docs/adr.md` — 핵심 설계 결정 (부재 시 silent skip)
 3. `docs/prd.md` — 비즈니스 요구사항
 4. (의존 task 있을 시) 이전 step 머지 PR — impl 파일의 *의존 task slug* 따라 `gh pr list --search "<slug>" --state merged --json url --jq '.[0].url'` 호출 후 read
+5. (같은 epic 내) 이전 머지된 형제 story / task PR 환기 — `gh pr list --search "[epic<N>]" --state merged --limit 10 --json title,url` 로 본 task 보다 앞선 머지 항목 본문 1회 훑음. 형제 PR 의 *후속 결정 사항* (옵션 채택 / 인터페이스 변경 / 시드 데이터 등) 이 본 task 영향 미칠 수 있음. 부재 / 첫 task 시 silent skip.
 
 → agent prompt 에 impl 파일 경로 박으면 agent 가 자체 read. *메인 Claude 가 사전 inject* 불필요 (impl 파일 안 진입 prompt 가 강제).
 
