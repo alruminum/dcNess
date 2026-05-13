@@ -140,13 +140,38 @@ def build_command(task_path: str, issue_nums: dict,
         "마지막 줄: `ESCALATE: <이유>`\n"
     )
 
-    # [E] 본 task 명령
+    # [E] 본 task 명령 — 명시 conveyor cycle + enum 의무 강화 (#422)
+    task_num = issue_nums.get("task")
+    issue_arg = f" --issue-num {task_num}" if task_num else ""
+    helper_resolve = (
+        'HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} '
+        '2>/dev/null | sort -V | tail -1)/scripts/dcness-helper"'
+    )
     parts.append(
         "## [E] 작업 시작\n\n"
         "위 [A]~[D] 룰 따라 본 task 구현 시작. "
         "dcness skill `/impl` 본문 의무 (sub-agent 호출 시퀀스 / 워크트리 / Pre-flight gate / "
         "impl 파일 사전 read) 도 함께 따름. 현행 dcness 룰은 cwd CLAUDE.md + plug-in "
-        "SessionStart hook 자동 inject 된 system-reminder 참조.\n"
+        "SessionStart hook 자동 inject 된 system-reminder 참조.\n\n"
+        "### MUST — conveyor cycle 명시 호출 (silent-fail 회피, #422)\n\n"
+        "헤드리스 자식 세션이 `/impl` chain 을 자율 따라가다 begin-run / begin-step / end-step / "
+        "end-run 호출을 빠뜨리면 `.steps.jsonl` 미작성 → 사후 분석 불가 + Stop hook 선행 조건 "
+        "(active_runs 슬롯 + end-step 매칭) 미충족 → noop → 외부 헤드리스 parent 가 "
+        "silent-fail 감지 불가. 따라서 다음 4 호출 **명시 의무**:\n\n"
+        "```bash\n"
+        f"{helper_resolve}\n"
+        f'RUN_ID=$("$HELPER" begin-run impl{issue_arg})\n'
+        "# 각 sub-agent 호출 직전:  \"$HELPER\" begin-step <agent> [<MODE>]\n"
+        "# 각 sub-agent 호출 직후:  \"$HELPER\" end-step <agent> [<MODE>]\n"
+        "# PR merge 직후:           \"$HELPER\" end-run\n"
+        "```\n\n"
+        "agent 인자 예시: `test-engineer` / `engineer IMPL` / `code-validator` / `pr-reviewer` "
+        "(기본 시퀀스 — `commands/impl.md` 참조).\n\n"
+        "### MUST — 종료 prose enum 박음 (false-clean 회피, #422)\n\n"
+        "위 [D] 룰 재강조 — enum 누락 + exit 0 = 헤드리스 parent 의 fallback 분기가 "
+        "**잘못 clean 판정** → 다음 task silent 진행 → 사용자 개입 시점 놓침. "
+        "사용자 위임 / 결정 불가 / 측정 환경 부재 시 반드시 마지막 줄 `ESCALATE: <위임 내용>` "
+        "박을 것.\n"
     )
 
     return "\n".join(parts)
@@ -239,14 +264,41 @@ def process_task(task_path: str, cwd: str, retry_limit: int,
         if enum in escalate_signals:
             return {"enum": "blocked", "message": message, "stdout": stdout}
 
-        # clean — 이슈 close 2차 confirm
+        # clean — 이슈 close 2차 confirm (#422 강화: WARN → blocked 강등)
         if enum == "clean":
-            closed = confirm_issue_closed(issue_nums["task"])
-            if closed is False:
-                print(
-                    f"[task] WARN: prose PASS 인데 이슈 #{issue_nums['task']} 미 close",
-                    file=sys.stderr,
-                )
+            task_issue = issue_nums.get("task")
+            if task_issue is not None:
+                closed = confirm_issue_closed(task_issue)
+                if closed is False:
+                    # PASS prose / exit 0 fallback 인데 이슈 미 close = false-clean.
+                    # 사용자 위임 prose + enum 누락 + 미머지 (#422 NS2 케이스) 잡힘.
+                    return {
+                        "enum": "blocked",
+                        "message": (
+                            f"prose PASS / exit 0 인데 이슈 #{task_issue} 미 close — "
+                            f"false-clean 의심 (자식이 enum 누락 + PR 미머지 상태로 종료 가능성)"
+                        ),
+                        "stdout": stdout,
+                    }
+            else:
+                # 이슈 번호 부재 → cwd uncommitted files 로 fallback 검사.
+                # cwd 자체에 잔존하는 케이스만 잡힘 (worktree 안 잔존은 미검출 — 한계).
+                try:
+                    res = subprocess.run(
+                        ["git", "status", "--porcelain"],
+                        cwd=cwd, capture_output=True, text=True, timeout=10,
+                    )
+                    if res.stdout.strip():
+                        return {
+                            "enum": "blocked",
+                            "message": (
+                                "prose PASS / exit 0 인데 cwd uncommitted files 잔존 — "
+                                "false-clean 의심"
+                            ),
+                            "stdout": stdout,
+                        }
+                except Exception:
+                    pass
             return {"enum": "clean", "message": message, "stdout": stdout}
 
         # error — retry
