@@ -1,9 +1,10 @@
 """scripts/impl_loop_headless.py 단위 테스트.
 
 검증 범위:
-- build_command() — [A]~[E] 5 묶음 inline 포함
-- parse_result() — prose enum 매치 (PASS / FAIL / ESCALATE)
+- build_invocation() — 슬래시 직호출 (`/dcness:impl <path>`) + retry → --append-system-prompt
+- parse_result() — enum 매치 (PASS / FAIL / ESCALATE)
 - extract_issue_nums() — task 본문 + 부모 stories.md 매치
+- process_task() — #422 false-clean 강등 안전망
 - main() — glob 매치 0 → exit 1
 """
 
@@ -21,72 +22,35 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import impl_loop_headless as ilh  # noqa: E402
 
 
-class BuildCommandTests(unittest.TestCase):
-    """build_command — [A]~[E] inline 포함 검증."""
+class BuildInvocationTests(unittest.TestCase):
+    """build_invocation — 슬래시 직호출 + retry context 안전성."""
 
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self._impl_path = Path(self._tmp.name) / "01-foo.md"
-        self._impl_path.write_text("# 01-foo\n\n본문 내용.\n", encoding="utf-8")
+    def test_first_attempt_slash_only(self):
+        """첫 시도: prompt = `/dcness:impl <path>`, extra_args = 빈 리스트."""
+        extra_args, prompt = ilh.build_invocation("docs/impl/01-foo.md")
+        self.assertEqual(extra_args, [])
+        self.assertEqual(prompt, "/dcness:impl docs/impl/01-foo.md")
 
-    def tearDown(self):
-        self._tmp.cleanup()
-
-    def test_all_sections_present(self):
-        prompt = ilh.build_command(
-            str(self._impl_path),
-            issue_nums={"epic": 100, "story": 101, "task": 102},
-        )
-        self.assertIn("## [A] 이번 task impl 본문", prompt)
-        self.assertIn("# 01-foo", prompt)  # 본문 inline
-        self.assertIn("## [B] 부모 이슈", prompt)
-        self.assertIn("#102", prompt)
-        self.assertIn("gh issue view 102", prompt)
-        self.assertIn("## [C] 사전 read 의무", prompt)
-        self.assertIn("docs/architecture.md", prompt)
-        self.assertIn("docs/adr.md", prompt)
-        self.assertIn("## [D] 종료 신호 규칙", prompt)
-        self.assertIn("PASS:", prompt)
-        self.assertIn("FAIL:", prompt)
-        self.assertIn("ESCALATE:", prompt)
-        self.assertIn("## [E] 작업 시작", prompt)
-
-    def test_e_section_includes_conveyor_cycle_commands(self):
-        """#422: [E] 가 begin-run / begin-step / end-step / end-run 명시 호출 박음."""
-        prompt = ilh.build_command(
-            str(self._impl_path),
-            issue_nums={"epic": None, "story": None, "task": 102},
-        )
-        self.assertIn("begin-run impl --issue-num 102", prompt)
-        self.assertIn("begin-step <agent>", prompt)
-        self.assertIn("end-step <agent>", prompt)
-        self.assertIn("end-run", prompt)
-
-    def test_e_section_conveyor_without_issue_num(self):
-        """#422: task 이슈 번호 부재 시 begin-run impl (--issue-num 없음)."""
-        prompt = ilh.build_command(
-            str(self._impl_path),
-            issue_nums={"epic": None, "story": None, "task": None},
-        )
-        self.assertIn('"$HELPER" begin-run impl)', prompt)
-        self.assertNotIn("begin-run impl --issue-num", prompt)
-
-    def test_no_issue_nums(self):
-        prompt = ilh.build_command(
-            str(self._impl_path),
-            issue_nums={"epic": None, "story": None, "task": None},
-        )
-        self.assertIn("매칭된 이슈 번호 없음", prompt)
-
-    def test_retry_attempt_prepends_prev_error(self):
-        prompt = ilh.build_command(
-            str(self._impl_path),
-            issue_nums={"epic": None, "story": None, "task": 1},
+    def test_retry_appends_system_prompt(self):
+        """retry: extra_args 에 --append-system-prompt + 이전 에러 inject."""
+        extra_args, prompt = ilh.build_invocation(
+            "docs/impl/01-foo.md",
             retry_attempt=1,
-            prev_error="some build error",
+            prev_error="exit 1\npytest 실패",
         )
-        self.assertIn("⚠ 이전 시도 실패 (attempt 1)", prompt)
-        self.assertIn("some build error", prompt)
+        self.assertEqual(extra_args[0], "--append-system-prompt")
+        self.assertIn("이전 시도 실패 (attempt 1)", extra_args[1])
+        self.assertIn("pytest 실패", extra_args[1])
+        self.assertEqual(prompt, "/dcness:impl docs/impl/01-foo.md")
+
+    def test_retry_attempt_zero_no_extra_args(self):
+        """attempt 0 + prev_error 있어도 retry 머리말 inject 안 함 (첫 시도)."""
+        extra_args, _ = ilh.build_invocation(
+            "docs/impl/01-foo.md",
+            retry_attempt=0,
+            prev_error="should be ignored",
+        )
+        self.assertEqual(extra_args, [])
 
 
 class ParseResultTests(unittest.TestCase):

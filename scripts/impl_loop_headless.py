@@ -7,19 +7,24 @@ Usage:
 
 예시:
     python3 scripts/impl_loop_headless.py 'docs/milestones/v1/epics/epic-01-*/impl/*.md'
+    python3 scripts/impl_loop_headless.py 'docs/.../impl/01-foo.md'  # 단발 task 동일 처리
 
 동작:
 - glob 매치 파일 정렬 (prefix NN- 기준)
 - 각 파일마다 claude -p cold start spawn (cwd = 현 outer worktree)
-- 명령문 [A]~[E] 조립 + 자식 세션이 dcness skill 자동 등록 (plug-in SessionStart hook)
+- 자식 prompt = `/dcness:impl <task-path>` 슬래시 직호출 (chain 깊이 0)
+  → 자식 CC 가 슬래시 파싱 후 commands/impl.md 본문을 system-reminder 로 자동 inject
+  → 사전 read 의무 / conveyor cycle / enum 룰 등 정식 instruction 으로 자식에 도달
+- retry 시 `--append-system-prompt` 로 이전 에러 컨텍스트 inject
 - 종료 후 결과 회수 3 layer:
-  - 1차 stdout 마지막 prose enum (PASS / FAIL / ESCALATE)
+  - 1차 stdout 마지막 enum (PASS / FAIL / ESCALATE)
   - 2차 자식 종료 코드 (0 = clean / !=0 = error)
-  - 3차 GitHub 이슈 close 확인 (gh issue view <num>)
+  - 3차 GitHub 이슈 close 확인 (gh issue view <num>) — false-clean 안전망
 - error → 자동 retry (한도)
 - blocked → 즉시 정지 (사용자 개입 필수)
 
-설계: docs/plugin/orchestration.md §4.9 (chain 정책) + #375 그릴 D 가지 종합.
+설계: #422 = 자식 conveyor cycle 누락 + false-clean → 안전망 추가 + 슬래시 직호출
+리팩토링으로 chain 깊이 0 단축. #375 그릴 D 가지 종합 후속.
 
 본 스크립트는 외부 dcness 활성 프로젝트의 outer worktree cwd 에서 호출. dcness self §0.2
 적용 외 — 자기 자신 미적용.
@@ -82,99 +87,34 @@ def extract_issue_nums(task_path: str) -> dict:
     return nums
 
 
-def build_command(task_path: str, issue_nums: dict,
-                  retry_attempt: int = 0, prev_error: str = None) -> str:
-    """명령문 첫머리 [A]~[E] 5 묶음 조립.
+def build_invocation(task_path: str,
+                     retry_attempt: int = 0,
+                     prev_error: str = None) -> tuple:
+    """슬래시 직호출 invocation 조립 (#425 follow-up — chain 깊이 0).
 
-    Skip: CLAUDE.md (cwd auto-load) + dcness 운영 룰 (plug-in SessionStart hook).
-    Inline: 본 함수 출력.
+    반환: (extra_cli_args, user_prompt)
+    - user_prompt = `/dcness:impl <task-path>` — CC 가 슬래시 파싱 후
+      commands/impl.md 스킬 본문을 system-reminder 로 자식 세션에 자동 inject
+    - extra_cli_args = retry 시 `--append-system-prompt <prev_error>` 추가
+
+    이전 `[A]~[E]` 5 묶음 자연어 본문 폐기. 사유 = chain 깊이 3 → 0 단축:
+    - 옛: 자식이 본문 [E] → /impl 스킬 결정 → loop-procedure.md 결정 → 명령 호출
+    - 신: 자식이 슬래시 = 스킬 본문 직접 instruction → 명령 호출 (1 단계)
+
+    부수 정보 ([A] task 본문 inline / [B] 부모 이슈 read / [C] ADR 사전 read /
+    [D] enum 규칙) 은 commands/impl.md 본문이 이미 강제. 중복 제거.
     """
-    task_body = read_file(task_path)
-    parts = []
-
-    # retry 시 prev_error 머리말
+    extra_args = []
     if retry_attempt > 0 and prev_error:
-        parts.append(
-            f"## ⚠ 이전 시도 실패 (attempt {retry_attempt})\n\n"
-            f"```\n{prev_error}\n```\n\n"
-            f"위 에러 참고하여 수정 후 진행.\n\n---\n"
+        retry_context = (
+            f"이전 시도 실패 (attempt {retry_attempt}):\n\n"
+            f"{prev_error}\n\n"
+            "위 에러 참고하여 수정 후 진행. /dcness:impl 본문 룰 따름."
         )
+        extra_args = ["--append-system-prompt", retry_context]
 
-    # [A] impl 본문
-    parts.append(f"## [A] 이번 task impl 본문\n\n`{task_path}`:\n\n{task_body}\n")
-
-    # [B] 부모 이슈 + read 명령
-    if any(v is not None for v in issue_nums.values()):
-        issue_lines = []
-        for kind, num in issue_nums.items():
-            if num is not None:
-                issue_lines.append(
-                    f"- {kind}: #{num} — `gh issue view {num} | head -80` 로 본문 read 의무"
-                )
-        parts.append(
-            "## [B] 부모 이슈\n\n" + "\n".join(issue_lines) +
-            "\n\n구현 진입 *전* 위 이슈 본문 read 필수. "
-            "이슈에 수용 기준 / 추가 컨텍스트 / 결정 사항이 박혀있을 수 있음.\n"
-        )
-    else:
-        parts.append(
-            "## [B] 부모 이슈\n\n매칭된 이슈 번호 없음 — task 파일 본문의 수용 기준 직접 따름.\n"
-        )
-
-    # [C] ADR / architecture
-    parts.append(
-        "## [C] 사전 read 의무\n\n"
-        "구현 *전*:\n"
-        "- `docs/architecture.md` 다시 read — 모듈 흐름 / 인터페이스 / 의존성 확인\n"
-        "- `docs/adr.md` 다시 read — 관련 결정 사항 확인 (의도 모르고 덮어쓰는 회귀 회피)\n"
-    )
-
-    # [D] 종료 신호 규칙
-    parts.append(
-        "## [D] 종료 신호 규칙 (필수)\n\n"
-        "본 task 완료/정지 시 stdout 마지막 줄에 정확히 다음 enum 중 하나 박음:\n\n"
-        "- **clean** → 코드 + 테스트 + commit + push + PR 생성 + 머지 + `Closes #<task-num>` trailer 로 이슈 자동 close. "
-        "마지막 줄: `PASS: <한 줄 요약>`\n"
-        "- **error** → 빌드/테스트 실패. 자동 재시도됨. 마지막 줄: `FAIL: <이유>`\n"
-        "- **blocked** → 사용자 개입 필수 (API 키 / 인증 / 정책 결정 / Spike 의심 / 미정 의존). "
-        "마지막 줄: `ESCALATE: <이유>`\n"
-    )
-
-    # [E] 본 task 명령 — 명시 conveyor cycle + enum 의무 강화 (#422)
-    task_num = issue_nums.get("task")
-    issue_arg = f" --issue-num {task_num}" if task_num else ""
-    helper_resolve = (
-        'HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} '
-        '2>/dev/null | sort -V | tail -1)/scripts/dcness-helper"'
-    )
-    parts.append(
-        "## [E] 작업 시작\n\n"
-        "위 [A]~[D] 룰 따라 본 task 구현 시작. "
-        "dcness skill `/impl` 본문 의무 (sub-agent 호출 시퀀스 / 워크트리 / Pre-flight gate / "
-        "impl 파일 사전 read) 도 함께 따름. 현행 dcness 룰은 cwd CLAUDE.md + plug-in "
-        "SessionStart hook 자동 inject 된 system-reminder 참조.\n\n"
-        "### MUST — conveyor cycle 명시 호출 (silent-fail 회피, #422)\n\n"
-        "헤드리스 자식 세션이 `/impl` chain 을 자율 따라가다 begin-run / begin-step / end-step / "
-        "end-run 호출을 빠뜨리면 `.steps.jsonl` 미작성 → 사후 분석 불가 + Stop hook 선행 조건 "
-        "(active_runs 슬롯 + end-step 매칭) 미충족 → noop → 외부 헤드리스 parent 가 "
-        "silent-fail 감지 불가. 따라서 다음 4 호출 **명시 의무**:\n\n"
-        "```bash\n"
-        f"{helper_resolve}\n"
-        f'RUN_ID=$("$HELPER" begin-run impl{issue_arg})\n'
-        "# 각 sub-agent 호출 직전:  \"$HELPER\" begin-step <agent> [<MODE>]\n"
-        "# 각 sub-agent 호출 직후:  \"$HELPER\" end-step <agent> [<MODE>]\n"
-        "# PR merge 직후:           \"$HELPER\" end-run\n"
-        "```\n\n"
-        "agent 인자 예시: `test-engineer` / `engineer IMPL` / `code-validator` / `pr-reviewer` "
-        "(기본 시퀀스 — `commands/impl.md` 참조).\n\n"
-        "### MUST — 종료 prose enum 박음 (false-clean 회피, #422)\n\n"
-        "위 [D] 룰 재강조 — enum 누락 + exit 0 = 헤드리스 parent 의 fallback 분기가 "
-        "**잘못 clean 판정** → 다음 task silent 진행 → 사용자 개입 시점 놓침. "
-        "사용자 위임 / 결정 불가 / 측정 환경 부재 시 반드시 마지막 줄 `ESCALATE: <위임 내용>` "
-        "박을 것.\n"
-    )
-
-    return "\n".join(parts)
+    user_prompt = f"/dcness:impl {task_path}"
+    return extra_args, user_prompt
 
 
 def parse_result(stdout: str, exit_code: int) -> tuple:
@@ -221,17 +161,21 @@ def confirm_issue_closed(task_issue_num) -> bool:
         return None
 
 
-def spawn_child(prompt: str, cwd: str, timeout: int) -> tuple:
-    """claude -p 자식 세션 spawn.
+def spawn_child(prompt: str, cwd: str, timeout: int,
+                extra_args: list = None) -> tuple:
+    """claude -p 자식 세션 spawn — 슬래시 직호출 지원.
 
+    extra_args = `--append-system-prompt <retry_context>` 등 추가 CLI 인자.
     반환: (exit_code, stdout, stderr)
     """
     cmd = [
         "claude", "-p",
         "--dangerously-skip-permissions",
         "--output-format", "text",
-        prompt,
     ]
+    if extra_args:
+        cmd.extend(extra_args)
+    cmd.append(prompt)
     try:
         result = subprocess.run(
             cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout,
@@ -251,12 +195,12 @@ def process_task(task_path: str, cwd: str, retry_limit: int,
         print(f"\n[task] {task_path} (attempt {attempt + 1}/{retry_limit + 1})",
               file=sys.stderr)
 
-        prompt = build_command(
-            task_path, issue_nums,
+        extra_args, prompt = build_invocation(
+            task_path,
             retry_attempt=attempt,
             prev_error=prev_error,
         )
-        exit_code, stdout, stderr = spawn_child(prompt, cwd, timeout)
+        exit_code, stdout, stderr = spawn_child(prompt, cwd, timeout, extra_args=extra_args)
         enum, message = parse_result(stdout, exit_code)
         print(f"[task] result: {enum} — {message}", file=sys.stderr)
 
