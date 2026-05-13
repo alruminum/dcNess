@@ -50,10 +50,38 @@ if [ -z "$EPICS_MS" ] || [ -z "$STORY_MS" ]; then
   exit 1
 fi
 
-# stories.md parse — epic 한 줄 요약 + 본문
-EPIC_TITLE=$(awk '/^## Epic —/{ sub(/^## Epic —[[:space:]]*/, ""); print; exit }' "$STORIES")
+# stories.md parse — 헤더 양식 auto-detect
+# 두 양식 지원:
+#   format1 (product-plan 신양식): "## Epic — <title>"  + "### Story N — <title>"  (h2 + h3)
+#   format2 (jajang 등 기존 양식): "# Epic NN — <title>" + "## Story N — <title>"   (h1 + h2)
+EPIC_HEADER_LINE=$(grep -m1 -E '^#+[[:space:]]+Epic([[:space:]]|—)' "$STORIES" || true)
+if [ -z "$EPIC_HEADER_LINE" ]; then
+  echo "[issue-create] ERROR: stories.md 에 Epic 헤더 부재 ('## Epic — ...' 또는 '# Epic NN — ...' 형식 필요)." >&2
+  exit 1
+fi
+
+case "$EPIC_HEADER_LINE" in
+  "## Epic —"*)
+    EPIC_RE='^## Epic —'
+    STORY_RE='^### Story [0-9]+ —'
+    STORY_PREFIX='### Story'
+    EPIC_TITLE=$(awk '/^## Epic —/{ sub(/^## Epic —[[:space:]]*/, ""); print; exit }' "$STORIES")
+    ;;
+  "# Epic "*)
+    EPIC_RE='^# Epic [0-9]+ —'
+    STORY_RE='^## Story [0-9]+ —'
+    STORY_PREFIX='## Story'
+    EPIC_TITLE=$(awk '/^# Epic [0-9]+ —/{ sub(/^# Epic [0-9]+ —[[:space:]]*/, ""); print; exit }' "$STORIES")
+    ;;
+  *)
+    echo "[issue-create] ERROR: 알 수 없는 Epic 헤더 형식: $EPIC_HEADER_LINE" >&2
+    echo "  지원 양식: '## Epic — <title>' (h2) 또는 '# Epic NN — <title>' (h1)" >&2
+    exit 1
+    ;;
+esac
+
 if [ -z "$EPIC_TITLE" ]; then
-  echo "[issue-create] ERROR: stories.md 에 '## Epic — <title>' 헤더 부재." >&2
+  echo "[issue-create] ERROR: Epic 제목 추출 실패 (헤더: $EPIC_HEADER_LINE)" >&2
   exit 1
 fi
 
@@ -69,7 +97,25 @@ VNN=$(grep -m1 -oE 'v0[0-9]' "$STORIES" 2>/dev/null | head -1 || echo "v01")
 
 # epic 이슈 생성
 echo "[issue-create] epic 이슈 생성 — '$EPIC_TITLE'"
-EPIC_BODY=$(awk '/^## Epic —/{flag=1; next} /^### Story 1 —/{flag=0} flag' "$STORIES")
+# 헤더 양식 분기 — epic 본문 = epic 헤더 ~ 첫 Story 헤더 사이
+case "$EPIC_HEADER_LINE" in
+  "## Epic —"*)
+    EPIC_BODY=$(awk '/^## Epic —/{flag=1; next} /^### Story 1 —/{flag=0} flag' "$STORIES")
+    ;;
+  "# Epic "*)
+    EPIC_BODY=$(awk '/^# Epic [0-9]+ —/{flag=1; next} /^## Story 1 —/{flag=0} flag' "$STORIES")
+    ;;
+esac
+
+# **Base Branch:** 마커 read — stories.md 상단에 있으면 epic issue body 첫 줄로 미러링
+BASE_BRANCH_LINE=$(grep -m1 -E '^\*\*Base Branch:\*\*[[:space:]]+' "$STORIES" || true)
+if [ -n "$BASE_BRANCH_LINE" ]; then
+  EPIC_BODY="${BASE_BRANCH_LINE}
+
+${EPIC_BODY}"
+  echo "[issue-create] Base Branch 마커 감지 — epic body 미러링: $BASE_BRANCH_LINE"
+fi
+
 LABELS_ARGS=( -l epic -l "$VNN" )
 if [ -n "$EPIC_SLUG" ]; then
   LABELS_ARGS+=( -l "$EPIC_SLUG" )
@@ -91,9 +137,9 @@ echo "[issue-create] epic #$EPIC_NUM 생성 완료 — $EPIC_URL"
 # stories.md 상단에 epic 번호 박음
 sed -i.bak "s|^\*\*GitHub Epic Issue:\*\*.*\$|**GitHub Epic Issue:** [#$EPIC_NUM]($EPIC_URL)|" "$STORIES" 2>/dev/null
 if ! grep -qE '^\*\*GitHub Epic Issue:\*\* \[' "$STORIES"; then
-  # 라인 부재 시 ## Epic 직전에 박음
-  awk -v line="**GitHub Epic Issue:** [#$EPIC_NUM]($EPIC_URL)" '
-    /^## Epic —/ && !done { print line; print ""; done=1 }
+  # 라인 부재 시 Epic 헤더 직전에 박음 (양식 분기)
+  awk -v line="**GitHub Epic Issue:** [#$EPIC_NUM]($EPIC_URL)" -v epic_re="$EPIC_RE" '
+    $0 ~ epic_re && !done { print line; print ""; done=1 }
     { print }
   ' "$STORIES" > "$STORIES.tmp" && mv "$STORIES.tmp" "$STORIES"
 fi
@@ -104,15 +150,15 @@ STORY_IDS=()
 STORY_NUMS=()
 STORY_TITLES=()
 
-# Story 헤더 + 번호 추출 (### Story N — title)
+# Story 헤더 + 번호 추출 — STORY_PREFIX = "### Story" (h3) 또는 "## Story" (h2)
 while IFS= read -r STORY_LINE; do
   STORY_N=$(echo "$STORY_LINE" | grep -oE 'Story [0-9]+' | grep -oE '[0-9]+')
-  STORY_TITLE=$(echo "$STORY_LINE" | sed -E "s|^### Story $STORY_N —[[:space:]]*||")
+  STORY_TITLE=$(echo "$STORY_LINE" | sed -E "s|^${STORY_PREFIX} $STORY_N —[[:space:]]*||")
 
-  # story 본문 추출 (현재 Story 헤더부터 다음 ### Story 또는 파일 끝까지)
-  STORY_BODY=$(awk -v target="### Story $STORY_N —" '
+  # story 본문 추출 (현재 Story 헤더부터 다음 Story 헤더 또는 파일 끝까지)
+  STORY_BODY=$(awk -v target="${STORY_PREFIX} $STORY_N —" -v next_re="$STORY_RE" '
     $0 ~ target { flag=1; next }
-    /^### Story / && flag { flag=0 }
+    $0 ~ next_re && flag { flag=0 }
     flag { print }
   ' "$STORIES")
 
@@ -142,13 +188,14 @@ while IFS= read -r STORY_LINE; do
   STORY_TITLES+=("$STORY_TITLE")
   echo "  → #$STORY_NUM (id=$STORY_ID)"
 
-  # stories.md 의 해당 Story 헤더 직하에 마커 박음 (이미 있으면 update)
-  python3 - "$STORIES" "$STORY_N" "$STORY_NUM" "$STORY_URL" <<'PYEOF'
+  # stories.md 의 해당 Story 헤더 직하에 마커 박음 (이미 있으면 update) — STORY_PREFIX 동적
+  python3 - "$STORIES" "$STORY_N" "$STORY_NUM" "$STORY_URL" "$STORY_PREFIX" <<'PYEOF'
 import sys, re, pathlib
 p = pathlib.Path(sys.argv[1])
-sn, num, url = sys.argv[2], sys.argv[3], sys.argv[4]
+sn, num, url, prefix = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
 text = p.read_text()
-pattern = re.compile(rf'(^### Story {sn} — .*$)(\n+\*\*GitHub Issue:\*\*[^\n]*)?', re.MULTILINE)
+escaped = re.escape(prefix)
+pattern = re.compile(rf'(^{escaped} {sn} — .*$)(\n+\*\*GitHub Issue:\*\*[^\n]*)?', re.MULTILINE)
 marker = f'\n\n**GitHub Issue:** [#{num}]({url})'
 def repl(m):
     return m.group(1) + marker
@@ -156,7 +203,7 @@ new = pattern.sub(repl, text, count=1)
 p.write_text(new)
 PYEOF
 
-done < <(grep -E '^### Story [0-9]+ —' "$STORIES")
+done < <(grep -E "$STORY_RE" "$STORIES")
 
 # 하단 ## 관련 이슈 테이블 박음
 {

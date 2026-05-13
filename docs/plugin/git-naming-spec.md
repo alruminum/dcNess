@@ -7,12 +7,16 @@
 
 | 타입 | 패턴 | 예시 |
 |---|---|---|
-| 기능 구현 | `feature/epic{N}_story{N}_{desc}` | `feature/epic3_story2_create_mcp_server` |
+| 스토리 작업 impl | `feature/epic{N}_story{N}_{desc}` | `feature/epic3_story2_create_mcp_server` |
+| 자유 feature / 통합 브랜치 | `feature/{desc}` | `feature/local_dsp`, `feature/integration_branch_pattern` |
 | 버그픽스 | `fix/issue{N}_{desc}` | `fix/issue32_duplicate_touch` |
 | 버그픽스 (복수 이슈) | `fix/issue{N}_{M}_{desc}` | `fix/issue32_45_duplicate_touch` |
-| 문서 | `docs/{desc}` | `docs/update_api_spec` |
+| 문서 | `docs/{desc}` | `docs/update_api_spec`, `docs/sync-readme` |
 
-- `{desc}`: 소문자 + `_` 구분자. 공백·특수문자 금지.
+- `{desc}` 기본 제약 (모든 패턴 공통): **소문자 시작 + `[a-z0-9_-]` + 최소 3자**.
+  - `_` 또는 `-` 구분자 택1 권장 (한 브랜치 안에서 일관). 둘 다 통과.
+  - 공백·특수문자·대문자 금지.
+- `feature/{desc}` 의 용도 = (1) 단발 feature, (2) **통합 브랜치** (epic 단위 long-lived feature branch + sub-PR 누적 → 마지막 한 방 main 머지). 통합 브랜치 의도는 epic issue body / stories.md 상단에 `**Base Branch:** feature/{slug}` 1줄 마커로 명시. 자세한 흐름은 `commands/product-plan.md` Step 6.5/7 + `docs/plugin/issue-lifecycle.md` §1.4.
 - main 직접 push 금지. 항상 branch → PR → merge.
 - 브랜치는 merge 후에도 삭제하지 않는다.
 
@@ -20,7 +24,9 @@
 
 | 타입 | 형식 | 예시 |
 |---|---|---|
-| 기능 구현 | `[epic{N}][story{N}] {설명}` | `[epic4][story3] mcp 세팅` |
+| 스토리 작업 impl | `[epic{N}][story{N}] {설명}` | `[epic4][story3] mcp 세팅` |
+| epic 단위 (통합 → main 머지) | `[epic{N}] {설명}` | `[epic19] Local DSP 통합 머지` |
+| 자유 feature | `[feature] {설명}` | `[feature] 통합 브랜치 패턴 지원` |
 | 버그픽스 | `[issue-{N}] {설명}` | `[issue-32] 중복 터치 수정` |
 | 문서 | `[docs] {설명}` | `[docs] API 스펙 업데이트` |
 
@@ -56,7 +62,9 @@
 
 | 타입 | 형식 | 예시 |
 |---|---|---|
-| 기능 구현 | `[epic{N}][story{N}] {설명}` | `[epic4][story3] mcp서버를 생성합니다.` |
+| 스토리 작업 impl | `[epic{N}][story{N}] {설명}` | `[epic4][story3] mcp서버를 생성합니다.` |
+| epic 단위 (통합 → main 머지) | `[epic{N}] {설명}` | `[epic19] Local DSP 통합 머지` |
+| 자유 feature | `[feature] {설명}` | `[feature] 통합 브랜치 패턴 지원` |
 | 버그픽스 | `[issue-{N}] {설명}` | `[issue-32] 중복터치 개선` |
 | 문서 | `[docs] {설명}` | `[docs] API 스펙 업데이트` |
 
@@ -93,12 +101,16 @@ Part of #N
 ## 6. Git 절차
 
 ```
-1. git checkout -b {브랜치명} main
+1. git checkout -b {브랜치명} {base}
+   # base 분기 — docs/stories.md 상단 `**Base Branch:**` 매치 → 해당 값, 매치 없음 → main
 2. (작업 + 커밋)
 3. git push -u origin {브랜치명}
-4. gh pr create --title "..." --body "..."
+4. gh pr create --base {base} --title "..." --body "..."
+   # base 분기 룰 step 1 과 동일 — 통합 브랜치 모드면 sub-PR base = 통합 브랜치
 5. "$PLUGIN_ROOT/scripts/pr-finalize.sh"   # 머지 + CI 대기 + main sync 자동 (한 명령)
 ```
+
+> 통합 브랜치 케이스 — stories.md 상단에 `**Base Branch:** feature/{slug}` 마커가 박혀있으면 모든 sub-PR 의 base = 그 통합 브랜치. 마지막 통합 → main 머지 PR 만 base = main + body 에 `Closes #{epic}` + `Closes #{story1...N}` 일괄 박음 (`docs/plugin/issue-lifecycle.md` §1.4).
 
 `pr-finalize.sh` 내부:
 - `gh pr merge --auto --merge` (auto-merge 토글)
