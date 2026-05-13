@@ -11,8 +11,11 @@
  * exit 1: 위반
  */
 
-const BRANCH_RE = /^(feature\/epic\d+_story\d+_.+|fix\/issue\d+(?:_\d+)*_.+|docs\/.+)$/;
-const TITLE_RE  = /^(\[epic\d+\]\[story\d+\]|\[issue-\d+\]|\[docs\]) .+/;
+// 통일 기본 제약: 소문자 시작 + [a-z0-9_-] + 최소 3자 (= 첫 1자 + {2,})
+// 4 패턴 — feature/epic_story_* (스토리 강제) / feature/<desc> (자유, 통합 브랜치 포함) / fix/issue_* / docs/<desc>
+const BRANCH_RE = /^(feature\/(epic\d+_story\d+_[a-z][a-z0-9_-]{2,}|[a-z][a-z0-9_-]{2,})|fix\/issue\d+(?:_\d+)*_[a-z][a-z0-9_-]{2,}|docs\/[a-z][a-z0-9_-]{2,})$/;
+// 5 형식 — [epic{N}][story{N}] (스토리 단위) / [epic{N}] (epic 단위, 통합 → main 머지) / [issue-{N}] / [docs] / [feature]
+const TITLE_RE  = /^(\[epic\d+\](\[story\d+\])?|\[issue-\d+\]|\[docs\]|\[feature\]) .+/;
 
 const args = process.argv.slice(2);
 const mode = args[0];
@@ -27,10 +30,12 @@ if (mode === '--branch') {
   if (!BRANCH_RE.test(value)) {
     console.error(`[git-naming] FAIL — 브랜치명 형식 위반: "${value}"`);
     console.error('  허용 패턴:');
-    console.error('    feature/epic{N}_story{N}_{desc}');
-    console.error('    fix/issue{N}_{desc}          (단일 이슈)');
-    console.error('    fix/issue{N}_{M}_{desc}      (복수 이슈)');
-    console.error('    docs/{desc}');
+    console.error('    feature/epic{N}_story{N}_{desc}    (스토리 작업 impl)');
+    console.error('    feature/{desc}                     (자유 feature / 통합 브랜치)');
+    console.error('    fix/issue{N}_{desc}                (단일 이슈)');
+    console.error('    fix/issue{N}_{M}_{desc}            (복수 이슈)');
+    console.error('    docs/{desc}                        (문서)');
+    console.error('  공통: {desc} = 소문자 + [a-z0-9_-] + 최소 3자');
     process.exit(1);
   }
   console.log(`[git-naming] PASS — branch: ${value}`);
@@ -39,9 +44,11 @@ if (mode === '--branch') {
   if (!TITLE_RE.test(value)) {
     console.error(`[git-naming] FAIL — 커밋/PR 제목 형식 위반: "${value}"`);
     console.error('  허용 패턴:');
-    console.error('    [epic{N}][story{N}] {설명}');
-    console.error('    [issue-{N}] {설명}');
-    console.error('    [docs] {설명}');
+    console.error('    [epic{N}][story{N}] {설명}    (스토리 단위)');
+    console.error('    [epic{N}] {설명}              (epic 단위, 통합 → main 머지)');
+    console.error('    [issue-{N}] {설명}            (버그픽스)');
+    console.error('    [docs] {설명}                 (문서)');
+    console.error('    [feature] {설명}              (자유 feature)');
     process.exit(1);
   }
   console.log(`[git-naming] PASS — title: ${value}`);
