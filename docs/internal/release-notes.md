@@ -4,6 +4,60 @@
 
 ---
 
+## v0.2.21 (2026-05-13)
+
+**커밋 범위**: `v0.2.20..v0.2.21`
+**핵심 변경**: 통합 브랜치 패턴 지원 — git-naming + product-plan + scripts auto-detect (#413 + #414)
+
+### 1. git-naming regex 완화 (#413)
+
+`scripts/check_git_naming.mjs`:
+- BRANCH_RE 에 `feature/<desc>` 패턴 추가 (자유 feature / 통합 브랜치 — 예: `feature/local_dsp`)
+- 4 패턴 통일 기본 제약: 소문자 + `[a-z0-9_-]` + 최소 3자
+- TITLE_RE 에 `[epic{N}]` (epic-only, 통합 → main 머지) + `[feature]` (자유 feature) 추가
+
+`docs/plugin/git-naming-spec.md` §1 / §2 / §4 / §6 표 갱신 + base 분기 룰 명시.
+
+배경: jajang Epic 19 (#262) 통합 브랜치 `feature/local-dsp` push 시 hook 차단 → `--no-verify` 우회. 본 release 로 차단 해소.
+
+### 2. 통합 브랜치 모드 (`commands/product-plan.md`) (#414 problem A)
+
+- §Step 6.5 신설 — 메인 → 사용자 그릴 (a) 일반 / (b) 통합 브랜치
+- §Step 7 (a) trunk / (b) integration 분기
+- (b) 흐름: `stories.md` 상단 `**Base Branch:** feature/<slug>` 마커 + 통합 브랜치 생성 + PRD sub-PR (`docs/<slug>_prd` from `feature/<slug>`)
+
+mode 코드 분기 도입 X — 자연어 마커만으로 분기 (메인 Claude 의 stories.md grep 인식).
+
+### 3. scripts/create_epic_story_issues.sh 헤더 양식 auto-detect + 마커 미러링 (#414 problem B)
+
+- 헤더 양식 auto-detect: `## Epic — ...` (h2+h3, product-plan 양식) / `# Epic NN — ...` (h1+h2, jajang 양식)
+- `**Base Branch:**` 마커 자동 epic issue body 미러링
+
+배경: jajang stories.md (h1+h2) parse 실패 → 메인이 4 직접 호출로 우회. 본 release 로 양식 통일 흡수.
+
+### 4. commands × 3 base 분기 체크리스트
+
+`commands/impl.md` / `commands/impl-loop.md` / `commands/architect-loop.md` 의 PR 생성 직전 절차에 stories.md `**Base Branch:**` grep → `--base` 박는 룰 1줄 추가.
+
+### 5. docs/plugin/issue-lifecycle.md §1.4 명문화
+
+통합 브랜치 케이스 — base ≠ main sub-PR 의 GitHub auto-close 한계 + 마지막 통합 → main 머지 PR body 에 bulk close (`Closes #<story1...N>` + `Closes #<epic>`) 패턴 명문화. GitHub default branch 제약 (linking-a-pull-request-to-an-issue) 인용.
+
+### 사용자 업데이트 가이드
+
+```sh
+claude plugin update dcness@dcness
+```
+
+문제 발생 시:
+```sh
+claude plugin uninstall dcness@dcness && claude plugin install dcness@dcness
+```
+
+업데이트 후 `feature/<desc>` 같은 자유 슬러그 브랜치명 + `[feature] / [epic{N}]` PR 제목 형식이 즉시 통과한다.
+
+---
+
 ## v0.2.20 (2026-05-13)
 
 **커밋 범위**: `v0.2.19..v0.2.20`
