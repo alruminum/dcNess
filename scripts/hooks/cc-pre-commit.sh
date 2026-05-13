@@ -27,6 +27,14 @@ else
 fi
 
 resolve_naming_script() {
+  # 우선순위 (이슈 #419):
+  # 1. git toplevel 의 scripts — 본 저장소 안 작업 시 항상 본 저장소의 최신 룰 우선.
+  #    cc-pre-commit.sh 는 .claude/settings.json 통해 dcness self 작업용으로 등록되므로
+  #    plug-in cache 의 구 룰이 자기 저장소를 검증하던 회귀 차단.
+  # 2. CLAUDE_PLUGIN_ROOT — 외부 활성 프로젝트가 본 hook 를 별도로 등록한 경우 대비 (현재 미사용).
+  # 3. plug-in cache — 위 둘 다 부재 시 최후 fallback.
+  legacy="$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-}")/scripts/check_git_naming.mjs"
+  [ -f "$legacy" ] && echo "$legacy" && return 0
   if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs" ]; then
     echo "${CLAUDE_PLUGIN_ROOT}/scripts/check_git_naming.mjs"; return 0
   fi
@@ -37,8 +45,6 @@ resolve_naming_script() {
       echo "$cache_dir/$latest/scripts/check_git_naming.mjs"; return 0
     fi
   fi
-  legacy="$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-}")/scripts/check_git_naming.mjs"
-  [ -f "$legacy" ] && echo "$legacy" && return 0
   return 1
 }
 
