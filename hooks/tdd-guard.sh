@@ -74,11 +74,34 @@ case "$FILE_PATH" in
   */templates/*|*/design-variants/*) allow ;;
 esac
 
+# 자동 skip — entry-file path heuristic (#423)
+# registerRootComponent / AppRegistry.registerComponent 같은 entry 정의 파일은
+# 비즈니스 로직 없는 boilerplate. test 의무 X. 컨벤션 path 만 좁게 매치.
+# - */App.{ts,tsx,js,jsx}      = RN / Expo entry shell
+# - */_layout.{ts,tsx,js,jsx}  = expo-router layout (Next.js layout.tsx 는 라인 67에서 별도 cover)
+# - */apps/*/index.{ts,tsx,js,jsx} = monorepo apps/<name>/ entry (일반 index.* 는 너무 광범위라 제외)
+# - */src/main.{ts,tsx,js,jsx}     = Vue/Vite main entry
+case "$FILE_PATH" in
+  */App.ts|*/App.tsx|*/App.js|*/App.jsx) allow ;;
+  */_layout.ts|*/_layout.tsx|*/_layout.js|*/_layout.jsx) allow ;;
+  */apps/*/index.ts|*/apps/*/index.tsx|*/apps/*/index.js|*/apps/*/index.jsx) allow ;;
+  */src/main.ts|*/src/main.tsx|*/src/main.js|*/src/main.jsx) allow ;;
+esac
+
 # TS/JS 한정 — 그 외 silent skip
 case "$FILE_PATH" in
   *.ts|*.tsx|*.js|*.jsx) ;;
   *) allow ;;
 esac
+
+# 자동 skip — 파일 내용 시그니처 매치 (#423)
+# entry-file 가 path heuristic 못 잡은 위치에 있어도 내용으로 detection.
+# 단 Edit 케이스만 cover (파일 이미 존재). 최초 Write 시는 path heuristic 의존.
+if [ -f "$FILE_PATH" ]; then
+  if grep -qE 'registerRootComponent\(|AppRegistry\.registerComponent\(' "$FILE_PATH" 2>/dev/null; then
+    allow
+  fi
+fi
 
 # 매칭 test 파일 존재 검사
 has_test_for() {
