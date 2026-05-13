@@ -87,6 +87,14 @@ tail -50 "<task-path>"
 ## 절차
 [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6 + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.3 (`impl-task-loop` 풀스펙) 따름. UI 감지 시 §4.4 (`impl-ui-design-loop`).
 
+### PR 생성 직전 — base 분기 체크 (MUST)
+
+`gh pr create` 직전 `docs/stories.md` 상단 `**Base Branch:**` 줄 매치 1회 확인:
+- 매치 → `gh pr create --base <매치 값>` (통합 브랜치 케이스, sub-PR base = `feature/<slug>`)
+- 매치 없음 → `gh pr create --base main` (default, trunk-based)
+
+근거: 통합 브랜치 모드는 *epic issue body / stories.md 마커* 로 자연어 표현 (`commands/product-plan.md` Step 6.5). 메인 Claude 의 *읽기 행위* 만으로 분기 — mode 플래그 없음. 까먹으면 sub-PR 이 잘못된 base 로 가서 epic atomic transaction 깨짐.
+
 ## 종료 조건 (MUST — 메인 Claude 의무)
 
 > ⚠️ **함정 경고**: §3.4 에서 PR merge 까지 자동 완료된다. 메인 본능 "merge = 작업 끝" 으로 *반드시* 다음 명령을 skip 한다. skip = 자동 회고 마비 → 다음 run 회귀 방지 기능 손실.

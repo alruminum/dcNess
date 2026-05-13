@@ -53,7 +53,8 @@ Step 0 진입 시 자동 `EnterWorktree(name="architect-{ts_short}")`. 사용자
 5. **Step 3.5 — architecture-validator** (Placeholder Leak + Spike Gate) → `PASS` → **commit 2** (`docs/architecture.md` + `docs/adr.md`)
 6. **Step 4.1 ~ 4.K — module-architect × K** (system-architect impl 목차 행마다 1번 호출, prompt 에 `task_index: i/total` 박음)
    - 각 호출 `READY` 직후 → **commit 3..K+2** (`docs/milestones/.../impl/NN-<slug>.md` 1 파일씩)
-7. **Step 5 — PR + 머지** — `git push -u origin docs/<epic-slug>` + `gh pr create` (body = 설계 산출물 요약 + `Part of #<epic-issue>`) + `bash scripts/pr-finalize.sh`
+7. **Step 5 — PR + 머지** — `git push -u origin docs/<epic-slug>` + `gh pr create --base <BASE>` (body = 설계 산출물 요약 + `Part of #<epic-issue>`) + `bash scripts/pr-finalize.sh`
+   - **base 분기 (MUST)**: `gh pr create` 직전 `docs/stories.md` 상단 `**Base Branch:**` 줄 매치 → `--base <매치 값>` (통합 브랜치 케이스, base = `feature/<slug>`). 매치 없음 → `--base main` (default). Step 0 의 `EnterWorktree` branch (`docs/<epic-slug>`) 도 동일 base 에서 따야 함.
 8. **Step 6 — ExitWorktree** + `end-run`
 
 ## 분기 / cycle (요약)

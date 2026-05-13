@@ -86,6 +86,14 @@ python3 "$PLUGIN_ROOT/scripts/impl_loop_headless.py" '<impl-glob>' \
 - inner = 자식 세션 안에서 `/impl` 본문 의무 따라 진행 (test-engineer → engineer → code-validator → pr-reviewer)
 - 각 자식 세션 = 1 PR + 1 이슈 close = `/run-review` 가 task 별 분리 분석 자연
 
+## PR 생성 직전 — base 분기 체크 (자식 세션 의무, MUST)
+
+각 자식 세션이 `gh pr create` 직전 `docs/stories.md` 상단 `**Base Branch:**` 줄 매치 1회 확인:
+- 매치 → `gh pr create --base <매치 값>` (통합 브랜치 케이스)
+- 매치 없음 → `gh pr create --base main` (default, trunk-based)
+
+명령문 [A] 묶음 (이번 task impl 본문 전문) 에 자식 세션이 [`commands/impl.md`](impl.md) §"PR 생성 직전 — base 분기 체크" 본문을 따르도록 안내. 메인 outer 단계는 base 분기 결정 X — 자식 세션의 자율 영역.
+
 ## 후속 라우팅
 - 각 task clean → 다음 task 자동 진입
 - error → 자동 재시도 (한도까지). 한도 초과 시 정지 + 사용자 위임
