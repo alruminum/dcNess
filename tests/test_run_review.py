@@ -843,5 +843,78 @@ class MissingConclusionEnumTests(unittest.TestCase):
         self.assertEqual(len(missing), 0)
 
 
+class ToolHistogramTableTests(unittest.TestCase):
+    """#415 — _build_tool_histogram_table step 윈도우 fix.
+
+    step.ts = end-step 시각. sub-agent 도구 호출 ts < step.ts.
+    윈도우 = 이전 step end ~ 현재 step end.
+    """
+
+    def _make_run_with_trace(self, td: Path, step_records: list[dict], trace_entries: list[dict]) -> Path:
+        sid = "00000000-0000-4000-8000-000000000415"
+        rid = "run-00000415"
+        rd = _make_run_dir(td, sid, rid, step_records)
+        # agent-trace.jsonl 추가
+        trace_path = rd / "agent-trace.jsonl"
+        with open(trace_path, "w", encoding="utf-8") as f:
+            for e in trace_entries:
+                f.write(json.dumps(e, ensure_ascii=False) + "\n")
+        return rd
+
+    def test_last_step_included(self):
+        """마지막 step 의 sub-agent trace 가 히스토그램에 포함된다."""
+        from harness.run_review import _build_tool_histogram_table
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            # step 2개 — 마지막은 pr-reviewer
+            rd = self._make_run_with_trace(tmp, [
+                {"ts": "2026-05-12T14:54:00+00:00", "agent": "engineer", "mode": "IMPL",
+                 "enum": "IMPL_DONE", "must_fix": False, "prose_excerpt": "x"},
+                {"ts": "2026-05-12T14:59:00+00:00", "agent": "pr-reviewer", "mode": None,
+                 "enum": "LGTM", "must_fix": False, "prose_excerpt": "y"},
+            ], [
+                # engineer trace (step 0 윈도우 = ~ 14:54:00)
+                {"phase": "pre", "agent": "engineer", "ts": "2026-05-12T14:53:00+00:00", "tool": "Edit"},
+                {"phase": "pre", "agent": "engineer", "ts": "2026-05-12T14:53:30+00:00", "tool": "Edit"},
+                # pr-reviewer trace (step 1 윈도우 = 14:54:00 ~ 14:59:00)
+                {"phase": "pre", "agent": "pr-reviewer", "ts": "2026-05-12T14:57:00+00:00", "tool": "Read"},
+                {"phase": "pre", "agent": "pr-reviewer", "ts": "2026-05-12T14:58:00+00:00", "tool": "Read"},
+            ])
+            report = build_report(rd, tmp)
+            lines = _build_tool_histogram_table(report)
+            # 표 lines: header(2) + step0 + step1
+            self.assertGreater(len(lines), 2)
+            joined = "\n".join(lines)
+            # step 1 (pr-reviewer) 가 표에 포함 — last step 누락 회귀 차단
+            pr_line = [ln for ln in lines if "pr-reviewer" in ln]
+            self.assertEqual(len(pr_line), 1)
+            # Read 2 박힘
+            self.assertIn(" 2 ", pr_line[0])
+
+    def test_step_window_uses_previous_end_to_current_end(self):
+        """윈도우 = 이전 step.ts ~ 현재 step.ts. trace 가 정확히 배정."""
+        from harness.run_review import _build_tool_histogram_table
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            rd = self._make_run_with_trace(tmp, [
+                {"ts": "2026-05-12T10:00:00+00:00", "agent": "test-engineer", "mode": None,
+                 "enum": "TESTS_WRITTEN", "must_fix": False, "prose_excerpt": "x"},
+                {"ts": "2026-05-12T10:10:00+00:00", "agent": "engineer", "mode": "IMPL",
+                 "enum": "IMPL_DONE", "must_fix": False, "prose_excerpt": "y"},
+            ], [
+                # test-engineer 영역 (~ 10:00:00 까지)
+                {"phase": "pre", "agent": "test-engineer", "ts": "2026-05-12T09:55:00+00:00", "tool": "Read"},
+                {"phase": "pre", "agent": "test-engineer", "ts": "2026-05-12T09:56:00+00:00", "tool": "Write"},
+                # engineer 영역 (10:00:00 ~ 10:10:00)
+                {"phase": "pre", "agent": "engineer", "ts": "2026-05-12T10:05:00+00:00", "tool": "Edit"},
+            ])
+            report = build_report(rd, tmp)
+            lines = _build_tool_histogram_table(report)
+            joined = "\n".join(lines)
+            # 두 step 모두 표에 박힘
+            self.assertIn("test-engineer", joined)
+            self.assertIn("engineer", joined)
+
+
 if __name__ == "__main__":
     unittest.main()
