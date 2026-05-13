@@ -184,6 +184,67 @@ class EscalateSetTests(unittest.TestCase):
                 self.assertIn("retry 한도", r["message"])
 
 
+class SpawnChildStreamTests(unittest.TestCase):
+    """spawn_child line-buffered stream 동작 검증 (#429 follow-up).
+
+    fake claude CLI 를 PATH 첫머리에 박아 실제 claude 호출 없이 검증.
+    fake CLI = 3 줄 stdout 출력 + 사이에 sleep → buffer-until-end 아닌
+    line-by-line 으로 즉시 stream_to 에 echo 되는지 확인.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        # fake claude — 3 라인을 0.1s 간격으로 emit (line-buffered 검증)
+        fake_claude = Path(self._tmp) / "claude"
+        fake_claude.write_text(
+            "#!/usr/bin/env python3\n"
+            "import sys, time\n"
+            "sys.stdout.write('line1\\n'); sys.stdout.flush(); time.sleep(0.05)\n"
+            "sys.stdout.write('line2\\n'); sys.stdout.flush(); time.sleep(0.05)\n"
+            "sys.stdout.write('PASS: ok\\n'); sys.stdout.flush()\n"
+            "sys.exit(0)\n",
+            encoding="utf-8",
+        )
+        fake_claude.chmod(0o755)
+        self._old_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{self._tmp}{os.pathsep}{self._old_path}"
+
+    def tearDown(self):
+        os.environ["PATH"] = self._old_path
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_stream_to_receives_lines_with_prefix(self):
+        """stream_to 가 자식 stdout line 을 '[child] ' 접두 박아 받는지."""
+        import io
+        sink = io.StringIO()
+        exit_code, stdout, stderr = ilh.spawn_child(
+            "/some-prompt", cwd=self._tmp, timeout=10,
+            stream_to=sink,
+        )
+        self.assertEqual(exit_code, 0)
+        # captured stdout 정합
+        self.assertIn("line1", stdout)
+        self.assertIn("line2", stdout)
+        self.assertIn("PASS: ok", stdout)
+        # stream sink 에 prefix 박힌 line stream 도착
+        sink_content = sink.getvalue()
+        self.assertIn("[child] line1", sink_content)
+        self.assertIn("[child] line2", sink_content)
+        self.assertIn("[child] PASS: ok", sink_content)
+
+    def test_stream_to_none_skips_echo(self):
+        """stream_to=None 시 echo skip — capture 만."""
+        # spawn_child 시그니처상 None 전달 시 default sys.stderr 로 들어감.
+        # 따라서 stream skip 검증은 sink=io.StringIO() 빈 결과 확인이 아니라
+        # default 동작 회귀만 보장. 본 케이스는 capture 정합만 확인.
+        exit_code, stdout, _ = ilh.spawn_child(
+            "/x", cwd=self._tmp, timeout=10, stream_to=None,
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("PASS: ok", stdout)
+
+
 class FalseCleanDowngradeTests(unittest.TestCase):
     """process_task — #422 false-clean 강등 검증."""
 

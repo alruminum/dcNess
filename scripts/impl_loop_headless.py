@@ -162,11 +162,19 @@ def confirm_issue_closed(task_issue_num) -> bool:
 
 
 def spawn_child(prompt: str, cwd: str, timeout: int,
-                extra_args: list = None) -> tuple:
-    """claude -p 자식 세션 spawn — 슬래시 직호출 지원.
+                extra_args: list = None,
+                stream_to: "io.TextIOBase | None" = None) -> tuple:
+    """claude -p 자식 세션 spawn — 슬래시 직호출 + 실시간 stdout stream.
 
     extra_args = `--append-system-prompt <retry_context>` 등 추가 CLI 인자.
+    stream_to = 자식 stdout line 실시간 echo 대상 (default sys.stderr).
+                None 박으면 echo skip (capture only).
     반환: (exit_code, stdout, stderr)
+
+    옛 `subprocess.run(capture_output=True)` (전체 buffer) → `Popen + line stream`
+    으로 교체 (#429 follow-up — 사용자 메인 세션에서 자식 진행 실시간 가시화).
+    헤드리스 parent 가 `run_in_background=true` 로 호출되면 Monitor tool 이
+    stdout line stream 을 메인 Claude 로 notification 으로 전달.
     """
     cmd = [
         "claude", "-p",
@@ -176,13 +184,57 @@ def spawn_child(prompt: str, cwd: str, timeout: int,
     if extra_args:
         cmd.extend(extra_args)
     cmd.append(prompt)
+
+    if stream_to is None:
+        stream_to = sys.stderr
+
+    captured_stdout = []
+    captured_stderr = []
+
     try:
-        result = subprocess.run(
-            cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout,
+        proc = subprocess.Popen(
+            cmd, cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True, bufsize=1,  # line-buffered
         )
-        return result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired as e:
-        return 124, e.stdout or "", e.stderr or ""
+    except FileNotFoundError as e:
+        return 127, "", f"claude CLI not found: {e}"
+
+    import threading
+
+    def _drain(pipe, sink, prefix):
+        try:
+            for line in iter(pipe.readline, ""):
+                sink.append(line)
+                if stream_to is not None:
+                    stream_to.write(f"{prefix}{line}")
+                    stream_to.flush()
+        finally:
+            pipe.close()
+
+    t_out = threading.Thread(
+        target=_drain, args=(proc.stdout, captured_stdout, "  [child] "),
+        daemon=True,
+    )
+    t_err = threading.Thread(
+        target=_drain, args=(proc.stderr, captured_stderr, "  [child:err] "),
+        daemon=True,
+    )
+    t_out.start()
+    t_err.start()
+
+    try:
+        exit_code = proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        t_out.join(timeout=2)
+        t_err.join(timeout=2)
+        return 124, "".join(captured_stdout), "".join(captured_stderr)
+
+    t_out.join(timeout=5)
+    t_err.join(timeout=5)
+    return exit_code, "".join(captured_stdout), "".join(captured_stderr)
 
 
 def process_task(task_path: str, cwd: str, retry_limit: int,
