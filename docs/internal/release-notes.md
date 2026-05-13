@@ -4,6 +4,60 @@
 
 ---
 
+## v0.2.22 (2026-05-14)
+
+**커밋 범위**: `v0.2.21..v0.2.22`
+**핵심 변경**: jajang Epic 19 followup 4 묶음 — 헤드리스 자식 정합 + TDD GUARD entry-file + worktree base-ref
+
+### 1. impl-loop 자식 conveyor cycle 안전망 (#422 → PR #425)
+
+`scripts/impl_loop_headless.py`:
+- `[E]` 자연어 단락에 명시 `begin-run impl / begin-step / end-step / end-run` 호출 박음 (옛 indirect chain 위임 → silent-fail 회귀 차단)
+- `process_task()`: `confirm_issue_closed is False` → `clean → blocked` 강등 (false-clean 안전망). 이슈 번호 부재 시 cwd `git status --porcelain` fallback 검사
+
+배경: jajang Epic 19 NS2 자식이 사용자 위임 자연어 + enum 누락 + exit 0 종료 시 헤드리스 parent 가 `ALL CLEAN` 잘못 보고. `.steps.jsonl` 미작성 → `/run-review` 사후 분석 불가.
+
+### 2. 헤드리스 자식 슬래시 직호출 리팩토링 (#422 follow-up → PR #426)
+
+`scripts/impl_loop_headless.py`:
+- 자식 prompt = `/dcness:impl <task-path>` 슬래시 직호출로 단순화 (chain 깊이 3 → 0)
+- retry context → `--append-system-prompt` 로 inject
+- 옛 `build_command()` ([A]~[E] 5 묶음 자연어) → `build_invocation()` 으로 폐기
+
+`commands/impl.md`:
+- §사전 read 의무 5번 항목 추가 (같은 epic 형제 머지 PR 환기)
+- §헤드리스 실행 옵션 추가 — 단발 task 도 사용자 발화 `헤드리스|headless` 매치 시 헤드리스로 위임
+
+배경: 자식이 슬래시 호출 받으면 `commands/impl.md` 본문이 system-reminder 로 자동 inject → 인터랙티브 `/impl` 과 동일 정확도. `.steps.jsonl` 정상 작성 → `/run-review` 가능.
+
+### 3. TDD GUARD entry-file false-positive 해소 (#423 → PR #427)
+
+`hooks/tdd-guard.sh`:
+- entry-file path heuristic 추가: `App.{ts,tsx,js,jsx}` / `_layout.{ts,tsx,js,jsx}` / `apps/*/index.{ts,tsx,js,jsx}` / `src/main.{ts,tsx,js,jsx}`
+- 파일 내용 시그니처 grep 추가: `registerRootComponent\(` / `AppRegistry\.registerComponent\(` (Edit 케이스 cover)
+
+배경: Expo `apps/mobile/index.js` / RN `App.tsx` / expo-router `_layout.tsx` 가 boilerplate (비즈니스 로직 X) 인데 TDD GUARD 가 차단. engineer agent 의 빈 stub 회피 안티패턴 강화 위험.
+
+회귀 방지: 일반 비즈니스 로직 (`src/business-logic.ts`) + 테스트 부재 → 여전히 deny.
+
+### 4. outer worktree base-ref 분기 SSOT (#424 → PR #428)
+
+`docs/plugin/loop-procedure.md` §1.1.1 신규:
+- `**Base Branch:**` 마커 매치 시 outer worktree base 도 integration branch 정합 (`git worktree add -b <new> <path> origin/<integration>` + `EnterWorktree(path=)` 우회 패턴)
+- §1.1 의 "수동 git worktree add 우회 금지" 룰에 §1.1.1 예외 명시
+
+`commands/impl-loop.md` / `commands/impl.md` / `commands/architect-loop.md` §워크트리 섹션 + §1.1.1 참조 1줄 추가. `commands/architect-loop.md:57` 모호 표현 (`동일 base 에서 따야 함`) 구체화.
+
+배경: jajang Epic 19 ADR-19E 통합 브랜치 패턴에서 outer worktree (origin/main 기반) vs sub-PR base (`feature/local-dsp`) mismatch → sub-PR diff 거대화 ("삭제 변경" false). 사용자 자율 회피 + 자식 자체 sub-worktree 패턴으로 NS1/NS2 머지 성공 — 룰 부재 우회 사례.
+
+### 사용자 업데이트 가이드
+
+```sh
+claude plugin update dcness@dcness
+```
+
+---
+
 ## v0.2.21 (2026-05-13)
 
 **커밋 범위**: `v0.2.20..v0.2.21`
