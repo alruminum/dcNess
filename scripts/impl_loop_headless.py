@@ -88,31 +88,90 @@ def extract_issue_nums(task_path: str) -> dict:
 
 
 def build_invocation(task_path: str,
+                     issue_nums: dict = None,
                      retry_attempt: int = 0,
                      prev_error: str = None) -> tuple:
-    """슬래시 직호출 invocation 조립 (#425 follow-up — chain 깊이 0).
+    """슬래시 직호출 invocation 조립 (#425 follow-up + #431 강화).
 
     반환: (extra_cli_args, user_prompt)
     - user_prompt = `/dcness:impl <task-path>` — CC 가 슬래시 파싱 후
       commands/impl.md 스킬 본문을 system-reminder 로 자식 세션에 자동 inject
-    - extra_cli_args = retry 시 `--append-system-prompt <prev_error>` 추가
+    - extra_cli_args = `--append-system-prompt <mandate + (retry context)>` —
+      자식이 system prompt 로 받는 1st-class 의무. commands/impl.md 본문보다
+      *우선* (#431 자식이 본문만으론 conveyor + inner 4-step 자율 미호출 사단)
 
-    이전 `[A]~[E]` 5 묶음 자연어 본문 폐기. 사유 = chain 깊이 3 → 0 단축:
-    - 옛: 자식이 본문 [E] → /impl 스킬 결정 → loop-procedure.md 결정 → 명령 호출
-    - 신: 자식이 슬래시 = 스킬 본문 직접 instruction → 명령 호출 (1 단계)
-
-    부수 정보 ([A] task 본문 inline / [B] 부모 이슈 read / [C] ADR 사전 read /
-    [D] enum 규칙) 은 commands/impl.md 본문이 이미 강제. 중복 제거.
+    의무 4 카테고리:
+    - 진입 즉시 begin-run 호출 (없으면 `.steps.jsonl` 미작성 → dcness-review --latest
+      자식 run 못 찾고 메인 history 무관 run 반환, #431 결함 1+2)
+    - inner 4-step 모두 호출 — test-engineer → engineer → code-validator → pr-reviewer.
+      test-engineer + engineer 만 호출하고 PASS 박는 false-clean 차단 (#431 결함 3)
+    - PR merge 직후 end-run 호출 — Stop hook 안전망 위 1차 명시
+    - 종료 prose enum (PASS/FAIL/ESCALATE) 박음 — false-clean fallback 차단
     """
-    extra_args = []
-    if retry_attempt > 0 and prev_error:
-        retry_context = (
-            f"이전 시도 실패 (attempt {retry_attempt}):\n\n"
-            f"{prev_error}\n\n"
-            "위 에러 참고하여 수정 후 진행. /dcness:impl 본문 룰 따름."
-        )
-        extra_args = ["--append-system-prompt", retry_context]
+    issue_nums = issue_nums or {}
+    task_num = issue_nums.get("task")
+    issue_arg = f" --issue-num {task_num}" if task_num else ""
 
+    helper_resolve = (
+        'HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} '
+        '2>/dev/null | sort -V | tail -1)/scripts/dcness-helper"'
+    )
+
+    mandate_parts = [
+        "## 헤드리스 자식 세션 의무 (MUST — system prompt 1st-class, #431)",
+        "",
+        "본 세션은 `scripts/impl_loop_headless.py` 가 spawn 한 headless 자식. "
+        "commands/impl.md 본문보다 *우선* 적용되는 의무 4 항목:",
+        "",
+        "### 1. 진입 즉시 conveyor begin-run (필수)",
+        "",
+        "task 진행 *전* 다음 Bash 명령 1회 실행:",
+        "",
+        "```bash",
+        helper_resolve,
+        f'RUN_ID=$("$HELPER" begin-run impl{issue_arg})',
+        "```",
+        "",
+        "누락 시 자식 sid 의 `runs/<rid>/.steps.jsonl` 미작성 → `dcness-review --latest` "
+        "가 자식 run 못 찾고 메인 history 의 무관 run 반환 (#431 결함 1+2).",
+        "",
+        "### 2. inner 4-step 모두 호출 (필수)",
+        "",
+        "`commands/impl.md` default 시퀀스 = test-engineer → engineer → "
+        "**code-validator → pr-reviewer**. 각 sub-agent 호출 전후 `begin-step` / "
+        "`end-step` 명시 (loop-procedure.md §3.1).",
+        "",
+        "test-engineer + engineer 만 호출하고 commit/push/PR 안 만들고 PASS 박는 "
+        "false-clean 안티패턴 = 본 자식 spawn 의 핵심 보장 (1 자식 = 1 PR + 1 이슈 close) "
+        "을 깨뜨림. headless parent 가 stdout text fragility 검사로 차단 (#431 결함 3).",
+        "",
+        "### 3. PR merge 직후 conveyor end-run (필수)",
+        "",
+        "```bash",
+        '"$HELPER" end-run',
+        "```",
+        "",
+        "Stop hook 안전망 (`hooks/stop-end-run.sh`) 이 누락 보완하지만 *명시 호출* 우선.",
+        "",
+        "### 4. 종료 prose enum 박음 (필수)",
+        "",
+        "- 코드 + 테스트 + commit + push + PR 머지 + `Closes #<task-num>` → "
+        "stdout 마지막 줄: `PASS: <한 줄 요약>`",
+        "- 빌드/테스트 실패 → `FAIL: <원인>`",
+        "- 사용자 협업 필요 / 측정 환경 부재 / blocked → `ESCALATE: <위임 내용>`",
+        "",
+        "enum 누락 + exit 0 = headless parent 가 false-clean fallback 판정 → "
+        "다음 task silent 진행 (#422 NS2 사단).",
+    ]
+    mandate = "\n".join(mandate_parts)
+
+    if retry_attempt > 0 and prev_error:
+        mandate = (
+            f"이전 시도 실패 (attempt {retry_attempt}):\n\n{prev_error}\n\n"
+            "위 에러 참고하여 수정 후 진행.\n\n---\n\n"
+        ) + mandate
+
+    extra_args = ["--append-system-prompt", mandate]
     user_prompt = f"/dcness:impl {task_path}"
     return extra_args, user_prompt
 
@@ -249,6 +308,7 @@ def process_task(task_path: str, cwd: str, retry_limit: int,
 
         extra_args, prompt = build_invocation(
             task_path,
+            issue_nums=issue_nums,
             retry_attempt=attempt,
             prev_error=prev_error,
         )
@@ -259,6 +319,31 @@ def process_task(task_path: str, cwd: str, retry_limit: int,
         # blocked / escalate 신호 즉시 정지
         if enum in escalate_signals:
             return {"enum": "blocked", "message": message, "stdout": stdout}
+
+        # clean — inner 4-step 호출 trace 검사 (#431 결함 3)
+        # default 시퀀스 = test-engineer → engineer → code-validator → pr-reviewer.
+        # 자식 stdout 에 후반 2 단계 (code-validator / pr-reviewer) 흔적 부재 시 false-clean.
+        # echo 룰 (commands/impl.md / loop-procedure.md §3.1) 따라 sub-agent 결과가
+        # `[<task>.<agent>] echo` 또는 agent 이름 prose 로 stdout 에 흐름.
+        if enum == "clean":
+            stdout_lower = stdout.lower()
+            has_validator = "code-validator" in stdout_lower
+            has_reviewer = "pr-reviewer" in stdout_lower
+            if not (has_validator and has_reviewer):
+                missing = []
+                if not has_validator:
+                    missing.append("code-validator")
+                if not has_reviewer:
+                    missing.append("pr-reviewer")
+                return {
+                    "enum": "blocked",
+                    "message": (
+                        f"prose PASS / exit 0 인데 inner 4-step 부분 호출 흔적 "
+                        f"(누락: {', '.join(missing)}) — false-clean 의심 (#431 결함 3, "
+                        f"자식이 test-engineer + engineer 만 호출하고 commit/push/PR 안 만들고 종료)"
+                    ),
+                    "stdout": stdout,
+                }
 
         # clean — 이슈 close 2차 confirm (#422 강화: WARN → blocked 강등)
         if enum == "clean":
