@@ -4,6 +4,47 @@
 
 ---
 
+## v0.2.24 (2026-05-14)
+
+**커밋 범위**: `v0.2.23..v0.2.24`
+**핵심 변경**: 헤드리스 자식 stream-json 파서 — 사람 친화 progress view (#431 follow-up → PR #434)
+
+### 1. 자식 spawn `--output-format stream-json --verbose` 전환
+
+`scripts/impl_loop_headless.py:spawn_child`:
+- 옛 `--output-format text` (raw line stream = verbose noise) → `stream-json --verbose` 로 교체
+- `format_progress_event(ev)` 신규 — JSON event → 사람 친화 1 line per marker:
+  - `tool_use.name == "Task"` → `  ㄴ <subagent_type> — <description>`
+  - `tool_use.name == "Bash"` + conveyor 키워드 (begin-run/begin-step/end-step/end-run) → `  ㄴ <cmd>`
+  - `type == "result"` → `  [result] <첫 줄>`
+  - 그 외 도구 (Edit/Read/Glob 등) 는 skip — noise 차단
+- `extract_event_text(ev)` 신규 — parse_result + 4-step keyword 검사용 text 추출
+
+배경 (사용자 시연): jajang epic 19 헤드리스 진행 시 외부 progress (`Running... 11m 42s · ↓ 8.8k tokens`) 만 보이고 자식 sub-agent 흐름 안 보임. v0.2.23 의 `[child] <raw line>` stream 은 verbose noise 가 너무 많음. 사용자가 원한 형태:
+```
+xxxxx task
+  ㄴ test-engineer — 테스트 작성중
+  ㄴ engineer — 구현중
+  ㄴ code-validator — 검증중
+  ㄴ pr-reviewer — 리뷰중
+```
+
+stream-json + JSON 파서 + filter 후 1 line per marker 박으면 CC Bash foreground 의 ⎿ 들여쓰기에 자식 진행 자연 표시.
+
+### 2. `commands/impl-loop.md` / `commands/impl.md` §절차 갱신
+
+- stream-json + 사람 친화 progress 동작 명시
+- Bash background + Monitor 패턴 폐기 (Monitor notification 이 메인 Claude 해석 layer 거쳐 효과 X)
+- Bash foreground 호출 시 CC UI ⎿ 자연 표시 명시
+
+### 사용자 업데이트 가이드
+
+```sh
+claude plugin update dcness@dcness
+```
+
+---
+
 ## v0.2.23 (2026-05-14)
 
 **커밋 범위**: `v0.2.22..v0.2.23`
