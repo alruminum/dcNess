@@ -214,23 +214,38 @@ class EscalateSetTests(unittest.TestCase):
 
 
 class SpawnChildStreamTests(unittest.TestCase):
-    """spawn_child line-buffered stream 동작 검증 (#429 follow-up).
+    """spawn_child stream-json 파서 + 간결 progress 검증 (#431 follow-up).
 
-    fake claude CLI 를 PATH 첫머리에 박아 실제 claude 호출 없이 검증.
-    fake CLI = 3 줄 stdout 출력 + 사이에 sleep → buffer-until-end 아닌
-    line-by-line 으로 즉시 stream_to 에 echo 되는지 확인.
+    fake claude CLI 가 stream-json 형식으로 4-step + result event emit.
+    parent 가 파싱 → Task tool_use marker + result 만 progress line 으로 echo.
     """
 
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
-        # fake claude — 3 라인을 0.1s 간격으로 emit (line-buffered 검증)
+        # fake claude — stream-json events (assistant tool_use × 4 + result)
         fake_claude = Path(self._tmp) / "claude"
         fake_claude.write_text(
             "#!/usr/bin/env python3\n"
-            "import sys, time\n"
-            "sys.stdout.write('line1\\n'); sys.stdout.flush(); time.sleep(0.05)\n"
-            "sys.stdout.write('line2\\n'); sys.stdout.flush(); time.sleep(0.05)\n"
-            "sys.stdout.write('PASS: ok\\n'); sys.stdout.flush()\n"
+            "import json, sys, time\n"
+            "def emit(ev):\n"
+            "    sys.stdout.write(json.dumps(ev) + '\\n')\n"
+            "    sys.stdout.flush()\n"
+            "for agent, desc in [\n"
+            "    ('test-engineer', '테스트 작성'),\n"
+            "    ('engineer', '구현'),\n"
+            "    ('code-validator', '검증'),\n"
+            "    ('pr-reviewer', '리뷰'),\n"
+            "]:\n"
+            "    emit({'type': 'assistant', 'message': {'content': [\n"
+            "        {'type': 'tool_use', 'name': 'Task', 'input': {\n"
+            "            'subagent_type': agent, 'description': desc,\n"
+            "        }}\n"
+            "    ]}})\n"
+            "    time.sleep(0.02)\n"
+            "emit({'type': 'assistant', 'message': {'content': [\n"
+            "    {'type': 'text', 'text': 'PASS: 머지 완료'}\n"
+            "]}})\n"
+            "emit({'type': 'result', 'result': 'PASS: 머지 완료'})\n"
             "sys.exit(0)\n",
             encoding="utf-8",
         )
@@ -243,35 +258,34 @@ class SpawnChildStreamTests(unittest.TestCase):
         import shutil
         shutil.rmtree(self._tmp, ignore_errors=True)
 
-    def test_stream_to_receives_lines_with_prefix(self):
-        """stream_to 가 자식 stdout line 을 '[child] ' 접두 박아 받는지."""
+    def test_progress_emits_subagent_markers(self):
+        """stream_to 가 sub-agent 호출 marker 를 간결 progress 로 받는지."""
         import io
         sink = io.StringIO()
-        exit_code, stdout, stderr = ilh.spawn_child(
-            "/some-prompt", cwd=self._tmp, timeout=10,
-            stream_to=sink,
+        exit_code, stdout, _ = ilh.spawn_child(
+            "/x", cwd=self._tmp, timeout=10, stream_to=sink,
         )
         self.assertEqual(exit_code, 0)
-        # captured stdout 정합
-        self.assertIn("line1", stdout)
-        self.assertIn("line2", stdout)
-        self.assertIn("PASS: ok", stdout)
-        # stream sink 에 prefix 박힌 line stream 도착
         sink_content = sink.getvalue()
-        self.assertIn("[child] line1", sink_content)
-        self.assertIn("[child] line2", sink_content)
-        self.assertIn("[child] PASS: ok", sink_content)
+        # 4 sub-agent marker 모두 progress line 으로 emit
+        self.assertIn("ㄴ test-engineer — 테스트 작성", sink_content)
+        self.assertIn("ㄴ engineer — 구현", sink_content)
+        self.assertIn("ㄴ code-validator — 검증", sink_content)
+        self.assertIn("ㄴ pr-reviewer — 리뷰", sink_content)
+        # result line 도 emit
+        self.assertIn("[result] PASS: 머지 완료", sink_content)
 
-    def test_stream_to_none_skips_echo(self):
-        """stream_to=None 시 echo skip — capture 만."""
-        # spawn_child 시그니처상 None 전달 시 default sys.stderr 로 들어감.
-        # 따라서 stream skip 검증은 sink=io.StringIO() 빈 결과 확인이 아니라
-        # default 동작 회귀만 보장. 본 케이스는 capture 정합만 확인.
+    def test_aggregated_text_for_parse_result(self):
+        """aggregated_text 에 subagent_type keyword + assistant text 누적."""
         exit_code, stdout, _ = ilh.spawn_child(
             "/x", cwd=self._tmp, timeout=10, stream_to=None,
         )
         self.assertEqual(exit_code, 0)
-        self.assertIn("PASS: ok", stdout)
+        # 4-step 검사용 keyword
+        self.assertIn("code-validator", stdout)
+        self.assertIn("pr-reviewer", stdout)
+        # parse_result 용 enum text
+        self.assertIn("PASS: 머지 완료", stdout)
 
 
 class FalseCleanDowngradeTests(unittest.TestCase):
