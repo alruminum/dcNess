@@ -85,19 +85,27 @@ gh issue view <task-num> | head -80
 
 근거: `/impl-loop` 헤드리스 자식 세션 명령문 의무와 정합 ([#375](https://github.com/alruminum/dcNess/issues/375)). 메인 직접 호출 시도 같은 룰.
 
-## impl 파일 사전 read 의무 (MUST — module-architect 7 원칙 정합)
+## impl 파일 사전 read 의무 (MUST — module-architect 7 원칙 + cost-aware #436)
 
-`/impl` 진입 시 engineer / test-engineer 가 impl 파일의 `## 사전 준비` 섹션 따라 다음 파일 read 의무 (`agents/module-architect.md` §impl 파일 7 원칙):
+`/impl` 진입 시 engineer / test-engineer 가 impl 파일의 `## 사전 준비` 섹션 따라 다음 파일 read 의무. **단 통째 read 금지** — `CLAUDE.md` (글로벌) §cost-aware 행동 (#402) 정합: 200 line 초과 doc 은 grep + offset/limit 부분 read.
 
-1. `docs/architecture.md` — 모듈 구조 / 시그니처 / 의존성 흐름
-2. `docs/adr.md` — 핵심 설계 결정 (부재 시 silent skip)
-3. `docs/prd.md` — 비즈니스 요구사항
-4. (의존 task 있을 시) 이전 step 머지 PR — impl 파일의 *의존 task slug* 따라 `gh pr list --search "<slug>" --state merged --json url --jq '.[0].url'` 호출 후 read
-5. (같은 epic 내) 이전 머지된 형제 story / task PR 환기 — `gh pr list --search "[epic<N>]" --state merged --limit 10 --json title,url` 로 본 task 보다 앞선 머지 항목 본문 1회 훑음. 형제 PR 의 *후속 결정 사항* (옵션 채택 / 인터페이스 변경 / 시드 데이터 등) 이 본 task 영향 미칠 수 있음. 부재 / 첫 task 시 silent skip.
+| 항목 | read 범위 |
+|---|---|
+| `docs/architecture.md` | 200 line 초과 시 본 task 의 `task_index` 에 해당하는 § 만 grep + offset read (예: `grep -n "## 3\." docs/architecture.md` 로 위치 잡고 offset). 100 line 이하면 통째 OK |
+| `docs/adr.md` | 본 task 영향 ADR 만 read (예: `grep "ADR-19A\|ADR-19E" docs/adr.md` 후 매치 줄 ±10 line). 부재 시 silent skip |
+| `docs/prd.md` | 본 task 의 Story 항목 § 만. 통째 read 금지 |
+| 의존 task 머지 PR | `gh pr view <num> --json body --jq '.body' | head -20` — 1~2줄 결정 사항만 필요. 통째 body json 금지 (이슈 #436) |
+| 형제 PR 환기 (같은 epic) | `gh pr list --search "[epic<N>]" --state merged --limit 10 --json title,url` 로 *title + url 만* 1회 훑음. body 통째 read 금지 — 인터페이스 변경 의심되면 그때 `--json body` 단건 fetch |
+| 의존 모듈 (수정 X 영역) | **grep + 시그니처만** read. 예: `grep "^export" path/to/file.ts | head -10` + 매치 줄 ±2 line. 통째 read 금지 — 본 task 가 수정하지 않는 영역의 구현 디테일 불요 |
+| 의존 모듈 (수정 영역) | 통째 read OK |
 
-→ agent prompt 에 impl 파일 경로 박으면 agent 가 자체 read. *메인 Claude 가 사전 inject* 불필요 (impl 파일 안 진입 prompt 가 강제).
+→ agent prompt 에 impl 파일 경로 박으면 agent 가 위 룰 따라 자체 read. *메인 Claude 가 사전 inject* 불필요 (impl 파일 안 진입 prompt 가 강제).
 
-**추가 — 메인 직접 read 의무 (강조)**: agent prompt 경로 박는 것 외에 메인 Claude 가 *진입 전* `docs/architecture.md` + `docs/adr.md` 본문 *다시 read* 의무. 이번 task 와 연관된 모듈 / 결정 사항 확인 후 진입 (의도 모르고 덮어쓰는 회귀 회피). `/impl-loop` 헤드리스 자식 세션 명령문 의무와 정합 ([#375](https://github.com/alruminum/dcNess/issues/375)).
+**추가 — 메인 직접 read 의무 (강조 + cost-aware, #436)**: 메인 Claude 는 *진입 분기 판단* 에 필요한 **최소** 만 read. agent prompt 경로 박는 것 외에 메인이 통째 read 하지 말 것 — agent 가 자체 read 함.
+
+- 메인 진입 분기 판단 필요 정보 = (a) 이번 task 의 Scope (impl 파일 § Scope grep) / (b) 의존 task 산출물 위치 (impl 파일 § 사전 준비 grep) / (c) ADR 위반 의심 시 해당 ADR 만 grep.
+- `docs/architecture.md` / `docs/adr.md` *통째 read* 금지 (이슈 #436 실측 — task 진입 직후 80k messages / 12% context 누적, 코드 1줄 안 썼는데). 부분 read 의무.
+- 정합: `CLAUDE.md` §cost-aware 행동 (#402) — "큰 plan/docs 통째 read 회피 → grep + offset/limit. sub-agent 위임 우선 (메인 직접 도구 ↓ → 메인 cache_read 누적 ↓)".
 
 ## 진입 직전 — task 진행 상태 1회 확인 (MUST, issue #346)
 
