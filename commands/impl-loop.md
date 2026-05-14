@@ -41,19 +41,21 @@ tail -50 "<task-path>"
 
 ## 절차 — 헤드리스 spawn
 
-**메인 Claude 가 호출하는 방식 (MUST — 실시간 진행 가시화)**:
-
-Bash tool 의 `run_in_background=true` 로 spawn 후 Monitor tool 로 stdout line stream 받음. 메인 세션 UI 에 자식 진행 (`[child] ...` 접두) 이 line-by-line notification 으로 흐름. foreground (`run_in_background=false`) 호출 시 자식 종료까지 외부 progress (`Running... · 11m 42s`) 만 보이고 자식 prose 안 보임 (회귀 케이스).
-
 ```bash
 PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)"
 python3 "$PLUGIN_ROOT/scripts/impl_loop_headless.py" '<impl-glob>' \
   [--retry-limit 3] [--escalate-on blocked] [--timeout 1800]
 ```
 
-- Bash 호출 시 `run_in_background=true` 권장 (multi-task 또는 단일이라도 5분+ 예상 시)
-- Monitor tool 로 위 background 호출 stream — 메인이 line-by-line notification 받음 → 자식 sub-agent prose / Bash log 등 실시간 echo
-- 자식 stdout line 은 헤드리스 script 가 `  [child] <line>` 접두 박아 stderr 로 stream (옛 buffer-until-end 폐기)
+**실시간 진행 가시화 (#431 follow-up)**:
+- 스크립트가 자식 `claude -p` 를 `--output-format stream-json --verbose` 로 spawn
+- parent 가 stream-json event 파싱 → **간결한 progress line** 만 stderr emit:
+  - sub-agent 호출 → `  ㄴ <subagent_type> — <description>`
+  - conveyor lifecycle Bash → `  ㄴ "$HELPER" begin-run impl ...`
+  - 최종 결과 → `  [result] <첫 줄>`
+- 다른 도구 호출 (Edit/Read/Glob 등) + 메시지 텍스트는 progress 에서 skip (noise 차단)
+- Bash tool foreground 호출 시 CC UI 의 ⎿ 들여쓰기로 자식 진행 자연 표시 (raw line 흐름 아닌 *filter 후* 1 line per marker → CC Bash layer 가 stream 잘 표시)
+- Background + Monitor 패턴 옵션은 미권장 — Monitor notification 이 메인 Claude 해석 layer 거쳐 사용자 시야 도달이라 자식 line 직접 stream 효과 X
 
 스크립트 동작:
 

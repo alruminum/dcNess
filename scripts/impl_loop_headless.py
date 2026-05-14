@@ -32,6 +32,7 @@ Usage:
 
 import argparse
 import glob
+import json
 import os
 import re
 import subprocess
@@ -220,25 +221,101 @@ def confirm_issue_closed(task_issue_num) -> bool:
         return None
 
 
+def format_progress_event(ev: dict) -> "str | None":
+    """stream-json event → 간결한 사람 친화 progress line.
+
+    None 반환 = 해당 event skip (raw line stream noise 회피).
+    """
+    t = ev.get("type")
+
+    # assistant tool_use → 도구 호출 시작
+    if t == "assistant":
+        msg = ev.get("message", {}) or {}
+        for c in msg.get("content", []) or []:
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "tool_use":
+                name = c.get("name", "")
+                inp = c.get("input", {}) or {}
+                if name == "Task":
+                    sub = inp.get("subagent_type", "?")
+                    desc = (inp.get("description", "") or "")[:50]
+                    return f"  ㄴ {sub} — {desc}"
+                if name == "Bash":
+                    cmd = (inp.get("command", "") or "").splitlines()[0][:80]
+                    # conveyor lifecycle 명령만 echo (begin-run / begin-step / end-step / end-run)
+                    if any(kw in cmd for kw in (
+                        "begin-run", "begin-step", "end-step", "end-run",
+                    )):
+                        return f"  ㄴ {cmd}"
+                    # 그 외 일반 Bash 는 skip (verbose noise)
+                    return None
+                # 그 외 도구 (Edit/Read/Glob/Grep 등) 는 skip
+                return None
+
+    # result → 최종 메시지
+    if t == "result":
+        res = (ev.get("result", "") or "").strip()
+        if res:
+            short = res.splitlines()[0][:120]
+            return f"  [result] {short}"
+
+    return None
+
+
+def extract_event_text(ev: dict) -> "str | None":
+    """parse_result / 4-step 검사가 사용할 text 추출.
+
+    assistant text + tool_use 의 subagent_type / Bash command 도 함께 누적
+    (4-step keyword 매칭 + parse_result enum 매칭 양쪽 대응).
+    """
+    t = ev.get("type")
+    if t == "assistant":
+        msg = ev.get("message", {}) or {}
+        parts = []
+        for c in msg.get("content", []) or []:
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "text":
+                parts.append(c.get("text", "") or "")
+            elif c.get("type") == "tool_use":
+                inp = c.get("input", {}) or {}
+                if c.get("name") == "Task":
+                    sub = inp.get("subagent_type", "")
+                    if sub:
+                        parts.append(f"[tool_use:Task subagent_type={sub}]")
+                elif c.get("name") == "Bash":
+                    cmd = (inp.get("command", "") or "").splitlines()[0][:200]
+                    parts.append(f"[tool_use:Bash {cmd}]")
+        return "\n".join(parts) if parts else None
+    if t == "result":
+        return ev.get("result", "") or None
+    return None
+
+
 def spawn_child(prompt: str, cwd: str, timeout: int,
                 extra_args: list = None,
                 stream_to: "io.TextIOBase | None" = None) -> tuple:
-    """claude -p 자식 세션 spawn — 슬래시 직호출 + 실시간 stdout stream.
+    """claude -p 자식 세션 spawn — stream-json 파서 + 간결 progress (#431 follow-up).
 
     extra_args = `--append-system-prompt <retry_context>` 등 추가 CLI 인자.
-    stream_to = 자식 stdout line 실시간 echo 대상 (default sys.stderr).
+    stream_to = 사람 친화 progress line 출력 대상 (default sys.stderr).
                 None 박으면 echo skip (capture only).
-    반환: (exit_code, stdout, stderr)
+    반환: (exit_code, aggregated_text, stderr)
 
-    옛 `subprocess.run(capture_output=True)` (전체 buffer) → `Popen + line stream`
-    으로 교체 (#429 follow-up — 사용자 메인 세션에서 자식 진행 실시간 가시화).
-    헤드리스 parent 가 `run_in_background=true` 로 호출되면 Monitor tool 이
-    stdout line stream 을 메인 Claude 로 notification 으로 전달.
+    옛 `--output-format text` (raw line stream) → `stream-json --verbose` 로 교체.
+    parent 가 각 JSON event 파싱 → Task tool 호출 (sub-agent 진입) + conveyor
+    lifecycle Bash 명령 + 최종 result 만 사람 친화 1-line 으로 stream_to emit.
+    raw event 노이즈 차단 → CC Bash foreground 진행 중 ⎿ 들여쓰기 자연 표시.
+
+    aggregated_text = parse_result + 4-step 검사용 — assistant text + tool_use
+    의 subagent_type / Bash command 누적.
     """
     cmd = [
         "claude", "-p",
         "--dangerously-skip-permissions",
-        "--output-format", "text",
+        "--output-format", "stream-json",
+        "--verbose",  # stream-json 은 verbose 페어링 필수 (CC CLI 강제)
     ]
     if extra_args:
         cmd.extend(extra_args)
@@ -247,7 +324,7 @@ def spawn_child(prompt: str, cwd: str, timeout: int,
     if stream_to is None:
         stream_to = sys.stderr
 
-    captured_stdout = []
+    captured_text = []
     captured_stderr = []
 
     try:
@@ -262,24 +339,47 @@ def spawn_child(prompt: str, cwd: str, timeout: int,
 
     import threading
 
-    def _drain(pipe, sink, prefix):
+    def _drain_stdout():
         try:
-            for line in iter(pipe.readline, ""):
-                sink.append(line)
+            for line in iter(proc.stdout.readline, ""):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    ev = json.loads(line)
+                except json.JSONDecodeError:
+                    # 가끔 non-JSON 줄 (CC 디버그 등) → raw echo + skip
+                    if stream_to is not None:
+                        stream_to.write(f"  [child:raw] {line}\n")
+                        stream_to.flush()
+                    continue
+
+                # progress line emit
                 if stream_to is not None:
-                    stream_to.write(f"{prefix}{line}")
+                    progress = format_progress_event(ev)
+                    if progress:
+                        stream_to.write(progress + "\n")
+                        stream_to.flush()
+
+                # text aggregation
+                text = extract_event_text(ev)
+                if text:
+                    captured_text.append(text)
+        finally:
+            proc.stdout.close()
+
+    def _drain_stderr():
+        try:
+            for line in iter(proc.stderr.readline, ""):
+                captured_stderr.append(line)
+                if stream_to is not None:
+                    stream_to.write(f"  [child:err] {line}")
                     stream_to.flush()
         finally:
-            pipe.close()
+            proc.stderr.close()
 
-    t_out = threading.Thread(
-        target=_drain, args=(proc.stdout, captured_stdout, "  [child] "),
-        daemon=True,
-    )
-    t_err = threading.Thread(
-        target=_drain, args=(proc.stderr, captured_stderr, "  [child:err] "),
-        daemon=True,
-    )
+    t_out = threading.Thread(target=_drain_stdout, daemon=True)
+    t_err = threading.Thread(target=_drain_stderr, daemon=True)
     t_out.start()
     t_err.start()
 
@@ -289,11 +389,11 @@ def spawn_child(prompt: str, cwd: str, timeout: int,
         proc.kill()
         t_out.join(timeout=2)
         t_err.join(timeout=2)
-        return 124, "".join(captured_stdout), "".join(captured_stderr)
+        return 124, "\n".join(captured_text), "".join(captured_stderr)
 
     t_out.join(timeout=5)
     t_err.join(timeout=5)
-    return exit_code, "".join(captured_stdout), "".join(captured_stderr)
+    return exit_code, "\n".join(captured_text), "".join(captured_stderr)
 
 
 def process_task(task_path: str, cwd: str, retry_limit: int,

@@ -62,7 +62,8 @@ PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dc
 python3 "$PLUGIN_ROOT/scripts/impl_loop_headless.py" '<task-path>'
 ```
 
-- Bash tool `run_in_background=true` + Monitor stream 권장 — 메인 세션 UI 에 자식 진행 (`[child] ...` 접두) line-by-line notification. foreground 호출 시 자식 종료까지 외부 progress 만 보이고 자식 prose 안 보임 (회귀)
+- 스크립트가 자식 `claude -p` 를 stream-json + 사람 친화 progress 로 spawn — sub-agent 호출 / conveyor Bash / 최종 result 만 1 line per marker 로 stderr emit (#431 follow-up)
+- Bash tool foreground 호출 시 CC UI 의 ⎿ 들여쓰기로 자식 진행 자연 표시
 - 스크립트가 1 task glob 도 처리 — task 1개도 자식 세션 cold start 로 처리하고 결과만 메인에 회수. 메인은 결과 회수 + 사용자 보고만. 자세히 = [`commands/impl-loop.md`](impl-loop.md) §절차
 
 trade-off: 매 task 30~120s cold start latency 추가. 컨텍스트 누적 보호 + 사후 분석 자연 분리 + 실시간 가시화 가치와 trade-off.
