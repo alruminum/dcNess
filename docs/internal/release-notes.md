@@ -4,6 +4,37 @@
 
 ---
 
+## v0.2.25 (2026-05-19)
+
+**커밋 범위**: `v0.2.24..v0.2.25`
+**핵심 변경**: `/impl-loop`·`/impl` 헤드리스 (`claude -p`) 폐기 → 메인 in-session 오케스트레이터 복귀 (#438 + #440)
+
+### 배경 — Anthropic Agent SDK 과금 변경
+
+2026-06-15 부터 구독 플랜의 `claude -p` / Claude Agent SDK / GitHub Actions 사용량이 별도 "Agent SDK 크레딧" 풀로 분리 + full API rate 과금 (Pro $20 / Max 5x $100 / Max 20x $200, per-user, 미사용분 cycle 말 소멸). dcness 헤드리스 자식 세션 spawn 이 정확히 이 풀에 진입 → 구독 사용자 비용 폭증.
+
+공식: https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan
+
+### 1. 헤드리스 경로 완전 폐기 (#438, PR #439)
+
+- `scripts/impl_loop_headless.py` (563줄) + `tests/test_impl_loop_headless.py` (478줄) 삭제
+- `commands/impl-loop.md` 재작성 — `claude -p` 자식 spawn 제거, 메인 in-session per-task 오케스트레이션 복원. `orchestration.md §4.8` 의 `impl-task-loop × N` 모델이 이미 in-session 이라 헤드리스는 그 위 얇은 override 층이었음
+- `commands/impl.md` — `## 헤드리스 실행 옵션 (#422)` 섹션 삭제
+- 보존: 워크트리 1회 + base-ref(#424) / Pre-flight gate / 진입 직전 1회 확인(#346) / 1 task = 1 PR / 4-step 모두 호출 MUST(#431)
+- 신규: false-clean 차단(메인 직접 확인) + compaction 복구 절 (루프 상태 = conveyor state 파일 SSOT)
+- in-session = 구독 interactive 한도 — Agent SDK 크레딧 풀 미진입
+
+### 2. impl-loop agent return 간결성 규율 (#440, PR #441)
+
+- impl-task-loop 5 agent (engineer / test-engineer / code-validator / pr-reviewer / module-architect) "결론 + 권장 다음 단계" 섹션에 return 간결성 가이드 1블록 추가
+- return prose = 결론 + 핵심 변경·발견 + 권장 다음 단계만. 과정 narration / 계획 재진술 / 파일별 장황한 설명 제거. 결론 근거 substance (실측 명령·수치 / 발견 항목 / 미완 작업)는 유지
+- 형식 강제(라인 cap) 아닌 내용 선택 가이드 — prose-only 철학 정합
+- in-session 복귀로 매 task return 이 메인 컨텍스트에 누적 → 큰 epic(15~30 task) 대비 잔여분 감축
+
+### 업데이트
+
+- `claude plugin update dcness@dcness` 한 번 → v0.2.25 적용
+
 ## v0.2.24 (2026-05-14)
 
 **커밋 범위**: `v0.2.23..v0.2.24`
