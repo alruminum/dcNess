@@ -37,8 +37,7 @@ default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → p
 4. **pr-reviewer (LGTM)** — 코드 품질·보안 + commit/push/PR 생성·머지
 
 후반 2 단계 (3+4) skip 차단:
-- `scripts/impl_loop_headless.py:process_task` 가 자식 stdout text 에 `code-validator` / `pr-reviewer` 흔적 부재 시 → false-clean 의심 → blocked 강등 (#431)
-- 헤드리스 parent 가 메인에 `ESCALATE` 보고 → 사용자 개입
+- task 를 clean 으로 표기하기 *전*, code-validator 가 PASS 를 냈고 pr-reviewer 가 실행돼 PR 이 생성·머지됐는지 메인이 직접 확인. 흔적 부재 시 → false-clean 의심 → `blocked` 강등 + 사용자 개입 (#431)
 
 ## 후속 라우팅
 - 본 loop clean → 자동 commit/PR (branch prefix = orchestration §4.3 decision rule: feat/chore/fix)
@@ -52,21 +51,6 @@ default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → p
 Step 0 진입 시 자동 `EnterWorktree(name="impl-{ts_short}")`. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
 
 **Base ref 분기 (MUST, #424)**: `docs/stories.md` `**Base Branch:** feature/<slug>` 마커 매치 시 통합 브랜치 모드 — outer worktree base ref 도 integration branch 와 정합 필요. 절차 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.1.
-
-## 헤드리스 실행 옵션 (단발 task, #422)
-
-사용자 발화에 정규식 `헤드리스|headless` 매치 시 메인 Claude 가 본 skill 본문 직접 진행 대신 **헤드리스 자식 세션** 으로 위임. 메인 컨텍스트 누적 회피 + 단발 task 도 `/run-review` 사후 분석 자연 분리.
-
-```bash
-PLUGIN_ROOT="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)"
-python3 "$PLUGIN_ROOT/scripts/impl_loop_headless.py" '<task-path>'
-```
-
-- 스크립트가 자식 `claude -p` 를 stream-json + 사람 친화 progress 로 spawn — sub-agent 호출 / conveyor Bash / 최종 result 만 1 line per marker 로 stderr emit (#431 follow-up)
-- Bash tool foreground 호출 시 CC UI 의 ⎿ 들여쓰기로 자식 진행 자연 표시
-- 스크립트가 1 task glob 도 처리 — task 1개도 자식 세션 cold start 로 처리하고 결과만 메인에 회수. 메인은 결과 회수 + 사용자 보고만. 자세히 = [`commands/impl-loop.md`](impl-loop.md) §절차
-
-trade-off: 매 task 30~120s cold start latency 추가. 컨텍스트 누적 보호 + 사후 분석 자연 분리 + 실시간 가시화 가치와 trade-off.
 
 ## Pre-flight gate (Step 0 직후)
 [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §6 매치 강제 — 부모 epic stories.md 상단 `**GitHub Epic Issue:** [#\d+]` 또는 `미등록 (사유: …)` 매치 0건 시 즉시 STOP + 사용자 보고. silent skip 금지.
@@ -83,7 +67,7 @@ gh issue view <task-num> | head -80
 
 이슈 본문에 수용 기준 / 추가 컨텍스트 / 결정 사항이 박혀있을 수 있음. read 안 하면 *impl 파일 누락 컨텍스트* 미인지 위험.
 
-근거: `/impl-loop` 헤드리스 자식 세션 명령문 의무와 정합 ([#375](https://github.com/alruminum/dcNess/issues/375)). 메인 직접 호출 시도 같은 룰.
+근거: `/impl-loop` 다중 task 진행 시에도 동일 — 매 task 부모 이슈 본문 read 의무 ([#375](https://github.com/alruminum/dcNess/issues/375)).
 
 ## impl 파일 사전 read 의무 (MUST — module-architect 7 원칙 + cost-aware #436)
 
