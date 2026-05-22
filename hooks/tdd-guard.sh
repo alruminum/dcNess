@@ -104,12 +104,21 @@ if [ -f "$FILE_PATH" ]; then
 fi
 
 # 매칭 test 파일 존재 검사
+# issue #469 결함 C — monorepo `apps/<X>/src/__tests__/<name>.test` 위치 cover.
+# `<src_root>` = 파일 경로 안 `src/` 마디 직전까지 trim. trim 실패 (src/ 부재) 시
+# `<PROJECT_ROOT>` fallback. 기존 4-tier (8 location) + grandparent 2 +
+# monorepo src_root 2 = 6-tier (12 location).
 has_test_for() {
   local fp="$1"
-  local dir base parent ext
+  local dir base parent grandparent src_root ext
   dir=$(dirname "$fp")
   base=$(basename "$fp" | sed -E 's/\.(ts|tsx|js|jsx)$//')
   parent=$(dirname "$dir")
+  grandparent=$(dirname "$parent")
+  case "$fp" in
+    */src/*) src_root="${fp%%/src/*}/src" ;;
+    *) src_root="${PROJECT_ROOT}/src" ;;
+  esac
   for ext in ts tsx js jsx; do
     [ -f "${dir}/${base}.test.${ext}" ] && return 0
     [ -f "${dir}/${base}.spec.${ext}" ] && return 0
@@ -117,6 +126,13 @@ has_test_for() {
     [ -f "${dir}/__tests__/${base}.spec.${ext}" ] && return 0
     [ -f "${parent}/__tests__/${base}.test.${ext}" ] && return 0
     [ -f "${parent}/__tests__/${base}.spec.${ext}" ] && return 0
+    # Tier 4: <grandparent>/__tests__/<name>.{test,spec}.<ext>  (issue #469 결함 C)
+    [ -f "${grandparent}/__tests__/${base}.test.${ext}" ] && return 0
+    [ -f "${grandparent}/__tests__/${base}.spec.${ext}" ] && return 0
+    # Tier 5: <src_root>/__tests__/<name>.{test,spec}.<ext>  (monorepo, issue #469 결함 C)
+    [ -f "${src_root}/__tests__/${base}.test.${ext}" ] && return 0
+    [ -f "${src_root}/__tests__/${base}.spec.${ext}" ] && return 0
+    # Tier 6: <PROJECT_ROOT>/src/__tests__/<name>.{test,spec}.<ext> (single-app fallback)
     [ -f "${PROJECT_ROOT}/src/__tests__/${base}.test.${ext}" ] && return 0
     [ -f "${PROJECT_ROOT}/src/__tests__/${base}.spec.${ext}" ] && return 0
   done
@@ -125,15 +141,36 @@ has_test_for() {
 
 if ! has_test_for "$FILE_PATH"; then
   BASE=$(basename "$FILE_PATH" | sed -E 's/\.(ts|tsx|js|jsx)$//')
+  DIR=$(dirname "$FILE_PATH")
+  PARENT=$(dirname "$DIR")
+  GP=$(dirname "$PARENT")
+  case "$FILE_PATH" in
+    */src/*) SRC_ROOT="${FILE_PATH%%/src/*}/src" ;;
+    *) SRC_ROOT="${PROJECT_ROOT}/src" ;;
+  esac
   deny "TDD GUARD: '${BASE}' 에 대한 테스트 파일이 존재하지 않습니다. 구현 코드를 작성하기 *전*에 테스트를 먼저 작성하세요.
 
-예: ${BASE}.test.ts 또는 __tests__/${BASE}.test.ts
+권장 위치 (먼저 시도):
+  ${DIR}/${BASE}.test.ts                또는 ${DIR}/${BASE}.spec.ts
+  ${DIR}/__tests__/${BASE}.test.ts
+  ${PARENT}/__tests__/${BASE}.test.ts
 
-이미 테스트 있는데 인식 안 됨 — dcness 가 검사하는 8 location:
-  <dir>/<name>.{test,spec}.{ts,tsx,js,jsx}
-  <dir>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
-  <parent>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
-  <root>/src/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}"
+이미 테스트 박았는데 인식 안 됨 — dcness 가 검사하는 6-tier 12 location:
+  Tier 1: <dir>/<name>.{test,spec}.{ts,tsx,js,jsx}
+  Tier 2: <dir>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+  Tier 3: <parent>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+  Tier 4: <grandparent>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+  Tier 5: <src_root>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+  Tier 6: <PROJECT_ROOT>/src/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+
+본 파일의 실측 위치:
+  <dir>         = ${DIR}
+  <parent>      = ${PARENT}
+  <grandparent> = ${GP}
+  <src_root>    = ${SRC_ROOT}
+  <PROJECT_ROOT>= ${PROJECT_ROOT}
+
+회피 안티패턴 금지: 위 location 외 다른 위치 (예: <parent>/__tests__/<subdir>/<name>.test.<ext>) 에 같은 본문 복사 박지 말 것. false negative 발견 시 본 hook 자체 fix (#469 결함 C 영역) 후속 PR 영역."
   exit 0
 fi
 

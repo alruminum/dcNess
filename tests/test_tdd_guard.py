@@ -182,5 +182,113 @@ class TestRegressionPreserved(unittest.TestCase):
         self.assertEqual(decision(run_hook(path, self._tmp)), "allow")
 
 
+class TestPathMatcherTier4_Grandparent(unittest.TestCase):
+    """issue #469 결함 C — Tier 4: <grandparent>/__tests__/<name>.{test,spec}.<ext>.
+
+    src 파일 hierarchy 가 2-tier 깊은 경우 (예: src/audio/decoder/X.ts) 의
+    `<grandparent>/__tests__/X.test.ts` (= src/__tests__/X.test.ts) 매치.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        subprocess.run(["git", "init"], cwd=self._tmp, capture_output=True)
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _touch(self, rel: str, content: str = "// stub\n") -> str:
+        p = Path(self._tmp) / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return str(p)
+
+    def test_grandparent_tests_match(self):
+        # src 파일 = src/audio/decoder/X.ts
+        # grandparent = src
+        # 매치 위치 = src/__tests__/X.test.ts
+        self._touch("src/audio/decoder/X.ts", "export function go() { return 1; }\n")
+        self._touch("src/__tests__/X.test.ts", "test('ok', () => {})\n")
+        path = str(Path(self._tmp) / "src/audio/decoder/X.ts")
+        self.assertEqual(decision(run_hook(path, self._tmp)), "allow")
+
+    def test_grandparent_spec_match(self):
+        self._touch("src/audio/decoder/Y.ts", "export const Y = 1;\n")
+        self._touch("src/__tests__/Y.spec.ts", "test('ok', () => {})\n")
+        path = str(Path(self._tmp) / "src/audio/decoder/Y.ts")
+        self.assertEqual(decision(run_hook(path, self._tmp)), "allow")
+
+
+class TestPathMatcherTier5_MonorepoSrcRoot(unittest.TestCase):
+    """issue #469 결함 C — Tier 5: <src_root>/__tests__/<name>.{test,spec}.<ext>.
+
+    monorepo `apps/<X>/src/...` 구조 cover. src_root = `apps/<X>/src`.
+    예: jajang `apps/mobile/src/audio/AudioEngine.ts` 의 `apps/mobile/src/__tests__/AudioEngine.test.ts`.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        subprocess.run(["git", "init"], cwd=self._tmp, capture_output=True)
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _touch(self, rel: str, content: str = "// stub\n") -> str:
+        p = Path(self._tmp) / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return str(p)
+
+    def test_monorepo_apps_mobile_src_audio_match(self):
+        # src 파일 = apps/mobile/src/audio/AudioEngine.ts
+        # src_root = apps/mobile/src
+        # 매치 위치 = apps/mobile/src/__tests__/AudioEngine.test.ts
+        self._touch(
+            "apps/mobile/src/audio/AudioEngine.ts",
+            "export class AudioEngine { play() {} }\n",
+        )
+        self._touch(
+            "apps/mobile/src/__tests__/AudioEngine.test.ts",
+            "test('ok', () => {})\n",
+        )
+        path = str(Path(self._tmp) / "apps/mobile/src/audio/AudioEngine.ts")
+        self.assertEqual(decision(run_hook(path, self._tmp)), "allow")
+
+    def test_monorepo_deep_hierarchy_match(self):
+        # src 파일 = apps/web/src/components/forms/LoginForm.ts (3-level deep)
+        # src_root = apps/web/src
+        self._touch(
+            "apps/web/src/components/forms/LoginForm.ts",
+            "export const LoginForm = () => null;\n",
+        )
+        self._touch(
+            "apps/web/src/__tests__/LoginForm.test.ts",
+            "test('login', () => {})\n",
+        )
+        path = str(Path(self._tmp) / "apps/web/src/components/forms/LoginForm.ts")
+        self.assertEqual(decision(run_hook(path, self._tmp)), "allow")
+
+    def test_monorepo_no_test_denied(self):
+        # src 파일은 있는데 src_root 매치 test 부재 → deny
+        self._touch(
+            "apps/mobile/src/audio/AudioMixer.ts",
+            "export class AudioMixer {}\n",
+        )
+        path = str(Path(self._tmp) / "apps/mobile/src/audio/AudioMixer.ts")
+        self.assertEqual(decision(run_hook(path, self._tmp)), "deny")
+
+    def test_packages_src_root_match(self):
+        # monorepo `packages/<X>/src/...` 패턴도 cover (src/ 마디 기준)
+        self._touch(
+            "packages/core/src/utils/format.ts",
+            "export const format = (s) => s;\n",
+        )
+        self._touch(
+            "packages/core/src/__tests__/format.test.ts",
+            "test('format', () => {})\n",
+        )
+        path = str(Path(self._tmp) / "packages/core/src/utils/format.ts")
+        self.assertEqual(decision(run_hook(path, self._tmp)), "allow")
+
+
 if __name__ == "__main__":
     unittest.main()
