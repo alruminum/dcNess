@@ -1951,5 +1951,150 @@ PASS — 빈 문자열 가드 추가.
         self.assertEqual(payload["action"], "unmapped")
 
 
+# ---------------------------------------------------------------------------
+# auto_detect_session_id / auto_detect_run_id 폴백 — issue #469 결함 B
+# ---------------------------------------------------------------------------
+
+
+class AutoDetectFallbackTests(unittest.TestCase):
+    """issue #469 결함 B — helper sid/rid 폴백 (env var + active_runs scan).
+
+    PPID chain mismatch (bash subprocess 재시작 / fork) 시 sid/rid 미해결
+    회귀 차단. env > PPID > pointer > active_runs scan 폴백 우선순위.
+    """
+
+    SID_A = "11111111-2222-4333-8444-555555555555"
+    SID_B = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+    RID_A = "run-aaaaaaaa"
+    RID_B = "run-bbbbbbbb"
+
+    def setUp(self) -> None:
+        self._td = TemporaryDirectory()
+        self.base = Path(self._td.name)
+        # env var 영향 회피 — 각 테스트마다 clean
+        os.environ.pop("DCNESS_SESSION_ID", None)
+        os.environ.pop("DCNESS_RUN_ID", None)
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+        os.environ.pop("DCNESS_SESSION_ID", None)
+        os.environ.pop("DCNESS_RUN_ID", None)
+
+    def _write_live(
+        self,
+        sid: str,
+        *,
+        runs: dict,
+    ) -> None:
+        """sessions/<sid>/live.json 작성 helper."""
+        sess_dir = self.base / "sessions" / sid
+        sess_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "_meta": {"sessionId": sid, "version": 1, "writtenAt": "2026-05-22T00:00:00+00:00"},
+            "session_id": sid,
+            "active_runs": runs,
+        }
+        (sess_dir / "live.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    def test_env_var_takes_priority_for_session_id(self) -> None:
+        from harness.session_state import auto_detect_session_id
+        # env var = SID_A, 다른 active_runs = SID_B (env 가 우선)
+        os.environ["DCNESS_SESSION_ID"] = self.SID_A
+        self._write_live(
+            self.SID_B,
+            runs={self.RID_B: {"run_id": self.RID_B, "started_at": "2026-05-22T01:00:00+00:00"}},
+        )
+        sid = auto_detect_session_id(base_dir=self.base)
+        self.assertEqual(sid, self.SID_A)
+
+    def test_env_var_takes_priority_for_run_id(self) -> None:
+        from harness.session_state import auto_detect_run_id
+        os.environ["DCNESS_RUN_ID"] = self.RID_A
+        sid = auto_detect_run_id(base_dir=self.base)
+        self.assertEqual(sid, self.RID_A)
+
+    def test_invalid_env_sid_falls_through(self) -> None:
+        from harness.session_state import auto_detect_session_id
+        # path-traversal 문자 (valid_session_id regex fail) → 폴백 = active_runs scan
+        os.environ["DCNESS_SESSION_ID"] = "../escape"
+        self._write_live(
+            self.SID_B,
+            runs={self.RID_B: {"run_id": self.RID_B, "started_at": "2026-05-22T01:00:00+00:00"}},
+        )
+        sid = auto_detect_session_id(base_dir=self.base)
+        # env 무시 + PPID chain (실 환경 X) + pointer 부재 → active_runs scan 박힘
+        self.assertEqual(sid, self.SID_B)
+
+    def test_scan_picks_recent_unfinalized_run(self) -> None:
+        from harness.session_state import _scan_recent_active_run_slot
+        # session A 의 run A = 미finalized (오래된), session B 의 run B = 미finalized (최신)
+        self._write_live(
+            self.SID_A,
+            runs={self.RID_A: {"run_id": self.RID_A, "started_at": "2026-05-22T00:00:00+00:00"}},
+        )
+        self._write_live(
+            self.SID_B,
+            runs={self.RID_B: {"run_id": self.RID_B, "started_at": "2026-05-22T02:00:00+00:00"}},
+        )
+        result = _scan_recent_active_run_slot(base_dir=self.base)
+        self.assertEqual(result, (self.SID_B, self.RID_B))
+
+    def test_scan_skips_finalized_runs(self) -> None:
+        from harness.session_state import _scan_recent_active_run_slot
+        # session A: finalized run (skip 대상)
+        # session B: 미finalized run (선택 대상)
+        self._write_live(
+            self.SID_A,
+            runs={self.RID_A: {
+                "run_id": self.RID_A,
+                "started_at": "2026-05-22T02:00:00+00:00",  # 더 최신이지만
+                "finalized_at": "2026-05-22T02:30:00+00:00",  # finalized = skip
+            }},
+        )
+        self._write_live(
+            self.SID_B,
+            runs={self.RID_B: {
+                "run_id": self.RID_B,
+                "started_at": "2026-05-22T01:00:00+00:00",
+            }},
+        )
+        result = _scan_recent_active_run_slot(base_dir=self.base)
+        self.assertEqual(result, (self.SID_B, self.RID_B))
+
+    def test_scan_no_sessions_returns_none(self) -> None:
+        from harness.session_state import _scan_recent_active_run_slot
+        # sessions/ 디렉토리 자체 부재
+        result = _scan_recent_active_run_slot(base_dir=self.base)
+        self.assertIsNone(result)
+
+    def test_scan_all_finalized_returns_none(self) -> None:
+        from harness.session_state import _scan_recent_active_run_slot
+        # 모든 run finalized → None
+        self._write_live(
+            self.SID_A,
+            runs={self.RID_A: {
+                "run_id": self.RID_A,
+                "started_at": "2026-05-22T00:00:00+00:00",
+                "finalized_at": "2026-05-22T00:30:00+00:00",
+            }},
+        )
+        result = _scan_recent_active_run_slot(base_dir=self.base)
+        self.assertIsNone(result)
+
+    def test_auto_detect_run_id_uses_scan_when_no_env_no_ppid(self) -> None:
+        from harness.session_state import auto_detect_run_id
+        # env 없음, PPID chain 실 환경 X (테스트 환경에서는 None 반환 또는 unrelated PID)
+        # → active_runs scan 폴백 박힘
+        self._write_live(
+            self.SID_A,
+            runs={self.RID_A: {"run_id": self.RID_A, "started_at": "2026-05-22T01:00:00+00:00"}},
+        )
+        rid = auto_detect_run_id(base_dir=self.base)
+        self.assertEqual(rid, self.RID_A)
+
+
 if __name__ == "__main__":
     unittest.main()

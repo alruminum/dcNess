@@ -822,21 +822,128 @@ def get_cc_pid_via_ppid_chain() -> Optional[int]:
 
 
 def auto_detect_session_id(*, base_dir: Optional[Path] = None) -> str:
-    """helper 컨텍스트 — by-pid (멀티세션 정합) 우선, env/pointer 폴백."""
+    """helper 컨텍스트 — env > by-pid (멀티세션 정합) > pointer > active_runs scan 폴백.
+
+    issue #469 결함 B (DCN-CHG-20260522): PPID chain mismatch 시
+    (bash subprocess 재시작 / fork 등) sid 미해결 회귀 차단. env var 우선 +
+    active_runs scan 폴백 추가.
+    """
+    # (a) DCNESS_RUN_ID 동반 강제 — env var 통한 명시 매핑 우선
+    env_sid = os.environ.get("DCNESS_SESSION_ID", "")
+    if valid_session_id(env_sid):
+        return env_sid
+    # (b) PPID chain (기존 매커니즘)
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         sid = read_pid_session(cc_pid, base_dir=base_dir)
         if sid:
             return sid
-    return current_session_id(base_dir=base_dir)
+    # (c) pointer 폴백 (기존 — current_session_id 가 env+pointer 2-tier)
+    sid = current_session_id(base_dir=base_dir)
+    if sid:
+        return sid
+    # (d) active_runs scan 폴백 — 가장 최근 미finalized run 의 session_id
+    slot_info = _scan_recent_active_run_slot(base_dir=base_dir)
+    if slot_info:
+        return slot_info[0]  # (sid, rid)
+    return ""
 
 
 def auto_detect_run_id(*, base_dir: Optional[Path] = None) -> str:
-    """helper 컨텍스트 — by-pid-current-run 에서 rid 추출."""
+    """helper 컨텍스트 — env > by-pid-current-run > active_runs scan 폴백.
+
+    issue #469 결함 B (DCN-CHG-20260522): rid 폴백 영역 신설. env var
+    `DCNESS_RUN_ID` 우선 + active_runs scan (`_scan_recent_active_run_slot`)
+    폴백 추가.
+    """
+    # (a) env var 우선 — 사용자 명시 매핑
+    env_rid = os.environ.get("DCNESS_RUN_ID", "")
+    if env_rid:
+        return env_rid
+    # (b) PPID chain (기존 매커니즘)
     cc_pid = get_cc_pid_via_ppid_chain()
-    if cc_pid is None:
-        return ""
-    return read_pid_current_run(cc_pid, base_dir=base_dir)
+    if cc_pid is not None:
+        rid = read_pid_current_run(cc_pid, base_dir=base_dir)
+        if rid:
+            return rid
+    # (c) active_runs scan 폴백 — 가장 최근 미finalized run 의 run_id
+    slot_info = _scan_recent_active_run_slot(base_dir=base_dir)
+    if slot_info:
+        return slot_info[1]
+    return ""
+
+
+def _scan_recent_active_run_slot(
+    *,
+    base_dir: Optional[Path] = None,
+    max_sessions: int = 5,
+) -> Optional[tuple[str, str]]:
+    """sessions/ 디렉토리 scan 후 가장 최근 미finalized active_run slot 의 (sid, rid).
+
+    issue #469 결함 B 의 best-effort 폴백 — PPID chain 미해결 시 사용.
+    다음 우선순위:
+    1. live.json mtime 최신 `max_sessions` 개만 검사 (비용 가드)
+    2. 각 live.json 의 `active_runs` 중 `finalized_at` 부재 + `started_at`
+       가장 최근 slot 박힌 (sid, rid) 반환
+
+    Returns:
+        (session_id, run_id) tuple — best-guess.
+        None — 매치 부재 (clean session 또는 모든 run finalized).
+
+    주의: multi-session 환경에서 잘못된 매핑 위험 있음. 본 폴백은 PPID chain
+    실패 케이스의 무대응 (= helper 동작 X) 대신 best-guess 제공. 정확 매핑 필요시
+    `DCNESS_SESSION_ID` / `DCNESS_RUN_ID` env var 명시 권장.
+    """
+    base = _resolve_base(base_dir)
+    sessions_dir = base / "sessions"
+    if not sessions_dir.is_dir():
+        return None
+
+    # live.json mtime 최신 max_sessions 개만 추출 (비용 가드)
+    candidates: list[tuple[float, Path]] = []
+    try:
+        for entry in sessions_dir.iterdir():
+            if not entry.is_dir():
+                continue
+            live_file = entry / "live.json"
+            try:
+                stat = live_file.stat()
+            except OSError:
+                continue
+            candidates.append((stat.st_mtime, live_file))
+    except OSError:
+        return None
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    candidates = candidates[:max_sessions]
+
+    # 각 live.json 의 미finalized active_run 중 started_at 최신 후보 수집
+    best: Optional[tuple[str, str, str]] = None  # (started_at, sid, rid)
+    for _, live_file in candidates:
+        try:
+            data = json.loads(live_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        sid = data.get("session_id")
+        if not isinstance(sid, str) or not valid_session_id(sid):
+            continue
+        active_runs = data.get("active_runs", {})
+        if not isinstance(active_runs, dict):
+            continue
+        for rid, slot in active_runs.items():
+            if not isinstance(slot, dict):
+                continue
+            if slot.get("finalized_at"):
+                continue
+            started = slot.get("started_at", "")
+            if not isinstance(started, str):
+                continue
+            if best is None or started > best[0]:
+                best = (started, sid, rid)
+    if best is None:
+        return None
+    return (best[1], best[2])
 
 
 # ── 프로젝트 활성화 (whitelist) ─────────────────────────────────────
