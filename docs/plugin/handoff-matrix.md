@@ -186,7 +186,9 @@ merge 직전 코드 품질 + 보안 코드 패턴 심사:
 
 ### 4.3 인프라 패턴 (전 에이전트 공통 차단)
 
-전 sub-agent 의 인프라 path Write 차단 (`.claude/`, `hooks/`, `harness/*.py`, `docs/plugin/*.md`, `scripts/*.mjs` 등). 정확한 패턴 = **코드 SSOT [`harness/agent_boundary.py`](../../harness/agent_boundary.py) `DCNESS_INFRA_PATTERNS`**.
+전 sub-agent 의 인프라 path Write 차단 (`.claude/`, `hooks/`, `harness/*.py`, `docs/plugin/*.md`, `scripts/*.mjs`, repo root `CLAUDE.md` 등). 정확한 패턴 = **코드 SSOT [`harness/agent_boundary.py`](../../harness/agent_boundary.py) `DCNESS_INFRA_PATTERNS`**.
+
+> **`CLAUDE.md` 보호 (회귀 방지)**: 외부 활성 프로젝트의 repo root `CLAUDE.md` (메인 Claude 가 매 turn 자동 read 하는 SSOT) 는 본 패턴에 포함되어 sub-agent Write 차단. 메인 Claude 직접 편집 (active_agent 미설정 = 통과) 또는 `.no-dcness-guard` opt-out 마커로만 우회 가능.
 
 인프라 프로젝트(`is_infra_project()` True) 에선 위 패턴 해제 (dcness 자체 작업 시 본 SSOT 들도 편집 가능해야 함).
 
