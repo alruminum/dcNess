@@ -1147,6 +1147,7 @@ def render_report(report: RunReport) -> str:
     lines.append("- agent+mode 별 `.claude/loop-insights/<agent>[-<mode>].md` 에 누적 (FIFO 10 cap)")
     lines.append("- 다음 run begin-step 시 자동 inject — 같은 agent 호출 시 sub-agent prompt 끝에 박힘")
     lines.append("- 미박음 = noop (자율, 강제 X)")
+    lines.append("- **형식 가이드**: *실수 환기* 형태로만 (예: `🚨 X 실수 — 반복 X`). 잘 됐던 케이스 누적은 학습 가치 0 (issue #392 실측)")
     lines.append("")
 
     return "\n".join(lines)
