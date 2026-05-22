@@ -54,6 +54,7 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
     r'(^|/)docs/plugin/loop-procedure\.md$',
     r'(^|/)docs/internal/governance\.md$',
     r'(^|/)scripts/(check_document_sync|check_task_id|setup_branch_protection|analyze_metrics)\.mjs$',
+    r'^CLAUDE\.md$',
 )
 
 
@@ -70,6 +71,18 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'(^|/)apps/[^/]+/[^/]+\.cfg$',
     ),
     "architect": (
+        r'(^|/)docs/',
+        r'(^|/)backlog\.md$',
+        r'(^|/)trd\.md$',
+    ),
+    # module-architect / system-architect — architect 변종. 키 명시 필수.
+    # 키 부재 시 "미정의 agent = 통과" fallback 으로 빠져 ALLOW 강제 자체가 무력화.
+    "module-architect": (
+        r'(^|/)docs/',
+        r'(^|/)backlog\.md$',
+        r'(^|/)trd\.md$',
+    ),
+    "system-architect": (
         r'(^|/)docs/',
         r'(^|/)backlog\.md$',
         r'(^|/)trd\.md$',

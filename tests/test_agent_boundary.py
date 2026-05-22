@@ -123,6 +123,37 @@ class WriteAllowedInfraPatternBlockTests(unittest.TestCase):
             )
             self.assertIsNotNone(reason)
 
+    def test_module_architect_blocked_on_claude_md(self):
+        # #463 회귀 — module-architect 가 외부 활성 프로젝트의 CLAUDE.md 직접 수정.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            reason = check_write_allowed(
+                "module-architect", "CLAUDE.md", cwd=cwd
+            )
+            self.assertIsNotNone(reason)
+            self.assertIn("인프라", reason)
+
+    def test_engineer_blocked_on_claude_md(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            reason = check_write_allowed(
+                "engineer", "CLAUDE.md", cwd=cwd
+            )
+            self.assertIsNotNone(reason)
+            self.assertIn("인프라", reason)
+
+    def test_subdir_claude_md_not_matched(self):
+        # repo root CLAUDE.md 만 차단. subdir 의 동명 파일은 매치 X.
+        # (단 ALLOW_MATRIX 미매칭으로 다른 차단은 가능 — 본 테스트는 INFRA 패턴 한정.)
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            reason = check_write_allowed(
+                "engineer", "node_modules/foo/CLAUDE.md", cwd=cwd
+            )
+            # INFRA 매칭은 아니어야 함 (root 직속만 매치).
+            if reason is not None:
+                self.assertNotIn("인프라", reason)
+
 
 class WriteAllowedAllowMatrixTests(unittest.TestCase):
     """user 프로젝트 — ALLOW_MATRIX 매칭/미매칭."""
@@ -171,6 +202,28 @@ class WriteAllowedAllowMatrixTests(unittest.TestCase):
             self.assertIsNotNone(reason)
             self.assertIn("ALLOW_MATRIX", reason)
 
+    def test_module_architect_docs_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(
+                check_write_allowed("module-architect", "docs/impl/01-foo.md", cwd=cwd)
+            )
+
+    def test_module_architect_random_blocked(self):
+        # #463 — module-architect 키 명시 후 ALLOW 외 path 는 차단되어야 (silent pass 회귀 방지).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            reason = check_write_allowed("module-architect", "src/foo.ts", cwd=cwd)
+            self.assertIsNotNone(reason)
+            self.assertIn("ALLOW_MATRIX", reason)
+
+    def test_system_architect_docs_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(
+                check_write_allowed("system-architect", "docs/architecture.md", cwd=cwd)
+            )
+
     def test_unknown_agent_passes(self):
         # 미정의 agent → false positive 회피로 통과.
         with tempfile.TemporaryDirectory() as td:
@@ -200,6 +253,10 @@ class OptOutMarkerTests(unittest.TestCase):
             # 우회 — INFRA_PATTERN 매칭이지만 통과.
             self.assertIsNone(
                 check_write_allowed("engineer", "hooks/x.sh", cwd=cwd)
+            )
+            # CLAUDE.md 도 우회 (사용자 임시 우회 정합).
+            self.assertIsNone(
+                check_write_allowed("module-architect", "CLAUDE.md", cwd=cwd)
             )
 
     def test_no_marker_no_bypass(self):
