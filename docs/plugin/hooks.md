@@ -137,15 +137,19 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 - 시드 / 시안 — `*/templates/*`, `*/design-variants/*`
 - 그 외 확장자 (`*.py`, `*.go` 등) — silent skip
 
-**매칭 test 파일 검사 8 location**:
+**매칭 test 파일 검사 6-tier 12 location** (DCN-CHG-20260522 — issue #469 결함 C 영역 확장):
 ```
-<dir>/<name>.{test,spec}.{ts,tsx,js,jsx}
-<dir>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
-<parent>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
-<root>/src/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+Tier 1: <dir>/<name>.{test,spec}.{ts,tsx,js,jsx}
+Tier 2: <dir>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+Tier 3: <parent>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+Tier 4: <grandparent>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+Tier 5: <src_root>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
+Tier 6: <PROJECT_ROOT>/src/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
 ```
 
-**차단 동작**: `permissionDecision: deny` + 한국어 안내 (테스트 부재 + 검사 위치 8곳). TDD 미이행 환경에선 plug-in 활성화 후 광범위한 deny 발생 가능.
+`<src_root>` = 파일 경로 안 `src/` 마디 직전까지 trim. monorepo `apps/<X>/src/...` / `packages/<X>/src/...` cover. trim 실패 (`src/` 부재) 시 `<PROJECT_ROOT>/src` fallback. Tier 4 (grandparent) + Tier 5 (src_root) = #469 결함 C 영역 확장 — build-worker 가 회피 stub 박는 안티패턴 차단.
+
+**차단 동작**: `permissionDecision: deny` + 한국어 안내 (테스트 부재 + 검사 위치 12곳 + 본 파일의 실측 `<dir>` / `<parent>` / `<grandparent>` / `<src_root>` / `<PROJECT_ROOT>` 값). TDD 미이행 환경에선 plug-in 활성화 후 광범위한 deny 발생 가능.
 
 ---
 
