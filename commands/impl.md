@@ -145,5 +145,6 @@ PR merge 직후 *반드시* 다음 1개 명령 실행 (issue #396 — 단일화)
 
 - agent+mode 별 FIFO 10 한도. 다음 run begin-step 자동 inject.
 - 미박음 = noop (자율, 강제 X). 박으면 다음 run 학습 환류.
+- **형식 가이드**: *실수 환기* 형태로만 박는다 (예: "🚨 X 실수 — 반복 X" / "Y 빠뜨림 — 다음엔 Z 명시"). "잘 됐던 케이스" 누적은 학습 가치 0 (issue #392 실측 — baseline good 노이즈). insight 1줄은 *다음 run 의 회귀 회피* 용도.
 
 근거: §3.4 PR merge 자동 완료 후 메인이 review echo 를 skip 하는 회귀가 반복 발생. hook 미진입 영역이므로 본문 강제로 보완 + 자율 인사이트 매커니즘 안내.
