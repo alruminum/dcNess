@@ -159,4 +159,4 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE) (TBD).
+MIT — see [`LICENSE`](LICENSE).

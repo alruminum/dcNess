@@ -68,6 +68,7 @@
 - **pytest**: `scripts/check_python_tests.sh` — harness/tests/agents 변경 시만
 - **plugin-manifest**: `scripts/check_plugin_manifest.mjs` (CI `plugin-manifest.yml`) — `.claude-plugin/plugin.json` version / manifest 정합 검증
 - **pr-body**: `scripts/check_pr_body.mjs` (CI `pr-body-validation.yml`) — PR 본문 템플릿 충족 검증
+- **cross-ref**: `scripts/check_cross_refs.mjs` (CI `cross-ref-validation.yml`) — markdown link 파일/anchor 실존 + 옛 명칭 deny-list (외부 배포 영역 한정) 회귀 차단
 
 > ⚠️ **금지**: `--no-verify` 등 hook 우회. main 직접 push.
 
