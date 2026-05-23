@@ -201,7 +201,7 @@ impl task 의 commit/PR 구조 = [`docs/plugin/loop-procedure.md`](../docs/plugi
 - impl/NN-*.md `## 생성/수정 파일` 명시 src 만
 - docs/** / stories.md / backlog.md / impl/NN-*.md = 모두 수정 X (agent-boundary §4.2)
 
-**PR body 트레일러는 메인이 씀** ([`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §1.4):
+**PR body 트레일러는 메인이 씀** ([`docs/plugin/git-spec.md`](../docs/plugin/git-spec.md) §8 PR 트레일러):
 - 중간 task PR: `Part of #story-issue`
 - story 의 마지막 task PR: `Closes #story-issue`
 - epic 의 마지막 story 의 마지막 task PR: `Closes #story-issue` + `Closes #epic-issue` (메인이 PR 생성 직전 frontmatter `task_index` + gh API 1 회로 사전 체크 후 씀)
