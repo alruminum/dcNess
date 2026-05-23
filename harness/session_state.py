@@ -107,7 +107,7 @@ def _resolve_state_root_for_cwd(cwd_str: str) -> Path:
     worktree 진입 (cwd = `.claude/worktrees/{name}/`) 후에도 `git rev-parse
     --git-common-dir` 은 main repo `.git` 를 가리킨다 (git 표준). 그래서 main repo
     의 `.claude/harness-state/` 가 단일 source 가 됨 → SessionStart 훅이 main
-    repo 에서 박은 by-pid / live.json 을 worktree 안 helper 도 그대로 본다.
+    repo 에서 쓴 by-pid / live.json 을 worktree 안 helper 도 그대로 본다.
 
     git 미설치 / git 리포 아님 / subprocess 실패 → cwd 폴백 (legacy 동작).
     cwd 별 캐시 (subprocess 반복 호출 회피).
@@ -953,7 +953,7 @@ def _scan_recent_active_run_slot(
     다음 우선순위:
     1. live.json mtime 최신 `max_sessions` 개만 검사 (비용 가드)
     2. 각 live.json 의 `active_runs` 중 `finalized_at` 부재 + `started_at`
-       가장 최근 slot 박힌 (sid, rid) 반환
+       가장 최근 slot 있는 (sid, rid) 반환
 
     Returns:
         (session_id, run_id) tuple — best-guess.
@@ -1218,7 +1218,7 @@ def _cli_post_task_begin(args: Any) -> int:
         dcness-helper post-task-begin [--reason "이슈 등록 / cleanup / 분석"]
 
     Exit codes:
-        0 — 정상 (marker 박힘) 또는 sid 미해결 (silent skip)
+        0 — 정상 (marker 있음) 또는 sid 미해결 (silent skip)
     """
     sid = auto_detect_session_id()
     if not sid:
@@ -1470,7 +1470,7 @@ def _cli_begin_step(args: Any) -> int:
 def _cli_run_dir(args: Any) -> int:
     """현재 active run 의 run_dir 절대 경로 stdout (DCN-CHG-20260430-21).
 
-    skill prompt 가 prose-file path 를 /tmp 대신 run-dir 안에 박을 때 사용.
+    skill prompt 가 prose-file path 를 /tmp 대신 run-dir 안에 쓸 때 사용.
     멀티세션 격리 + stale prose 회피.
     """
     sid = auto_detect_session_id()
@@ -1537,7 +1537,7 @@ def _extract_prose_summary(prose: str, *, max_lines: int = _SUMMARY_LINE_LIMIT) 
     """prose 의 결론/요약 섹션 우선 추출, 없으면 첫 의미 있는 N 줄 fallback.
 
     의도: skill bash 에서 helper 호출 후 stderr 로 흘려 사용자 가시성 ↑. agent prose 가
-    대개 마지막에 `## 결론` / `## Summary` / `## 변경 요약` 섹션 박음 — 그 섹션이 가장
+    대개 마지막에 `## 결론` / `## Summary` / `## 변경 요약` 섹션 씀 — 그 섹션이 가장
     정보 밀도 높음. 첫 N 줄 무차별 추출보다 효과적.
 
     DCN-CHG-30-11 (이전 8 줄 / 600 char → 12 줄 / 1200 char) — 사용자 가시성 ↑ 위해 cap 확장.
@@ -1585,7 +1585,7 @@ def _cli_end_step(args: Any) -> int:
     """sid+rid auto-detect → write_prose + interpret_with_fallback.
 
     부수 출력: stderr 로 `[agent:mode = ENUM]` 헤더 + prose 요약 ~5줄. 모든 skill 자동
-    수혜 — skill prompt 안에 별도 요약 instruction 박을 필요 0.
+    수혜 — skill prompt 안에 별도 요약 instruction 쓸 필요 0.
     """
     # 지연 import — interpret_strategy 는 telemetry 등 무거움
     from harness.signal_io import write_prose
@@ -1693,7 +1693,7 @@ def _cli_end_step(args: Any) -> int:
         )
         return 0
 
-    # legacy compat — 외부 skill 이 `--allowed-enums` 박은 경우 휴리스틱 호출 보존.
+    # legacy compat — 외부 skill 이 `--allowed-enums` 쓴 경우 휴리스틱 호출 보존.
     # interpret_strategy 의 신규 telemetry 기록은 이미 중단됨 (issue #284).
     try:
         enum = interpret_with_fallback(prose, allowed)

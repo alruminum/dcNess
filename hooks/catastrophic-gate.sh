@@ -31,7 +31,7 @@ CC_PID=$PPID
 python3 -m harness.hooks pretooluse-agent --cc-pid "$CC_PID"
 RC=$?
 
-# #404 — 정상 통과 시 suppressOutput: true 박아 transcript attachment 숨김 시도.
+# #404 — 정상 통과 시 suppressOutput: true 써서 transcript attachment 숨김 시도.
 if [ "$RC" = "0" ]; then
   echo '{"suppressOutput": true, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
 fi

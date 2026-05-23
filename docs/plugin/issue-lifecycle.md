@@ -38,7 +38,7 @@ epic issue ─┬─ story issue ── (task: PR 기반, 이슈 없음)
 - **레이블**: `story` + `v0N` + `epic-NN-<slug>` (3중, epic 과 `epic-NN-<slug>` 공유)
 - **마일스톤**: `Story`
 - **제목**: `[story] <story 한 줄 요약>`
-- **본문**: `As a / I want / So that` 만 (user story). 수용 기준 (Story 단위) / 대상 화면 / 동작 명세 박지 않음 — architecture.md + impl 파일 영역. 태스크 체크리스트 X (stories.md 가 SSOT)
+- **본문**: `As a / I want / So that` 만 (user story). 수용 기준 (Story 단위) / 대상 화면 / 동작 명세 쓰지 않음 — architecture.md + impl 파일 영역. 태스크 체크리스트 X (stories.md 가 SSOT)
 - **순서**: epic 생성 완료 후 story 1, 2, … 순차
 - **stories.md 기록**:
   - 각 story 헤더 직하: `**GitHub Issue:** [#MMM](url)`
@@ -73,17 +73,17 @@ task 는 GitHub 이슈 X — §1.4 PR 트레일러로만 추적.
 - story 의 마지막 task PR: `Closes #story-issue`
 - epic 의 마지막 story 의 마지막 task PR: `Closes #story-issue` + `Closes #epic-issue` (한 줄당 1개 또는 comma 분리)
 
-> **반드시 PR body 에 박는다 (commit message 아님)** — 본 프로젝트는 regular merge 채택 (`docs/plugin/git-naming-spec.md` §6, squash 금지). regular merge 시 GitHub auto-close 는 *PR body* 또는 *squash merge commit message* 만 인식. commit message 안 `Closes #N` 은 머지 commit 에 들어가도 auto-close 발동 X. 본 룰 mechanical 강제 = `scripts/check_pr_body.mjs` + `.github/workflows/pr-body-validation.yml` (init-dcness Step 2.6 으로 사용자 repo 배포).
+> **반드시 PR body 에 쓴다 (commit message 아님)** — 본 프로젝트는 regular merge 채택 (`docs/plugin/git-naming-spec.md` §6, squash 금지). regular merge 시 GitHub auto-close 는 *PR body* 또는 *squash merge commit message* 만 인식. commit message 안 `Closes #N` 은 머지 commit 에 들어가도 auto-close 발동 X. 본 룰 mechanical 강제 = `scripts/check_pr_body.mjs` + `.github/workflows/pr-body-validation.yml` (init-dcness Step 2.6 으로 사용자 repo 배포).
 >
-> 예외 — issue 없는 infra-only / follow-up split PR 등은 PR body 에 `Document-Exception-PR-Close: <사유>` line 박으면 게이트 우회.
+> 예외 — issue 없는 infra-only / follow-up split PR 등은 PR body 에 `Document-Exception-PR-Close: <사유>` line 쓰면 게이트 우회.
 
 #### 통합 브랜치 케이스 — base ≠ main sub-PR 의 auto-close 한계 (MUST)
 
-stories.md 상단에 `**Base Branch:** feature/<slug>` 마커 박힌 epic (= 통합 브랜치 모드, `commands/product-plan.md` Step 6.5/7) 의 sub-PR 은 *base = `feature/<slug>`* 로 머지된다. **GitHub auto-close 는 base = default branch (main) 인 PR 만 인식** — base ≠ main sub-PR 의 PR body `Closes #N` 은 머지 시 발동 X.
+stories.md 상단에 `**Base Branch:** feature/<slug>` 마커 있는 epic (= 통합 브랜치 모드, `commands/product-plan.md` Step 6.5/7) 의 sub-PR 은 *base = `feature/<slug>`* 로 머지된다. **GitHub auto-close 는 base = default branch (main) 인 PR 만 인식** — base ≠ main sub-PR 의 PR body `Closes #N` 은 머지 시 발동 X.
 
 흐름:
 
-1. **각 sub-PR (base = `feature/<slug>`)** — PR body 에 평소대로 `Part of #<story>` / `Closes #<story>` 박되 머지 시 *발동 안 됨* 전제. `Document-Exception-PR-Close: 통합 브랜치 sub-PR — main 머지 시 일괄 close` 박아 `check_pr_body.mjs` 게이트 우회 가능 (자유 선택).
+1. **각 sub-PR (base = `feature/<slug>`)** — PR body 에 평소대로 `Part of #<story>` / `Closes #<story>` 쓰되 머지 시 *발동 안 됨* 전제. `Document-Exception-PR-Close: 통합 브랜치 sub-PR — main 머지 시 일괄 close` 써서 `check_pr_body.mjs` 게이트 우회 가능 (자유 선택).
 2. **마지막 통합 → main 머지 PR (base = main)** — PR body 에 **모든 story + epic 을 일괄 close**:
    ```
    Closes #<story1>
@@ -100,7 +100,7 @@ stories.md 상단에 `**Base Branch:** feature/<slug>` 마커 박힌 epic (= 통
 
 #### 적용 절차 — PR 생성 직전 사전 체크 (impl 파일 frontmatter 기반)
 
-판정 입력 = **impl 파일 frontmatter `task_index: <i>/<total>` + `story: <N>`**. module-architect × K 시점 (architect-loop §4.2 Step 4) 에 박힘. stories.md `[ ]` 카운트 룰 폐기 (2026-05-12) — 새 stories.md 양식엔 task `[ ]` 자체 없음 (user story 만, [`commands/product-plan.md`](../../commands/product-plan.md) §stories.md 산출물).
+판정 입력 = **impl 파일 frontmatter `task_index: <i>/<total>` + `story: <N>`**. module-architect × K 시점 (architect-loop §4.2 Step 4) 에 있음. stories.md `[ ]` 카운트 룰 폐기 (2026-05-12) — 새 stories.md 양식엔 task `[ ]` 자체 없음 (user story 만, [`commands/product-plan.md`](../../commands/product-plan.md) §stories.md 산출물).
 
 1. **task 파일 frontmatter read** — `task_index: 3/3` + `story: 1`
 2. **본 task 가 Story 마지막인지 판정** — `i == total` 이면 마지막

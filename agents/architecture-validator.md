@@ -19,7 +19,7 @@ model: sonnet
 
 본 에이전트는 system-architect 산출물의 *모든* 품질을 검증하지 **않는다**. 다음만 본다:
 
-- **Placeholder Leak** — 결정해야 할 자리를 비워두고 임시 표시만 박음
+- **Placeholder Leak** — 결정해야 할 자리를 비워두고 임시 표시만 씀
 - **Spike Gate** — 추상 ABC + Mock 만으로 핵심 가치 의존성 검증 회피
 
 나머지 (인터페이스 정의 / 에러 처리 / 엣지케이스 / 상태 초기화 / 리스크 / 성능 병목 / 구현 순서 등) 는 **system-architect self-check** 가 처리. 본 에이전트가 중복 검증하면 self-check 무력화 + 이중 비용.
@@ -45,7 +45,7 @@ prose 마지막 단락에 자기 언어로 명시. 권장 표현:
 
 ### 1. Placeholder Leak
 
-> 결정해야 할 자리를 비워두고 임시 표시만 박음. PRD Must 기능 핵심 가치 직결되는 placeholder 가 있으면 즉시 FAIL.
+> 결정해야 할 자리를 비워두고 임시 표시만 씀. PRD Must 기능 핵심 가치 직결되는 placeholder 가 있으면 즉시 FAIL.
 
 **검출 패턴** (예시 — 더 다양한 형태 포함, grep 외 의미 추론도 활용):
 

@@ -46,7 +46,7 @@ default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → p
 - multi-task chain 필요 → `/impl-loop`
 
 ## 사전 read (lazy — 필요시만, #400)
-정상 흐름은 본 skill 본문 + 인용된 docs §번호 만으로 진행. 본문에 박힌 catastrophic / Pre-flight gate / agent boundary 룰이 1차. *룰 모호 / 분기 발생* 시에만 `docs/plugin/loop-procedure.md` / `orchestration.md` §4.3 / `handoff-matrix.md` / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
+정상 흐름은 본 skill 본문 + 인용된 docs §번호 만으로 진행. 본문에 있는 catastrophic / Pre-flight gate / agent boundary 룰이 1차. *룰 모호 / 분기 발생* 시에만 `docs/plugin/loop-procedure.md` / `orchestration.md` §4.3 / `handoff-matrix.md` / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
 
 ## 워크트리 (기본 켜짐)
 Step 0 진입 시 자동 `EnterWorktree(name="impl-{ts_short}")`. 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.
@@ -66,7 +66,7 @@ gh issue view <story-num> | head -80
 gh issue view <task-num> | head -80
 ```
 
-이슈 본문에 수용 기준 / 추가 컨텍스트 / 결정 사항이 박혀있을 수 있음. read 안 하면 *impl 파일 누락 컨텍스트* 미인지 위험.
+이슈 본문에 수용 기준 / 추가 컨텍스트 / 결정 사항이 적혀있을 수 있음. read 안 하면 *impl 파일 누락 컨텍스트* 미인지 위험.
 
 근거: `/impl-loop` 다중 task 진행 시에도 동일 — 매 task 부모 이슈 본문 read 의무 ([#375](https://github.com/alruminum/dcNess/issues/375)).
 
@@ -84,7 +84,7 @@ gh issue view <task-num> | head -80
 | 의존 모듈 (수정 X 영역) | **grep + 시그니처만** read. 예: `grep "^export" path/to/file.ts | head -10` + 매치 줄 ±2 line. 통째 read 금지 — 본 task 가 수정하지 않는 영역의 구현 디테일 불요 |
 | 의존 모듈 (수정 영역) | 통째 read OK |
 
-→ agent prompt 에 impl 파일 경로 박으면 agent 가 위 룰 따라 자체 read. *메인 Claude 가 사전 inject* 불필요 (impl 파일 안 진입 prompt 가 강제).
+→ agent prompt 에 impl 파일 경로 쓰면 agent 가 위 룰 따라 자체 read. *메인 Claude 가 사전 inject* 불필요 (impl 파일 안 진입 prompt 가 강제).
 
 **추가 — 메인 직접 read 의무 (강조 + cost-aware, #436)**: 메인 Claude 는 *진입 분기 판단* 에 필요한 **최소** 만 read. agent prompt 경로 박는 것 외에 메인이 통째 read 하지 말 것 — agent 가 자체 read 함.
 
@@ -94,7 +94,7 @@ gh issue view <task-num> | head -80
 
 ## 진입 직전 — task 진행 상태 1회 확인 (MUST, issue #346)
 
-본 task 가 *이미 머지된 상태* 인지 또는 *부분 진행 후 후속 정보* 가 plan 본문 (특히 tail section) 에 박혀있는지 1회 확인. 발견 시 wasted run 회피.
+본 task 가 *이미 머지된 상태* 인지 또는 *부분 진행 후 후속 정보* 가 plan 본문 (특히 tail section) 에 적혀있는지 1회 확인. 발견 시 wasted run 회피.
 
 ```bash
 # 1. git log 에 task slug 머지 흔적
@@ -154,7 +154,7 @@ PR merge 직후 *반드시* 다음 1개 명령 실행 (issue #396 — 단일화)
 
 **REVIEW_READY 후속 — echo MUST**: stderr `[REVIEW_READY] <run_dir>/review.md` 감지 시 `review.md` 본문을 *character-for-character* 세션 응답에 복사 ([`loop-procedure.md`](../docs/plugin/loop-procedure.md) §6). 압축 / 요약 / 재배치 / 마크다운 테이블 → ASCII 변환 절대 금지. dcness echo 룰 MUST (DCN-30-15).
 
-**메인 인사이트 (자율, issue #396)**: review.md 끝의 `## 📝 메인 인사이트` prompt 보고 *구체적 학습 1줄* 박을 수 있음:
+**메인 인사이트 (자율, issue #396)**: review.md 끝의 `## 📝 메인 인사이트` prompt 보고 *구체적 학습 1줄* 쓸 수 있음:
 
 ```bash
 "$HELPER" insight <agent>[-<mode>] "<자연어 한 줄>"
@@ -162,7 +162,7 @@ PR merge 직후 *반드시* 다음 1개 명령 실행 (issue #396 — 단일화)
 ```
 
 - agent+mode 별 FIFO 10 한도. 다음 run begin-step 자동 inject.
-- 미박음 = noop (자율, 강제 X). 박으면 다음 run 학습 환류.
-- **형식 가이드**: *실수 환기* 형태로만 박는다 (예: "🚨 X 실수 — 반복 X" / "Y 빠뜨림 — 다음엔 Z 명시"). "잘 됐던 케이스" 누적은 학습 가치 0 (issue #392 실측 — baseline good 노이즈). insight 1줄은 *다음 run 의 회귀 회피* 용도.
+- 미호출 = noop (자율, 강제 X). 호출하면 다음 run 학습 환류.
+- **형식 가이드**: *실수 환기* 형태로만 쓴다 (예: "🚨 X 실수 — 반복 X" / "Y 빠뜨림 — 다음엔 Z 명시"). "잘 됐던 케이스" 누적은 학습 가치 0 (issue #392 실측 — baseline good 노이즈). insight 1줄은 *다음 run 의 회귀 회피* 용도.
 
 근거: §3.4 PR merge 자동 완료 후 메인이 review echo 를 skip 하는 회귀가 반복 발생. hook 미진입 영역이므로 본문 강제로 보완 + 자율 인사이트 매커니즘 안내.
