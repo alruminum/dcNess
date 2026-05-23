@@ -1,8 +1,15 @@
 # CLAUDE.md — dcNess 프로젝트 작업 지침
 
 > 본 파일은 메인 Claude (Claude Code) 가 dcNess 저장소에서 작업할 때의 지침이다. 작업 규칙 SSOT.
+> 🔴 **세션 시작 시 즉시 인지**: 아래 **사용자 정체성** + **§0 프로젝트 정체성** — 두 영역만 무조건 머리에 박고 시작. 그 외 문서는 lazy 참조.
 
-> 🔴 **[세션 시작 시 즉시 읽기 의무 — §3 문서 지도 참조]**
+## 🔴 사용자 정체성 (모든 응답의 최우선 기준)
+
+사용자는 한국어가 가장 익숙한 시니어 엔지니어이기 때문에 자연스러운 한국 표준어로 대화하는것에 익숙하다.
+
+맥락없이 말하는 것을 싫어하므로 생략해서 말하거나 대명사를 이용하여 불 명확하게 말하지 말도록 한다. 결론부터 말하고 부가적인 설명을 덧붙이는 대화를 선호한다.
+
+꼭 직접 확인해야 직성이 풀리는 성격이기에 문서·파일·링크는 사용자가 한번에 열어볼 수 있도록 백틱 / 클릭 가능한 형태로 표기한다.
 
 ## 0. 프로젝트 정체성
 
@@ -23,17 +30,12 @@
   - 본 `CLAUDE.md` (작업 절차 + 게이트)
   - `docs/plugin/git-spec.md` (브랜치·커밋·PR 네이밍)
   - GitHub 이슈 (필요 시 자유 형식, 메타-스토리·stories.md 불필요)
-  - 본 CLAUDE.md
 - **헷갈리지 마라**: plug-in 규격은 *외부 활성화 프로젝트* 용이지, dcness 자기 자신용이 아니다.
 
-### 0.3 내부 ID 를 외부 배포물에 박지 마라
+### 0.3 내부 ID 를 외부 배포물에 포함하지 마라
 
-- **외부에 배포되는 파일** (= plug-in 사용자가 보게 되는 파일: `agents/**`, `commands/**`, `hooks/**`, 그리고 plug-in 사용자가 따라야 하는 SSOT 인 `docs/plugin/issue-lifecycle.md` 등) 안에는 **내부 ID / 내부 추적 표현을 본문으로 박지 않는다**.
+- **외부에 배포되는 파일** (= plug-in 사용자가 보게 되는 파일: `agents/**`, `commands/**`, `hooks/**`, 그리고 plug-in 사용자가 따라야 하는 SSOT 인 `docs/plugin/issue-lifecycle.md` 등) 안에는 **내부 ID / 내부 추적 표현을 본문으로 포함하지 않는다**.
 - 외부 사용자에게 내부 추적용 표현은 **잡음**이다. 그 변경 이유 / 작동 룰만 자연어로 설명하면 충분.
-
-### 0.4 사용자 프로필 (각인)
-
-사용자는 한국어가 가장 익숙한 시니어 엔지니어. 자연스러운 한국어로 대화하고, 문서·파일·링크는 백틱 / 클릭 가능한 형태로 박는다. 그 외 자기 검열 룰은 두지 않는다 — 룰 추가할수록 본질에서 멀어지는 코끼리 함정 회피 (2026-05-21 정리).
 
 ### 0.5 추가한 기능은 반드시 배포 경로에도 포함
 
@@ -47,21 +49,13 @@
 
 ---
 
-### 0.6 모드 (위 0.1~0.5 정체성 위에서)
+### 0.6 작업 모드
 
-- **목적**: RWHarness fork-and-refactor — Prose-Only 원칙 결정론 + 4 기둥 정합 + 함정 회피 5원칙.
-- **모드**: **메인 Claude 직접 작업** (`docs/archive/status-json-mutate-pattern.md` §10 / §11.4 정합).
-  - architect / code-validator / engineer 위임 강제 **없음**.
-  - RWHarness 가드 미적용 환경. **단** Document Sync 거버넌스만 강제.
-  - 글로벌 `~/.claude/CLAUDE.md` 의 RWHarness 위임 룰(에이전트 분기 / 인프라 프로젝트 분기)은 본 프로젝트에 **미적용**. 본 파일이 우선한다.
+- **메인 Claude 직접 작업** — architect / code-validator / engineer 위임 강제 **없음**.
+- **Document Sync 거버넌스만 강제** — 외부 배포 경로(§0.5) 정합 검증은 필수.
 
 ## 1. 작업 절차 (모든 변경 공통)
 
-0. **워크트리 (impl 류 루프 한정)**
-   - **진입 조건**: 코드 변경 batch (`/impl` / `/impl-loop` / `/auto-loop`) 진입 시 자동 `EnterWorktree(name="<목적>-{ts_short}")`. 목적: 메인 working tree 보호 + 동시 다중 세션 충돌 회피.
-   - **제외**: `/product-plan` / 모듈 설계 / 문서·시드 작업은 워크트리 X — 충돌 회피 목적 부재.
-   - **수동 우회**: 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 (예: "워크트리 빼고") 시에만 건너뜀.
-   - **금지**: 수동 `git worktree add` 우회 — CC permission 시스템이 `EnterWorktree` 만 sub-agent 권한 자동 처리.
 1. **수정 작업**.
 2. **commit 직전**: git pre-commit hook 자동 게이트 (main-block + pytest).
 3. **branch → PR → regular merge** (직접 `main` push 금지). CI PASS 후 메인이 즉시 머지 — *사용자 수동 승인 대기 X*.
@@ -79,19 +73,14 @@
 
 ## 3. 문서 지도
 
-### 즉시 읽기 (세션 시작 시 항상)
 
-| 파일 | 역할 |
-|---|---|
-| [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) §0~§2.1 | **대원칙 + catastrophic** — harness 강제 2가지 + catastrophic 시퀀스 |
-| [`docs/plugin/git-spec.md`](docs/plugin/git-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
+
 
 ### 작업 시 읽기 (lazy — 해당 작업 직전에만)
 
 | 파일 | 언제 읽나 |
 |---|---|
-| [`docs/plugin/design.md`](docs/plugin/design.md) | 디자인 시스템 SSOT 변경 / plug-in agent 디자인 룰 영향 작업 시 |
-| [`docs/archive/status-json-mutate-pattern.md`](docs/archive/status-json-mutate-pattern.md) | 하네스 Phase 분할 / 전환 절차 원전 참조 시 (역사 자료) |
+| [`docs/plugin/git-spec.md`](docs/plugin/git-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
 | [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) | 시퀀스 mini-graph + 8 loop 풀스펙 — 루프 진입 경로·분기 수정 시 |
 | [`docs/plugin/handoff-matrix.md`](docs/plugin/handoff-matrix.md) | agent 호출 분기 / retry / escalate 한도 / 접근 권한 경계 수정 시 |
 | [`docs/plugin/loop-procedure.md`](docs/plugin/loop-procedure.md) | Step 0~8 mechanics (begin-run → begin-step → Agent → end-step → finalize-run) 수정 시 |
