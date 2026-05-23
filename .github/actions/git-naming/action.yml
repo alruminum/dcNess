@@ -1,5 +1,5 @@
 name: 'dcness git-naming validation'
-description: 'Validate branch name / commit / PR title against dcness git-naming-spec'
+description: 'Validate branch name / commit / PR title against dcness git-spec'
 inputs:
   branch:
     description: 'Branch name to validate (skip if empty)'

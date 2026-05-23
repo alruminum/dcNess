@@ -21,7 +21,7 @@
 - 따라서 dcness plug-in 의 규격(`stories.md` 강제 / `issue-lifecycle.md §1.1` 흐름 / `product-planner` 시퀀스 등) 에 **얽매이지 않는다**.
 - dcness 자체의 작업은 다음 3개만 따른다:
   - 본 `CLAUDE.md` (작업 절차 + 게이트)
-  - `docs/plugin/git-naming-spec.md` (브랜치·커밋·PR 네이밍)
+  - `docs/plugin/git-spec.md` (브랜치·커밋·PR 네이밍)
   - GitHub 이슈 (필요 시 자유 형식, 메타-스토리·stories.md 불필요)
   - 본 CLAUDE.md
 - **헷갈리지 마라**: plug-in 규격은 *외부 활성화 프로젝트* 용이지, dcness 자기 자신용이 아니다.
@@ -41,7 +41,7 @@
 - 모든 기능 추가 작업은 **배포 경로 검증 의무** 가 동반된다. 다음 중 *해당하는 모든 경로* 가 갱신돼야 작업 완료:
   1. **plug-in 본체 파일** (`agents/**`, `commands/**`, `hooks/**`) — 사용자가 plug-in 업데이트 시 자동 적용. 본 저장소의 같은 경로에 변경 = plug-in 도 자동 갱신 (단 사용자가 plug-in 버전 업 받은 후).
   2. **`/init-dcness` 스킬이 사용자 프로젝트로 *복사·배포* 하는 파일** (예: `scripts/check_*.mjs`, `scripts/hooks/commit-msg`, `.github/workflows/*.yml`) — 본 저장소에만 추가하면 신규 프로젝트는 받지만 *기존 활성화 프로젝트* 는 못 받음. **`commands/init-dcness.md` 의 deploy 스텝에 반드시 추가** + 기존 사용자가 재배포받을 방법 고지.
-  3. **사용자가 따라야 하는 SSOT 문서** (예: `docs/plugin/issue-lifecycle.md`, `docs/plugin/git-naming-spec.md` 중 사용자용 부분) — 본 저장소 docs 만 갱신하면 사용자는 못 봄. plug-in 배포물 쪽으로 옮기거나 init-dcness 가 복사하도록 처리.
+  3. **사용자가 따라야 하는 SSOT 문서** (예: `docs/plugin/issue-lifecycle.md`, `docs/plugin/git-spec.md` 중 사용자용 부분) — 본 저장소 docs 만 갱신하면 사용자는 못 봄. plug-in 배포물 쪽으로 옮기거나 init-dcness 가 복사하도록 처리.
 - 기능 추가 PR 본문에 **"배포 경로 검증"** 항목 명시 — 어떤 경로(1/2/3) 로 사용자 환경에 도달하는지, 누락 없는지.
 - **검증 안 된 변경은 dcness 자체에서만 작동하는 환상**. 사용자에게 안 닿으면 기능 추가 의미 없음.
 
@@ -84,7 +84,7 @@
 | 파일 | 역할 |
 |---|---|
 | [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) §0~§2.1 | **대원칙 + catastrophic** — harness 강제 2가지 + catastrophic 시퀀스 |
-| [`docs/plugin/git-naming-spec.md`](docs/plugin/git-naming-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
+| [`docs/plugin/git-spec.md`](docs/plugin/git-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
 
 ### 작업 시 읽기 (lazy — 해당 작업 직전에만)
 
@@ -124,15 +124,15 @@ python3 -m unittest tests.test_signal_io -v   # 단일 모듈
 
 ## 5. 커밋 / PR 절차
 
-> 네이밍·메시지·PR 템플릿 상세: **[`docs/plugin/git-naming-spec.md`](docs/plugin/git-naming-spec.md)** (즉시 읽기 문서).
+> 네이밍·메시지·PR 템플릿 상세: **[`docs/plugin/git-spec.md`](docs/plugin/git-spec.md)** (즉시 읽기 문서).
 
 ```
-1. git checkout -b {브랜치명} main         # git-naming-spec §1 패턴
+1. git checkout -b {브랜치명} main         # git-spec §1 패턴
 2. (변경 작업)
 3. git add {파일}
 4. git commit -m "..."                      # hook 자동 게이트 (main-block + pytest)
 5. git push -u origin {브랜치명}
-6. gh pr create --title "..." --body "..."  # git-naming-spec §4~§5 템플릿
+6. gh pr create --title "..." --body "..."  # git-spec §4~§5 템플릿
 7. bash scripts/pr-finalize.sh              # 머지 + CI 대기 + main sync 자동 (한 명령)
 ```
 
