@@ -161,7 +161,7 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 
 **module-architect × K 단계 (Step 4)**:
 - 입력 = system-architect 산출물의 `## impl 목차` 표. 메인이 표 행 (NN, 파일명, 대응 Story, `task_index = i/total`, 의존) 순회하며 module-architect 1번씩 호출
-- 각 호출이 `docs/milestones/vNN/epics/epic-NN-*/impl/<NN>-<slug>.md` 새로 작성. **frontmatter `story: <N>, task_index: <i>/<total>` 의무** — impl-task-loop PR body Closes/Part of 판정 입력 ([`issue-lifecycle.md`](issue-lifecycle.md) §1.4)
+- 각 호출이 `docs/milestones/vNN/epics/epic-NN-*/impl/<NN>-<slug>.md` 새로 작성. **frontmatter `story: <N>, task_index: <i>/<total>` 의무** — impl-task-loop PR body Closes/Part of 판정 입력 ([`git-spec.md`](git-spec.md) §8 PR 트레일러)
 - 호출 순서 = impl 목차 의존 순서 (선행 impl 본문이 후행 `## 의존성` 입력 → 순차)
 - K 호출 모두 `PASS` → architect-loop clean 종료 (Step 5)
 
@@ -194,7 +194,7 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 | 모드 | 조건 | 시작 step | 합계 step |
 |---|---|---|---|
 | default (`/impl` 단발) | task 경로 매치 + 정식 위치 (`docs/milestones/v\d+/epics/epic-\d+-*/impl/\d+-*.md`) 파일 존재 | test-engineer | 4 |
-| fallback (`/impl` 단발) | 위 매치 실패 (즉석 task / direct-impl-loop / impl 부재) | module-architect | 5 |
+| fallback (`/impl` 단발) | 위 매치 실패 (즉석 task / 정식 위치 파일 부재) | module-architect | 5 |
 | Hybrid A (`/impl-loop` 한정) | `/impl-loop` driver 진입 + 정식 위치 파일 존재 | build-worker | 2 |
 
 **근거**: architect-loop §4.2 의 Step 4 (module-architect × K) 가 정식 위치 impl 파일 본문 detail 까지 채움. 즉 정식 경로 + 파일 존재 = 본문 detail 보장 + architecture-validator PASS 통과물. module-architect 재호출 redundant. 위치 자체가 도장.
