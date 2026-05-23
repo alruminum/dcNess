@@ -1655,9 +1655,12 @@ def _cli_end_step(args: Any) -> int:
 _MUST_FIX_RE = re.compile(r"\bMUST[\s_-]?FIX\b", re.IGNORECASE)
 
 # 같은 줄 부정 패턴 — "MUST FIX 0" / "MUST FIX 없음" / "no must fix"
+# DCN-CHG-20260523 (#484 Case 2): between 영역 `[\s:=]*` → `[^\n]{0,30}?` 로 일반화.
+# jajang `**MUST FIX 항목**: 없음` 패턴 (한국어 라벨 + markdown bold + 콜론 끼임)
+# 회귀 차단. 30자 한도 = `MUST FIX` 직후 같은 라인 안 짧은 라벨 + 부정 어휘만 흡수.
 _MUST_FIX_NEGATION_RE = re.compile(
-    r"\bMUST[\s_-]?FIX\b[\s:=]*"
-    r"(?:0(?!\s*\d)|없[음다])"
+    r"\bMUST[\s_-]?FIX\b[^\n]{0,30}?"
+    r"(?:\b0(?!\s*\d)|없[음다]|해당\s*없[음다])"
     r"|\bno\s+MUST[\s_-]?FIX\b",
     re.IGNORECASE,
 )

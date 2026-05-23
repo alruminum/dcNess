@@ -1707,6 +1707,53 @@ PASS — 빈 문자열 가드 추가.
         for r in records:
             self.assertFalse(r["must_fix"], f"false positive: {r['prose_excerpt'][:60]}")
 
+    def test_must_fix_negation_kr_label_form(self) -> None:
+        """DCN-CHG-20260523 (#484 Case 2) — `**MUST FIX 항목**: 없음` 한국어 라벨 형태 부정 인식.
+
+        jajang run-e630af3a pr-reviewer 회귀 — `**MUST FIX 항목**: 없음`
+        라인이 `[\\s:=]*` between 영역에 `**`, `항목`, `:` 가 끼어 못 매치 →
+        `_has_positive_must_fix` 가 True 반환 → MUST_FIX_LEAK false positive.
+        """
+        from harness.session_state import (
+            _append_step_status, _read_steps_jsonl, run_dir,
+            _clear_default_base_cache,
+        )
+        repo = Path(self._tmp.name) / "repo"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+        run_dir("sid", "run-dddd4444", create=True)
+        # 자장 task2 pr-reviewer 실 prose 형태
+        _append_step_status(
+            "sid", "run-dddd4444", "pr-reviewer", None, "LGTM",
+            "**MUST FIX 항목**: 없음\n**NICE TO HAVE 항목**:\n- D 데드코드\n",
+            Path("/dev/null"),
+        )
+        # 변형 — 라벨 + 콜론 + 부정
+        _append_step_status(
+            "sid", "run-dddd4444", "pr-reviewer", None, "LGTM",
+            "MUST FIX 항목: 없음\nNICE TO HAVE: 3건\n",
+            Path("/dev/null"),
+        )
+        # 변형 — 해당 없음
+        _append_step_status(
+            "sid", "run-dddd4444", "pr-reviewer", None, "LGTM",
+            "MUST FIX: 해당 없음\n",
+            Path("/dev/null"),
+        )
+        # 변형 — bold + `:` 없이 직접 부정
+        _append_step_status(
+            "sid", "run-dddd4444", "pr-reviewer", None, "LGTM",
+            "**MUST FIX** 없음\n",
+            Path("/dev/null"),
+        )
+        records = _read_steps_jsonl("sid", "run-dddd4444")
+        for r in records:
+            self.assertFalse(
+                r["must_fix"],
+                f"false positive (kr label form): {r['prose_excerpt'][:80]}",
+            )
+
     def test_must_fix_positive_still_detected(self) -> None:
         """negation regex 가 *진짜* MUST FIX 케이스는 정확히 검출."""
         from harness.session_state import (
