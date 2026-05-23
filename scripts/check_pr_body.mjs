@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * PR body 안 issue auto-close 키워드 (`Closes #N` / `Fixes #N` / `Resolves #N`) 검증 게이트.
- * 규칙 정의: docs/plugin/issue-lifecycle.md §1.4 + §2.3 (SSOT)
+ * 규칙 정의: docs/plugin/git-spec.md §8.1 (SSOT)
  *
  * 본 프로젝트(및 dcness 활성 프로젝트) 는 regular merge 채택 (squash 금지).
  * regular merge 시 GitHub auto-close 는 *PR body* 또는 *squash merge commit message* 만 인식.
@@ -70,7 +70,7 @@ async function main() {
   console.error('');
   console.error('  근거: 본 프로젝트는 regular merge 채택 — GitHub auto-close 는 *PR body* 만 인식.');
   console.error('       commit message 안 Closes #N 만으론 issue 자동 close 안 됨.');
-  console.error('  SSOT: docs/plugin/issue-lifecycle.md §1.4 + §2.3');
+  console.error('  SSOT: docs/plugin/git-spec.md §8.1');
   console.error('');
   console.error('  예외 우회 — issue 없는 infra/follow-up PR 등은 다음 line 쓸 것:');
   console.error('    Document-Exception-PR-Close: <사유>');

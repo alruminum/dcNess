@@ -1,6 +1,7 @@
-# GitHub Actions — git-naming-spec 브랜치명·PR 제목 형식 검증 게이트
+# GitHub Actions — git-spec 브랜치명·PR 제목 형식 검증 게이트
+# (workflow 파일명 / job 이름 `git-naming-spec gate` 는 기존 활성 프로젝트의 branch protection 호환 위해 보존)
 #
-# 규칙 정의: docs/plugin/git-naming-spec.md (SSOT)
+# 규칙 정의: docs/plugin/git-spec.md (SSOT)
 # 본 dcness self repo 는 자기 composite action (.github/actions/git-naming) 을 dogfooding.
 # 외부 활성화 프로젝트는 init-dcness 가 묻고 Y 답변 시 thin yml 을 사용자 repo 에 배포 — 그 yml 은
 # `uses: alruminum/dcNess/.github/actions/git-naming@main` 1줄로 동일 검증.

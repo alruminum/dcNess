@@ -96,7 +96,7 @@ msg = header + '''## [dcness 활성 환경]
 | agent 결론 → 다음 | \`handoff-matrix.md\` |
 | hook 시점 / 차단 | \`hooks.md\` |
 | 이슈 lifecycle / PR | \`issue-lifecycle.md\` |
-| 브랜치/커밋 네이밍 | \`git-naming-spec.md\` |
+| 브랜치/커밋 네이밍 | \`git-spec.md\` |
 
 skill 트리거 시 해당 skill 의 ## 사전 read 가 정확 경로 안내.
 '''

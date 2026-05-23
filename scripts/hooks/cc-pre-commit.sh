@@ -5,8 +5,8 @@
 # 입력: stdin JSON ({"tool_name":"Bash","tool_input":{"command":"..."}})
 # 동작:
 #   - git commit     → main 직접 commit 차단 + pytest 게이트
-#   - git checkout -b / git switch -c → 브랜치명 git-naming-spec 검증
-#   - gh pr create   → PR 제목 git-naming-spec 검증
+#   - git checkout -b / git switch -c → 브랜치명 git-spec 룰 검증
+#   - gh pr create   → PR 제목 git-spec 룰 검증
 # 종료 코드:
 #   0 — 통과 (또는 대상 명령 미포함)
 #   2 — 게이트 실패 (Claude Code PreToolUse 차단)

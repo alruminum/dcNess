@@ -205,6 +205,7 @@ PYEOF
 
 done < <(grep -E "$STORY_RE" "$STORIES")
 
+# 포맷 SSOT = docs/plugin/git-spec.md §7.3 (Story 이슈 — stories.md 하단 `## 관련 이슈` 테이블)
 # 하단 ## 관련 이슈 테이블 씀
 {
   echo ""

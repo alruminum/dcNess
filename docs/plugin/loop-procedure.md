@@ -297,7 +297,7 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 
 ## 3.4 impl-task-loop commit 구조 (orchestration §4.3 한정)
 
-`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` 에서 루프 종료 전 src commit + PR create. **커밋 메시지·브랜치·PR 네이밍 규칙 SSOT** = [`git-naming-spec.md`](git-naming-spec.md). 본 §3.4 는 *시점·포함 파일* 만 정의.
+`impl-task-loop` / `impl-ui-design-loop` / `direct-impl-loop` 에서 루프 종료 전 src commit + PR create. **커밋 메시지·브랜치·PR 네이밍 규칙 SSOT** = [`git-spec.md`](git-spec.md). 본 §3.4 는 *시점·포함 파일* 만 정의.
 
 | 시점 | 내용 |
 |---|---|
@@ -311,13 +311,13 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 ### commit 골격
 
 ```bash
-# 메시지 형식 = git-naming-spec.md §2~§5 참조.
+# 메시지 형식 = git-spec.md §2~§5 참조.
 
 # branch 생성 + src commit (code-validator PASS 직후)
 BRANCH="<prefix>/<task-slug>"   # prefix = feat/fix/chore (decision rule = orchestration §4.3)
 git checkout -b "$BRANCH" main
 git add src/**
-git commit -m "<git-naming-spec §2 형식>"
+git commit -m "<git-spec §2 형식>"
 git push -u origin "$BRANCH"
 
 # PR body: Closes vs Part of 자동 판단 (issue-lifecycle.md §1.4 적용 절차)
@@ -340,7 +340,7 @@ Closes #${EPIC_ISSUE}"
 else
   PR_BODY="Part of #${STORY_ISSUE}"
 fi
-gh pr create --title "<git-naming-spec §4 형식>" --body "$PR_BODY"
+gh pr create --title "<git-spec §4 형식>" --body "$PR_BODY"
 ```
 
 ### Step 7a (impl-task-loop)
