@@ -81,7 +81,7 @@ RUN_ID=$("$HELPER" begin-run <entry_point> [--issue-num N])
 echo "[<entry>] run started: $RUN_ID"
 ```
 
-`<entry_point>` = §7 매트릭스 행의 `entry_point` 컬럼 (예: `impl`, `issue-report`, `architect-loop`, `ux`). begin-run 동작: sid auto-detect + run_id 발급 + `live.json.active_runs` 슬롯 + `.by-pid-current-run/{cc_pid}` 박음.
+`<entry_point>` = §7 매트릭스 행의 `entry_point` 컬럼 (예: `impl`, `issue-report`, `architect-loop`, `ux`). begin-run 동작: sid auto-detect + run_id 발급 + `live.json.active_runs` 슬롯 + `.by-pid-current-run/{cc_pid}` 씀.
 
 > `/impl-loop` 은 자기 entry_point 가 없다 — `impl-task-loop × N` driver 이므로 각 task 가 독립 `begin-run impl` … `end-run` run 1개씩 (N task = N run = N review.md). 자세히 = [`orchestration.md`](orchestration.md) §4.8 + [`commands/impl-loop.md`](../../commands/impl-loop.md).
 
@@ -163,7 +163,7 @@ REDO 판단 신호: 결과가 질문에 제대로 답하지 못함 / 같은 tool
 
 #### AMBIGUOUS 처리 (legacy enum mode 한정)
 
-`--allowed-enums` 박은 legacy 호출에서 `end-step` stdout = `AMBIGUOUS` 시: 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS → 사용자 위임 (enum 후보 + prose 발췌). prose-only mode 는 AMBIGUOUS 자체 X — 결정 못 하면 prose 본문에 "결정 불가" 명시 후 사용자 위임 (issue #392).
+`--allowed-enums` 쓴 legacy 호출에서 `end-step` stdout = `AMBIGUOUS` 시: 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS → 사용자 위임 (enum 후보 + prose 발췌). prose-only mode 는 AMBIGUOUS 자체 X — 결정 못 하면 prose 본문에 "결정 불가" 명시 후 사용자 위임 (issue #392).
 
 #### helper 안전망 (자동 검출)
 
@@ -321,7 +321,7 @@ git commit -m "<git-naming-spec §2 형식>"
 git push -u origin "$BRANCH"
 
 # PR body: Closes vs Part of 자동 판단 (issue-lifecycle.md §1.4 적용 절차)
-# 입력 = impl 파일 frontmatter `task_index: i/total` + `story: N` (module-architect × K 시점에 박힘)
+# 입력 = impl 파일 frontmatter `task_index: i/total` + `story: N` (module-architect × K 시점에 있음)
 TASK_FILE="docs/milestones/.../impl/NN-*.md"
 TASK_INDEX=$(awk '/^task_index:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")  # "3/3"
 STORY_NUM=$(awk '/^story:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")
@@ -358,9 +358,9 @@ git checkout main && git pull --ff-only 2>/dev/null || true
 
 > **이전 정의**: `stories.md` task `[x]` 체크 + `backlog.md` epic `[x]` 체크 (engineer `IMPL_DONE` 직후, 메인 mechanical edit).
 >
-> **폐기 사유**: stories.md 양식 단순화 (user story 만, task `[ ]` 박지 않음 — PR3-A) + `backlog.md` 자체 폐기. 진행 추적 SSOT = GitHub issue close 시스템 (PR body `Closes #N` / `Part of #N` 트레일러) 단일화. impl task PR diff 에는 stories.md / backlog.md 변경 0 (commit3 = src/** only).
+> **폐기 사유**: stories.md 양식 단순화 (user story 만, task `[ ]` 쓰지 않음 — PR3-A) + `backlog.md` 자체 폐기. 진행 추적 SSOT = GitHub issue close 시스템 (PR body `Closes #N` / `Part of #N` 트레일러) 단일화. impl task PR diff 에는 stories.md / backlog.md 변경 0 (commit3 = src/** only).
 >
-> **마이그레이션**: 기존 활성 프로젝트의 옛 stories.md (task `[ ]` 박힌) 는 *그대로 잔재 허용* — backfill 강제 X. 새 작성만 새 양식 ([`commands/product-plan.md`](../../commands/product-plan.md) §stories.md 산출물). 자동 마이그레이션 원하는 사용자용 = `scripts/migrate_stories_to_new_format.sh`.
+> **마이그레이션**: 기존 활성 프로젝트의 옛 stories.md (task `[ ]` 있는) 는 *그대로 잔재 허용* — backfill 강제 X. 새 작성만 새 양식 ([`commands/product-plan.md`](../../commands/product-plan.md) §stories.md 산출물). 자동 마이그레이션 원하는 사용자용 = `scripts/migrate_stories_to_new_format.sh`.
 
 ---
 

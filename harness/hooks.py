@@ -321,7 +321,7 @@ def handle_pretooluse_agent(
         except (OSError, ValueError):
             pass  # 실패해도 Agent 호출은 통과 — 식별만 누락.
 
-    # #272 W3 진짜 fix — PreToolUse Agent 의 tool_use_id + 시작 시각을 박아
+    # #272 W3 진짜 fix — PreToolUse Agent 의 tool_use_id + 시작 시각을 써
     # PostToolUse Agent 가 *시각 범위* 로 sub 의 trace 정확히 식별 (agent_id 폴백
     # 위험 제거). CC docs: tool_use_id 가 PreToolUse↔PostToolUse 매칭 키.
     if rid and subagent:
@@ -769,7 +769,7 @@ def handle_stop(
 
     Stop hook 으로 *코드 강제 승격*:
     1. stop_hook_active=true → 무한 루프 방지, skip
-    2. active_runs[rid] 슬롯 부재 / finalized_at 박힘 → skip (이미 종료)
+    2. active_runs[rid] 슬롯 부재 / finalized_at 있음 → skip (이미 종료)
     3. `.steps.jsonl` 마지막 row 의 (agent, mode) 가 live.json.current_step.
        (agent, mode) 와 일치 → end-step 완료 상태 = 종료 후보 / 불일치 →
        begin-step 후 end-step 미호출 진행 중 → skip (false positive 회피)
@@ -786,7 +786,7 @@ def handle_stop(
     review.md 본문 echo 는 *기존 prose 의무* (loop-procedure.md §6 +
     run-review.md §51 + commands/impl.md §종료 조건) 에 의존.
 
-    return: 항상 0 (block 박은 경우에도 0 — CC 가 stdout JSON 으로 block 분기 인식).
+    return: 항상 0 (block 쓴 경우에도 0 — CC 가 stdout JSON 으로 block 분기 인식).
     """
     if stdin_data is None:
         try:
@@ -891,7 +891,7 @@ _CONTINUE_ENUMS: frozenset[str] = frozenset({
 })
 # 종료 agent — 본 agent 의 PASS/LGTM 은 run 끝 = block 안 함.
 _TERMINAL_AGENTS: frozenset[str] = frozenset({"pr-reviewer"})
-# 무한 루프 가드 — 같은 step 에서 block 박은 횟수 상한.
+# 무한 루프 가드 — 같은 step 에서 block 쓴 횟수 상한.
 _STOP_BLOCK_COUNT_MAX = 2
 
 
@@ -913,7 +913,7 @@ def _maybe_emit_continuation_signal(
     3. stop_block_count[step_key] < _STOP_BLOCK_COUNT_MAX (무한 루프 가드)
 
     반환:
-        True  — decision:block JSON stdout 박음 + 호출자는 return 0 해야 함
+        True  — decision:block JSON stdout 씀 + 호출자는 return 0 해야 함
         False — 조건 미충족, 호출자는 기존 분기 (end-run 자동 호출) 진행
     """
     if not last_agent or last_agent in _TERMINAL_AGENTS:
@@ -940,7 +940,7 @@ def _maybe_emit_continuation_signal(
     if enum not in _CONTINUE_ENUMS:
         return False
 
-    # 무한 루프 가드 — 같은 step 에서 block 박은 횟수 상한 검사.
+    # 무한 루프 가드 — 같은 step 에서 block 쓴 횟수 상한 검사.
     step_key = f"{last_agent}:{last_mode or ''}"
     block_counts = slot.get("stop_block_count")
     if not isinstance(block_counts, dict):
@@ -959,7 +959,7 @@ def _maybe_emit_continuation_signal(
     try:
         update_live(sid, base_dir=base_dir, active_runs=active)
     except Exception:
-        pass  # persist 실패해도 block 자체는 박음 (다음 호출 시 cur_count 만 미증가)
+        pass  # persist 실패해도 block 자체는 씀 (다음 호출 시 cur_count 만 미증가)
 
     reason = (
         f"[dcness Stop hook · issue #469 결함 A] sub-step "

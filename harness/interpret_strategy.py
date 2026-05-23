@@ -6,7 +6,7 @@
 
 이슈 #284 정착 후 동작:
     - `interpret_with_fallback` 는 휴리스틱 추출 자체는 *legacy 호환* 으로 보존
-      (기존 외부 skill 이 `--allowed-enums` 박은 채 호출해도 crash 회피).
+      (기존 외부 skill 이 `--allowed-enums` 쓴 채 호출해도 crash 회피).
     - 단 telemetry 신규 기록은 **중단** — `.metrics/heuristic-calls.jsonl` 에
       더 이상 append 안 함. 누적된 baseline 데이터는 보존 (회고 자료, 이슈 #277).
     - 정형 routing telemetry 는 `harness/routing_telemetry.py` 가 대체 (#281).

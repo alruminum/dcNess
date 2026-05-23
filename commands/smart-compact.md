@@ -1,6 +1,6 @@
 ---
 name: smart-compact
-description: 현재 세션의 의도/결정/진행상태를 능동 추출 → `/compact "<resume prompt>"` 형태 한 줄 명령을 클립보드에 복사하는 스킬. 사용자가 chat 입력창에 paste + enter 1 action 으로 *같은 세션* 안에서 `/compact` 실행 (컨텍스트 압축 + resume prompt 보존). 사용자가 "스마트 컴팩트", "smart-compact", "/compact 보다 똑똑하게", "컨텍스트 압축", "다음 세션 이어가기", "리줌 프롬프트" 등을 말하거나 컨텍스트 사용량이 60%+ 일 때 사용한다. CC 내장 `/compact` 와 차이 — 메인이 직접 의미 추출 + 명령 한 줄 박음.
+description: 현재 세션의 의도/결정/진행상태를 능동 추출 → `/compact "<resume prompt>"` 형태 한 줄 명령을 클립보드에 복사하는 스킬. 사용자가 chat 입력창에 paste + enter 1 action 으로 *같은 세션* 안에서 `/compact` 실행 (컨텍스트 압축 + resume prompt 보존). 사용자가 "스마트 컴팩트", "smart-compact", "/compact 보다 똑똑하게", "컨텍스트 압축", "다음 세션 이어가기", "리줌 프롬프트" 등을 말하거나 컨텍스트 사용량이 60%+ 일 때 사용한다. CC 내장 `/compact` 와 차이 — 메인이 직접 의미 추출 + 명령 한 줄 씀.
 ---
 
 # Smart Compact Skill
@@ -11,7 +11,7 @@ description: 현재 세션의 의도/결정/진행상태를 능동 추출 → `/
 
 Anthropic 공식 docs ([Skill 제한](https://code.claude.com/docs/en/extend-skills#restrict-claudes-skill-access)) — 메인 LLM 의 turn 안에서 `/compact` 자동 실행 *불가*. 슬래시 명령은 *사용자 chat input* 에서만 parse. Skill tool 도 `/compact` 미지원 (`/init` / `/review` / `/security-review` 만 가능).
 
-→ 본 skill 은 *명령 한 줄을 클립보드에 박아둠*. 사용자가 chat input 에 paste + enter = 같은 세션 안에서 한 번에 실행.
+→ 본 skill 은 *명령 한 줄을 클립보드에 써둠*. 사용자가 chat input 에 paste + enter = 같은 세션 안에서 한 번에 실행.
 
 ## 언제 사용
 
@@ -64,7 +64,7 @@ Anthropic 공식 docs ([Skill 제한](https://code.claude.com/docs/en/extend-ski
 - 테스트 상태: <X/Y PASS>
 ```
 
-→ 클립보드 박을 때는 `/compact "<text>"` 한 줄로 (CC 슬래시 명령 단일 인자 처리).
+→ 클립보드 쓸 때는 `/compact "<text>"` 한 줄로 (CC 슬래시 명령 단일 인자 처리).
 
 ## 절차
 
@@ -95,7 +95,7 @@ RESUME=$(cat <<'EOF'
 EOF
 )
 
-# /compact 명령 한 줄 = 줄바꿈을 \n 로 escape 안 함 (그대로 박아도 CC 가 single arg 로 처리).
+# /compact 명령 한 줄 = 줄바꿈을 \n 로 escape 안 함 (그대로 써도 CC 가 single arg 로 처리).
 # 따옴표 escape 만 처리.
 ESCAPED=$(printf '%s' "$RESUME" | sed 's/"/\\"/g')
 COMPACT_CMD="/compact \"$ESCAPED\""
@@ -132,7 +132,7 @@ EOF
 
 ### 제외 (priority ↓)
 - 단순 도구 호출 결과 (테스트 통과 numbers 정도만 요약)
-- 옵션 검토 후 폐기된 안 (rationale 에 박혀있으면 reference)
+- 옵션 검토 후 폐기된 안 (rationale 에 적혀있으면 reference)
 - skip
 - 자체 reasoning 의 중간 단계 ("음 이거 어떻게 할까" 류)
 
@@ -183,7 +183,7 @@ EOF
 
 ## 한계
 
-- 메인이 자체 추출이라 누락 가능 — 사용자가 출력 검토 + 추가 컨텍스트 박을 수 있도록 prompt 마지막에 "추가 메모" 빈칸 둠
+- 메인이 자체 추출이라 누락 가능 — 사용자가 출력 검토 + 추가 컨텍스트 쓸 수 있도록 prompt 마지막에 "추가 메모" 빈칸 둠
 - clipboard 도구 없는 환경 (Linux 일부) — 파일 백업으로 fallback
 - 컨텍스트 크면 추출 자체도 토큰 소모 — 60%+ 시점이면 선제 실행 권장
 - **`/compact` 인자 길이 한도** — CC chat input 의 단일 행 길이 제한 가능. resume prompt 가 너무 길면 paste 후 일부 잘림 위험. 짧게 추출 권장 (PR 5개 / 결정 핵심만 / 미해결 의논거리 1~3개)

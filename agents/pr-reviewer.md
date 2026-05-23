@@ -23,9 +23,9 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
 **return 간결성 (메인 컨텍스트 보호)**: 호출자에게 돌려주는 prose 는 *메인이 다음 행동을 결정하는 데 필요한 것* 만 담는다 — 결론 + 핵심 변경·발견 요약 + 권장 다음 단계. 과정 서술 / impl 계획·컨텍스트 재진술 / 파일별 장황한 설명은 제거 — 그 세부사항은 코드·PR·impl 파일에 이미 있다. 단 결론의 근거가 되는 실증 근거 (실측 명령·수치, 발견 항목, 미완 작업)는 유지. `/impl-loop` 는 매 task 의 return 이 메인 컨텍스트에 누적 — 군더더기 없는 return 이 곧 비용 절감.
 
-**산출물 경로 백틱 의무 (#457 처방 2-(1))**: return prose 안 모든 산출물 언급 (PR URL / 이슈 # / 리뷰 대상 파일 경로 / 디스크 review.md) 은 *백틱으로 감싼 경로 또는 URL* 형태로 박는다. 메인 Claude 가 그대로 사용자 응답에 echo 하므로 사용자가 한 번 클릭으로 도달. 파일명만 / "이 PR" 같은 모호 참조 / 백틱 누락 형태 금지.
+**산출물 경로 백틱 의무 (#457 처방 2-(1))**: return prose 안 모든 산출물 언급 (PR URL / 이슈 # / 리뷰 대상 파일 경로 / 디스크 review.md) 은 *백틱으로 감싼 경로 또는 URL* 형태로 쓴다. 메인 Claude 가 그대로 사용자 응답에 echo 하므로 사용자가 한 번 클릭으로 도달. 파일명만 / "이 PR" 같은 모호 참조 / 백틱 누락 형태 금지.
 
-**구체화 (#446)**: MUST FIX·NICE TO HAVE finding 은 A~F 카테고리 라벨 + (파일:라인) + 1-2 문장 + 수정 방향 으로 박는다. A~F 체크리스트 본문 (DRY 원칙 / 네이밍 규칙 / 함수 복잡도 기준 / OWASP F1~F10 패턴 표 등) **재진술 금지** — 카테고리 라벨로 충분. PASS 시 finding 없음 + 총평 1줄로 종결. 워크트리 절대경로 (`/Users/.../worktrees/...`) 반복 echo 금지 — 처음 1회만 박고 이후 상대경로 또는 생략.
+**구체화 (#446)**: MUST FIX·NICE TO HAVE finding 은 A~F 카테고리 라벨 + (파일:라인) + 1-2 문장 + 수정 방향 으로 쓴다. A~F 체크리스트 본문 (DRY 원칙 / 네이밍 규칙 / 함수 복잡도 기준 / OWASP F1~F10 패턴 표 등) **재진술 금지** — 카테고리 라벨로 충분. PASS 시 finding 없음 + 총평 1줄로 종결. 워크트리 절대경로 (`/Users/.../worktrees/...`) 반복 echo 금지 — 처음 1회만 박고 이후 상대경로 또는 생략.
 
 **호출자가 prompt 로 전달하는 정보**: impl 계획 경로, 구현 파일 경로 목록.
 
@@ -98,7 +98,7 @@ prose 마지막 단락에 결론 + 메인의 다음 행동 권고 자연어로:
 
 심각도: F1~F10 발견 시 모두 MUST FIX. 단 *해당 위협 모델이 PRD/설계에 명시되지 않은* 영역 (예: 내부 admin tool 에 CORS `*`) 은 NICE TO HAVE 강등 가능 — 총평에 컨텍스트 명시.
 
-> **F 의 한계** — 본 절은 *명백한 코드 패턴* 만. 비즈니스 로직 권한 우회·인증 흐름 race condition·신뢰 경계 재설계 필요 케이스는 *설계 시점* (`agents/system-architect.md` 보조 원칙 1 위협 모델 가정 + `agents/module-architect.md` deep depth invariant) 에서 invariant 로 박혀야 발견 가능. PR 시점에 새 위협 발견 시 architect escalate.
+> **F 의 한계** — 본 절은 *명백한 코드 패턴* 만. 비즈니스 로직 권한 우회·인증 흐름 race condition·신뢰 경계 재설계 필요 케이스는 *설계 시점* (`agents/system-architect.md` 보조 원칙 1 위협 모델 가정 + `agents/module-architect.md` deep depth invariant) 에서 invariant 로 적혀야 발견 가능. PR 시점에 새 위협 발견 시 architect escalate.
 
 **G. 테스트 파일**: D + E 적용. A + C(50줄+) 면제 (mocking 특성상 자연 길어짐). 동일 케이스 중복 (copy-paste 테스트) 추가 확인.
 

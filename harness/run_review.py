@@ -186,7 +186,7 @@ class StepRecord:
     # DCN-CHG-20260430-37: tool_use_count — TOOL_USE_OVERFLOW 검출 + DCN-30-36 hint 짝.
     tool_use_count: int = 0
     # issue #383 B4 — prose 본문 끝 결론 enum (PASS/LGTM/FAIL/ESCALATE).
-    # 옛 enum mode 는 helper stdout 에서 enum 직접 박음. prose-only mode
+    # 옛 enum mode 는 helper stdout 에서 enum 직접 씀. prose-only mode
     # (이슈 #284) 이후 helper sentinel = `PROSE_LOGGED` 통일 → agent prose
     # 마지막 단락 결론 (agents/code-validator.md §6 "PASS / FAIL / ESCALATE")
     # 을 표시 단계에서 추출. 부재 시 빈 문자열 (= sentinel 그대로 표시 fallback).
@@ -549,7 +549,7 @@ def detect_wastes(
         if not s.prose_full:
             continue  # prose 부재 시 검사 불가
         if s.conclusion_enum:
-            continue  # 결론 enum 정상 박힘
+            continue  # 결론 enum 정상 있음
         findings.append(WasteFinding(
             pattern="MISSING_CONCLUSION_ENUM",
             severity="MEDIUM",
@@ -601,7 +601,7 @@ def detect_wastes(
     # issue #383 B3 — MUST_FIX_LEAK. 마지막 step 의 must_fix=True (= caveat 신호)
     # 는 MUST_FIX_GHOST 룰이 *다음 step 없음* 으로 skip → wastes 비어있는
     # 회귀 발생 (jajang run-459cce99 pr-reviewer 케이스). 사용자에게 caveat
-    # 통지 누락 회피 위해 wastes 1+ 박아 회귀 차단.
+    # 통지 누락 회피 위해 wastes 1+ 써서 회귀 차단.
     last = steps[-1] if steps else None
     if last and last.must_fix:
         findings.append(WasteFinding(
@@ -1207,7 +1207,7 @@ def render_report(report: RunReport) -> str:
 
     # issue #396 — 메인 인사이트 prompt (REVIEW_READY 시 메인 시야 진입)
     # 메인 Claude 가 review.md 본 후 자연어 한 줄 평가 박는 매커니즘 안내.
-    # 미박음 = noop (자율 영역, 강제 X).
+    # 미씀 = noop (자율 영역, 강제 X).
 
     # 잘못한 점 (차단성 검출 — catastrophic / drift)
     if report.wastes:
@@ -1226,10 +1226,10 @@ def render_report(report: RunReport) -> str:
         lines.append("")
 
     # issue #396 — 메인 인사이트 prompt (review.md 끝 임베드)
-    # 메인 Claude 가 보고 자율 평가 박음. agent+mode 선택 자율.
+    # 메인 Claude 가 보고 자율 평가 씀. agent+mode 선택 자율.
     lines.append("## 📝 메인 인사이트 (1줄 자율 평가)")
     lines.append("")
-    lines.append("이번 run 의 *구체적 학습 1줄* (다음 run 같은 실수 회피용) — 박을지 메인 자율:")
+    lines.append("이번 run 의 *구체적 학습 1줄* (다음 run 같은 실수 회피용) — 쓸지 메인 자율:")
     lines.append("")
     lines.append("```bash")
     lines.append("$HELPER insight <agent>[-<mode>] \"<자연어 한 줄>\"")
@@ -1237,8 +1237,8 @@ def render_report(report: RunReport) -> str:
     lines.append("```")
     lines.append("")
     lines.append("- agent+mode 별 `.claude/loop-insights/<agent>[-<mode>].md` 에 누적 (FIFO 10 cap)")
-    lines.append("- 다음 run begin-step 시 자동 inject — 같은 agent 호출 시 sub-agent prompt 끝에 박힘")
-    lines.append("- 미박음 = noop (자율, 강제 X)")
+    lines.append("- 다음 run begin-step 시 자동 inject — 같은 agent 호출 시 sub-agent prompt 끝에 있음")
+    lines.append("- 미씀 = noop (자율, 강제 X)")
     lines.append("- **형식 가이드**: *실수 환기* 형태로만 (예: `🚨 X 실수 — 반복 X`). 잘 됐던 케이스 누적은 학습 가치 0 (issue #392 실측)")
     lines.append("")
 

@@ -165,7 +165,7 @@ def append_insight(
         entries.pop(0)
 
     # 본문 재구성: header / heading 보존 + entries
-    # 단순화 — non_entries 다음에 entries 박음
+    # 단순화 — non_entries 다음에 entries 씀
     header_part = "\n".join(non_entries).rstrip() + "\n\n" if non_entries else ""
     body = header_part + "\n".join(entries) + "\n"
     p.write_text(body, encoding="utf-8")

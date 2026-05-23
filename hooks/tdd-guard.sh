@@ -11,7 +11,7 @@
 
 set -u
 
-# #404 — 정상 통과 시 suppressOutput: true 박아 transcript attachment 숨김 시도.
+# #404 — 정상 통과 시 suppressOutput: true 써서 transcript attachment 숨김 시도.
 allow() {
   echo '{"suppressOutput": true, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
   exit 0
@@ -155,7 +155,7 @@ if ! has_test_for "$FILE_PATH"; then
   ${DIR}/__tests__/${BASE}.test.ts
   ${PARENT}/__tests__/${BASE}.test.ts
 
-이미 테스트 박았는데 인식 안 됨 — dcness 가 검사하는 6-tier 12 location:
+이미 테스트 작성했는데 인식 안 됨 — dcness 가 검사하는 6-tier 12 location:
   Tier 1: <dir>/<name>.{test,spec}.{ts,tsx,js,jsx}
   Tier 2: <dir>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
   Tier 3: <parent>/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
@@ -170,7 +170,7 @@ if ! has_test_for "$FILE_PATH"; then
   <src_root>    = ${SRC_ROOT}
   <PROJECT_ROOT>= ${PROJECT_ROOT}
 
-회피 안티패턴 금지: 위 location 외 다른 위치 (예: <parent>/__tests__/<subdir>/<name>.test.<ext>) 에 같은 본문 복사 박지 말 것. false negative 발견 시 본 hook 자체 fix (#469 결함 C 영역) 후속 PR 영역."
+회피 안티패턴 금지: 위 location 외 다른 위치 (예: <parent>/__tests__/<subdir>/<name>.test.<ext>) 에 같은 본문 복사 쓰지 말 것. false negative 발견 시 본 hook 자체 fix (#469 결함 C 영역) 후속 PR 영역."
   exit 0
 fi
 

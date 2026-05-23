@@ -197,9 +197,9 @@ Tier 6: <PROJECT_ROOT>/src/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
 
 **역할 2 — continuation signal (issue #469 결함 A)**:
 - end-run 호출 *전* 마지막 step prose (`<run_dir>/<agent>[-<MODE>].md`) 결론 enum 추출.
-- 다음 step 진입 가능 enum (`PASS` / `IMPL_DONE` / `POLISH_DONE` / `TESTS_WRITTEN` / `UX_FLOW_DONE`) **AND** 마지막 step agent 가 종료 agent (`pr-reviewer`) 아닌 경우 → `{"decision": "block", "reason": "..."}` JSON stdout 박음.
+- 다음 step 진입 가능 enum (`PASS` / `IMPL_DONE` / `POLISH_DONE` / `TESTS_WRITTEN` / `UX_FLOW_DONE`) **AND** 마지막 step agent 가 종료 agent (`pr-reviewer`) 아닌 경우 → `{"decision": "block", "reason": "..."}` JSON stdout 씀.
 - CC 가 본 신호 인식 → 메인 turn 재 발화 강제. 메인이 reason 읽고 다음 sub-step 진입 (예: build-worker PASS → pr-reviewer 호출).
-- 무한 루프 가드: 같은 step 에서 block 박은 횟수 (`slot.stop_block_count[<agent>:<mode>]`) 가 `_STOP_BLOCK_COUNT_MAX = 2` 초과 시 skip — 메인이 reason 받고도 발화 안 하는 진짜 종료 의도 인정.
+- 무한 루프 가드: 같은 step 에서 block 쓴 횟수 (`slot.stop_block_count[<agent>:<mode>]`) 가 `_STOP_BLOCK_COUNT_MAX = 2` 초과 시 skip — 메인이 reason 받고도 발화 안 하는 진짜 종료 의도 인정.
 - 배경: jajang Epic 20 multi-task `/impl-loop` 실측에서 build-worker tool_result 후 메인 turn 자동 발화 부재 = 9시간 16분 침묵 사례 ([issue #469](../../) 본문 참조).
 
 **차단 동작**:

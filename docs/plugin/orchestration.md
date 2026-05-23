@@ -295,7 +295,7 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 | 3 | designer | `PASS,ESCALATE` |
 | 3.5 | (사용자 PICK) | — (메인이 시안 경로 안내 + OK/NG. NG 시 designer 재호출 자유) |
 
-**designer 환경 감지**: `docs/design.md` frontmatter `medium: pencil|html` 따라 분기. 박힘 X 면 designer Step 0 에서 detect + 사용자 역질문 (가용 시).
+**designer 환경 감지**: `docs/design.md` frontmatter `medium: pencil|html` 따라 분기. 있음 X 면 designer Step 0 에서 detect + 사용자 역질문 (가용 시).
 
 **분기**:
 - `PASS` + 사용자 OK → DESIGN_HANDOFF 패키지 (이슈 코멘트 + design.md + 시안 파일) → 종료

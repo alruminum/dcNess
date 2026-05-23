@@ -35,7 +35,7 @@ CC_PID=$PPID
 python3 -m harness.hooks pretooluse-file-op --cc-pid "$CC_PID"
 RC=$?
 
-# #404 — 정상 통과 시 suppressOutput: true 박아 transcript attachment 숨김 시도.
+# #404 — 정상 통과 시 suppressOutput: true 써서 transcript attachment 숨김 시도.
 # CC 본체 알려진 버그 (anthropics/claude-code#34859) 회피 가설. 차단 path 는 기존 (stderr + exit 1) 유지.
 if [ "$RC" = "0" ]; then
   echo '{"suppressOutput": true, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'

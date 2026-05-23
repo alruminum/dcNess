@@ -4,8 +4,8 @@
 # 한 명령으로:
 #   1. stories.md parse — epic + Story N 추출
 #   2. milestone number 조회 (Epics / Story)
-#   3. epic 이슈 1 생성 → stories.md 에 번호 박음
-#   4. story 이슈 N 순차 생성 → stories.md 에 번호 + 하단 표 박음
+#   3. epic 이슈 1 생성 → stories.md 에 번호 씀
+#   4. story 이슈 N 순차 생성 → stories.md 에 번호 + 하단 표 씀
 #   5. sub-issue API 호출 (epic ↔ story N 연결, GitHub native sub-issue API)
 #   6. 결과 prose 출력
 #
@@ -32,9 +32,9 @@ if [ -z "$REPO" ]; then
   exit 1
 fi
 
-# 멱등성 — 이미 epic 번호 박혀있으면 skip
+# 멱등성 — 이미 epic 번호 적혀있으면 skip
 if grep -qE '^\*\*GitHub Epic Issue:\*\* \[#[0-9]+\]' "$STORIES"; then
-  echo "[issue-create] $STORIES 이미 epic 번호 박혀있음 — skip"
+  echo "[issue-create] $STORIES 이미 epic 번호 있음 — skip"
   echo "  멱등성 재실행 필요 시 stories.md 상단 'GitHub Epic Issue' 라인 제거 후 재호출"
   exit 0
 fi
@@ -134,10 +134,10 @@ fi
 EPIC_URL="https://github.com/$REPO/issues/$EPIC_NUM"
 echo "[issue-create] epic #$EPIC_NUM 생성 완료 — $EPIC_URL"
 
-# stories.md 상단에 epic 번호 박음
+# stories.md 상단에 epic 번호 씀
 sed -i.bak "s|^\*\*GitHub Epic Issue:\*\*.*\$|**GitHub Epic Issue:** [#$EPIC_NUM]($EPIC_URL)|" "$STORIES" 2>/dev/null
 if ! grep -qE '^\*\*GitHub Epic Issue:\*\* \[' "$STORIES"; then
-  # 라인 부재 시 Epic 헤더 직전에 박음 (양식 분기)
+  # 라인 부재 시 Epic 헤더 직전에 씀 (양식 분기)
   awk -v line="**GitHub Epic Issue:** [#$EPIC_NUM]($EPIC_URL)" -v epic_re="$EPIC_RE" '
     $0 ~ epic_re && !done { print line; print ""; done=1 }
     { print }
@@ -188,7 +188,7 @@ while IFS= read -r STORY_LINE; do
   STORY_TITLES+=("$STORY_TITLE")
   echo "  → #$STORY_NUM (id=$STORY_ID)"
 
-  # stories.md 의 해당 Story 헤더 직하에 마커 박음 (이미 있으면 update) — STORY_PREFIX 동적
+  # stories.md 의 해당 Story 헤더 직하에 마커 씀 (이미 있으면 update) — STORY_PREFIX 동적
   python3 - "$STORIES" "$STORY_N" "$STORY_NUM" "$STORY_URL" "$STORY_PREFIX" <<'PYEOF'
 import sys, re, pathlib
 p = pathlib.Path(sys.argv[1])
@@ -205,7 +205,7 @@ PYEOF
 
 done < <(grep -E "$STORY_RE" "$STORIES")
 
-# 하단 ## 관련 이슈 테이블 박음
+# 하단 ## 관련 이슈 테이블 씀
 {
   echo ""
   echo "## 관련 이슈"

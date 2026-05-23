@@ -49,7 +49,7 @@ for marker in "${OLD_MARKERS[@]}"; do
   fi
 done
 
-# 2. task 체크박스 행 식별 — 새 양식엔 박지 않음
+# 2. task 체크박스 행 식별 — 새 양식엔 쓰지 않음
 TASK_LINES=$(grep -c -E '^\s*-\s*\[[ x]\]\s+[0-9]+' "$STORIES_FILE" 2>/dev/null || echo 0)
 if [ "$TASK_LINES" -gt 0 ]; then
   echo "  [옛 양식] task 체크박스 행 $TASK_LINES 건:"
@@ -67,7 +67,7 @@ echo "[migrate] 발견: 옛 양식 마커 $FOUND_OLD 건 + task 체크박스 $TA
 echo
 echo "변환 가이드:"
 echo "  1. 위 line 번호의 옛 섹션 (\\*\\*대상 화면·컴포넌트\\*\\* / \\*\\*동작 명세\\*\\* / \\*\\*수용 기준\\*\\*) 제거"
-echo "  2. task 체크박스 행 (- [ ] / - [x] NN-*.md) 제거 — 새 양식엔 박지 않음"
+echo "  2. task 체크박스 행 (- [ ] / - [x] NN-*.md) 제거 — 새 양식엔 쓰지 않음"
 echo "  3. Story 본문은 \"As a / I want / So that\" 만 남김"
 echo "  4. Epic 헤더에는 \"완료 기준\" (검증 가능한 조건) 추가 — commands/product-plan.md §stories.md 산출물 참조"
 echo

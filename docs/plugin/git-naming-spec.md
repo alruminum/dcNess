@@ -89,7 +89,7 @@
 <!-- issue-lifecycle.md §1.4 키워드 룰:
      - 중간 task → `Part of #N` (default — 본 PR 이 issue 를 끝내지 않으면 이 줄 유지)
      - 마지막 task → `Closes #N` 으로 변경
-     - epic 마지막 task → `Closes #story` + `Closes #epic` 둘 다 박음
+     - epic 마지막 task → `Closes #story` + `Closes #epic` 둘 다 씀
      under-link 보다 over-close 사고가 더 큼 (#193 → #182 사례) — default 는 안전한 `Part of` -->
 Part of #N
 
@@ -110,7 +110,7 @@ Part of #N
 5. "$PLUGIN_ROOT/scripts/pr-finalize.sh"   # 머지 + CI 대기 + main sync 자동 (한 명령)
 ```
 
-> 통합 브랜치 케이스 — stories.md 상단에 `**Base Branch:** feature/{slug}` 마커가 박혀있으면 모든 sub-PR 의 base = 그 통합 브랜치. 마지막 통합 → main 머지 PR 만 base = main + body 에 `Closes #{epic}` + `Closes #{story1...N}` 일괄 박음 (`docs/plugin/issue-lifecycle.md` §1.4).
+> 통합 브랜치 케이스 — stories.md 상단에 `**Base Branch:** feature/{slug}` 마커가 적혀있으면 모든 sub-PR 의 base = 그 통합 브랜치. 마지막 통합 → main 머지 PR 만 base = main + body 에 `Closes #{epic}` + `Closes #{story1...N}` 일괄 씀 (`docs/plugin/issue-lifecycle.md` §1.4).
 
 `pr-finalize.sh` 내부:
 - `gh pr merge --auto --merge` (auto-merge 토글)

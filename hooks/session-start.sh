@@ -25,7 +25,7 @@ python3 -m harness.hooks session-start --cc-pid "$CC_PID"
 
 # === plug-in update 알림 (1회 / 일 캐싱, #376) ===
 # 외부 활성 프로젝트가 옛 dcness plug-in 버전 잔재로 운영 룰 drift 되는 문제 회피.
-# main branch 의 plugin.json version 과 비교 → 다르면 알림 박음.
+# main branch 의 plugin.json version 과 비교 → 다르면 알림 씀.
 # gh CLI 부재 / API 실패 시 silent skip.
 DCNESS_UPDATE_MSG=""
 INSTALLED_VERSION=$(jq -r .version "${CLAUDE_PLUGIN_ROOT:-.}/.claude-plugin/plugin.json" 2>/dev/null || echo "")
