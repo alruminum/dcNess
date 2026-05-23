@@ -15,6 +15,8 @@
 > - 메인은 prose + 본 §1 가이드만으로 routing 결정. enum 형식 검증 없음.
 > - prose 가 모호하거나 결론을 추출 못 하면 메인이 사용자에게 위임 (prose 본문 "결정 불가" 명시, issue #392 — routing_telemetry cascade marker 폐기).
 
+> 🔴 **Drift 룰 (양방향 cross-ref 강제)** — 본 §1 의 agent 결론 → 다음 호출 매핑 갱신 시 [`orchestration.md`](orchestration.md) §4 의 해당 loop 시퀀스도 동시 갱신 의무. 같은 enum→destination 매핑이 두 시각 (agent 단위 vs loop 단위) 에 분리 박혀 있어 한쪽만 갱신하면 drift 위험. 신 agent 추가 / 기존 enum 추가 / cycle 한도 변경 3 케이스 적용.
+
 ### 1.1 plan-reviewer
 
 PRD 외부 검증 (`FULL` 모드 default / `PRE_CHECK` 모드 — `/product-plan` 스킬의 Spike Pre-Check 단계). 세 가지 결과:
