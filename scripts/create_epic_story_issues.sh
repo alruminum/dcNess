@@ -39,9 +39,11 @@ if grep -qE '^\*\*GitHub Epic Issue:\*\* \[#[0-9]+\]' "$STORIES"; then
   exit 0
 fi
 
-# 마일스톤 number 조회 (issue-lifecycle.md §5)
-EPICS_MS=$(gh api "repos/$REPO/milestones" --jq '.[] | select(.title=="Epics") | .number' 2>/dev/null)
-STORY_MS=$(gh api "repos/$REPO/milestones" --jq '.[] | select(.title=="Story") | .number' 2>/dev/null)
+# 마일스톤 title 조회 (issue-lifecycle.md §5)
+# 주의: gh CLI 의 `--milestone` 옵션은 *name* 만 받음 (number 거부). gh issue create --help → `-m, --milestone name`.
+# 따라서 milestone title 그대로 추출 + `--milestone "$EPICS_MS"` 에 전달 (line 127, 174).
+EPICS_MS=$(gh api "repos/$REPO/milestones" --jq '.[] | select(.title=="Epics") | .title' 2>/dev/null)
+STORY_MS=$(gh api "repos/$REPO/milestones" --jq '.[] | select(.title=="Story") | .title' 2>/dev/null)
 
 if [ -z "$EPICS_MS" ] || [ -z "$STORY_MS" ]; then
   echo "[issue-create] ERROR: 'Epics' 또는 'Story' 마일스톤 부재. GitHub repo 에 두 마일스톤 생성 후 재시도." >&2

@@ -47,15 +47,26 @@ task 는 GitHub 이슈 X — [`git-spec.md`](git-spec.md) §8 PR 트레일러로
 
 `mcp__github__create_issue` 전: stories.md 의 `**GitHub Epic Issue:**` / `**GitHub Issue:**` 매치 검사. 링크 있으면 skip. stories.md 가 이슈 등록 상태의 SSOT.
 
-## 4. 마일스톤 number 조회
+## 4. 마일스톤 파라미터 — tool 별 타입 차이
 
-`mcp__github__create_issue` 의 `milestone` 파라미터는 **이름이 아닌 숫자(number)** 요구. 매 세션 1회 조회:
+**⚠️ tool 별 milestone 파라미터 타입이 다름** — 혼동 시 silent fail 또는 422 오류:
+
+| Tool | `milestone` 파라미터 | jq 추출 |
+|---|---|---|
+| `mcp__github__create_issue` | **number** (숫자) | `--jq '.[] | select(.title=="Epics") | .number'` |
+| `gh issue create --milestone <X>` | **name** (문자열 title) | `--jq '.[] | select(.title=="Epics") | .title'` |
+
+매 세션 1회 조회 (프로젝트별 number 다를 수 있음 — 캐싱 X):
 
 ```bash
 gh api repos/{owner}/{repo}/milestones --jq '.[] | {number, title}'
 ```
 
-프로젝트별 number 다를 수 있음 — 캐싱 X.
+근거:
+- `gh issue create --help` → `-m, --milestone name` (gh CLI v2.x 기준)
+- `mcp__github__create_issue` schema → `milestone: integer` (number 만)
+
+**스크립트 예** ([`scripts/create_epic_story_issues.sh`](../../scripts/create_epic_story_issues.sh)) 는 `gh issue create` 사용 → title 추출 필요. mcp tool 호출은 number 추출 필요.
 
 ## 5. mid-flow 누락 차단 (pre-flight gate)
 
