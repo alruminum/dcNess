@@ -57,8 +57,21 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 # Step 1: auto-merge 토글
+# PR 이 이미 clean status (CI 통과 + mergeable) 면 enablePullRequestAutoMerge mutation
+# 이 "Pull request is in clean status" 로 거부 → 즉시 머지 fallback.
 echo "[pr-finalize] PR #$PR — auto-merge 토글 ON" >&2
-gh pr merge "$PR" --auto --merge >&2
+MERGE_ERR=$(gh pr merge "$PR" --auto --merge 2>&1 >/dev/null) || {
+  if echo "$MERGE_ERR" | grep -q "clean status"; then
+    echo "[pr-finalize] PR 이미 clean status — auto-merge enable 의미 없음, 즉시 머지 fallback" >&2
+    gh pr merge "$PR" --merge >&2 || {
+      echo "[pr-finalize] ERROR: 즉시 머지 fallback 실패" >&2
+      exit 1
+    }
+  else
+    echo "[pr-finalize] ERROR: auto-merge 토글 실패: $MERGE_ERR" >&2
+    exit 1
+  fi
+}
 
 # Step 2: CI 결과 대기
 echo "[pr-finalize] CI 결과 대기 (gh pr checks --watch)" >&2
