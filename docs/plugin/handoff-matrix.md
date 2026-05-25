@@ -54,6 +54,10 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
   - 문서 동기화 케이스 = 후속 없음
 - **ESCALATE** — PRD 변경 필요 (`/product-plan` 재진입) / 기술 제약 충돌 (사용자) / 권한·도구 부족 (사용자).
 
+**호출 단위 (architect-loop 안)**: default = 1 호출 = 1 task (impl 목차 행 1개). **batch 모드 (선택)**: K ≥ 8 시 Story 단위 묶음 1 호출 = N task (N ≤ 5 권장) 허용 — 호출 prompt 에 `본 호출에서 N 개 impl 파일을 분리 작성. 1 파일에 multiple task 통합 금지` 명시 의무. 산출 = N 개 impl 파일 (1 파일 1 task 책임 분리 유지). 본질 해결 (모듈 위임 구조) = [issue #511](https://github.com/alruminum/dcNess/issues/511) 영역.
+
+**self-check cross-task interface (PASS 게이트)**: 본 task 가 다른 task 의 함수/Protocol 을 호출하면, 호출 시그니처 ↔ producer 시그니처 grep 으로 직접 확인 + prose 증거 명시. 본 항목 부재 → 외부 reviewer (architecture-validator) 가 task 쌍 시야에서 다시 검증.
+
 ### 1.5 engineer
 
 구현 hub. 결과 종류:
@@ -90,10 +94,10 @@ impl 계획 ↔ 구현 코드 일치 검증. impl 파일 경로 (`docs/impl/NN-*
 
 ### 1.9 architecture-validator
 
-system-architect 산출물의 자가검증 사각지대 (Placeholder Leak + Spike Gate 2 항목) 외부 reviewer. 결론 3종:
+system-architect 산출물의 자가검증 사각지대 (Placeholder Leak + Spike Gate + Cross-Task Interface 정합성 3 항목) 외부 reviewer. 결론 3종:
 
 - **PASS** → module-architect × N (impl 목차 첫 행부터 순차).
-- **FAIL** → system-architect 재진입 (cycle 한도 2). 본문에 placeholder 위치 / Must 기능 직결 / spike 권고 명시.
+- **FAIL** → system-architect 재진입 (cycle 한도 2). 본문에 placeholder 위치 / Must 기능 직결 / spike 권고 / cross-task mismatch (consumer 위치 + producer 위치) 명시.
 - **ESCALATE** → system-architect 재설계 1 cycle 후에도 동일 FAIL → 사용자 위임.
 
 ### 1.10 pr-reviewer

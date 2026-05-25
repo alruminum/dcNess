@@ -163,7 +163,8 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 - 입력 = system-architect 산출물의 `## impl 목차` 표. 메인이 표 행 (NN, 파일명, 대응 Story, `task_index = i/total`, 의존) 순회하며 module-architect 1번씩 호출
 - 각 호출이 `docs/milestones/vNN/epics/epic-NN-*/impl/<NN>-<slug>.md` 새로 작성. **frontmatter `story: <N>, task_index: <i>/<total>` 의무** — impl-task-loop PR body Closes/Part of 판정 입력 ([`git-spec.md`](git-spec.md) §8 PR 트레일러)
 - 호출 순서 = impl 목차 의존 순서 (선행 impl 본문이 후행 `## 의존성` 입력 → 순차)
-- K 호출 모두 `PASS` → architect-loop clean 종료 (Step 5)
+- **batch 모드 (선택)**: K ≥ 8 시 Story 단위 묶음 1 호출 = N task (N ≤ 5 권장) 허용. 호출 prompt 에 강제 문구 `본 호출에서 N 개 impl 파일을 분리 작성. 1 파일에 multiple task 통합 금지` + 각 task `task_index: i/total` 박는다. 산출 = N 개 impl 파일 (1 파일 1 task 책임 분리 유지). 본질 해결 (system-architect = 모듈 contract 위임) 은 [issue #511](https://github.com/alruminum/dcNess/issues/511) 영역.
+- K 호출 (또는 batch B 호출) 모두 `PASS` → architect-loop clean 종료 (Step 5)
 
 **Step 5 — commit / push / PR / 머지**:
 - `git push -u origin docs/<epic-slug>` + `gh pr create` (PR body = 설계 산출물 요약, `Part of #<epic-issue>`)
