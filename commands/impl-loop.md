@@ -140,13 +140,23 @@ impl 파일 부재 시 sub-step 3건 (`module-architect` / `build-worker` / `pr-
 
 **task i 진행 중 (MUST)** — 그 task 의 `impl` run 은 TaskCreate skip (sub-step task 이미 존재 — loop-procedure §2). conveyor 진행에 맞춰 sub-step 을 TaskUpdate (pending → in_progress → completed) 호출 의무. Hybrid A 경우 build-worker 안의 3 phase (build-test / build-impl / build-validate) 는 outer sub-step `build-worker` 하나로 묶임 — `activeForm` 에 phase 표시.
 
-**task i 완료 → task i+1 (다시 그리기)**:
+**task i 완료 → task i+1 (다시 그리기 — task 수 별 분기)**:
+
+| 총 task 수 | 절차 | 비용 (TaskCreate 호출) |
+|---|---|---|
+| **≤ 10** | 4 단계 완전 다시 그리기 (아래 1~4) — 가시성 우선 | 매 task ~N 호출 |
+| **11~20** | 3 단계 부분 다시 그리기 (1~3, 재생성 skip) — 다음 task 헤더만 in_progress 전환 | 매 task ~3 호출 |
+| **> 20** | 최소 갱신 — sub-step deleted + 다음 task 헤더 in_progress 만 | 매 task ~2 호출 |
+
+4 단계 (완전 다시 그리기):
 1. task i 의 sub-step 전부 `TaskUpdate(status=deleted)` — 완료 task 는 헤더 한 줄로 접음
 2. task i 헤더 `TaskUpdate(status=completed)`
 3. task i+1 ~ N 헤더 `TaskUpdate(status=deleted)`
 4. TaskCreate 를 이 순서로: `task(i+1) 헤더(in_progress)` → `task(i+1) sub × 2 (또는 × 5)` → `task(i+2) 헤더` → … → `taskN 헤더`
 
 생성순 = 표시순 + 중간삽입 불가 → 완료 헤더 뒤에 [현재 헤더 + sub-step + 남은 헤더] 를 다시 그려야 sub-step 이 부모 밑에 온다 (3·4 단계 = 다시 그리기 이유).
+
+> **trade-off 근거**: 외부 사용자 [F9 실측](https://github.com/alruminum/dcNess/issues/507) — task 27 에서 4 단계 매번 실행 시 TaskCreate ~27 × N 호출 = 무시 못 할 비용. task > 20 부터는 부모-자식 표시 어색해도 호출 비용 절감 우선. 사용자 가시성 (어디까지 진행했나) 은 task 헤더 in_progress / completed 표시만으로 충분. Task UI "after taskId" 옵션 (근본 fix) 은 Claude Code 시스템 영역 — dcness 영역 밖.
 
 **마지막 task 완료** — sub-step deleted + 헤더 completed. 전체가 `✓` 한 줄씩.
 
@@ -168,6 +178,8 @@ next: <다음 task slug 진입 | 정지 사유>
 
 impl 파일 부재로 module-architect 선두 진입한 경우 2번째 줄은 `module-architect: <PASS|ESCALATE> · build-worker: <N tests RED→GREEN · M files +X -Y · validate PASS|FAIL> · pr-reviewer: <LGTM|FAIL>`.
 
+**5줄 형식 강제 메커니즘** — pr-reviewer prose return 의 last block 에 본 5줄 template 그대로 박는 의무 ([`agents/pr-reviewer.md`](../agents/pr-reviewer.md) §산출물 정보 의무 정합). 메인은 prose 본 block 을 chat 에 *그대로 echo* — 자유 형식 단축 금지. 외부 사용자 [F8 실측](https://github.com/alruminum/dcNess/issues/507) 에서 메인이 자유 한 줄 출력 (예: "[task07] clean · PR #23 merged · LGTM") 회귀 — 사후 분석 시 어디까지 진행했는지 한눈에 안 들어옴 차단.
+
 **디스크** — `<run_dir>/review.md` 는 end-run 안전망이 이미 원본 그대로 저장 ([`commands/impl.md:134`](impl.md) 정합). `/run-review` 진단 / compaction 후 재진입 시 디스크에서 read.
 
 **메인 인사이트** ([`commands/impl.md`](impl.md) §종료 조건 의 자율 1줄 인사이트) 는 본 요약 뒤에 *선택* 1줄 쓸 수 있다 — 작성하면 누적 학습 신호, 생략해도 회귀 X.
@@ -179,6 +191,18 @@ task 를 clean 으로 표기하기 *전*, code-validator 가 PASS 를 냈고 pr-
 
 ## compaction 중 진행 (안전망)
 긴 epic 진행 중 메인 컨텍스트가 auto-compaction 될 수 있다. 루프 진행 상태는 메인 컨텍스트가 아니라 conveyor state 파일 (`live.json` / `.by-pid-current-run/` / `run-NN` / `current_step`) 이 SSOT — compaction 돼도 진행 손실은 0. compaction 직후 자신이 impl-loop 도중이라고 판단되면 run state 를 재read 해서 현재 task index + step 을 식별하고 그 지점부터 재개한다.
+
+### 세션 분할 권장 + 자동 /smart-compact 진입 (외부 사용자 [F13](https://github.com/alruminum/dcNess/issues/507) 영역)
+
+epic 크기에 따라 세션 분할 / compaction 발화 권고:
+
+| 총 task 수 | 권고 |
+|---|---|
+| ≤ 9 | single-session 진행. compaction 발화 가능성 낮음. |
+| 10~19 | single-session 가능, 단 task 절반 (5/10, 10/20) 진입 시점에 메인이 chat 으로 사용자에게 *"context 사용량 60%+ 추정 — /smart-compact 권장"* 1줄 안내 (사용자 명시 호출 트리거). |
+| ≥ 20 | **multi-session 진입 권장** — epic 을 절반/3분할 (예: task 1-10 / 11-20 / 21-27) 로 쪼개서 별 세션 진행. conveyor state SSOT 가 task 경계 재개를 보장. 메인이 impl-loop 진입 시점에 사용자에게 분할 안내. |
+
+**sub-agent prose 디스크 저장 + chat echo 분리**: build-worker / pr-reviewer prose 는 매 task `<run_dir>/build-{test,impl,validate}.md` + `<run_dir>/review.md` 디스크에 이미 저장됨. 메인 chat 에는 §"review 출력 재정의" 의 5줄 요약만 echo — sub-agent prose 본문 전수 echo 금지 (compaction trigger). 사용자 / 메인이 깊은 영역 필요 시 디스크에서 직접 Read (`/run-review` 진단).
 
 ## git 권한
 worktree branch 안 commit / push / PR 생성·머지 = **메인 Claude 전담**. engineer / build-worker / test-engineer 등 sub-agent 는 git commit/push/branch + `gh pr create/merge` 금지 — 코드 변경만 (worker 의 경우 PR 본문·commit message *초안* 만 prose return 에 작성, 실제 명령은 메인). main 직접 commit / push = ❌ (main-block hook 차단). 상세 = [`git-spec.md`](../docs/plugin/git-spec.md) §6 + [`loop-procedure.md`](../docs/plugin/loop-procedure.md) §3.4 + [`agents/build-worker.md`](../agents/build-worker.md) §권한 경계.
