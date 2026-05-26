@@ -4,6 +4,33 @@
 
 ---
 
+## v0.2.34 (2026-05-26)
+
+**커밋 범위**: `v0.2.33..v0.2.34`
+**핵심 변경**: `plan-reviewer` agent 폐기 + `tech-reviewer` 신설 + `/tech-review` 스킬 분리 + 단방향 catastrophic 룰 ([#516](https://github.com/alruminum/dcNess/pull/516)). 부수 — impl-loop 강화 (review 5줄 / SPEC_GAP 예외 / 세션 분할 / phase prose lint) + architect-loop batch + interface 정합성 검증 + SSOT cross-ref CI 게이트 + PR/git 인프라 다듬기 + CLAUDE.md 사용자 정체성 최상단 승격.
+
+### 무엇이 바뀌나
+
+1. **`plan-reviewer` 폐기 → `tech-reviewer` 신설 + `/tech-review` 스킬 분리** ([#516](https://github.com/alruminum/dcNess/pull/516)) — 옛 8 차원 (현실성 / MVP / 제약 / UX / 숨은가정 / 경쟁 / 과금 / 기술실현) reviewer 가 메인 그릴미와 §1~§5 중복 + 사후 self-check 의미 약함 (이슈 [#515](https://github.com/alruminum/dcNess/issues/515)). 새 정체성 = 페르소나 폐기 + 작업 명세 (What / When / DoD) 형식 + 책임 2 축 (기술 제약 검토 4 항목 / 용도별 스펙 깎기). Bash + Write 권한 부여 (`docs/tech-review.md` + `docs/tech-review/**` 한정) — 실측 + 증거물 (음성 / 이미지 / 로그) + 통합 HTML 리포트 (`docs/tech-review/report.html`) 산출. 워크플로우 = `/product-plan` (PRD + 스켈레톤) → 사용자 1 차 OK → `/tech-review` (본문 + evidence + HTML) → 사용자 2 차 OK → `/architect-loop`. **단방향 catastrophic** — `/architect-loop` 진입 후 tech-reviewer 재호출 금지 (회귀 사고 패턴 차단). 옛 plan-reviewer 호출 코드 (`Agent(subagent_type="plan-reviewer", ...)`) 는 plug-in update 후 즉시 실패 — 외부 활성 프로젝트는 `/tech-review` 로 이행 필요. `system-architect.md:101` ADR 4 카테고리 사후 self-check 룰도 같이 폐기 (선행 검증 = tech-reviewer 가 cover). 사용자 환경 `.gitignore` 에 `docs/tech-review/evidence/` + `docs/tech-review/report.html` 수동 추가 권고 (init-dcness 자동 추가 X — overwrite 위험).
+
+2. **impl-loop 강화 — review 5줄 강제 + SPEC_GAP 예외 + 세션 분할** ([#513](https://github.com/alruminum/dcNess/pull/513) / [#514](https://github.com/alruminum/dcNess/pull/514)) — pr-reviewer return prose 5 줄 강제 + 다시 그리기 trade-off 명시 + 세션 분할 권장 (F8+F9+F13). build-worker 의 경량 SPEC_GAP 예외 + phase prose path 명시 + lint 강제 (F4+F7+F12). 매 task return 누적이 메인 컨텍스트 부풀게 하던 회귀 차단.
+
+3. **architect-loop batch 모드 + cross-task interface 정합성 검증** ([#512](https://github.com/alruminum/dcNess/pull/512)) — architect-loop §4.2 module-architect × K 가 batch 호출 가능 (개별 호출 누적 비용 절감). architecture-validator 가 cross-task interface 정합성 검증 책임 추가 (F6+F11). handoff-matrix + orchestration §4.2 drift 동시 갱신 룰 박음 ([#505](https://github.com/alruminum/dcNess/issues/505)).
+
+4. **SSOT 정리 — cross-ref CI 게이트 + dead link / 옛 명칭 회귀 차단** ([#495](https://github.com/alruminum/dcNess/pull/495) / [#496](https://github.com/alruminum/dcNess/pull/496) / [#497](https://github.com/alruminum/dcNess/pull/497) / [#498](https://github.com/alruminum/dcNess/pull/498) / [#499](https://github.com/alruminum/dcNess/pull/499) / [#500](https://github.com/alruminum/dcNess/pull/500)) — `scripts/check_cross_refs.mjs` + CI workflow `cross-ref-validation.yml` 신규 (dead link / dead anchor / 옛 명칭 deny-list 자동 catch). SSOT M1 (archive 인용 9건 본문 자족화) + M2 (handoff-matrix §1 ↔ orchestration §4 양방향 drift 룰) + N (옛 명칭 정리 — auto-loop / direct-impl-loop / §1.4 / §3.5 / §3.1.5 / §7.5) + agent ↔ SSOT 정합 (HIGH 5건 + drift 룰 callout).
+
+5. **PR / git 인프라 다듬기** ([#502](https://github.com/alruminum/dcNess/pull/502) / [#509](https://github.com/alruminum/dcNess/pull/509) / [#510](https://github.com/alruminum/dcNess/pull/510)) — `scripts/create_epic_story_issues.sh` 의 milestone title 추출 정정 (gh CLI 정합). `pr-finalize.sh` 의 auto-merge 토글이 clean status PR 에서 거부되는 케이스 즉시 머지 fallback + `origin/main` ref-only fetch 정석 패턴 (F1+F3+F14). `check_pr_body.mjs` 의 task-index trailer + Story 마지막 task `Closes` 강제 가드 (F10) + build-worker / git-spec 에 task-index trailer 의무 명시 (F10 보강).
+
+6. **`CLAUDE.md` 사용자 정체성 최상단 승격 + 헤더 영역 정리** ([#493](https://github.com/alruminum/dcNess/pull/493)) — 사용자 정체성 (한국어 시니어 엔지니어 / 자연스러운 표준어 / 결론부터 / 클릭 가능 링크) 을 §0 프로젝트 정체성 옆으로 승격. 매 세션 시작 시 메인 Claude 가 즉시 인지하는 두 영역만 최상단.
+
+### 사용자 영향
+
+- **외부 활성 프로젝트의 옛 `plan-reviewer` 호출 코드 즉시 실패** — `/tech-review` 로 이행 필요. `/product-plan` 재진입 시 새 워크플로우 (PRD + 스켈레톤 → 사용자 1 차 OK → `/tech-review` → 사용자 2 차 OK → `/architect-loop`) 따라 진행.
+- **외부 환경 `.gitignore` 수동 추가 권고** — `docs/tech-review/evidence/` + `docs/tech-review/report.html` (로컬 보존, repo 부풀음 차단).
+- **옛 `commands/run-review.md` 의 `EXTERNAL_VERIFIED_PRESENT/MISSING` baseline 폐기** — 새 baseline 신설 X (과거 측정 데이터는 보존). plan-reviewer 산출물 패턴 사라짐.
+
+---
+
 ## v0.2.33 (2026-05-23)
 
 **커밋 범위**: `v0.2.32..v0.2.33`
