@@ -10,9 +10,9 @@ epic issue ─┬─ story issue ── (task: PR 기반, 이슈 없음)
             └─ story issue ── (task: PR 기반, 이슈 없음)
 ```
 
-- **epic** = 1개 stories.md 단위
-- **story** = stories.md 안의 Story N 단위
-- **task** = impl/NN-*.md 단위. PR 1개 = task 1개. GitHub 이슈 X — PR 자체가 추적 단위
+- **epic** = 1 개 `docs/milestones/vNN/epics/epic-NN-<slug>/stories.md` 영역 (epic 단위 stories.md 1 개 = 1 epic)
+- **story** = epic 단위 stories.md 안의 Story N 단위
+- **task** = `docs/milestones/vNN/epics/epic-NN-*/impl/NN-*.md` 단위. PR 1 개 = task 1 개. GitHub 이슈 X — PR 자체가 추적 단위
 
 > 양식 (레이블 / 마일스톤 / 제목 / 본문 / stories.md 기록 형식) 은 [`git-spec.md`](git-spec.md) §7 SSOT.
 

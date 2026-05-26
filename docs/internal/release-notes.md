@@ -4,6 +4,60 @@
 
 ---
 
+## v0.3.0 (2026-05-26)
+
+**커밋 범위**: `v0.2.34..v0.3.0`
+**핵심 변경**: `/architect-loop` 의 책임 구조 재설계 — system-architect 책임 좁힘 + module-architect 책임 확장 + Story 묶음 단위 호출 + architecture-validator 영역 갱신 (Spike Gate 폐기 + Cross-Story Interface + 공통 SSOT 룰 위반) + 모듈 설계 원칙 공통 SSOT 신설 ([#511](https://github.com/alruminum/dcNess/issues/511)). plug-in major bump — 옛 구조 epic 의 architect-loop 재진입은 자율, 새 epic 부터는 새 구조 강제.
+
+### 무엇이 바뀌나
+
+1. **system-architect 책임 좁힘** — 옛 구조에서는 도메인 모델 + 모듈 구조 + 기술 스택 + Story → impl 매핑 표 + Spike Gate 까지 다 책임 (한 호출에 task 27 개 outline 부담). 새 구조 = 전체 시스템 그림만 — root `docs/architecture.md` (기술 스택 + 외부 의존 + 전체 모듈 토폴로지) + root `docs/adr.md` (전체 시스템 수준 의사결정) + epic 단위 architecture.md (모듈 목록 + 의존 그래프 + 공통 task 목록 + Story → 모듈 매핑) + epic 단위 adr.md + epic 단위 domain-model.md. 페르소나 한 줄 정의 폐기 + 작업 명세 (What / When / DoD) 형식 ([#515](https://github.com/alruminum/dcNess/issues/515) 의 tech-reviewer 패턴 정합). `## impl 목차` 표 폐기. Spike Gate 별도 phase 폐기 (tech-reviewer 가 PRD 단계 cover, 차단 패턴 한 줄만 자기 규율로 흡수).
+
+2. **module-architect 책임 확장 — Story 묶음 단위** — 한 호출 = 한 Story 단위 = N 개 impl 파일 작성 + 단위 안 task 식별 + 의존 순서 결정 + cross-task interface 정합 검증 + 도메인 sync. Story → 작업 매핑 + task 분할 책임 (옛 system-architect 영역) 흡수. K (호출 수) = Story 수 + 공통 호출 1 회 (공통 task 있으면) 또는 0 회. 옛 task 단위 K (~27) 와 다르게 새 K 는 Story 묶음 단위라 ~5+α 영역.
+
+3. **architecture-validator 영역 갱신** — 3 영역 검증 — **Placeholder Leak (유지) + Cross-Story Interface 정합성 (옛 Cross-Task Interface 에서 변경 — Story 안은 module-architect self-check 가 cover, Story 간만 validator 영역) + 공통 SSOT 룰 위반 (신규 — 순환 의존 / 미허가 의존 / public API contract 위반 자동 영역 + Deep Modules / 부작용 없는 반환 수동 review 권고 영역 분리)**. Spike Gate 폐기. `/architect-loop` 안에서 두 시점 호출 — Step 3.5 (system-architect 직후, Placeholder + 공통 SSOT) + Step 5 (module 다 끝난 후, Cross-Story Interface).
+
+4. **공통 SSOT 신설 — [`docs/plugin/module-design-principles.md`](../plugin/module-design-principles.md)** — 세 영역 룰을 한 곳에 모음 — Deep Modules (John Ousterhout, "A Philosophy of Software Design") + Interface Design for Testability ([mattpocock skills](https://github.com/mattpocock/skills/blob/main/skills/engineering/tdd/interface-design.md)) + 의존성 강제 세 영역 (순환 의존 / 미허가 의존 빌드 시점 차단 / 모듈 공개·비공개 영역 구분 강제 / DI 강제). system / module / engineer / test-engineer 의 호출 시 read 의무. drift 차단 + agent 본문 분량 ↓.
+
+5. **batch 모드 폐기** — 옛 `/architect-loop` 의 batch 모드 (K ≥ 8 시 Story 단위 묶음 1 호출) 폐기. Story 묶음 자체가 batch 의 본질 해결.
+
+6. **폴더 구조 SSOT 명확화 — system-wide + epic 단위 분리** — 옛 구조에서는 stories.md 위치 영역이 product-plan.md 와 architect-loop.md 사이 drift 가 있어 외부 사용자 프로젝트마다 메인 Claude 가 임의로 위치 결정 (jajang 은 epic 폴더 안 / youtube-gen 은 docs root). 새 구조 = root (`docs/prd.md` + `docs/tech-review.md` + `docs/architecture.md` + `docs/adr.md`) + epic 단위 (`docs/milestones/vNN/epics/epic-NN-*/stories.md` + architecture.md + adr.md + domain-model.md + ux-flow.md + impl/). PRD 는 root 단일 (제품 1 개 = PRD 1 개), milestone 진화는 같은 파일 안 영역 갱신.
+
+### 사용자 영향
+
+- **옛 epic 의 architect-loop 재진입은 자율** — architecture.md 의 `## impl 목차` 표가 들어있는 epic 은 새 구조와 충돌. 메인 Claude 가 강제 차단은 안 하되 옛 표 영역 의미가 사라짐 (`task_index` 의미 = 그 Story 안 task 순번으로 변경). 옛 epic 영역에서 새 architect-loop 호출 시 system-architect 가 epic 단위 architecture.md 신규 작성 영역으로 진행.
+- **새 epic 부터는 새 구조 강제** — `/product-plan` 진입 시 epic 단위 stories.md 위치 (`docs/milestones/vNN/epics/epic-NN-<slug>/stories.md`) 영역으로 자동 작성. `/architect-loop` 영역도 같은 epic 경로 위에서 진행.
+- **옛 batch 호출 코드 즉시 실패** — `/architect-loop` 의 batch 모드 명시 호출 영역은 v0.3.0 후 작동 안 함. 자연 폐기 (Story 묶음으로 갈음).
+- **외부 사용자 dcness plug-in 갱신 명령** — `claude plugin update dcness@dcness`. 문제 발생 시 uninstall → install fallback (`claude plugin uninstall dcness@dcness && claude plugin install dcness@dcness`).
+
+### 옛 root 단위 stories.md (youtube-gen 패턴) 마이그레이션 가이드
+
+옛 `docs/stories.md` (root) 영역을 새 구조로 옮길 때:
+
+1. 기존 `docs/stories.md` 안 epic 헤더 영역 식별 (예: `## Epic — <설명>`)
+2. 새 디렉토리 생성 — `docs/milestones/vNN/epics/epic-NN-<slug>/`
+3. `docs/stories.md` 내용을 새 디렉토리 안 `stories.md` 로 이동
+4. 같은 디렉토리에 architecture.md / adr.md / domain-model.md 신규 작성 (`/architect-loop` 호출 시 system-architect 가 자동 신규 작성)
+5. `docs/stories.md` (root) 영역은 archive 또는 삭제 (`git rm`)
+6. GitHub 이슈 등록 영역은 그대로 유지 (재등록 불필요) — 이슈 본문의 stories.md 경로 영역만 새 경로로 patch
+
+### 옛 epic 단위 stories.md (jajang 패턴) 영역의 변화
+
+기존 epic 단위 stories.md 영역 (예: `docs/milestones/v1/epics/epic-08-*/stories.md`) 은 위치 영역이 새 구조와 정합. 단 옛 architecture.md / adr.md 가 root 단일 영역 (예: `docs/ARCHITECTURE.md`) 인 경우 — root architecture.md / adr.md 영역으로 갱신 (대문자 → 소문자) + epic 단위 architecture.md / adr.md / domain-model.md 신규 작성. `/architect-loop` 재호출 시 system-architect 가 자동 처리.
+
+### 모노레포 영역 (별도 issue 예정)
+
+모노레포 (workspace 여러 개) 대응은 본 v0.3.0 영역 외. `CONTEXT-MAP.md` / `package.json` 의 `workspaces` / `pnpm-workspace.yaml` / `turbo.json` / `nx.json` 마커 detect 시 메인 Claude 가 사용자에게 안내 + 본 영역 별도 GitHub issue 등록.
+
+### 보강 영역 (출시 후 측정 + 후속)
+
+- **Story 크기 가이드 추가** ([`commands/product-plan.md`](../../commands/product-plan.md) 영역) — Story 1 개당 예상 task ≤ 5 권장 / Story 큰 경우 분할 권고 / cross-cutting Story 표시. module-architect 한 호출의 산출 부담 통제.
+- **cross-cutting Story 빈도 측정** — 외부 활성 프로젝트의 epic 1-2 개를 새 구조로 수동 시뮬레이션. 빈도 ≥ 30% 면 Architecture Mode opt-in (stories.md 마커로 모듈 묶음 / Story 묶음 선택) 재검토.
+- **module-architect 모델 검토** — 새 구조에서 한 호출의 판단 차원이 깊어짐. sonnet 으로 누락 / 회전 발생 시 opus 승격 검토.
+- **validator 자동 / 수동 영역 분리 운영** — 자동 검증 통과 영역 + 수동 review 권고 영역 분리 명시. 사용자가 수동 review 권고 영역에 PASS 주면 완료.
+
+---
+
 ## v0.2.34 (2026-05-26)
 
 **커밋 범위**: `v0.2.33..v0.2.34`
