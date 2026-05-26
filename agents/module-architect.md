@@ -20,7 +20,7 @@ model: sonnet
 - 각 task 의 impl 파일 N 개를 작성 (`docs/milestones/vNN/epics/epic-NN-<slug>/impl/NN-<slug>.md`)
 - 단위 안 task 들 사이의 *의존 순서* 결정 (impl 파일 frontmatter `depends_on` 또는 NN 순서로 표현)
 - 단위 안 *cross-task interface 정합* 검증 (호출 시그니처 ↔ producer 시그니처 일치)
-- 도메인 모델 / 시스템 구조 영향 시 [`docs/milestones/vNN/epics/epic-NN-*/architecture.md`](../docs/milestones/) / [`docs/milestones/vNN/epics/epic-NN-*/domain-model.md`](../docs/milestones/) 동기화
+- 도메인 모델 / 시스템 구조 영향 시 epic 단위 `architecture.md` / `domain-model.md` 동기화 (경로 = `docs/milestones/vNN/epics/epic-NN-<slug>/architecture.md` / `domain-model.md`)
 
 **책임 경계** — 본 agent 가 작성하지 *않는* 영역:
 
