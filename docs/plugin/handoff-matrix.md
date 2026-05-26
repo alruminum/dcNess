@@ -37,26 +37,26 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
 
 ### 1.3 system-architect
 
-전체 시스템 설계 hub — 도메인 모델 + 모듈 구조 + 기술 스택 + Story → impl 매핑 표 + Spike Gate. 기술 에픽 케이스는 [`agents/system-architect.md`](../../agents/system-architect.md) 본문 참조.
+전체 시스템 그림 hub — root `docs/architecture.md` (기술 스택 + 외부 의존 + 전체 모듈 토폴로지) + root `docs/adr.md` (전체 시스템 수준 의사결정) + epic 단위 architecture.md (모듈 목록 + 의존 그래프 + 공통 task 목록 + Story → 모듈 매핑) + epic 단위 adr.md (epic 영역 결정) + epic 단위 domain-model.md (bounded context = epic). 책임 좁힘 (이슈 [#511](https://github.com/alruminum/dcNess/issues/511)) — Story → task 분할은 module-architect 영역. 공통 SSOT [`docs/plugin/module-design-principles.md`](module-design-principles.md) 의무 read.
 
-- **PASS** — 시스템 설계 산출 (`docs/architecture.md` + `## impl 목차` 표) 완료 → architecture-validator.
-- **ESCALATE** — 기술 제약 충돌 / Spike FAIL / PRD 위반 → 사용자 위임 (`/product-plan` 재진입 권고).
+- **PASS** — 시스템 그림 산출 완료 → architecture-validator 1차 (Step 3.5).
+- **ESCALATE** — 기술 제약 충돌 / PRD 위반 → 사용자 위임 (`/product-plan` 재진입 권고).
 
 ### 1.4 module-architect
 
-모듈/태스크 단위 설계 hub. 호출자 컨텍스트 (신규 story / 버그픽스 / 기존 impl 보강 / 문서 동기화) 에 따라 분량·범위 자율 판단.
+Story (또는 공통 task) 단위 설계 hub — 한 호출 = 한 단위 = N 개 impl 파일 작성 + 단위 안 task 식별 + 의존 순서 결정 + cross-task interface 정합 검증 + 도메인 sync. 호출자 컨텍스트 (신규 Story / 공통 task / 버그픽스 / 기존 impl 보강 / 문서 동기화) 에 따라 분량·범위 자율 판단. 공통 SSOT [`docs/plugin/module-design-principles.md`](module-design-principles.md) 의무 read.
 
 - **PASS** — impl 설계문서 작성/수정 완료. 다음 단계는 컨텍스트:
-  - architect-loop 안 = impl 목차 다음 행 있으면 module-architect 재호출, 마지막 행이면 loop 종료 (PR 생성/머지) → impl-task-loop 진입
+  - architect-loop 안 = 다음 단위 (Story 또는 공통) 있으면 module-architect 재호출, 마지막 단위면 architecture-validator 2차 (Step 5) 진입 → loop 종료 (PR 생성/머지)
   - impl-task-loop fallback = test-engineer
   - 버그픽스 케이스 = engineer (simple)
   - 보강 케이스 = engineer 재진입
   - 문서 동기화 케이스 = 후속 없음
 - **ESCALATE** — PRD 변경 필요 (`/product-plan` 재진입) / 기술 제약 충돌 (사용자) / 권한·도구 부족 (사용자).
 
-**호출 단위 (architect-loop 안)**: default = 1 호출 = 1 task (impl 목차 행 1개). **batch 모드 (선택)**: K ≥ 8 시 Story 단위 묶음 1 호출 = N task (N ≤ 5 권장) 허용 — 호출 prompt 에 `본 호출에서 N 개 impl 파일을 분리 작성. 1 파일에 multiple task 통합 금지` 명시 의무. 산출 = N 개 impl 파일 (1 파일 1 task 책임 분리 유지). 본질 해결 (모듈 위임 구조) = [issue #511](https://github.com/alruminum/dcNess/issues/511) 영역.
+**호출 단위 (architect-loop 안)**: 1 호출 = 1 단위 (Story 1 개 또는 공통 task 묶음) = N 개 impl 파일. K = Story 수 + 공통 호출 1 회 (있으면) 또는 0 회. batch 모드 폐기 — Story 묶음 자체가 batch 의 본질 해결 (이슈 [#511](https://github.com/alruminum/dcNess/issues/511) 본질 해결로 자연 폐기).
 
-**self-check cross-task interface (PASS 게이트)**: 본 task 가 다른 task 의 함수/Protocol 을 호출하면, 호출 시그니처 ↔ producer 시그니처 grep 으로 직접 확인 + prose 증거 명시. 본 항목 부재 → 외부 reviewer (architecture-validator) 가 task 쌍 시야에서 다시 검증.
+**self-check cross-task interface (PASS 게이트)**: 본 단위 안 task 가 같은 단위 안 다른 task 의 함수/Protocol 을 호출하면, 호출 시그니처 ↔ producer 시그니처 grep 으로 직접 확인 + prose 증거 명시. 본 항목 부재 → 외부 reviewer (architecture-validator 2차) 가 *Story 간* 시야에서 다시 검증.
 
 ### 1.5 engineer
 
@@ -94,11 +94,20 @@ impl 계획 ↔ 구현 코드 일치 검증. impl 파일 경로 (`docs/impl/NN-*
 
 ### 1.9 architecture-validator
 
-system-architect 산출물의 자가검증 사각지대 (Placeholder Leak + Spike Gate + Cross-Task Interface 정합성 3 항목) 외부 reviewer. 결론 3종:
+system-architect / module-architect 산출물의 자가검증 사각지대 외부 reviewer. 3 영역 — **Placeholder Leak + Cross-Story Interface 정합성 + 공통 SSOT 룰 위반**. Spike Gate 폐기 (이슈 [#511](https://github.com/alruminum/dcNess/issues/511)) — tech-reviewer 가 PRD 단계에서 외부 의존 검증 cover.
 
-- **PASS** → module-architect × N (impl 목차 첫 행부터 순차).
-- **FAIL** → system-architect 재진입 (cycle 한도 2). 본문에 placeholder 위치 / Must 기능 직결 / spike 권고 / cross-task mismatch (consumer 위치 + producer 위치) 명시.
-- **ESCALATE** → system-architect 재설계 1 cycle 후에도 동일 FAIL → 사용자 위임.
+`/architect-loop` 안에서 두 시점에 호출:
+
+- **Step 3.5 (1차)** — system-architect PASS 직후. Placeholder Leak + 공통 SSOT 룰 자동 영역 검증. Cross-Story Interface 는 N/A (impl 파일 미작성).
+- **Step 5 (2차)** — module-architect × K 다 끝난 후. Cross-Story Interface 정합성 + Placeholder Leak 재검증.
+
+결론 3종:
+
+- **PASS** (Step 3.5) → module-architect × K (공통 task 있으면 공통부터, 이후 Story 순차).
+- **PASS** (Step 5) → architect-loop Step 6 (PR + 머지).
+- **FAIL** (Step 3.5) → system-architect 재진입 (cycle 한도 2). 본문에 placeholder 위치 / Must 기능 직결 / 공통 SSOT 룰 위반 위치 명시.
+- **FAIL** (Step 5) → 해당 module-architect 재진입 (Cross-Story Interface 영역) 또는 system-architect 재진입 (모듈 의존 그래프 영역). cycle ≤ 2
+- **ESCALATE** → 재설계 1 cycle 후에도 동일 FAIL → 사용자 위임.
 
 ### 1.10 pr-reviewer
 
@@ -137,7 +146,7 @@ merge 직전 코드 품질 + 보안 코드 패턴 심사:
 | 항목 | 한도 | 초과 시 |
 |---|---|---|
 | engineer attempt (TESTS_FAIL → 재시도) | 3 | `IMPLEMENTATION_ESCALATE` |
-| engineer split (IMPL_PARTIAL → 재호출, DCN-30-34) | 3 | `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — system-architect 재진입 권고 / impl 목차 분할 재검토) |
+| engineer split (IMPL_PARTIAL → 재호출, DCN-30-34) | 3 | `IMPLEMENTATION_ESCALATE` (작업 분해 부족 — module-architect 재진입 권고 / Story 분할 재검토) |
 | engineer SPEC_GAP_FOUND → module-architect (보강) → engineer 재진입 | 2 | `IMPLEMENTATION_ESCALATE` |
 | code-validator FAIL → engineer 재진입 | engineer attempt 흡수 | engineer attempt 한도 (3) 도달 시 escalate |
 | architecture-validator FAIL → system-architect 재진입 | 2 cycle | 사용자 위임 |
@@ -159,7 +168,7 @@ merge 직전 코드 품질 + 보안 코드 패턴 심사:
 | `UX_FLOW_ESCALATE` | ux-architect | UX Flow 정의 불가 (PRD 모순 등) |
 | `ESCALATE` | designer | 시안 생성 불가 (외부 의존 부재 / 컨텍스트 모호 / 권한 부족) |
 | `SCOPE_ESCALATE` | qa | 이슈 범위가 분류 enum 5개 모두 해당 안 됨 |
-| `ESCALATE` | system-architect / module-architect | 기술 제약 충돌 / PRD 변경 필요 / Spike FAIL / 권한 부족 (본문 사유 명시) |
+| `ESCALATE` | system-architect / module-architect | 기술 제약 충돌 / PRD 변경 필요 / 권한 부족 (본문 사유 명시) |
 
 자동 재시도 / 우회 금지. 사용자 명시 결정 후만 진행.
 
@@ -176,7 +185,8 @@ merge 직전 코드 품질 + 보안 코드 패턴 심사:
 | 에이전트 | 허용 경로 |
 |---|---|
 | engineer | `src/**` |
-| system-architect / module-architect | `docs/**` |
+| system-architect | `docs/architecture.md` + `docs/adr.md` + `docs/milestones/**/architecture.md` + `docs/milestones/**/adr.md` + `docs/milestones/**/domain-model.md` + 분리 detail 파일 (`docs/architecture/<topic>.md`, `docs/domain/<aggregate>.md`) |
+| module-architect | `docs/milestones/**/impl/**` + `docs/milestones/**/architecture.md` + `docs/milestones/**/domain-model.md` + `docs/bugfix/**` |
 | designer | `design-variants/<screen-id>-v<N>.html` + `docs/design.md` (Components 섹션 + frontmatter `components` 토큰 한정 — 시스템 레벨 토큰은 ux-architect 영역) |
 | test-engineer | `src/__tests__/**`, `*.test.*`, `*.spec.*` |
 | ux-architect | `docs/ux-flow.md` + `docs/design.md` 시스템 레벨 (Colors / Typography / Layout / Shapes / Elevation 섹션 + frontmatter `colors` / `typography` / `rounded` / `spacing` 토큰 — components 영역은 designer 전용) |
