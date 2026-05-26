@@ -131,7 +131,8 @@ PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
 |---|---|
 | `/init-dcness` | dcness 활성화 게이트 — 현 cwd main repo 를 plugin-scoped whitelist 추가 |
 | `/issue-report` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
-| `/product-plan` | 새 기능 spec/design (메인 Claude 가 사용자와 그릴미 대화로 `docs/prd.md` + `docs/stories.md` + `docs/tech-review.md` 스켈레톤 작성 → 사용자 1 차 OK → PR 머지 + 이슈 등록 → `/tech-review` 권고) |
+| `/product-plan` | 새 기능 spec/design (메인 Claude 가 사용자와 그릴미 대화로 `docs/prd.md` (root) + epic 단위 `docs/milestones/vNN/epics/epic-NN-*/stories.md` + `docs/tech-review.md` (root) 스켈레톤 작성 → 사용자 1 차 OK → PR 머지 + 이슈 등록 → `/tech-review` 권고) |
+| `/architect-loop` | 1 epic 단위 설계 루프 — ux-architect → system-architect (root + epic 단위 architecture / adr / domain-model 산출) → validator 1차 → module-architect × K (K = Story 수 + 공통 호출) → validator 2차 → PR 머지. 모듈 설계 원칙 SSOT [`docs/plugin/module-design-principles.md`](docs/plugin/module-design-principles.md) 가 system / module / engineer / test-engineer 의 호출 시 read 의무 (이슈 [#511](https://github.com/alruminum/dcNess/issues/511)) |
 | `/tech-review` | 선행 기술 검증 (tech-reviewer 가 `docs/tech-review.md` 본문 채움 + 증거물 + `docs/tech-review/report.html` 통합 리포트 → 사용자 2 차 OK 후 `/architect-loop` 권고. `/architect-loop` 진입 후 재호출 금지 단방향) |
 | `/impl` | per-task 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = module-architect 선두 추가 — impl/NN-*.md 정식 위치 부재 시. 버그픽스 = qa 분류 후 본 fallback path) |
 | `/impl-loop` | multi-task sequential auto chain (각 task 마다 /impl 호출 + clean 자동 진행) |

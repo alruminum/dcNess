@@ -240,7 +240,8 @@ phase prose 입자는 review.md 출력 재정의 (`commands/impl-loop.md §revie
 | `*_ESCALATE` (soft) | 비-yolo: 사용자 위임 / yolo: `auto-resolve` |
 | `FAIL` | engineer POLISH cycle (≤2) |
 | `AMBIGUOUS` | 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS 시 사용자 위임 (enum 후보 + prose 발췌) |
-| architecture-validator `FAIL` | system-architect 재진입 (cycle ≤2) |
+| architecture-validator 1차 `FAIL` (Step 3.5) | system-architect 재진입 (cycle ≤2). Placeholder Leak / 공통 SSOT 룰 위반 영역 |
+| architecture-validator 2차 `FAIL` (Step 5) | 해당 module-architect 재진입 (Cross-Story Interface 영역) 또는 system-architect 재진입 (모듈 의존 그래프). cycle ≤2 |
 | tech-reviewer `FAIL` | 메인이 사용자와 분기 토론 → (a) PRD patch + `/tech-review` 재호출 / (b) 격리 후보 격상 + 재호출 / (c) 항목 polish + 재호출. cycle 한도 X (단방향, 사용자 OK 까지) |
 | tech-reviewer `ESCALATE` | 사용자 위임 (WebFetch 차단 / 외부 API 인증 부재 / 권한 부족 / 사용자 환경 의존 도구 부재) |
 
@@ -256,7 +257,8 @@ cycle 한도 = orchestration.md §5.
 | `FAIL` → engineer POLISH | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
 | POLISH 후 pr-reviewer 재실행 | 직전 pr-reviewer task | `TaskUpdate(<task>, in_progress)` |
 | `IMPL_PARTIAL` → engineer 재호출 | 직전 engineer IMPL task | `TaskUpdate(<task>, in_progress)` |
-| architecture-validator `FAIL` → system-architect 재진입 | 직전 system-architect task | `TaskUpdate(<task>, in_progress)` |
+| architecture-validator 1차 `FAIL` → system-architect 재진입 | 직전 system-architect task | `TaskUpdate(<task>, in_progress)` |
+| architecture-validator 2차 `FAIL` → module-architect 또는 system-architect 재진입 | 직전 해당 agent task | `TaskUpdate(<task>, in_progress)` |
 | ux-architect self-check FAIL → ux-architect 재진입 | 직전 ux-architect task | `TaskUpdate(<task>, in_progress)` (prose 내부 cycle — 별도 task X) |
 | `AMBIGUOUS` 재호출 1회 | 직전 동일 agent task | `TaskUpdate(<task>, in_progress)` |
 | `SPEC_GAP_FOUND` → module-architect (보강) | 신규 task (다른 agent) | `TaskCreate` 가능 |
@@ -496,7 +498,7 @@ review 리포트의 must-fix / waste finding / per-Agent metric 즉시 인지 + 
 
 ### 7.1 catastrophic 룰 정합
 
-[`orchestration.md`](orchestration.md) §2.1 catastrophic 시퀀스 = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `PASS` enum / architect-loop §4.2 Step 4 (module-architect × K) 진입 직전 architecture-validator PASS / PRD 변경 후 사용자 2 차 OK + `/architect-loop` 진입 후 tech-reviewer 재호출 금지 단방향). 7 hook 전체 시점·차단·우회 = [`hooks.md`](hooks.md).
+[`orchestration.md`](orchestration.md) §2.1 catastrophic 시퀀스 = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `PASS` enum / architect-loop §4.2 Step 4 (module-architect × K) 진입 직전 architecture-validator 1차 PASS / K = Story 수 + 공통 호출 / PRD 변경 후 사용자 2 차 OK + `/architect-loop` 진입 후 tech-reviewer 재호출 금지 단방향). 7 hook 전체 시점·차단·우회 = [`hooks.md`](hooks.md).
 
 > Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (loop-catalog.md 폐기, 8 → 7 SSOT).
 

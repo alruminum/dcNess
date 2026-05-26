@@ -12,8 +12,11 @@
 # SSOT: docs/plugin/issue-lifecycle.md §1
 #
 # 사용:
-#   create_epic_story_issues.sh                          # docs/stories.md default
-#   create_epic_story_issues.sh path/to/stories.md       # 명시 경로
+#   create_epic_story_issues.sh docs/milestones/vNN/epics/epic-NN-<slug>/stories.md   # epic 단위 (표준)
+#   create_epic_story_issues.sh path/to/stories.md                                    # 명시 경로
+#
+# 표준 위치 (이슈 #511): epic 단위 폴더 안 stories.md. 옛 root 단위 docs/stories.md 도
+# 인자로 명시하면 동작 (호환 영역).
 #
 # 의존: gh CLI, jq, bash. dcness plug-in 활성 프로젝트 안에서 호출.
 
@@ -243,4 +246,4 @@ for i in "${!STORY_NUMS[@]}"; do
   echo "  Story $n (#${STORY_NUMS[$i]}): ${STORY_TITLES[$i]}"
 done
 echo ""
-echo "  stories.md 갱신 완료 — git diff docs/stories.md 로 확인 후 commit."
+echo "  stories.md 갱신 완료 — git diff $STORIES 로 확인 후 commit."
