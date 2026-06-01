@@ -123,8 +123,9 @@ tech-review 통과 완료. 다음 단계 — 설계 루프:
   architecture-validator / module-architect × K 순차 진행 + 1 PR 머지.
 
 ⚠️ 단방향 catastrophic — /architect-loop 진입 후 tech-reviewer 재호출 금지.
-   기술 NO_GO 추가 발견 시 /architect-loop 중단 + /product-plan 재진입 +
-   새 cycle 시작 (PRD 자체 수정 + 새 tech-review).
+   설계 도중 tech-review 미검증 새 외부 의존 발견 시 → NEW_DEP_ESCALATE 3안
+   (채택+수동검증 / 대안 기술 우회 / 전체 원점 회귀). 어느 옵션이든
+   tech-reviewer 재호출은 없음 (단방향 보존). 전체 회귀는 3안 중 하나일 뿐.
 
 진행할까요? (Y/n)
 ```
@@ -138,7 +139,7 @@ tech-review 통과 완료. 다음 단계 — 설계 루프:
 **왜 단방향?**:
 - tech-reviewer 단계 = *마지막 기술 검증 기회*. 검증 충실 의무 가중 (= 증거물 / HTML 리포트 룰의 가치).
 - architect-loop 진입 후 *역방향 회귀* = ping-pong 사고 패턴 (옛 plan-reviewer 의 cycle 한도 룰이 누적된 원인).
-- 기술 NO_GO 추가 발견 시 → architect-loop 중단 + 사용자 에스컬레이트 + 새 cycle (`/product-plan` 재진입) — *되돌아가지 X*.
+- architect-loop 도중 tech-review 미검증 새 외부 의존 발견 시 → tech-reviewer 재호출 *없이* `NEW_DEP_ESCALATE` 3안 (채택+수동검증 / 대안 기술 우회 / 전체 원점 회귀 = `/product-plan` 재진입). architect-loop 안엔 tech-reviewer 가 없어 NO_GO 판정 자체 불가 — 그래서 "전체 회귀 only" 가 아니라 사용자 선택 3안. 단, *되돌아가는(tech-reviewer 재호출) 경로는 어느 옵션에도 없다*. 흐름 = [`commands/architect-loop.md`](architect-loop.md) `## 분기 / cycle (요약)` + [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §2.1.4.
 
 ## 비대상 (다른 skill 추천)
 

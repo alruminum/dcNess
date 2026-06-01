@@ -45,6 +45,7 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
 
 - **PASS** — 시스템 그림 산출 완료 → architecture-validator 1차 (Step 3.5).
 - **ESCALATE** — 기술 제약 충돌 / PRD 위반 → 사용자 위임 (`/product-plan` 재진입 권고).
+- **NEW_DEP_ESCALATE** — architect-loop 도중 tech-review 미검증 새 외부 의존 발견 → 메인이 사용자에게 3안 제시 (채택+수동검증 / 대안 / 전체회귀). tech-reviewer 재호출 없음 (단방향 보존). §3 카탈로그 참조.
 
 ### 1.4 module-architect
 
@@ -57,6 +58,7 @@ Story (또는 공통 task) 단위 설계 hub — 한 호출 = 한 단위 = N 개
   - 보강 케이스 = engineer 재진입
   - 문서 동기화 케이스 = 후속 없음
 - **ESCALATE** — PRD 변경 필요 (`/product-plan` 재진입) / 기술 제약 충돌 (사용자) / 권한·도구 부족 (사용자).
+- **NEW_DEP_ESCALATE** — architect-loop 도중 tech-review 미검증 새 외부 의존 발견 → 메인이 사용자에게 3안 제시 (채택+수동검증 / 대안 / 전체회귀). tech-reviewer 재호출 없음 (단방향 보존). §3 카탈로그 참조.
 
 **호출 단위 (architect-loop 안)**: 1 호출 = 1 단위 (Story 1 개 또는 공통 task 묶음) = N 개 impl 파일. K = Story 수 + 공통 호출 1 회 (있으면) 또는 0 회. batch 모드 폐기 — Story 묶음 자체가 batch 의 본질 해결 (이슈 [#511](https://github.com/alruminum/dcNess/issues/511) 본질 해결로 자연 폐기).
 
@@ -173,8 +175,11 @@ merge 직전 코드 품질 + 보안 코드 패턴 심사:
 | `ESCALATE` | designer | 시안 생성 불가 (외부 의존 부재 / 컨텍스트 모호 / 권한 부족) |
 | `SCOPE_ESCALATE` | qa | 이슈 범위가 분류 enum 5개 모두 해당 안 됨 |
 | `ESCALATE` | system-architect / module-architect | 기술 제약 충돌 / PRD 변경 필요 / 권한 부족 (본문 사유 명시) |
+| `NEW_DEP_ESCALATE` | system-architect / module-architect | architect-loop 도중 tech-review 미검증 새 외부 의존 발견 → 메인이 3안 제시 (채택+수동검증 → architect 재진입 / 대안 기술 우회 → architect 재진입 / 전체 원점 회귀). **tech-reviewer 재호출 없음 (단방향 catastrophic 보존)** |
 
 자동 재시도 / 우회 금지. 사용자 명시 결정 후만 진행.
+
+> `NEW_DEP_ESCALATE` 처리는 "보고 후 단순 대기"가 아니라 메인이 사용자에게 **3안 메뉴**를 제시하는 점이 일반 `ESCALATE` 와 다르다. (1)/(2) 선택 시 해당 architect 재진입 (cycle ≤ 2), (3) 선택 시 loop 중단 + `/product-plan` 재진입. 흐름 상세 = [`commands/architect-loop.md`](../../commands/architect-loop.md) `## 분기 / cycle (요약)`.
 
 ---
 
