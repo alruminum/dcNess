@@ -141,7 +141,7 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 
 | loop | entry_point | task_list (Step 1) | advance | clean_enum | expected_steps |
 |------|-------------|--------------------|---------|------------|----------------|
-| `architect-loop` (§4.2) | `architect-loop` (사용자 명시) | ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator 1차 / module-architect × K / architecture-validator 2차 | `UX_FLOW_READY` → `PASS` → `PASS` → `PASS × K` → `PASS` | advance 동일 | 4 + K (K = Story 수 + 공통 호출 1 회 또는 0 회) |
+| `architect-loop` (§4.2) | `architect-loop` (사용자 명시) | (UI epic) ux-architect:UX_FLOW (self-check) / system-architect (self-check) / architecture-validator 1차 / module-architect × K / architecture-validator 2차 · (UI-less epic) ux-architect 제외 — §4.2 `UI-less 분기` | `UX_FLOW_READY` → `PASS` → `PASS` → `PASS × K` → `PASS` | advance 동일 | 4 + K (UI epic) / 3 + K (UI-less epic). K = Story 수 + 공통 호출 1 회 또는 0 회 |
 | `impl-task-loop` (§4.3) | `impl` | (default, /impl 단발) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) · (Hybrid A, /impl-loop 한정) build-worker / pr-reviewer | `PASS` → `IMPL_DONE` → `PASS` → `PASS` (default) · `PASS` → `PASS` (Hybrid A) | advance 동일 | 4 (default) / 5 (fallback) / 2 (Hybrid A) |
 | `impl-ui-design-loop` (§4.4) | `impl` (UI 감지) | (default) designer / 사용자 PICK / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → 사용자 PICK → `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 6 (default) / 7 (fallback) |
 | `qa-triage` (§4.5) | `issue-report` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
@@ -157,10 +157,12 @@ default 진입 = test-engineer (architect-loop 통과물). fallback (즉석 task
 - epic + story 이슈 등록 완료 (`scripts/create_epic_story_issues.sh`)
 - 사용자가 `/architect-loop <epic-path>` 명시 호출 (자동 진입 X)
 
+**UI-less 분기 (Step 1 전 판정)**: TaskCreate 직전 메인이 `docs/prd.md` 의 "화면 인벤토리 + 대략적 플로우" 섹션 read → 화면 항목이 전부 `(UI 없음)` / 섹션 부재 / 유효 화면 0 개면 **UI-less epic** → TaskCreate 에서 ux-architect 제외 + Step 2 skip (commit 1 없음) → Step 3 직행. 유효 화면 ≥ 1 또는 모호 시 UI epic (보수적). 근거: ux-flow.md 는 system-architect "(있으면)" 선택 입력이고 architecture-validator / module-architect 미참조 → skip 안전. 판정은 메인 prose 자율 (§0 — hook 강제 아님). 상세 = [`commands/architect-loop.md`](../../commands/architect-loop.md) `## UI-less epic 분기`.
+
 **Step 별 allowed_enums + commit**:
 | step | agent[:mode] | allowed_enums | commit |
 |---|---|---|---|
-| 2 | ux-architect:UX_FLOW (5 카테고리 self-check 의무) | `UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE` | commit 1 (`[docs] ux-flow <epic-slug>`) — PASS 직후 |
+| 2 | ux-architect:UX_FLOW (5 카테고리 self-check 의무) — **UI-less epic 이면 skip** (아래 `UI-less 분기`) | `UX_FLOW_READY,UX_FLOW_PATCHED,UX_REFINE_READY,UX_FLOW_ESCALATE` | commit 1 (`[docs] ux-flow <epic-slug>`) — PASS 직후 (UI-less 면 commit 1 없음) |
 | 3 | system-architect (self-check 의무) | `PASS,ESCALATE` (산출물: root `docs/architecture.md` + root `docs/adr.md` + epic 단위 architecture.md / adr.md / domain-model.md. 모듈 목록 + 의존 그래프 + 공통 task 목록 + Story → 모듈 매핑 표. `## impl 목차` 표 폐기) | (working tree only) |
 | 3.5 | architecture-validator 1차 (Placeholder Leak + 공통 SSOT 룰 자동) | `PASS,FAIL,ESCALATE` | commit 2 (`[docs] architecture + adr + domain <epic-slug>`) — PASS 직후 |
 | 4.0 (공통 task 있을 시) | module-architect (mode=common) | `PASS,SPEC_GAP_FOUND,ESCALATE` | commit 3 (`[docs] impl 공통 task <epic-slug>`) — PASS 직후 |

@@ -44,6 +44,19 @@ Step 0 진입 시 자동 `EnterWorktree(name="architect-{ts_short}")`. 사용자
 
 [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §6 매치 강제 — 부모 epic stories.md 상단 `**GitHub Epic Issue:** [#\d+]` 또는 `미등록 (사유: …)` 매치 0건 시 즉시 STOP + 사용자 보고. silent skip 금지.
 
+## UI-less epic 분기 (Step 1 전 판정)
+
+TaskCreate 직전 메인이 `docs/prd.md` 의 **"화면 인벤토리 + 대략적 플로우"** 섹션을 read 하고 판정한다. ux-architect 산출물(ux-flow.md)은 system-architect 의 "(있으면)" 선택 입력일 뿐이고 architecture-validator / module-architect 는 ux-flow 를 참조하지 않으므로, UI-less epic 에서 ux 단계 skip 은 후속 단계를 깨지 않는다.
+
+| 판정 | 조건 | 행동 |
+|---|---|---|
+| **UI epic** | 유효 화면 (= `(UI 없음)` 아닌 항목) ≥ 1 개 | 평소대로 Step 2 ux-architect 진행 |
+| **UI-less epic** | 화면 인벤토리 항목이 **전부 `(UI 없음)`** / 섹션 부재 / 유효 화면 0 개 | Step 1 TaskCreate 에서 **ux-architect 제외** + Step 2 skip (commit 1 없음) → Step 3 직행 |
+| **모호** | 화면 인벤토리 일부만 UI / 판정 불확실 | **보수적으로 UI epic 진행** (skip 은 명백할 때만) |
+
+- 판정은 메인 prose 자율 영역 — hook 강제 아님 ([`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §0). PRD 화면 인벤토리는 자유 텍스트라 메인이 의미로 판정.
+- UI-less 판정 시 expected_steps = `3 + K` (UI epic 은 `4 + K`).
+
 ## 절차 (요약)
 
 상세 = [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §4.2.
@@ -51,8 +64,9 @@ Step 0 진입 시 자동 `EnterWorktree(name="architect-{ts_short}")`. 사용자
 K 의 의미: **Story 수 + 공통 호출 1 회 (공통 task 있으면) 또는 0 회 (없으면)**. 옛 task 단위 K (~27) 와 다르게 새 K 는 Story 묶음 단위라 ~5+α 영역.
 
 1. **Step 0** — 워크트리 진입 + `EnterWorktree` + branch (`docs/<epic-slug>`) + `begin-run architect-loop`
-2. **Step 1** — TaskCreate (ux-architect / system-architect / architecture-validator × 2회 / module-architect × K 의 K = Story 수 + 공통 호출)
-3. **Step 2 — ux-architect:UX_FLOW** (5 카테고리 self-check 의무) → `UX_FLOW_READY` → **commit 1** (epic 단위 `docs/milestones/vNN/epics/epic-NN-*/ux-flow.md`)
+2. **Step 1** — *UI 판정* (아래 `## UI-less epic 분기`) 후 TaskCreate. UI epic → (ux-architect / system-architect / architecture-validator × 2회 / module-architect × K). **UI-less epic → ux-architect 제외** (system-architect / architecture-validator × 2회 / module-architect × K). K = Story 수 + 공통 호출
+3. **Step 2 — ux-architect:UX_FLOW** (5 카테고리 self-check 의무) → `UX_FLOW_READY` → **commit 1** (epic 단위 `docs/milestones/vNN/epics/epic-NN-*/ux-flow.md`).
+   - **UI-less epic 이면 본 Step 전체 skip** (commit 1 없음) → 바로 Step 3 (system-architect). ux-flow 경로는 system-architect 에 미전달 (원래 "(있으면)" 선택 입력이라 자연 처리)
 4. **Step 3 — system-architect** — root `docs/architecture.md` + root `docs/adr.md` + epic 단위 architecture.md (모듈 목록 + 의존 그래프 + 공통 task 목록 + Story → 모듈 매핑) + epic 단위 adr.md + epic 단위 domain-model.md 산출. `## impl 목차` 표 폐기 (task 단위 분할은 module-architect 영역).
 5. **Step 3.5 — architecture-validator 1차** — Placeholder Leak + 공통 SSOT 룰 위반 자동 영역 검증. Cross-Story Interface 는 이 시점 N/A (impl 파일 미작성). → `PASS` → **commit 2** (system-architect 산출물 일괄)
 6. **Step 4 — module-architect × K** — Story 단위 + 공통 task 단위 순차 호출
