@@ -43,6 +43,8 @@ UX Flow 정의 / 변경 / refine. 산출 *전* 5 카테고리 self-check 의무 
 
 전체 시스템 그림 hub — root `docs/architecture.md` (기술 스택 + 외부 의존 + 전체 모듈 토폴로지) + root `docs/adr.md` (전체 시스템 수준 의사결정) + epic 단위 architecture.md (모듈 목록 + 의존 그래프 + 공통 task 목록 + Story → 모듈 매핑) + epic 단위 adr.md (epic 영역 결정) + epic 단위 domain-model.md (bounded context = epic). 책임 좁힘 (이슈 [#511](https://github.com/alruminum/dcNess/issues/511)) — Story → task 분할은 module-architect 영역. 공통 SSOT [`docs/plugin/module-design-principles.md`](module-design-principles.md) 의무 read.
 
+> **진입 입력 (architect-loop Step 3)**: epic 경로 + `docs/prd.md` + (있으면) `docs/tech-review.md` + (있으면) ux-flow.md + **(있으면) 기술 스택 그릴미 합의 결론 (채택 스택 + tech-review 축 2 권고 채택/미채택)**. 그릴미 결론은 메인이 Step 2.9 에서 사용자와 직접 합의한 것 ([`orchestration.md`](orchestration.md) §4.2 Step 2.9 / [`commands/architect-loop.md`](../../commands/architect-loop.md) `## 기술 스택 그릴미 체크포인트`) — 전달되면 architecture.md/adr.md 에 그 스택 + 축 2 채택/미채택 반영. 그릴미 skip (opt-out) 케이스면 미전달 → 자율 결정.
+
 - **PASS** — 시스템 그림 산출 완료 → architecture-validator 1차 (Step 3.5).
 - **ESCALATE** — 기술 제약 충돌 / PRD 위반 → 사용자 위임 (`/product-plan` 재진입 권고).
 - **NEW_DEP_ESCALATE** — architect-loop 도중 tech-review 미검증 새 외부 의존 발견 → 메인이 사용자에게 3안 제시 (채택+수동검증 / 대안 / 전체회귀). tech-reviewer 재호출 없음 (단방향 보존). §3 카탈로그 참조.
