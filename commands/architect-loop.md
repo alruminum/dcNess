@@ -84,7 +84,7 @@ K 의 의미: **Story 수 + 공통 호출 1 회 (공통 task 있으면) 또는 0
    - **Step 4.0 (공통 task 있으면)** — `mode=common` + 공통 task 목록 (system-architect 가 epic 단위 architecture.md 의 공통 task 섹션에 박은 영역) prompt 에 박고 호출. 산출 = 공통 task 의 impl 파일 N 개. → **commit 3**
    - **Step 4.1 ~ 4.N (Story 순차)** — Story 1 개씩 prompt 에 박고 호출. 산출 = Story 안 task 의 impl 파일 N 개. 각 호출 `READY` 직후 → **commit 4..N+3**
    - batch 모드 폐기 — Story 묶음 자체가 batch 의 본질 해결 (옛 batch 모드는 issue [#511](https://github.com/alruminum/dcNess/issues/511) 본질 해결로 자연 폐기)
-8. **Step 5 — architecture-validator 2차** — Cross-Story Interface 정합성 검증 (모든 impl 완성 후 producer ↔ consumer 시그니처 grep 비교) + Implementation Simulation (대표 impl task 2~3 개 cold-seat 시뮬레이션 — 표시 없는 암묵 gap 조기 포착) + Placeholder Leak 재검증 (module 단계 새로 생긴 영역) → `PASS` → **commit N+4** (검증 결과 메타)
+8. **Step 5 — architecture-validator 2차** — Cross-Story Interface 정합성 검증 (모든 impl 완성 후 producer ↔ consumer 시그니처 grep 비교) + Implementation Simulation (대표 impl task 2~3 개 cold-seat 시뮬레이션 — 표시 없는 암묵 gap 조기 포착) + Origin Anchor (PRD `## 수용 기준` AC-NNN ↔ impl REQ `(from AC-NNN)` 인용 커버리지 + 리터럴 self-consistently-wrong 검출 + 참조 실재 + present-vs-예정 + 절차 의미) + Placeholder Leak 재검증 (module 단계 새로 생긴 영역) → `PASS` → **commit N+4** (검증 결과 메타)
 9. **Step 6 — PR + 머지** — `git push -u origin docs/<epic-slug>` + `gh pr create --base <BASE>` (body = 설계 산출물 요약 + `Part of #<epic-issue>`) + `bash scripts/pr-finalize.sh`
    - **base 분기 (MUST)**: `gh pr create` 직전 epic 단위 stories.md 상단 `**Base Branch:**` 줄 매치 → `--base <매치 값>` (통합 브랜치 케이스, base = `feature/<slug>`). 매치 없음 → `--base main` (default). Step 0 의 `EnterWorktree` branch (`docs/<epic-slug>`) 도 동일 base 기반 — 절차 [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.1.1.
 10. **Step 7 — ExitWorktree** + `end-run`
@@ -95,7 +95,7 @@ K 의 의미: **Story 수 + 공통 호출 1 회 (공통 task 있으면) 또는 0
 - **기술 스택 그릴미 (Step 2.9)** 미합의 (사용자가 스택 결정 못 냄 / 보류) → loop 진행 보류 + 사용자 위임 (강제 자율 결정 X). system-architect PASS 후 사용자가 스택 번복 원하면 새 cycle 신설 X — 기존 system-architect 재진입 (또는 `ESCALATE` → `/product-plan` 재진입) 경로 재활용.
 - `UX_REFINE_READY` → designer 분기 (`/ux` 또는 `ux-refine-stage`)
 - architecture-validator 1차 `FAIL` (Step 3.5) → system-architect 재진입 (cycle ≤ 2). 보통 Placeholder Leak 또는 공통 SSOT 룰 위반 영역.
-- architecture-validator 2차 `FAIL` (Step 5) → 해당 module-architect 재진입 (Cross-Story Interface 영역 또는 Implementation Simulation gap 보강, cycle ≤ 2). 또는 system-architect 재진입 (모듈 의존 그래프 영역).
+- architecture-validator 2차 `FAIL` (Step 5) → 해당 module-architect 재진입 (Cross-Story Interface 영역 / Implementation Simulation gap / Origin Anchor — PRD AC 미인용·리터럴 불일치·절차 미충족 보강, cycle ≤ 2). 또는 system-architect 재진입 (모듈 의존 그래프 영역).
 - module-architect `SPEC_GAP_FOUND` → module-architect (보강 케이스) cycle (≤ 2) → 신규 케이스 재진입
 - system-architect / module-architect `NEW_DEP_ESCALATE` (새 외부 의존 = tech-review 미검증) → loop 자동 중단 X. 메인이 사용자에게 3안 제시: (1) **채택 + 수동 검증** — 사용자 승인 → 해당 architect 재진입 (architecture.md/adr.md 에 "사용자 승인, tech-review 미경유" 흔적 명시) (2) **대안 기술 우회** — 이미 tech-review 검증된 대안 지정 → architect 재진입 (3) **전체 원점 회귀** — `/architect-loop` 중단 + `/product-plan` 재진입 + 새 tech-review (기존 단방향 경로). (1)/(2) 재진입 cycle ≤ 2. **어느 옵션이든 tech-reviewer 재호출 없음 (단방향 catastrophic 보존)**.
 - `*_ESCALATE` → 사용자 위임

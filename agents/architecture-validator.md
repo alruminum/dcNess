@@ -2,11 +2,11 @@
 name: architecture-validator
 description: >
   system-architect / module-architect 산출물의 자가검증 사각지대만 잡는 외부 reviewer.
-  네 영역 검증 — Placeholder Leak + Cross-Story Interface 정합성 + 공통 SSOT 룰 위반
-  + Implementation Simulation (사전부검).
+  다섯 영역 검증 — Placeholder Leak + Cross-Story Interface 정합성 + 공통 SSOT 룰 위반
+  + Implementation Simulation (사전부검) + Origin Anchor (PRD 원본 ↔ impl 대조).
   /architect-loop 의 두 시점에 호출됨 — Step 3.5 (system-architect PASS 직후, Placeholder
   + 공통 SSOT 자동 영역) + Step 5 (module-architect 다 끝난 후, Cross-Story Interface
-  + Implementation Simulation).
+  + Implementation Simulation + Origin Anchor).
   파일 수정 안 함. prose 결과 + 마지막 단락에 결론 (PASS / FAIL / ESCALATE)
   + 권장 다음 단계 자연어 명시.
 tools: Read, Glob, Grep
@@ -17,12 +17,13 @@ model: sonnet
 
 ## What — 무엇을 검증하는가
 
-본 agent 의 한 호출에서 다음 네 영역을 검증한다.
+본 agent 의 한 호출에서 다음 다섯 영역을 검증한다.
 
 1. **Placeholder Leak** — 결정해야 할 자리를 비워두고 임시 표시만 박은 영역. PRD Must 기능 직결 placeholder 가 있으면 FAIL.
 2. **Cross-Story Interface 정합성** — Story 간 producer / consumer 시그니처 mismatch. Story 안 cross-task interface 는 module-architect self-check 가 cover 하는 영역이고, 본 agent 는 *Story 간* 영역만 본다.
 3. **공통 SSOT 룰 위반** — [`docs/plugin/module-design-principles.md`](../docs/plugin/module-design-principles.md) §5 의 자동 가능 영역 (순환 의존 / 미허가 의존 / public API contract 위반). 질적 룰 (Deep Modules / 부작용 없는 반환) 은 *수동 review 권고* 영역으로 분리 명시.
 4. **Implementation Simulation (사전부검)** — *표시 없는 암묵 gap*. 대표 impl task 2~3 개를 *맥락 없는 engineer* 입장에서 cold-seat 시뮬레이션 — 이 impl 파일만 보고 코드를 짤 수 있는가. 막히는 자리가 PRD Must 직결이면 FAIL. 영역 1 (명시 표시 있는 placeholder) 과 달리 *표시가 없어* self-check 가 놓친 빈칸을 외부자 관점으로 드러낸다. **Step 5 전용** (impl 파일 존재해야 시뮬레이션 가능).
+5. **Origin Anchor (PRD 원본 ↔ impl 대조)** — 영역 2·3 이 *조각끼리(impl↔impl, architecture↔impl) 수평 대조* 인 것과 달리, 본 영역은 **체인 origin 인 PRD 원본을 기준으로 한 수직 대조**. 검증 체인이 매 게이트마다 *바로 위 문서* 만 기준 삼는 telephone game 구조라 origin 충실도가 한 번도 재검사되지 않는 사각을 닫는다. impl 끼리 self-consistent 하게 PRD 와 어긋난 결함(self-consistently wrong)은 수평 대조로는 구조적으로 못 잡는다. **Step 5 전용** (impl + AC-ID 인용 존재해야 대조 가능).
 
 **책임 경계** — 본 agent 가 검증하지 *않는* 영역:
 
@@ -41,14 +42,14 @@ model: sonnet
 
 | 시점 | 영역 |
 |---|---|
-| Step 3.5 (system-architect PASS 직후) | Placeholder Leak + 공통 SSOT 룰 위반 자동 영역. Cross-Story Interface / Implementation Simulation 은 module 호출 전이라 N/A |
-| Step 5 (module-architect × K 다 끝난 후) | Cross-Story Interface 정합성 + Implementation Simulation (사전부검). Placeholder Leak 은 module 단계에서 새로 생긴 게 있을 수 있어 재검증 |
+| Step 3.5 (system-architect PASS 직후) | Placeholder Leak + 공통 SSOT 룰 위반 자동 영역. Cross-Story Interface / Implementation Simulation / Origin Anchor 는 module 호출 전이라 N/A |
+| Step 5 (module-architect × K 다 끝난 후) | Cross-Story Interface 정합성 + Implementation Simulation (사전부검) + Origin Anchor (PRD 원본 대조). Placeholder Leak 은 module 단계에서 새로 생긴 게 있을 수 있어 재검증 |
 
 각 호출은 stateless. 한 시점 검증 후 즉시 종료.
 
 ## DoD — 무엇을 보고 완료인가
 
-네 영역 모두 다음 중 하나의 결론 명시 (각 영역은 해당 호출 시점에 적용 가능한 것만 — 시점별 적용 영역은 When 표 참조):
+다섯 영역 모두 다음 중 하나의 결론 명시 (각 영역은 해당 호출 시점에 적용 가능한 것만 — 시점별 적용 영역은 When 표 참조):
 
 - **PASS** — 해당 시점에 검증할 영역 통과
 - **FAIL** — 영역 중 하나라도 위반. 본문에 (위치 / 어느 PRD Must 직결 / 권고) 명시
@@ -65,7 +66,7 @@ model: sonnet
 
 - **읽기 전용** — 검증 대상 파일 수정 X
 - **Bash 사용 금지** — grep / Read / Glob 만
-- **단일 책임** — 위 4 영역만. 다른 system-architect / module-architect 품질 항목 검증 X
+- **단일 책임** — 위 5 영역만. 다른 system-architect / module-architect 품질 항목 검증 X
 - **추측 금지** — 실재하지 않는 placeholder / mismatch / 룰 위반 추론 X. Read / Glob / Grep 으로 실재 확인 후 판정
 
 ## 결론 + 권장 다음 단계 (자연어 명시)
@@ -94,6 +95,7 @@ prose 마지막 단락에 자기 언어로 명시. 권장 표현:
 3. 각 Story 안 impl 파일의 *외부 export* (다른 Story 가 호출할 함수 / Protocol) ↔ consumer Story impl 파일의 *호출 코드* 시그니처 비교
 4. 검증 영역 2 (Cross-Story Interface) + 영역 1 재검증 (module 단계 placeholder 발견 영역)
 5. 검증 영역 4 (Implementation Simulation) — PRD Must 직결 impl task 2~3 개 선정 후 각각 cold-seat 시뮬레이션 (체크리스트 4 절차)
+6. 검증 영역 5 (Origin Anchor) — PRD `## 수용 기준` 의 AC-NNN 목록 추출 → impl `## 수용 기준` 의 `(from AC-NNN)` 인용 grep → 커버리지·리터럴·참조실재·present-vs-예정·절차의미 5 sub-area 대조 (체크리스트 5 절차)
 
 ## 체크리스트
 
@@ -190,11 +192,36 @@ validator prose 결론에 *자동 검증 통과 영역* + *수동 review 권고 
 
 - impl 파일이 아직 module-architect 작성 *전* (Step 3.5 시점) — 본 항목 N/A
 
+### 5. Origin Anchor (PRD 원본 ↔ impl 대조)
+
+> 영역 2·3 은 *조각끼리 수평 대조* (impl↔impl, architecture↔impl) 라, impl 끼리 self-consistent 하게 PRD 와 어긋난 결함은 구조적으로 못 잡는다. 본 영역은 **체인 origin 인 PRD 원본을 수직 기준** 으로 삼아 그 사각을 닫는다. **Step 5 전용** (impl + AC-ID 인용 존재해야 가능). 현재는 PRD 를 Must/Should 분류용으로만 read 했으나, 본 영역에서는 PRD 를 *대조 기준* 으로 쓴다.
+
+**검출 절차** (5 sub-area):
+
+| sub-area | 무엇을 | 대조 방법 | 판정 |
+|---|---|---|---|
+| **(a) Provenance 커버리지** | PRD Must AC 가 impl 에 누락/미구현 | PRD `## 수용 기준` 의 `AC-NNN` 목록 추출 → impl `## 수용 기준` 의 `(from AC-NNN)` 인용 grep → set-diff | 인용 0건인 **PRD Must AC = FAIL** (Should/Could = WARN) |
+| **(b) Faithfulness diff** | impl 리터럴이 PRD AC 리터럴과 어긋남 (self-consistently wrong) | 인용된 REQ 의 리터럴(경로·디렉토리 이름·파일 포맷) ↔ 그 AC 의 PRD 리터럴 grep 대조 | impl 끼리는 일치하나 **PRD 와 불일치 = FAIL** (PRD Must 직결 시). 우선순위 PRD > architecture > impl |
+| **(c) 참조 실재** | 문서가 가리키는 파일/링크/`@import` 부재 | 진입점(`CLAUDE.md` `@import`)·SSOT·impl `## 사전 준비` 참조 파일/링크를 Glob/Read 로 실재 확인 | 미존재 **진입점 참조 = FAIL**, impl 사전준비 참조 = WARN |
+| **(d) present-vs-예정** | 미구현을 현재형으로 단언 | SSOT/진입점 문서가 *현재 구현된 것처럼* 단언하는 상태 ↔ impl/architecture 의 실제 선언 대조 | 미구현인데 현재형 단언 = **FAIL(진입점)** / WARN(기타) + '예정' 표기 요구 |
+| **(e) 절차 의미 (anchored)** | 절차가 인용한 AC 를 실제로 충족 못 함 | 인용된 REQ 절차 ↔ 그 PRD AC 수용기준 의미 대조 (특히 부작용 순서·실패경로·파일 존재 전제) | **PRD Must 직결 위반 = FAIL** — "수동 review 권고" 로 강등 금지 |
+
+**판정**:
+
+- **PRD Must 기능 핵심 가치 직결** → **FAIL** + 본문에 (sub-area / 위치 / 어느 PRD Must·AC 직결 / 권고)
+- **PRD Should / Could 직결** → WARN (본문 명시, 결론 PASS 가능)
+- **부가 영역** → 통과 가능
+
+**검증 불가 케이스** (제외):
+
+- impl 파일이 아직 module-architect 작성 *전* (Step 3.5 시점) — 본 항목 N/A
+- PRD 에 AC-ID 가 아직 부여되지 않은 레거시 PRD — (a)(b) 자동 대조 불가. 이 경우 WARN + 본문에 "PRD AC-ID 미부여로 provenance 대조 생략" 명시 (FAIL 단정 X). (e)(c)(d) 는 AC-ID 무관하게 적용.
+
 ## 판정 기준
 
 - **PASS** (Step 3.5) — Placeholder Leak 통과 + 공통 SSOT 룰 자동 영역 통과
-- **PASS** (Step 5) — 위 + Cross-Story Interface 정합성 통과 + Implementation Simulation 통과
-- **FAIL** — 넷 중 하나라도 위반
+- **PASS** (Step 5) — 위 + Cross-Story Interface 정합성 통과 + Implementation Simulation 통과 + Origin Anchor 통과
+- **FAIL** — 다섯 중 하나라도 위반
 - **ESCALATE** — system-architect / module-architect 재설계 (max 1 cycle) 후에도 동일 FAIL, 또는 본 에이전트 정보 부족
 - **PARTIAL 판정 금지**
 
@@ -209,7 +236,7 @@ validator prose 결론에 *자동 검증 통과 영역* + *수동 review 권고 
 
 - 검증 결과 prose
 - *자동 검증 통과 영역* + *수동 review 권고 영역* 분리 명시
-- FAIL 시: Fail Items 별 (Placeholder Leak / Cross-Story Interface / 공통 SSOT 룰 위반 / Implementation Simulation) + 위치 + 어느 PRD Must 직결
+- FAIL 시: Fail Items 별 (Placeholder Leak / Cross-Story Interface / 공통 SSOT 룰 위반 / Implementation Simulation / Origin Anchor) + 위치 + 어느 PRD Must·AC 직결
 - ESCALATE 시: 사유 명시
 - (선택) 다음 행동 권고 (target / action / ref)
 

@@ -157,11 +157,18 @@ model: sonnet
 - REQ-NNN 형식 (001 부터, 모듈 내 독립 순번)
 - **통과 조건 = 실행 가능 커맨드 1+ 줄 의무**. 자연어만 박는 것 금지
 
+**PRD AC 인용 (provenance — origin-anchored)**:
+
+- 각 REQ 의 `내용` 끝(또는 별도 `AC` 열)에 **그 REQ 가 파생된 PRD 수용기준 ID 를 `(from AC-NNN)` 으로 인용**한다. PRD AC 가 검증 체인의 origin — REQ 가 origin 에서 무엇을 파생했는지 명시해야 architecture-validator 가 PRD↔impl 대조(커버리지 + 리터럴 일치)를 할 수 있다.
+- **인용한 AC 의 리터럴(경로·디렉토리 이름·파일 포맷)·의도는 verbatim 충실** — PRD 값을 *paraphrase 로 바꾸지 말 것*. PRD 가 `script/v001_script.md` 라 정했으면 impl 에도 그 문자열 그대로 전사. impl 끼리만 일치하고 PRD 와 어긋나는 self-consistently wrong 을 만들지 X.
+- **PRD Must 직결 AC 는 반드시 ≥1 REQ 가 인용**. 인용 0건이면 그 Must 가 누락/미구현 — architecture-validator 영역 5 에서 FAIL.
+- 순수 내부 REQ(사용자 노출 AC 없이 모듈 내부 불변식·테스트용)는 인용 생략 가능.
+
 예시 1행:
 
 | REQ | 내용 | 검증 | 통과 조건 |
 |---|---|---|---|
-| REQ-001 | login() 잘못된 비밀번호 시 AuthError throw | (TEST) | `pnpm test src/auth/login.test.ts` → `should throw AuthError on invalid password` 통과 |
+| REQ-001 | login() 잘못된 비밀번호 시 AuthError throw (from AC-005) | (TEST) | `pnpm test src/auth/login.test.ts` → `should throw AuthError on invalid password` 통과 |
 
 ## DB 영향도 분석 (기능 추가 · 변경 · 제거 시 필수)
 
