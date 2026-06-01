@@ -85,6 +85,7 @@ K 의 의미: **Story 수 + 공통 호출 1 회 (공통 task 있으면) 또는 0
 - architecture-validator 1차 `FAIL` (Step 3.5) → system-architect 재진입 (cycle ≤ 2). 보통 Placeholder Leak 또는 공통 SSOT 룰 위반 영역.
 - architecture-validator 2차 `FAIL` (Step 5) → 해당 module-architect 재진입 (Cross-Story Interface 영역 또는 Implementation Simulation gap 보강, cycle ≤ 2). 또는 system-architect 재진입 (모듈 의존 그래프 영역).
 - module-architect `SPEC_GAP_FOUND` → module-architect (보강 케이스) cycle (≤ 2) → 신규 케이스 재진입
+- system-architect / module-architect `NEW_DEP_ESCALATE` (새 외부 의존 = tech-review 미검증) → loop 자동 중단 X. 메인이 사용자에게 3안 제시: (1) **채택 + 수동 검증** — 사용자 승인 → 해당 architect 재진입 (architecture.md/adr.md 에 "사용자 승인, tech-review 미경유" 흔적 명시) (2) **대안 기술 우회** — 이미 tech-review 검증된 대안 지정 → architect 재진입 (3) **전체 원점 회귀** — `/architect-loop` 중단 + `/product-plan` 재진입 + 새 tech-review (기존 단방향 경로). (1)/(2) 재진입 cycle ≤ 2. **어느 옵션이든 tech-reviewer 재호출 없음 (단방향 catastrophic 보존)**.
 - `*_ESCALATE` → 사용자 위임
 - cycle 발생 시 working tree only — commit X. PASS 후만 commit.
 
