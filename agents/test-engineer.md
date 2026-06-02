@@ -22,7 +22,7 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 - **테스트 작성 완료** → "PASS".
 - **스펙 부족해 작성 불가** → 사유 명시 + "SPEC_GAP_FOUND".
 
-> 결론별 다음 호출(라우팅) 진본 = [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §3.1 routing 한눈표.
+> 결론별 다음 호출(라우팅) 진본 = [`docs/plugin/routing.md`](../docs/plugin/routing.md) §1.
 
 **return 간결성 (메인 컨텍스트 보호)**: 호출자에게 돌려주는 prose 는 *메인이 다음 행동을 결정하는 데 필요한 것* 만 담는다 — 결론 + 핵심 변경·발견 요약 + 권장 다음 단계. 과정 서술 / impl 계획·컨텍스트 재진술 / 파일별 장황한 설명은 제거 — 그 세부사항은 코드·PR·impl 파일에 이미 있다. 단 결론의 근거가 되는 실증 근거 (실측 명령·수치, 발견 항목, 미완 작업)는 유지. `/impl-loop` 는 매 task 의 return 이 메인 컨텍스트에 누적 — 군더더기 없는 return 이 곧 비용 절감.
 
@@ -114,5 +114,4 @@ impl 인터페이스 모호 시 *추측 금지*:
 
 ## 참조
 
-- 시퀀스 / 핸드오프 / 권한 매트릭스: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md)
-- prose-only 발상: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §0 (강제 영역 2가지)
+- 라우팅: [`docs/plugin/routing.md`](../docs/plugin/routing.md) §1 / catastrophic: [`docs/plugin/hooks.md`](../docs/plugin/hooks.md) §3.2

@@ -73,13 +73,13 @@ msg = header + '''## [dcness 활성 환경]
 첫 응답 첫 줄에 토큰 \`[dcness 활성 확인]\` 출력 의무.
 
 ### 강제 (코드 hook 차단)
-- **시퀀스**: catastrophic 3 룰 = \`docs/plugin/orchestration.md\` §2.1
+- **시퀀스**: catastrophic 4 룰 = \`docs/plugin/hooks.md\` §3.2
 - **접근 영역**: file 경계 + 인프라 차단 = \`harness/agent_boundary.py\` (권한 경계 코드 SSOT)
 - 그 외 = agent 자율 (형식 / handoff / marker 강제 X)
 
 ### 메인 Claude 필수
 - **채널 형식**: chat = 백틱 \`경로\` / 본문 = 마크다운 링크
-- **md 300줄 cap** (orchestration.md 만 500): \`agents/**\` / \`commands/*.md\` / \`docs/plugin/*.md\`
+- **md 300줄 cap** (loop-procedure.md 등 SSOT 일부 예외): \`agents/**\` / \`commands/*.md\` / \`docs/plugin/*.md\`
 - **Step 7 회고 → 메모리 candidate emit** 의무 (없으면 \"없음\" 1줄)
 - **cost-aware 행동** (#402): 큰 plan/docs 통째 read 회피 → grep + offset/limit. Bash output 길면 \`| head\` 잘라내기. sub-agent 위임 우선 (메인 직접 도구 ↓ → 메인 cache_read 누적 ↓)
 
@@ -91,9 +91,9 @@ msg = header + '''## [dcness 활성 환경]
 ### 작업 진입 매트릭스 (lazy — 통째 read 폐기, #400)
 | 상황 | docs |
 |---|---|
-| 시퀀스 / catastrophic | \`orchestration.md\` §2 + §4 |
+| catastrophic / loop 인덱스 | \`hooks.md\` §3.2 + \`loop-procedure.md\` §7.0 |
 | Step 0~8 / echo / REDO | \`loop-procedure.md\` |
-| agent 결론 → 다음 | \`orchestration.md\` §3.1 |
+| agent 결론 → 다음 (라우팅) | \`routing.md\` §1 |
 | hook 시점 / 차단 | \`hooks.md\` |
 | 이슈 lifecycle / PR | \`issue-lifecycle.md\` |
 | 브랜치/커밋 네이밍 | \`git-spec.md\` |

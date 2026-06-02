@@ -112,7 +112,7 @@ task-level 세부 진행 추적 X (PR + GitHub Issue close 시스템 SSOT — [`
 
 ### Step 0 — 사전 read (lazy — 필요시만, #400)
 
-정상 흐름은 본 skill 본문 + 인용된 docs §번호 만으로 진행. *룰 모호 / 분기 발생* 시에만 `docs/plugin/loop-procedure.md` / `orchestration.md` §3 (라우팅) / `commands/architect-loop.md` / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
+정상 흐름은 본 skill 본문 + 인용된 docs §번호 만으로 진행. *룰 모호 / 분기 발생* 시에만 `docs/plugin/loop-procedure.md` / `routing.md` §1 (라우팅) / `commands/architect-loop.md` / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
 
 ### Step 1 — 사용자와 그릴 대화
 
@@ -290,7 +290,7 @@ PRD + stories.md + tech-review.md 스켈레톤 + 이슈 등록 완료.
 - 외부 의존 0 개 PRD → `/tech-review` skip + 바로 `/architect-loop`
 - 기존 PRD 변경 → 본 스킬 재진입 (`Edit` 도구 섹션 단위 patch 의무, Write 통째 X)
 - `UX_REFINE_READY` 후속 — ux-architect REFINE → designer
-- 단방향 catastrophic — `/architect-loop` 진입 후 `/tech-review` 재호출 금지 (`docs/plugin/orchestration.md` §2.1.4)
+- 단방향 catastrophic — `/architect-loop` 진입 후 `/tech-review` 재호출 금지 (`docs/plugin/hooks.md` §3.2 (§2.1.4))
 
 ## 워크트리 (X)
 
@@ -298,7 +298,7 @@ PRD + stories.md + tech-review.md 스켈레톤 + 이슈 등록 완료.
 
 ## 참조
 
-- 라우팅 / 핸드오프: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §3 / catastrophic: [`docs/plugin/hooks.md`](../docs/plugin/hooks.md) §3.2
+- 라우팅 / 핸드오프: [`docs/plugin/routing.md`](../docs/plugin/routing.md) §1 / catastrophic: [`docs/plugin/hooks.md`](../docs/plugin/hooks.md) §3.2
 - 그릴미 원형: `~/.claude/skills/grill-me/SKILL.md` (사용자 user skill)
 - 이슈 등록 SSOT: [`docs/plugin/issue-lifecycle.md`](../docs/plugin/issue-lifecycle.md) §1
 - 브랜치·커밋·PR 네이밍: [`docs/plugin/git-spec.md`](../docs/plugin/git-spec.md)

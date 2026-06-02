@@ -62,12 +62,12 @@ description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-ar
 ## 후속 라우팅
 
 - DESIGN_HANDOFF 완료 → 구현은 `/impl` (impl-ui-design-loop 자동 — designer step 포함)
-- 결론 → 다음 호출 라우팅 진본 = [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §3.1
+- 결론 → 다음 호출 라우팅 진본 = [`docs/plugin/routing.md`](../docs/plugin/routing.md) §1
 
 ## 참조
 
 - loop 인덱스: [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §7.0
 - 절차 mechanics: [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1~§6
-- 라우팅(핸드오프): [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §3.1
+- 라우팅(핸드오프): [`docs/plugin/routing.md`](../docs/plugin/routing.md) §1
 - agent 정의: [`agents/ux-architect.md`](../agents/ux-architect.md) / [`agents/designer.md`](../agents/designer.md)
 - design 가이드: [`docs/plugin/design.md`](../docs/plugin/design.md)

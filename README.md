@@ -1,7 +1,7 @@
 # dcNess
 
 > **Origin**: [`alruminum/realworld-harness`](https://github.com/alruminum/realworld-harness) fork-and-refactor
-> **Spec(SSOT)**: [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) §0
+> **Spec(SSOT)**: [`CLAUDE.md`](CLAUDE.md) §0.7
 
 **dcNess 는 Claude Code 용 거버넌스 하네스 plugin 이다.**
 
@@ -136,7 +136,7 @@ bash scripts/dcness-codex-validator --help # Codex validator wrapper smoke
 
 | 문서 | 역할 |
 |---|---|
-| [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) §0 | 정체성 SSOT (강제 영역 2 + 안티패턴 4) |
+| [`CLAUDE.md`](CLAUDE.md) §0.7 | 정체성 SSOT (강제 영역 2 + 안티패턴 4) |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태 / TODO / Blockers |
 | [`CLAUDE.md`](CLAUDE.md) | 메인 Claude 작업 지침 |
 | [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 |
