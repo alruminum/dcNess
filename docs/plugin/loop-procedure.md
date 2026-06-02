@@ -107,7 +107,7 @@ TaskUpdate("<task>", in_progress)
 "$HELPER" begin-step <agent> [<MODE>]
 Agent(subagent_type="<agent>", mode="<MODE>", description="...")
 "$HELPER" end-step <agent> [<MODE>]   # prose-only mode (stdout=PROSE_LOGGED)
-# legacy compat: ENUM=$("$HELPER" end-step <agent> [<MODE>] --allowed-enums "<csv>")
+# (legacy: 외부 skill 이 --allowed-enums 전달 시에만 enum 반환. dcness 자신은 prose-only 만 사용)
 # 의무 echo (5~12 줄) — 아래 "결과 echo + 평가" 섹션
 TaskUpdate("<task>", completed)
 ```
@@ -165,7 +165,7 @@ REDO 판단 신호: 결과가 질문에 제대로 답하지 못함 / 같은 tool
 
 #### AMBIGUOUS 처리 (legacy enum mode 한정)
 
-`--allowed-enums` 쓴 legacy 호출에서 `end-step` stdout = `AMBIGUOUS` 시: 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS → 사용자 위임 (enum 후보 + prose 발췌). prose-only mode 는 AMBIGUOUS 자체 X — 결정 못 하면 prose 본문에 "결정 불가" 명시 후 사용자 위임 (issue #392).
+`AMBIGUOUS` 는 외부 skill 이 `--allowed-enums` 를 쓴 legacy 호출에서만 발생 (dcness 는 prose-only 라 미발생). 발생 시 재호출 1회 후에도 AMBIGUOUS 면 사용자 위임. prose-only mode 는 결정 못 하면 prose 본문에 "결정 불가" 명시 후 사용자 위임 (issue #392).
 
 #### helper 안전망 (자동 검출)
 
@@ -241,7 +241,7 @@ phase prose 입자는 review.md 출력 재정의 (`commands/impl-loop.md §revie
 | `*_ESCALATE` (hard) | 사용자 위임 (escalate) |
 | `*_ESCALATE` (soft) | 비-yolo: 사용자 위임 / yolo: `auto-resolve` |
 | `FAIL` | engineer POLISH cycle (≤2) |
-| `AMBIGUOUS` | 재호출 1회 (결론 enum 명시 요청) → 재호출도 AMBIGUOUS 시 사용자 위임 (enum 후보 + prose 발췌) |
+| `AMBIGUOUS` (legacy enum 한정) | 재호출 1회 → 또 AMBIGUOUS 면 사용자 위임 |
 | architecture-validator 1차 `FAIL` (Step 3.5) | system-architect 재진입 (cycle ≤2). Placeholder Leak / 공통 SSOT 룰 위반 영역 |
 | architecture-validator 2차 `FAIL` (Step 5) | 해당 module-architect 재진입 (Cross-Story Interface 영역 또는 Implementation Simulation gap 보강) 또는 system-architect 재진입 (모듈 의존 그래프). cycle ≤2 |
 | tech-reviewer `FAIL` | 메인이 사용자와 분기 토론 → (a) PRD patch + `/tech-review` 재호출 / (b) 격리 후보 격상 + 재호출 / (c) 항목 polish + 재호출. cycle 한도 X (단방향, 사용자 OK 까지) |
