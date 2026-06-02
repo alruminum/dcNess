@@ -58,7 +58,7 @@ dcness-helper routing disable-codex-validation
 
 ## 작업 흐름
 
-dcNess 는 단계별 skill 로 작업을 끌고 간다. `/impl` 은 **설계 산출물(impl task 문서)이
+dcNess 는 단계별 skill 로 작업을 끌고 간다. `/impl-loop` 은 **설계 산출물(impl task 문서)이
 있어야** 동작하므로, 보통 아래 순서를 탄다.
 
 **새 기능**
@@ -74,7 +74,7 @@ dcNess 는 단계별 skill 로 작업을 끌고 간다. `/impl` 은 **설계 산
 
 ```
 /issue-report       # 이슈 분류 → 라우팅 추천
-/impl <task>        # 분류 결과에 따라 fallback 경로로 구현
+/impl-loop <task>   # 분류 결과에 따라 fallback 경로로 구현
 ```
 
 각 task 는 `test-engineer → engineer → code-validator → pr-reviewer → PR` 루프를 돈다.
@@ -97,7 +97,7 @@ agent 의 결론(`PASS` / `IMPL_DONE` / `SPEC_GAP_FOUND` 등) → 다음 호출 
 | 게이트 | 거버넌스 + 6 CI workflow (cross-ref / git-naming / plugin-manifest / pr-body / python-tests / release-sync) |
 | Codex route | opt-in local routing — `code-validator` / `architecture-validator` / `pr-reviewer` 만 Codex read-only wrapper 로 실행 가능 |
 
-## Skill (`commands/`, 11개)
+## Skill (10개)
 
 | 발화 | 역할 |
 |---|---|
@@ -107,8 +107,7 @@ agent 의 결론(`PASS` / `IMPL_DONE` / `SPEC_GAP_FOUND` 등) → 다음 호출 
 | `/tech-review` | 선행 기술 검증 (tech-reviewer 가 의존성·실현성 검토, `/architect-loop` 진입 전 단방향) |
 | `/architect-loop` | 1 epic 설계 루프 — ux-architect → system-architect → validator → module-architect × K → validator |
 | `/ux` | 화면 UX 플로우 + 디자인 시안 핸드오프 (ux-architect → designer → 사용자 PICK, UX_FLOW / UX_REFINE 2 모드) |
-| `/impl` | 단발 task 정식 impl 루프 (test-engineer → engineer → code-validator → pr-reviewer) |
-| `/impl-loop` | 여러 task 순차 자동 체인 (task 마다 /impl + clean 자동 진행) |
+| `/impl-loop` | impl task 구현 루프 — 1개(single) / 여러 개(chain) × 풀 4-agent(엄정) / build-worker(경량). 개수·발화로 자동 분기 |
 | `/run-review` | run 사후 분석 — step별 비용·차단 검출 |
 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
 | `/efficiency` | 세션 토큰/캐시/비용 분석 + HTML 대시보드 |

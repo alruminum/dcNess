@@ -70,7 +70,7 @@ gh api repos/{owner}/{repo}/milestones --jq '.[] | {number, title}'
 
 ## 5. mid-flow 누락 차단 (pre-flight gate)
 
-`/impl` / `/impl-loop` / `/architect-loop` (ux-architect / system-architect / module-architect × K) 진입 시 부모 epic stories.md 상단 매치 강제:
+`/impl-loop` / `/architect-loop` (ux-architect / system-architect / module-architect × K) 진입 시 부모 epic stories.md 상단 매치 강제:
 
 - `**GitHub Epic Issue:** [#\d+]` (정식 등록), 또는
 - `**GitHub Epic Issue:** 미등록 (사유: …)` (§2 허용 모드)

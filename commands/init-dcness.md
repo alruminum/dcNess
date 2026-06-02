@@ -694,8 +694,7 @@ Codex validator routing (Step 2.10 — local opt-in):
 
 사용 가능한 skill:
 - /issue-report — 이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE)
-- /impl — 단일 task 구현 (impl-task-loop, default = test-engineer 직진 / fallback = module-architect 선두)
-- /impl-loop — 다중 task 자동 chain
+- /impl-loop — impl task 구현 (single 1개 / chain 여러 개 × 풀 4-agent 엄정 / build-worker 경량, 개수·발화 분기. fallback = module-architect 선두)
 - /product-plan — 새 기능 spec/design
 - /smart-compact — 컨텍스트 압축 + resume prompt
 

@@ -71,7 +71,7 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 | 기술 부채 마커·임시 코드 | ✗ | ✗ | ✅ |
 | 보안 코드 패턴 (OWASP + WebView) | ✗ | ✗ | ✅ |
 
-> **Hybrid A 모드 (`/impl-loop`) 의 build-worker 1차 lint 흡수 의미**: 외부 사용자 [F12 실측](https://github.com/alruminum/dcNess/issues/506) — pr-reviewer FAIL 13/27 = 48%, 그중 A (DRY) 7 / E (dead code) 5 / B (네이밍) 4 등 build-worker 영역에서 사전 차단 가능한 1차 lint 항목 ~15건. build-worker phase 3 lint 강제 ([`agents/build-worker.md`](build-worker.md) §작업 흐름) 도입 후 본 reviewer 는 *깊은 영역 (DRY 의미적 추출 / 의미 있는 네이밍 / 복잡도 / 비즈니스 로직 권한 우회 / 깊은 보안 위협)* 만 집중 — 2차 게이트 역할 회복. 4-agent 모드 (`/impl` 단발) 는 build-worker 부재라 pr-reviewer 가 1차 + 2차 둘 다 — 본 표의 build-worker 컬럼 항목도 pr-reviewer 가 흡수.
+> **Hybrid A 모드 (`/impl-loop`) 의 build-worker 1차 lint 흡수 의미**: 외부 사용자 [F12 실측](https://github.com/alruminum/dcNess/issues/506) — pr-reviewer FAIL 13/27 = 48%, 그중 A (DRY) 7 / E (dead code) 5 / B (네이밍) 4 등 build-worker 영역에서 사전 차단 가능한 1차 lint 항목 ~15건. build-worker phase 3 lint 강제 ([`agents/build-worker.md`](build-worker.md) §작업 흐름) 도입 후 본 reviewer 는 *깊은 영역 (DRY 의미적 추출 / 의미 있는 네이밍 / 복잡도 / 비즈니스 로직 권한 우회 / 깊은 보안 위협)* 만 집중 — 2차 게이트 역할 회복. 풀 4-agent 엔진(single 디폴트) 은 build-worker 부재라 pr-reviewer 가 1차 + 2차 둘 다 — 본 표의 build-worker 컬럼 항목도 pr-reviewer 가 흡수.
 
 ## 리뷰 체크리스트 (요약)
 
@@ -154,7 +154,7 @@ PR <#NNN> merged · closes #<MMM>
 next: <다음 task slug 진입 | 정지 사유>
 ```
 
-`/impl` 단발 호출 (4-agent 모드) 은 본 template 불필요 — rigor 우선, 형식 자유 유지.
+`/impl-loop` single 모드 (풀 4-agent) 은 본 template 불필요 — rigor 우선, 형식 자유 유지.
 
 ## 재검토 절차 (FAIL 후)
 

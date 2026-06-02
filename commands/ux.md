@@ -1,6 +1,6 @@
 ---
 name: ux
-description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-architect → designer → 사용자 PICK 순서로 진행하는 design-stage 스킬. 2 모드 — UX_FLOW (신규 화면 플로우, ux-design-stage) / UX_REFINE (기존 디자인 레이아웃·비주얼 개선, ux-refine-stage). 사용자가 "/ux", "ux", "화면 플로우 짜줘", "디자인 시안", "와이어프레임", "ux 다듬어", "디자인 개선", "레이아웃 개선" 등을 말할 때 반드시 이 스킬을 사용한다. `/issue-report` 의 DESIGN_ISSUE 후속 + `/architect-loop` 의 UX_REFINE_READY 후속. 코드 구현은 별도 (`/impl`).
+description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-architect → designer → 사용자 PICK 순서로 진행하는 design-stage 스킬. 2 모드 — UX_FLOW (신규 화면 플로우, ux-design-stage) / UX_REFINE (기존 디자인 레이아웃·비주얼 개선, ux-refine-stage). 사용자가 "/ux", "ux", "화면 플로우 짜줘", "디자인 시안", "와이어프레임", "ux 다듬어", "디자인 개선", "레이아웃 개선" 등을 말할 때 반드시 이 스킬을 사용한다. `/issue-report` 의 DESIGN_ISSUE 후속 + `/architect-loop` 의 UX_REFINE_READY 후속. 코드 구현은 별도 (`/impl-loop`).
 ---
 
 # UX Stage Skill — 화면 플로우 + 디자인 핸드오프
@@ -28,7 +28,7 @@ description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-ar
 
 ## 비대상 (다른 skill 추천)
 
-- 코드 구현 (UI 포함) → `/impl` (impl-ui-design-loop — designer step 자동 포함)
+- 코드 구현 (UI 포함) → `/impl-loop` (impl-ui-design-loop — designer step 자동 포함)
 - 화면 없는 epic 설계 → `/architect-loop`
 - 버그/이슈 분류 → `/issue-report`
 
@@ -61,7 +61,7 @@ description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-ar
 
 ## 후속 라우팅
 
-- DESIGN_HANDOFF 완료 → 구현은 `/impl` (impl-ui-design-loop 자동 — designer step 포함)
+- DESIGN_HANDOFF 완료 → 구현은 `/impl-loop` (impl-ui-design-loop 자동 — designer step 포함)
 - 결론 → 다음 호출 라우팅 진본 = [`docs/plugin/routing.md`](../docs/plugin/routing.md) §1
 
 ## 참조

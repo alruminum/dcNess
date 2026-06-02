@@ -145,7 +145,7 @@ tech-review 통과 완료. 다음 단계 — 설계 루프:
 
 - PRD 미작성 / 스켈레톤 부재 → `/product-plan` 먼저
 - 설계 단계 진입 → `/architect-loop`
-- 구현 단계 진입 → `/impl-loop` / `/impl`
+- 구현 단계 진입 → `/impl-loop`
 - 버그 / 이슈 → `/issue-report`
 
 ## 후속 라우팅

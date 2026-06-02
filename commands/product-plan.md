@@ -1,6 +1,6 @@
 ---
 name: product-plan
-description: 새 기능 / PRD 변경 / 큰 기획을 받아 메인 Claude 가 사용자와 직접 그릴미 대화하며 `docs/prd.md` + `docs/stories.md` + `docs/tech-review.md` *스켈레톤* 작성 → 사용자 1차 OK → PR 머지 + 이슈 등록 → `/tech-review` (선행 기술 검증) 권고 → 사용자 2차 OK 후 `/architect-loop` 진입 시퀀스로 진행하는 스킬. 사용자가 "기획자야", "새 기능", "피쳐 추가", "이런 기능이 필요할 것 같아", "기획해줘", "프로덕트 플랜", "/product-plan" 등을 말할 때 반드시 이 스킬을 사용한다. 구현 진입은 별도 (`/impl` / `/impl-loop`).
+description: 새 기능 / PRD 변경 / 큰 기획을 받아 메인 Claude 가 사용자와 직접 그릴미 대화하며 `docs/prd.md` + `docs/stories.md` + `docs/tech-review.md` *스켈레톤* 작성 → 사용자 1차 OK → PR 머지 + 이슈 등록 → `/tech-review` (선행 기술 검증) 권고 → 사용자 2차 OK 후 `/architect-loop` 진입 시퀀스로 진행하는 스킬. 사용자가 "기획자야", "새 기능", "피쳐 추가", "이런 기능이 필요할 것 같아", "기획해줘", "프로덕트 플랜", "/product-plan" 등을 말할 때 반드시 이 스킬을 사용한다. 구현 진입은 별도 (`/impl-loop`).
 ---
 
 # Product Plan Skill — 메인 직접 인터랙션 + tech-review 단계 분리
@@ -286,7 +286,7 @@ PRD + stories.md + tech-review.md 스켈레톤 + 이슈 등록 완료.
 
 ## 후속 라우팅
 
-- PRD/stories/tech-review 스켈레톤 완성 + 머지 + 이슈 등록 후 → `/tech-review` (선행 기술 검증) → 사용자 2 차 OK → `/architect-loop` (설계 루프) → `/impl-loop` / `/impl` (구현 루프)
+- PRD/stories/tech-review 스켈레톤 완성 + 머지 + 이슈 등록 후 → `/tech-review` (선행 기술 검증) → 사용자 2 차 OK → `/architect-loop` (설계 루프) → `/impl-loop` (구현 루프)
 - 외부 의존 0 개 PRD → `/tech-review` skip + 바로 `/architect-loop`
 - 기존 PRD 변경 → 본 스킬 재진입 (`Edit` 도구 섹션 단위 patch 의무, Write 통째 X)
 - `UX_REFINE_READY` 후속 — ux-architect REFINE → designer
