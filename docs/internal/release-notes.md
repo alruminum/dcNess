@@ -795,7 +795,7 @@ agent 13 → 9.
 - 옛 `feature-build-loop` (Step 2~6.N 통째 commit X 후 첫 task PR commit3 에 누적) → `/product-plan` (Step 2~3, PRD+stories PR1) + `/architect-loop` (Step 4~6.N, 설계 PR2) 분리
 - `/architect-loop` 진입 = 사용자 명시 호출 (자동 X). 워크트리 ON 자동
 - commit 단위: ux-flow → commit1 / architecture.md+adr.md → commit2 / impl/NN-*.md K 개 → commit 3..K+2 / PR 1개 + 머지
-- 본 변경 SSOT = [`commands/architect-loop.md`](../../commands/architect-loop.md), [`docs/plugin/orchestration.md`](../plugin/orchestration.md) §3.1.5 / §4.2
+- 본 변경 SSOT = [`commands/architect-loop.md`](../../commands/architect-loop.md), `orchestration.md §3.1.5 / §4.2` (당시 기준 — 현 routing.md / loop-procedure §7.0 으로 해체)
 
 ### `Step 4.5 sync` + `backlog.md` 폐기 (본 PR)
 
@@ -877,7 +877,7 @@ claude plugin update dcness@dcness
 - `dcness-rules.md` (263줄) 폐기
 - **SessionStart inject**: 263줄 BLOCKING GATE Read 강제 → **~30줄 슬림 본문 직접 inject** (92% 감소)
 - 토큰: `[dcness-rules 로드 완료]` → `[dcness 활성 확인]`
-- §1 강제 영역 2가지 + 안티패턴 4건 → `orchestration.md §0` 본문 흡수
+- §1 강제 영역 2가지 + 안티패턴 4건 → `CLAUDE.md §0.7` 본문 흡수
 - §3 mechanics + 행동지침 (echo 5~12줄 / REDO 분류 / 자가점검 / AMBIGUOUS / step 명명) → `loop-procedure.md §3.1/§3.2` 흡수
 - §4 리뷰 출력 + 개선점 코멘트 → `loop-procedure.md §6` 흡수
 - 10 agent cross-ref redirect + 코드 SSOT (`agent_boundary.py`, `hooks.py`, etc.) 갱신

@@ -240,7 +240,7 @@ def handle_pretooluse_agent(
     *,
     base_dir: Optional[Path] = None,
 ) -> int:
-    """PreToolUse Agent 훅 처리 — orchestration.md §2.1 룰 검사.
+    """PreToolUse Agent 훅 처리 — catastrophic 룰 검사 (hooks.md §3.2).
 
     Returns:
         0: allow

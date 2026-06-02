@@ -134,7 +134,7 @@ prose 마지막 단락에 결론 (+ 사유) 자연어:
 - **TESTS_FAIL** — phase 2 attempt 한도 (3) 초과. 본문에 실패 케이스 + 시도 내역 명시.
 - **IMPLEMENTATION_ESCALATE** — 기술 제약 충돌 / 권한 부족 / 진행 불가. 본문에 사유 명시.
 
-> 결론별 다음 호출(라우팅) 진본 = [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §3.1 routing 한눈표. small/medium/large 분량 메타별 SPEC_GAP_FOUND 분기 = [`commands/impl-loop.md`](../commands/impl-loop.md) §절차. git/PR/pr-reviewer 는 메인 위임 (위 §"git/PR/pr-reviewer 호출 금지").
+> 결론별 다음 호출(라우팅) 진본 = [`docs/plugin/routing.md`](../docs/plugin/routing.md) §1. small/medium/large 분량 메타별 SPEC_GAP_FOUND 분기 = [`commands/impl-loop.md`](../commands/impl-loop.md) §절차. git/PR/pr-reviewer 는 메인 위임 (위 §"git/PR/pr-reviewer 호출 금지").
 
 ## return 형식 (메인 컨텍스트 보호, #446)
 
@@ -250,7 +250,7 @@ worker = 1 task 의 *완결성* 책임. PR 본문·commit message 초안까지 p
 ## 참조
 
 - `/impl-loop` 사용 = [`commands/impl-loop.md`](../commands/impl-loop.md)
-- 다중 task chain 시퀀스: [`commands/impl-loop.md`](../commands/impl-loop.md) / 라우팅: [`docs/plugin/orchestration.md`](../docs/plugin/orchestration.md) §3.1
+- 다중 task chain 시퀀스: [`commands/impl-loop.md`](../commands/impl-loop.md) / 라우팅: [`docs/plugin/routing.md`](../docs/plugin/routing.md) §1
 - impl-task-loop default 4-agent (= `/impl` 단발) 풀스펙: [`commands/impl.md`](../commands/impl.md)
 - conveyor helper: [`docs/plugin/loop-procedure.md`](../docs/plugin/loop-procedure.md) §1.2 + §3.1
 - ALLOW_MATRIX / 인프라 차단: [`harness/agent_boundary.py`](../harness/agent_boundary.py) (권한 경계 코드 SSOT)

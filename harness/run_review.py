@@ -838,7 +838,7 @@ def detect_notes(steps: list[StepRecord]) -> list[NoteFinding]:
 
 
 # issue #392 — `detect_goods` 함수 + 5 good patterns 전체 폐기.
-# 사유: dcness 정신 정합 X — orchestration.md §0 "임계값 hardcode 금지 + 자율 친화".
+# 사유: dcness 정신 정합 X — CLAUDE.md §0.7 "임계값 hardcode 금지 + 자율 친화".
 # jajang 실측: loop-insights 100% PROSE_ECHO_OK (baseline) = 학습 가치 0.
 # 본 함수의 5 patterns (ENUM_CLEAN / PROSE_ECHO_OK / DDD_PHASE_A / DEPENDENCY_CAUSAL /
 # EXTERNAL_VERIFIED_PRESENT) 모두 폐기. 잘한점 섹션은 review.md render 에서도 제거.

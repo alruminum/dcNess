@@ -54,6 +54,25 @@
 - **메인 Claude 직접 작업** — architect / code-validator / engineer 위임 강제 **없음**.
 - **Document Sync 거버넌스만 강제** — 외부 배포 경로(§0.5) 정합 검증은 필수.
 
+### 0.7 dcness 강제 원칙 (룰 추가·설계 시 가드레일)
+
+> 🔴 **대 원칙** (외부 활성 프로젝트엔 SessionStart inject 로 자동 노출):
+> **harness 가 강제하는 것은 단 2가지 — (1) 작업 순서, (2) 접근 영역. 그 외 모두 agent 자율.**
+> - **작업 순서** = 시퀀스 (code-validator → engineer → pr-reviewer 등) + retry 정책
+> - **접근 영역** = file path 경계 (agent-boundary ALLOW/READ_DENY) + 외부 시스템 mutation 차단 (push, gh issue, plugin 디렉토리)
+> - **출력 형식 / handoff 형식 / preamble / marker / status JSON / Flag = agent 자율, harness 강제 X.**
+
+**강제 vs 자율 vs 권고**:
+- **강제 (코드)**: catastrophic 시퀀스 ([`docs/plugin/hooks.md`](docs/plugin/hooks.md) §3.2) + 권한 경계 ([`harness/agent_boundary.py`](harness/agent_boundary.py)). escalate 결론 자동 복구 금지.
+- **자율 (agent)**: prose 형식 / handoff 페이로드 / preamble / 도구 순서 (권한 안).
+- **권고 (강제 X)**: 라우팅 ([`docs/plugin/routing.md`](docs/plugin/routing.md)) / retry 한도 — 측정 + 사용자 개입.
+
+**안티패턴 (룰 추가 시 피하기)**:
+1. **룰이 룰을 부르는 reactive cycle** — 신규 룰 추가 전 기존 룰 제거 가능성 먼저 검토. 추가→제거 비대칭이 기술 부채.
+2. **강제 vs 권고 혼동** — 강제(block) = catastrophic 만. 권고(warn) = 형식 위반/비용 폭증 등은 측정+경고+사용자 개입. 권고 → 강제 자동 승격 금지.
+3. **에이전트 자율성 침해** — agent prompt 안 강제 형식 박기 금지. 결론+이유 명확히 쓰도록 가이드만 (형식이 아니라 의미).
+4. **불필요한 흐름 강제** — 시퀀스 보존은 catastrophic 만. 시퀀스 내부 행동 = 에이전트 자율.
+
 ## 1. 작업 절차 (모든 변경 공통)
 
 1. **수정 작업**.
@@ -82,7 +101,7 @@
 | 파일 | 언제 읽나 |
 |---|---|
 | [`docs/plugin/git-spec.md`](docs/plugin/git-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
-| [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) | 시퀀스 mini-graph + 7 loop 풀스펙 + 라우팅 한눈표·retry·escalate (§3) — 루프 진입 경로·분기·라우팅 수정 시 |
+| [`docs/plugin/routing.md`](docs/plugin/routing.md) | 라우팅 한눈표 (mermaid + enum 표) + retry 한도 + escalate — agent 결론 → 다음 호출 매핑(1-way 진본) 수정 시 |
 | [`docs/plugin/loop-procedure.md`](docs/plugin/loop-procedure.md) | Step 0~8 mechanics (begin-run → begin-step → Agent → end-step → finalize-run) 수정 시 |
 | [`docs/plugin/hooks.md`](docs/plugin/hooks.md) | hook 시스템 (SessionStart / PreToolUse / PostToolUse / Stop = 7 hook) 수정 시 SSOT. dcness self 작업용 `scripts/hooks/cc-pre-commit.sh` 는 별 항목 |
 | [`docs/plugin/issue-lifecycle.md`](docs/plugin/issue-lifecycle.md) | 외부 활성 프로젝트의 epic / story / impl 흐름 변경 시 SSOT (본 저장소 자체엔 미적용 — §0.2 참조) |

@@ -107,7 +107,7 @@
 - **결정성 측면에선 enum 의 가치 부재 — 사용자 가설 유효**.
 
 ### 5.3 자율 vs 가이드레일 가설
-- agent prompt 의 enum 표 = 결론 표현 N 개 옵션 강제 = `orchestration.md §0` 의 안티패턴 1 (룰이 룰을 부르는 reactive cycle) + 안티패턴 3 (에이전트 자율성 침해) 와 충돌.
+- agent prompt 의 enum 표 = 결론 표현 N 개 옵션 강제 = `CLAUDE.md §0.7` 의 안티패턴 1 (룰이 룰을 부르는 reactive cycle) + 안티패턴 3 (에이전트 자율성 침해) 와 충돌.
 - 폐기 시: 자유 prose + 메인 분류 → 자율도 ↑.
 - **유지 시 정당화 가능 영역**: 다중 분기 hub (engineer 6, qa 5, product-planner 5) 에서 LLM 이 사고할 옵션 카탈로그 역할.
 
@@ -161,6 +161,6 @@
 
 - 이슈 #277 (본 측정의 트리거)
 - [`harness/signal_io.py`](../../harness/signal_io.py) — prose 파일 I/O (옛 `interpret_signal` / `_heuristic_interpret` 휴리스틱은 폐기, 이슈 #284)
-- [`docs/plugin/orchestration.md`](../plugin/orchestration.md) `§3.1` (구 handoff-matrix §1) — drift 발견된 매트릭스
-- [`docs/plugin/orchestration.md`](../plugin/orchestration.md) `§0` — LLM 자율 + 최소 가이드레일 (강제 영역 2 + 안티패턴 4, dcness-rules.md 폐기 후 흡수처)
+- [`docs/plugin/routing.md`](../plugin/routing.md) `§1` (구 handoff-matrix §1) — drift 발견된 매트릭스
+- [`CLAUDE.md`](../../CLAUDE.md) `§0.7` — LLM 자율 + 최소 가이드레일 (강제 영역 2 + 안티패턴 4, dcness-rules.md 폐기 후 흡수처)
 - 분석 방식: manual — 본 보고서는 telemetry 샘플 + heuristic 룰 매핑을 수동으로 정리. 재현용 스크립트는 미작성 (필요 시 별 PR).
