@@ -264,13 +264,17 @@ chain 안에서는 §종료 조건 의 review.md *원본 그대로 출력 MUST* 
 
 ```
 [task<i> · <slug>] <clean|error|blocked>
-<엔진 결과: build-worker: N tests RED→GREEN · M files +X -Y · validate PASS|FAIL · pr-reviewer: LGTM|FAIL>
+<2번째 줄 — 엔진별 (아래)>
 finding: <PASS 시 "없음" / FAIL·NICE TO HAVE 시 1-2 문장>
 PR <#NNN> merged · closes #<MMM>
 next: <다음 task slug 진입 | 정지 사유>
 ```
 
-**5줄 형식 강제** — pr-reviewer prose return 의 last block 에 본 5줄 template 그대로 박는 의무 ([`pr-reviewer.md`](../../agents/pr-reviewer.md) §산출물 정보 의무 정합). 메인은 그 block 을 chat 에 *그대로 echo* — 자유 형식 단축 금지 (외부 사용자 [F8 실측](https://github.com/alruminum/dcNess/issues/507)).
+**2번째 줄 = 엔진별 (chain 은 build-worker / 풀 4-agent 둘 다 가능 — 엔진에 맞춰 채운다)**:
+- **build-worker 엔진**: `build-worker: N tests RED→GREEN · M files +X -Y · validate PASS|FAIL · pr-reviewer: LGTM|FAIL` (impl 부재로 module-architect 선두면 앞에 `module-architect: PASS|ESCALATE · ` 추가)
+- **풀 4-agent 엔진** (chain + `엄정하게` override): `test-engineer: N tests · engineer: M files +X -Y · code-validator: PASS|FAIL · pr-reviewer: LGTM|FAIL` (fallback module-architect 선두면 앞에 `module-architect: PASS · ` 추가)
+
+**5줄 형식 강제** — chain 의 마지막 step 인 pr-reviewer 가 prose return 의 last block 에 본 5줄 template (엔진에 맞는 2번째 줄) 을 박는 의무 ([`pr-reviewer.md`](../../agents/pr-reviewer.md) §산출물 정보 의무 정합). 메인은 그 block 을 chat 에 *그대로 echo* — 자유 형식 단축 금지 (외부 사용자 [F8 실측](https://github.com/alruminum/dcNess/issues/507)).
 
 **디스크** — `<run_dir>/review.md` 는 end-run 안전망이 원본 그대로 저장. `/run-review` 진단 / compaction 후 재진입 시 디스크에서 read.
 

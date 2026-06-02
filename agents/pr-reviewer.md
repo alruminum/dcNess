@@ -142,19 +142,21 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 - NICE TO HAVE 목록 (있는 경우)
 - 총평 1 줄
 
-### Hybrid A 모드 (`/impl-loop`) 한정 — last block 에 5줄 echo template 의무
+### `/impl-loop` chain 모드 한정 (엔진 무관) — last block 에 5줄 echo template 의무
 
-prose 마지막 영역에 메인이 chat 에 *그대로 echo 할 5줄 요약 template* 박는다 ([`/impl-loop`](../skills/impl-loop/SKILL.md) §review 출력 재정의 정합). 메인이 자유 형식 단축 회귀 차단 목적 — 외부 사용자 [F8 실측](https://github.com/alruminum/dcNess/issues/507).
+prose 마지막 영역에 메인이 chat 에 *그대로 echo 할 5줄 요약 template* 박는다 ([`/impl-loop`](../skills/impl-loop/SKILL.md) §review 출력 재정의 정합). 메인이 자유 형식 단축 회귀 차단 목적 — 외부 사용자 [F8 실측](https://github.com/alruminum/dcNess/issues/507). **2번째 줄은 그 task 가 돈 엔진에 맞춘다**:
 
 ```
 [task<i> · <slug>] <clean|error|blocked>
-build-worker: <N tests RED→GREEN · M files +X -Y · validate PASS|FAIL> · pr-reviewer: <LGTM|FAIL>
+<2번째 줄 — 엔진별:>
+  build-worker 엔진:  build-worker: <N tests RED→GREEN · M files +X -Y · validate PASS|FAIL> · pr-reviewer: <LGTM|FAIL>
+  풀 4-agent 엔진:    test-engineer: <N tests> · engineer: <M files +X -Y> · code-validator: <PASS|FAIL> · pr-reviewer: <LGTM|FAIL>
 finding: <PASS 시 "없음" / FAIL·NICE TO HAVE 시 1-2 문장>
 PR <#NNN> merged · closes #<MMM>
 next: <다음 task slug 진입 | 정지 사유>
 ```
 
-`/impl-loop` single 모드 (풀 4-agent) 은 본 template 불필요 — rigor 우선, 형식 자유 유지.
+`/impl-loop` **single 모드** (엔진 무관) 은 본 template 불필요 — review.md 원본 그대로 출력 (rigor 우선, 형식 자유).
 
 ## 재검토 절차 (FAIL 후)
 

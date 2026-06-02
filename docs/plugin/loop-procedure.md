@@ -2,15 +2,15 @@
 
 > **Status**: ACTIVE
 > **Scope**: dcness 7 loop 의 *공통 실행 절차* SSOT — Step 0~8 mechanics. 메인 Claude 가 skill 트리거 또는 직접 발화로 루프 시작 시 본 문서를 컨베이어 매뉴얼처럼 따른다.
-> **Cross-ref**: loop 한눈 인덱스 = 본 문서 §7.0. 각 loop 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) = 해당 `commands/*.md` 본문. catastrophic = [`hooks.md`](hooks.md) §3.2. 라우팅 = [`routing.md`](routing.md) §1.
+> **Cross-ref**: loop 한눈 인덱스 = 본 문서 §7.0. 각 loop 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) = 해당 skill 본문 (`skills/<skill>/SKILL.md` 또는 `commands/<skill>.md`; 예: impl-task-loop = [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)). catastrophic = [`hooks.md`](hooks.md) §3.2. 라우팅 = [`routing.md`](routing.md) §1.
 
 ---
 
 ## 0. 진입 모델
 
-skill 트리거 또는 직접 발화 → 메인 Claude 가 **본 문서 §7.0 한눈 인덱스 + 해당 `commands/<skill>.md` 풀스펙** 보고 task 리스트 동적 구성 → §1~§6 mechanics 따름.
+skill 트리거 또는 직접 발화 → 메인 Claude 가 **본 문서 §7.0 한눈 인덱스 + 해당 skill 본문 (`skills/<skill>/SKILL.md` 또는 `commands/<skill>.md`) 풀스펙** 보고 task 리스트 동적 구성 → §1~§6 mechanics 따름.
 
-- **skill 경유**: `commands/<skill>.md` 의 `Loop` 필드 + 본문이 loop spec 진본. skill 은 input 정형화 + 라우팅 추천. 절차는 본 SSOT, 인덱스는 본 문서 §7.0.
+- **skill 경유**: skill 본문 (`skills/<skill>/SKILL.md` 또는 `commands/<skill>.md`) 의 `Loop` 필드 + 본문이 loop spec 진본 (예: impl-task-loop = `skills/impl-loop/SKILL.md`). skill 은 input 정형화 + 라우팅 추천. 절차는 본 SSOT, 인덱스는 본 문서 §7.0.
 - **직접 발화** ("이거 impl 로 가자"): [`routing.md`](routing.md) §1 라우팅 + 본 문서 §7.0 인덱스 보고 메인이 자율 구성. 강제 X.
 - **SessionStart inject**: 슬림 본문 (강제 영역 / 메인 Claude 필수 / 진입 매트릭스 / 안티패턴) 매 세션 자동 노출. 첫 응답 첫 줄 `[dcness 활성 확인]` 토큰 의무.
 
@@ -524,4 +524,4 @@ catastrophic 시퀀스 진본 = [`hooks.md`](hooks.md) §3.2 (`hooks/catastrophi
 - 본 문서 §3.1 + §6 — echo / 자가점검 / REDO 분류 / 개선점 코멘트 (옛 dcness-rules §3/§4 흡수)
 - `harness/session_state.py` — helper CLI (`begin-run` / `end-run` / `begin-step` / `end-step` / `finalize-run` / `run-dir` / `auto-resolve`)
 - `harness/run_review.py` — review 엔진 (`--auto-review` 호출 대상)
-- `commands/<skill>.md` — skill 진입점 (input 정형화 + Loop 추천)
+- skill 진입점 (input 정형화 + Loop 추천) — `skills/<skill>/SKILL.md` (예: impl-loop / architect-loop) 또는 `commands/<skill>.md` (미전환 skill)
