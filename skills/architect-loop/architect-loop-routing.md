@@ -63,7 +63,7 @@ flowchart TB
 | architecture-validator FAIL → architect 재진입 | 2 cycle | 사용자 위임 |
 | module-architect `SPEC_GAP_FOUND` → 보강 → 신규 케이스 재진입 | 2 cycle | 사용자 위임 |
 
-> **architecture-validator FAIL 재진입 대상 = 영역별** — Placeholder·공통 SSOT(1차) / Cross-Story Interface·Implementation Simulation·Origin Anchor(2차) → 해당 **module-architect** 재진입, 모듈 의존 그래프 영역 → **system-architect** 재진입.
+> **architecture-validator FAIL 재진입 대상 = 시점·영역별** — **1차**(Placeholder·공통 SSOT) → **system-architect** 재진입 (이 시점 module-architect 미실행 — 검증 대상이 system-architect 산출물이므로). **2차**(Cross-Story Interface·Implementation Simulation·Origin Anchor) → 해당 **module-architect** 재진입, 단 모듈 의존 그래프 영역이면 **system-architect** 재진입.
 > cycle 발생 시 **working tree only — commit X.** PASS 후에만 commit (cycle 도중 산출물은 덮어쓰기 전제).
 
 ## 4. escalate 처리
