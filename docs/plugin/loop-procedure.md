@@ -8,10 +8,10 @@
 
 ## 0. 진입 모델
 
-skill 트리거 또는 직접 발화 → 메인 Claude 가 **[`orchestration.md`](orchestration.md) §4.1 인덱스 + 해당 loop 풀스펙 sub-section** 보고 task 리스트 동적 구성 → §1~§6 mechanics 따름.
+skill 트리거 또는 직접 발화 → 메인 Claude 가 **본 문서 §7.0 한눈 인덱스 + 해당 `commands/<skill>.md` 풀스펙** 보고 task 리스트 동적 구성 → §1~§6 mechanics 따름.
 
-- **skill 경유**: `commands/<skill>.md` 의 `Loop` 필드가 orchestration §4 행 가리킴. skill 은 input 정형화 + 라우팅 추천만 — 절차는 본 SSOT, loop spec 은 orchestration §4.
-- **직접 발화** ("이거 impl 로 가자"): orchestration.md §3 mini-graph + §4.1 인덱스 보고 메인이 자율 구성. 강제 X.
+- **skill 경유**: `commands/<skill>.md` 의 `Loop` 필드 + 본문이 loop spec 진본. skill 은 input 정형화 + 라우팅 추천. 절차는 본 SSOT, 인덱스는 본 문서 §7.0.
+- **직접 발화** ("이거 impl 로 가자"): [`orchestration.md`](orchestration.md) §3.1 라우팅 + 본 문서 §7.0 인덱스 보고 메인이 자율 구성. 강제 X.
 - **SessionStart inject**: 슬림 본문 (강제 영역 / 메인 Claude 필수 / 진입 매트릭스 / 안티패턴) 매 세션 자동 노출. 첫 응답 첫 줄 `[dcness 활성 확인]` 토큰 의무.
 
 ---
@@ -482,17 +482,24 @@ review 리포트의 must-fix / waste finding / per-Agent metric 즉시 인지 + 
 
 ---
 
-## 7. Loop 카탈로그 (cross-ref)
+## 7. Loop 카탈로그
 
-7 loop 행별 풀스펙 (`entry_point` / `task_list` / `advance` / `clean_enum` / `expected_steps` / `branch_prefix` / Step 별 `allowed_enums` / 분기 / `sub_cycles`) = [`orchestration.md`](orchestration.md) §4.
+### 7.0 한눈 인덱스 (loop 진입 SSOT)
 
-**메인 Claude 진입 시 의무**: orchestration §4.1 인덱스 → 해당 loop sub-section read.
+> 메인 Claude 진입 시: 본 인덱스에서 loop 선택 → `entry_point` 로 begin-run → `task_list` 로 TaskCreate. 각 loop 의 Step 별 상세 (allowed_enums / 분기 / sub_cycles / branch_prefix) = 해당 `commands/<skill>.md` 본문 + 본 문서 §3 (commit 구조 / sub_cycles 명명). 결론 → 다음 호출 라우팅 = [`orchestration.md`](orchestration.md) §3.1.
+
+| loop | entry_point | task_list (Step 1) | advance | clean_enum | expected_steps |
+|------|-------------|--------------------|---------|------------|----------------|
+| `architect-loop` | `architect-loop` (사용자 명시) | (UI epic) ux-architect:UX_FLOW (self-check) / [기술 스택 그릴미 — 메인 직접, helper 비대상] / system-architect (self-check) / architecture-validator 1차 / module-architect × K / architecture-validator 2차 · (UI-less epic) ux-architect 제외 — `commands/architect-loop.md` UI-less 분기 | `UX_FLOW_READY` → `PASS` → `PASS` → `PASS × K` → `PASS` | advance 동일 | 4 + K (UI epic) / 3 + K (UI-less epic). K = Story 수 + 공통 호출 1 회 또는 0 회. **기술 스택 그릴미는 helper begin-step 비대상이라 expected_steps 에 미포함** |
+| `impl-task-loop` | `impl` | (default, /impl 단발) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) · (Hybrid A, /impl-loop 한정) build-worker / pr-reviewer | `PASS` → `IMPL_DONE` → `PASS` → `PASS` (default) · `PASS` → `PASS` (Hybrid A) | advance 동일 | 4 (default) / 5 (fallback) / 2 (Hybrid A) |
+| `impl-ui-design-loop` | `impl` (UI 감지) | (default) designer / 사용자 PICK / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → 사용자 PICK → `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 6 (default) / 7 (fallback) |
+| `qa-triage` | `issue-report` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
+| `ux-design-stage` | `ux` | ux-architect:UX_FLOW / designer / 사용자 PICK | `UX_FLOW_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
+| `ux-refine-stage` | `ux` (REFINE) | ux-architect:UX_REFINE / designer / 사용자 PICK | `UX_REFINE_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
 
 ### 7.1 catastrophic 룰 정합
 
-[`orchestration.md`](orchestration.md) §2.1 catastrophic 시퀀스 = `hooks/catastrophic-gate.sh` 강제. orchestration §4 의 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `PASS` enum / architect-loop §4.2 Step 4 (module-architect × K) 진입 직전 architecture-validator 1차 PASS / K = Story 수 + 공통 호출 / PRD 변경 후 사용자 2 차 OK + `/architect-loop` 진입 후 tech-reviewer 재호출 금지 단방향). 7 hook 전체 시점·차단·우회 = [`hooks.md`](hooks.md).
-
-> Note: 이전 §7.0 인덱스 + §7.2~§7.10 행별 풀스펙은 [`orchestration.md`](orchestration.md) §4 로 흡수 (loop-catalog.md 폐기, 8 → 7 SSOT).
+catastrophic 시퀀스 진본 = [`hooks.md`](hooks.md) §3.2 (`hooks/catastrophic-gate.sh` 강제). 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `PASS` enum / module-architect × K 진입 직전 architecture-validator 1차 PASS / K = Story 수 + 공통 호출 / PRD 변경 후 사용자 2 차 OK + `/architect-loop` 진입 후 tech-reviewer 재호출 금지 단방향). 7 hook 전체 시점·차단·우회 = [`hooks.md`](hooks.md).
 
 ---
 

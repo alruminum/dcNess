@@ -2,7 +2,7 @@
 
 > **Status**: ACTIVE
 > **Scope**: dcness plug-in 이 활성 프로젝트에 적용하는 7 hook 의 시점 / 역할 / 차단 동작 / 우회 메커니즘 SSOT.
-> **Cross-ref**: [`orchestration.md`](orchestration.md) §0 (대원칙) + §2.1 (catastrophic 시퀀스), [`harness/agent_boundary.py`](../../harness/agent_boundary.py) (권한 매트릭스).
+> **Cross-ref**: [`orchestration.md`](orchestration.md) §0 (대원칙), [`harness/agent_boundary.py`](../../harness/agent_boundary.py) (권한 매트릭스). catastrophic 시퀀스 진본 = 본 문서 §3.2.
 
 ---
 
@@ -86,15 +86,19 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 **Matcher**: `Agent`
 **시점**: 메인 Claude 가 sub-agent 호출 (Task tool with `subagent_type`) *직전*.
 
-**역할**: [`orchestration.md`](orchestration.md) §2.1 catastrophic 시퀀스 강제
+**역할**: **catastrophic 시퀀스 강제** — 본 §3.2 = catastrophic 시퀀스 **진본 SSOT**. 다음 룰은 *어떤 동적 결정* 으로도 우회 금지. 원칙 — "흐름 강제는 catastrophic 시퀀스만, 그 외 모든 시퀀스 = agent 자율".
 
-| 룰 | 차단 조건 |
-|---|---|
-| §2.1.1 | src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 |
-| §2.1.3 | engineer 가 module-architect `PASS` 없이 src/ 작성 |
-| §2.1.5 | architect-loop 안 module-architect × N 첫 호출 직전 architecture-validator PASS 부재 |
+| 룰 ID | 내용 | 강제 주체 |
+|---|---|---|
+| §2.1.1 | src/ 변경 후 code-validator PASS 없이 pr-reviewer 호출 금지 | catastrophic-gate (코드) |
+| §2.1.3 | engineer 가 module-architect `PASS` enum 발화 없이 src/ 작성 금지 (신규/보강/버그픽스 동일) | catastrophic-gate (코드) |
+| §2.1.4 | PRD 변경 후 `/tech-review` 사용자 2차 OK 없이 `/architect-loop` 진입 금지 + `/architect-loop` 진입 후 tech-reviewer 재호출 금지 (단방향) | **자연어 룰 — 메인 영역** (코드 강제 X) |
+| §2.1.5 | module-architect × K (architect-loop Step 4) 진입 직전 architecture-validator 1차 PASS 없이 진입 금지 | catastrophic-gate (코드) |
 
-**차단 동작**: `exit 1` → CC 가 Agent 호출 거부 + stderr 메시지 노출. 메인이 회복 또는 사용자 위임.
+> **룰 ID `§2.1.N` 보존**: `harness/hooks.py` / `catastrophic-gate.sh` 가 에러 메시지·분기 ID 로 사용 (번호 = 룰 ID). §2.1.2 / §2.1.6~§2.1.8 은 자연어 폐기 (결번).
+> **§2.1.4 단방향 catastrophic** 만 코드 강제가 아닌 *자연어 룰* — `commands/tech-review.md` / `commands/architect-loop.md` 가 기능 참조. architect-loop 도중 tech-review 미검증 새 외부 의존 발견 시 처리 = `NEW_DEP_ESCALATE` 3안 (채택+수동검증 / 대안 우회 / 전체 회귀 — 어느 경우든 tech-reviewer 재호출 0). 라우팅 = [`orchestration.md`](orchestration.md) §3.3 escalate.
+
+**차단 동작**: `exit 1` → CC 가 Agent 호출 거부 + stderr 메시지 노출. 메인이 회복 또는 사용자 위임. (§2.1.4 는 메인 prose 가 자율 보존)
 
 ---
 
@@ -259,7 +263,7 @@ Tier 6: <PROJECT_ROOT>/src/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
 
 **자연어 SSOT (본 hook 들이 강제하는 룰의 spec)**:
 - [`orchestration.md`](orchestration.md) §0 — 대원칙 (강제 영역 2가지)
-- [`orchestration.md`](orchestration.md) §2.1 — catastrophic 시퀀스 (catastrophic-gate 강제 대상)
+- 본 문서 §3.2 — catastrophic 시퀀스 진본 (catastrophic-gate 강제 대상)
 - [`harness/agent_boundary.py`](../../harness/agent_boundary.py) — 권한 매트릭스 (file-guard 강제 대상)
 - [`loop-procedure.md`](loop-procedure.md) — Step 0~8 mechanics (hook 시점이 절차 어디에 끼는지)
 
