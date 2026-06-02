@@ -1,155 +1,123 @@
 # dcNess
 
-> **Status**: `0.2.0` — Phase 1~3 완료 · Epic 3 완료 (release 브랜치 배포 채널 전환) · Plugin 배포 dry-run 진행 중
+> **Status**: `0.3.0` — plugin 배포 채널(release 브랜치) 운영 중
 > **Origin**: [`alruminum/realworld-harness`](https://github.com/alruminum/realworld-harness) fork-and-refactor
-> **Spec**: [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) §0 (Prose-Only 원칙 — 강제 영역 2 + 안티패턴 4)
+> **Spec(SSOT)**: [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) §0
 
-Lightweight harness — **prose-only + heuristic enum 추출** 결정론 + **함정 회피 5원칙** 기반.
+**dcNess 는 Claude Code 용 거버넌스 하네스 plugin 이다.** 코딩 에이전트가 혼자
+달릴 때 빠지는 함정 — 검증 건너뛰기, 권한 밖 파일 수정, 순서 뒤집기 — 을
+막는 데 집중한다. 강제하는 것은 단 두 가지: **(1) 작업 순서**, **(2) 접근 영역**.
+출력 형식·flag·schema 는 강제하지 않는다(agent 자율). 에이전트는 prose 를 자유롭게
+쓰고, 메인 Claude 가 그 prose 를 직접 읽어 다음 단계를 정한다 — 형식 강제 사다리도,
+메타 LLM 호출도 없는 **prose-only** 방식이다.
+
+## 누구에게 맞나
+
+**맞다** — Claude Code 로 실제 제품을 만들면서 PR/이슈/구현 루프에 **거버넌스**(검증
+순서 보존, 파일 경계, 재현 가능한 run-review)가 필요한 사람.
+
+**안 맞다** — model/provider 라우팅이나 MCP 런타임 확장이 목적인 경우(그건 dcNess 의
+scope 가 아니다). 가벼운 단발 스크립팅만 원하는 경우엔 과할 수 있다.
+
+## 5분 Happy Path
+
+```sh
+# 1. marketplace 등록 + plugin 설치 (Claude Code CLI)
+claude plugin marketplace add alruminum/dcNess
+claude plugin install dcness@dcness
+```
+
+설치만으로는 아무 hook 도 발화하지 않는다(디폴트 비활성 = pass-through). 적용할
+프로젝트에서 Claude Code 세션을 열고:
+
+```
+/init-dcness        # 현 프로젝트를 활성 whitelist 에 등록 (+ Read 권한 / git hook 자동 셋업)
+```
+
+활성화 확인:
+
+```
+[dcness] active: YES
+```
+
+이후 첫 구현 루프:
+
+```
+/impl <task>        # 단발 task — test-engineer → engineer → code-validator → pr-reviewer → PR
+/impl-loop          # 여러 task 를 순차 자동 처리
+/run-review         # 방금 run 의 step별 비용·차단 분석
+```
+
+**첫 성공 기준** — `/impl` 한 번이 PR 생성까지 도달하고, `/run-review` 로 그 run 의
+비용을 표로 확인할 수 있으면 정상 동작이다.
+
+> plugin 갱신: `claude plugin update dcness@dcness`
+> (문제 시 `claude plugin uninstall dcness@dcness && claude plugin install dcness@dcness`)
 
 ## 무엇이 다른가
 
 | 항목 | 선행 하네스 | dcNess |
 |---|---|---|
-| 결정론 메커니즘 | `parse_marker` regex + `MARKER_ALIASES` 사다리 (~180 LOC) | **prose-only** — agent prose 자유 emit, 메인 Claude 가 prose 자체를 직접 읽고 routing 결정 (기계 enum 추출 없음, 이슈 #280/#284) |
-| 형식 강제 | `---MARKER:X---` + alias 변형 12개 | **0** — 형식 / flag / schema 모두 agent 자율. harness 강제 = 작업 순서 + 접근 영역만 |
-| 컨텍스트 layer | 5 layer (CLAUDE.md + agents + agent-config + preamble + sub-doc) | 2 layer (CLAUDE.md + agents) — preamble / agent-config 자동 주입 폐기 |
-| 게이트 | hook 7+ (agent-boundary / commit-gate / etc.) | 거버넌스 + 3 CI workflow (Document Sync + Python tests + Plugin manifest) |
-| LOC 목표 | 5000 | 2500 ~ 3000 |
+| 결정론 메커니즘 | `parse_marker` regex + alias 사다리 (~180 LOC) | **prose-only** — agent 가 prose 자유 emit, 메인 Claude 가 prose 를 직접 읽고 routing (기계 enum 추출 / 메타 LLM 호출 0, 이슈 #280/#284) |
+| 형식 강제 | `---MARKER:X---` + alias 12변형 | **0** — 형식/flag/schema 모두 agent 자율. harness 강제 = 작업 순서 + 접근 영역만 |
+| 컨텍스트 layer | 5 layer | 2 layer (CLAUDE.md + agents) |
+| 게이트 | hook 다수 | 거버넌스 + 6 CI workflow (cross-ref / git-naming / plugin-manifest / pr-body / python-tests / release-sync) |
 
-핵심 발상 (proposal §2 + 정착 박스):
+## Skill (`commands/`, 10개)
 
-> "agent 는 prose 자유롭게 emit.
->  harness 는 prose 의 결론 enum 을 *휴리스틱 단어경계 매칭* 으로 추출.
->  ambiguous 시 메인 Claude 가 cascade (재호출 / 사용자 위임).
->  형식 강제 0, flag 0, schema 0, **메타 LLM 호출 0**."
+| 발화 | 역할 |
+|---|---|
+| `/init-dcness` | 현 프로젝트를 plugin 활성 whitelist 에 등록 (부트스트랩) |
+| `/issue-report` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
+| `/product-plan` | 새 기능 spec/design — 그릴미 대화로 PRD + stories + tech-review 스켈레톤 작성 |
+| `/tech-review` | 선행 기술 검증 (tech-reviewer 가 의존성·실현성 검토, `/architect-loop` 진입 전 단방향) |
+| `/architect-loop` | 1 epic 설계 루프 — ux-architect → system-architect → validator → module-architect × K → validator |
+| `/impl` | 단발 task 정식 impl 루프 (test-engineer → engineer → code-validator → pr-reviewer) |
+| `/impl-loop` | 여러 task 순차 자동 체인 (task 마다 /impl + clean 자동 진행) |
+| `/run-review` | run 사후 분석 — step별 비용·차단 검출 |
+| `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
+| `/efficiency` | 세션 토큰/캐시/비용 분석 + HTML 대시보드 |
 
-## 1차 구현 (Phase 1) 현황
+12개 sub-agent(`agents/`) — architect / validator / engineer / reviewer 계열 — 가 위
+skill 안에서 작업 순서와 접근 권한 경계에 따라 호출된다.
 
-✅ **완료** — 검증 에이전트 (code-validator + architecture-validator) 단위로 prose-only 패턴 검증.
+## 거버넌스 (dcNess 자체 저장소 작업 기준)
 
-| 컴포넌트 | 위치 | 상태 |
-|---|---|---|
-| Signal I/O 모듈 | [`harness/signal_io.py`](harness/signal_io.py) | 단위 테스트 통과 (round-trip / path 화이트리스트 / 휴리스틱 / DI swap) |
-| Validator agent docs | [`agents/code-validator.md`](agents/code-validator.md) + [`agents/architecture-validator.md`](agents/architecture-validator.md) | prose writing guide (결론 PASS/FAIL/ESCALATE + 이유) |
-| Plugin manifest | [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) + [marketplace.json](.claude-plugin/marketplace.json) | 다른 플러그인과 공존 가능 (`name=dcness`) |
-| CI workflows | [`.github/workflows/`](.github/workflows) | 3 종 (document-sync / python-tests / plugin-manifest) |
+본 저장소의 모든 변경은 [`CLAUDE.md`](CLAUDE.md)(SSOT) 를 따른다.
 
-자세한 현황: [`PROGRESS.md`](PROGRESS.md)
+- **게이트**: main-block · git-naming · pytest(pre-commit hook) + plugin-manifest · pr-body · cross-ref(CI)
+- **branch → PR → merge** 필수, main 직접 push 금지
+- PR 절차: [`CLAUDE.md`](CLAUDE.md) §5
 
-## Quick Start (개발자)
-
-### 의존성
-
-- Python 3.11+ (테스트 실행)
-- Node.js 20+ (git-naming 게이트)
-- 외부 패키지 0 (표준 라이브러리만 — heuristic-only 정착으로 anthropic SDK 의존 0)
-
-### 셋업
+## 개발자 셋업 (dcNess 에 기여)
 
 ```sh
 git clone https://github.com/alruminum/dcNess.git
 cd dcNess
+cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
-# git pre-commit hook 설치 (1회)
-cp scripts/hooks/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+python3 -m unittest discover -s tests -v   # 단위 테스트
+node scripts/check_plugin_manifest.mjs     # manifest 검증
+node scripts/check_cross_refs.mjs          # link/anchor + 옛 명칭 게이트
 ```
 
-### 검증
-
-```sh
-# 단위 테스트 (signal_io)
-python3 -m unittest discover -s tests -v
-
-# Document Sync 게이트 (수동 실행 — commit 시 자동 호출)
-node scripts/check_document_sync.mjs
-
-# Plugin manifest 검증
-node scripts/check_plugin_manifest.mjs
-```
-
-### 코드 사용 예 (`signal_io`)
-
-```python
-from harness.signal_io import (
-    MissingSignal,
-    read_prose,
-    write_prose,
-)
-
-# Agent 측 (또는 harness 가 stdout 캡처 후) — prose 저장
-write_prose(
-    "code-validator", "run_001",
-    """## 검증 결과
-
-A 스펙 일치 / B 의존성 모두 통과. C 경고 1건 (FAIL 아님).
-
-## 결론
-
-PASS
-""",
-)
-
-# Orchestrator 측 — prose 읽기. 결론 routing 은 메인 Claude 가 prose
-# 자체를 직접 읽고 판단 (prose-only, 이슈 #280/#284). 기계 enum 추출 없음.
-try:
-    prose = read_prose("code-validator", "run_001")
-    # 메인 Claude 가 prose 의 결론 단락을 읽고 다음 단계 결정
-except MissingSignal as e:
-    # 2 reasons (not_found / empty) 단일 catch — 즉시 fail
-    ...
-```
-
-## 거버넌스 (필수)
-
-본 저장소의 모든 변경은 [`CLAUDE.md`](CLAUDE.md) 에 따른다 (SSOT).
-
-- **게이트**: main-block + git-naming + pytest (pre-commit hook 자동 실행)
-- **branch → PR → merge** 필수. main 직접 push 금지.
-
-PR 절차: [`CLAUDE.md`](CLAUDE.md) §5.
-
-## 다음 단계
-
-[`PROGRESS.md`](PROGRESS.md) §TODO 참조. 핵심 후보:
-
-- Plugin 배포 dry-run — 플러그인 공존 검증
-- 후속 skill `/ux` (designer 1 시안 + 사용자 직접 PICK, Pencil 캔버스 또는 `design-variants/<screen>-v<N>.html`) — `commands/` 카테고리 확장 후보
-
-## Skill 목록 (`commands/`, 9개)
-
-| 발화 | 역할 |
-|---|---|
-| `/init-dcness` | dcness 활성화 게이트 — 현 cwd main repo 를 plugin-scoped whitelist 추가 |
-| `/issue-report` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
-| `/product-plan` | 새 기능 spec/design (메인 Claude 가 사용자와 그릴미 대화로 `docs/prd.md` (root) + epic 단위 `docs/milestones/vNN/epics/epic-NN-*/stories.md` + `docs/tech-review.md` (root) 스켈레톤 작성 → 사용자 1 차 OK → PR 머지 + 이슈 등록 → `/tech-review` 권고) |
-| `/architect-loop` | 1 epic 단위 설계 루프 — ux-architect → system-architect (root + epic 단위 architecture / adr / domain-model 산출) → validator 1차 → module-architect × K (K = Story 수 + 공통 호출) → validator 2차 → PR 머지. 모듈 설계 원칙 SSOT [`docs/plugin/module-design-principles.md`](docs/plugin/module-design-principles.md) 가 system / module / engineer / test-engineer 의 호출 시 read 의무 (이슈 [#511](https://github.com/alruminum/dcNess/issues/511)) |
-| `/tech-review` | 선행 기술 검증 (tech-reviewer 가 `docs/tech-review.md` 본문 채움 + 증거물 + `docs/tech-review/report.html` 통합 리포트 → 사용자 2 차 OK 후 `/architect-loop` 권고. `/architect-loop` 진입 후 재호출 금지 단방향) |
-| `/impl` | per-task 정식 impl 루프 (default = test-engineer → engineer → code-validator → pr-reviewer · fallback = module-architect 선두 추가 — impl/NN-*.md 정식 위치 부재 시. 버그픽스 = qa 분류 후 본 fallback path) |
-| `/impl-loop` | multi-task sequential auto chain (각 task 마다 /impl 호출 + clean 자동 진행) |
-| `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
-| `/efficiency` | Claude Code 세션 토큰/캐시/비용 분석 + HTML 대시보드 + 6 절감 휴리스틱 |
-| `/run-review` | dcness conveyor run 사후 분석 — 각 step 비용·차단 검출 표시 |
-
-행동형 skill (`/impl` `/impl-loop`) 공통 (`/product-plan` 은 워크트리 X):
-- yolo keyword (`yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서`) 검출 시 CLARITY/AMBIGUOUS/ESCALATE 자동 대체 (catastrophic 룰은 hard safety)
-- **워크트리 기본 켜짐** — 진입 시 자동 EnterWorktree. 거부 표현 정규식 `워크트리\s*(빼|없|말)` (예: "워크트리 빼고") 매치 시에만 건너뜀
-
-읽기형 skill (`/issue-report` `/smart-compact` `/efficiency` `/run-review`) 은 keyword 무관 (read-only 분석).
+- 의존성: Python 3.11+, Node.js 20+, **외부 패키지 0** (표준 라이브러리만)
 
 ## 참조 문서
 
 | 문서 | 역할 |
 |---|---|
-| [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) §0 | Prose-Only 원칙 현행 SSOT (강제 영역 2 + 안티패턴 4) |
-| [`docs/archive/status-json-mutate-pattern.md`](docs/archive/status-json-mutate-pattern.md) | Prose-Only 원전 proposal (Phase 분할 / Risks / Plugin 전환 절차) (역사 자료) |
-| [`docs/archive/migration-decisions.md`](docs/archive/migration-decisions.md) | 모듈 PRESERVE / DISCARD / REFACTOR 분류 (역사 자료) |
-| [`docs/archive/document_update_record.md`](docs/archive/document_update_record.md) | (frozen) 옛 WHAT 로그 — 현재는 GitHub PR/issue/git log 가 SSOT |
-| [`docs/archive/change_rationale_history.md`](docs/archive/change_rationale_history.md) | (frozen) 옛 WHY 로그 — 현재는 PR description/이슈 thread/commit body 가 SSOT |
-| [`docs/archive/conveyor-design.md`](docs/archive/conveyor-design.md) | (frozen) Python 컨베이어 v1 폐기 설계 — Task tool 패턴 채택 사유 (역사 자료) |
+| [`docs/plugin/orchestration.md`](docs/plugin/orchestration.md) §0 | 정체성 SSOT (강제 영역 2 + 안티패턴 4) |
+| [`docs/plugin/handoff-matrix.md`](docs/plugin/handoff-matrix.md) | agent 호출 분기 / 권한 매트릭스 |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태 / TODO / Blockers |
-| [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 |
 | [`CLAUDE.md`](CLAUDE.md) | 메인 Claude 작업 지침 |
+| [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 |
+
+### 역사 자료 (archive)
+
+[`docs/archive/status-json-mutate-pattern.md`](docs/archive/status-json-mutate-pattern.md)
+(prose-only 원전 proposal) · [`migration-decisions.md`](docs/archive/migration-decisions.md)
+· [`conveyor-design.md`](docs/archive/conveyor-design.md) (Python 컨베이어 v1 폐기 설계).
 
 ## License
 

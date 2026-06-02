@@ -1,20 +1,20 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "dcness",
-  "description": "Lightweight harness — prose-only determinism + meta-LLM interpretation.",
+  "description": "Lightweight governance harness — prose-only determinism (no meta-LLM) + enforced work-order and access boundaries.",
   "owner": {
     "name": "alruminum",
     "email": "alruminum@gmail.com"
   },
   "metadata": {
-    "description": "dcNess — prose-only 결정론 + 메타 LLM 해석 + 함정 회피 5원칙. release 브랜치 배포 (docs/internal/ · docs/archive/ 미포함).",
+    "description": "dcNess — prose-only 결정론(메타 LLM 호출 0) + 작업 순서·접근 영역 강제. release 브랜치 배포 (docs/internal/ · docs/archive/ 미포함).",
     "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "dcness",
       "source": "./",
-      "description": "Prose-only harness — agent 자유 prose emit, harness 가 메타 LLM 으로 결론 해석. 형식 강제 사다리 폐기.",
+      "description": "Prose-only governance harness — agent 가 prose 자유 emit, 메인 Claude 가 prose 를 직접 읽고 routing(메타 LLM 0). 형식 강제 사다리 폐기.",
       "category": "development",
       "tags": [
         "agent",
