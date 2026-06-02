@@ -142,21 +142,18 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 - NICE TO HAVE 목록 (있는 경우)
 - 총평 1 줄
 
-### `/impl-loop` chain 모드 한정 (엔진 무관) — last block 에 5줄 echo template 의무
+### `/impl-loop` chain 모드 한정 (엔진 무관) — 5줄 요약 *재료* 제공
 
-prose 마지막 영역에 메인이 chat 에 *그대로 echo 할 5줄 요약 template* 박는다 ([`/impl-loop`](../skills/impl-loop/SKILL.md) §review 출력 재정의 정합). 메인이 자유 형식 단축 회귀 차단 목적 — 외부 사용자 [F8 실측](https://github.com/alruminum/dcNess/issues/507). **2번째 줄은 그 task 가 돈 엔진에 맞춘다**:
+chain 의 5줄 요약 ([`/impl-loop`](../skills/impl-loop/SKILL.md) §review 출력 재정의) 은 **메인이 PR 머지(pr-finalize) 완료 후 종합·echo** 한다 — `PR <#NNN> merged` 의 번호·merged 상태가 pr-reviewer 시점엔 미확정이기 때문 (풀 4-agent 엔진은 PR 이 pr-reviewer PASS *후* 생성). 따라서 pr-reviewer 는 5줄을 직접 박지 않고, 메인이 채울 **재료** 를 prose 에 명확히 남긴다:
 
-```
-[task<i> · <slug>] <clean|error|blocked>
-<2번째 줄 — 엔진별:>
-  build-worker 엔진:  build-worker: <N tests RED→GREEN · M files +X -Y · validate PASS|FAIL> · pr-reviewer: <LGTM|FAIL>
-  풀 4-agent 엔진:    test-engineer: <N tests> · engineer: <M files +X -Y> · code-validator: <PASS|FAIL> · pr-reviewer: <LGTM|FAIL>
-finding: <PASS 시 "없음" / FAIL·NICE TO HAVE 시 1-2 문장>
-PR <#NNN> merged · closes #<MMM>
-next: <다음 task slug 진입 | 정지 사유>
-```
+- 자기 결론: `LGTM` 또는 `FAIL` (+ FAIL 시 finding 1-2 문장)
+- (메인이 종합할 5줄 형식 참고 — 2번째 줄은 엔진별):
+  - build-worker 엔진:  `build-worker: <N tests RED→GREEN · M files +X -Y · validate PASS|FAIL> · pr-reviewer: <LGTM|FAIL>`
+  - 풀 4-agent 엔진:    `test-engineer: <N tests> · engineer: <M files +X -Y> · code-validator: <PASS|FAIL> · pr-reviewer: <LGTM|FAIL>`
 
-`/impl-loop` **single 모드** (엔진 무관) 은 본 template 불필요 — review.md 원본 그대로 출력 (rigor 우선, 형식 자유).
+메인은 위 재료 + PR 번호·merged·closes 를 합쳐 5줄을 chat 에 echo (자유 형식 단축 금지 — 외부 사용자 [F8 실측](https://github.com/alruminum/dcNess/issues/507)).
+
+`/impl-loop` **single 모드** (엔진 무관) 은 5줄 불필요 — review.md 원본 그대로 출력 (rigor 우선, 형식 자유).
 
 ## 재검토 절차 (FAIL 후)
 
