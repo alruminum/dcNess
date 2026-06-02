@@ -1,7 +1,7 @@
 {
   "name": "dcness",
   "version": "0.3.0",
-  "description": "Lightweight harness — status-JSON-mutate determinism + 4-pillar fitness (CLAUDE.md / CI gates / tool boundaries / feedback loops). parse_marker ladder eliminated.",
+  "description": "Lightweight governance harness for Claude Code — prose-only determinism (no format-marker ladder, no meta-LLM) + enforced work-order and access boundaries.",
   "author": {
     "name": "alruminum",
     "email": "alruminum@gmail.com"
@@ -13,8 +13,8 @@
     "orchestration",
     "claude-code",
     "harness",
-    "status-json-mutate",
-    "lightharness"
+    "prose-only",
+    "governance"
   ],
   "homepage": "https://github.com/alruminum/dcNess",
   "repository": "https://github.com/alruminum/dcNess"
