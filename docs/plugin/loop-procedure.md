@@ -500,7 +500,7 @@ review 리포트의 must-fix / waste finding / per-Agent metric 즉시 인지 + 
 
 ### 7.0 한눈 인덱스 (loop 진입 SSOT)
 
-> 메인 Claude 진입 시: 본 인덱스에서 loop 선택 → `entry_point` 로 begin-run → `task_list` 로 TaskCreate. 각 loop 의 Step 별 상세 (allowed_enums / 분기 / sub_cycles / branch_prefix) = 해당 `commands/<skill>.md` 본문 + 본 문서 §3 (commit 구조 / sub_cycles 명명). 결론 → 다음 호출 라우팅 = [`routing.md`](routing.md) §1.
+> 메인 Claude 진입 시: 본 인덱스에서 loop 선택 → `entry_point` 로 begin-run → `task_list` 로 TaskCreate. 각 loop 의 Step 별 상세 (allowed_enums / 분기 / sub_cycles / branch_prefix) = 해당 skill 본문 (`skills/<skill>/SKILL.md` 또는 `commands/<skill>.md`; 예: impl-task-loop = [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)) + 본 문서 §3 (commit 구조 / sub_cycles 명명). 결론 → 다음 호출 라우팅 = [`routing.md`](routing.md) §1.
 
 | loop | entry_point | task_list (Step 1) | advance | clean_enum | expected_steps |
 |------|-------------|--------------------|---------|------------|----------------|
