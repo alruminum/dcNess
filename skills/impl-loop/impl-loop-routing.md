@@ -47,7 +47,7 @@ flowchart TB
 flowchart TB
   BW[build-worker] -->|PASS| MG([메인 git/PR]) --> PR2[pr-reviewer]
   PR2 -->|PASS| M2([메인 regular merge])
-  PR2 -->|변경 요청 ≤2| ENP2[engineer:POLISH] --> PR2
+  PR2 -->|변경 요청 ≤2| ENP2[engineer:POLISH] --> MGP([메인 commit/push to PR branch]) --> PR2
   BW -->|SPEC_GAP_FOUND small| ME([메인 직접 Edit]) --> BW
   BW -->|SPEC_GAP_FOUND medium·large ≤2| MA2[module-architect] -->|PASS| BW
   BW -->|TESTS_FAIL ≤3| EN2[engineer] -->|IMPL_DONE| CV2[code-validator]
@@ -75,7 +75,7 @@ flowchart TB
 | **test-engineer** | `TESTS_WRITTEN`(=PASS) → engineer(attempt 0) · `SPEC_GAP_FOUND` → module-architect(보강) |
 | **engineer** | `IMPL_DONE` → code-validator · `IMPL_PARTIAL` → engineer(분할 — retry 아님, 상한 없음 §3) · `SPEC_GAP_FOUND` → module-architect(보강, ≤2) · `TESTS_FAIL` → engineer 재시도(≤3) · `POLISH_DONE` → pr-reviewer · `IMPLEMENTATION_ESCALATE` → 사용자 |
 | **code-validator** | `PASS` → pr-reviewer · `FAIL` → engineer 재시도(≤3) · `ESCALATE` → module-architect(보강) 또는 사용자. impl 경로로 full/bugfix scope 자동 분기 |
-| **pr-reviewer** | `PASS`(LGTM) → (CI PASS 후) 메인 즉시 regular merge · 변경 요청 → engineer POLISH(≤2) |
+| **pr-reviewer** | `PASS`(LGTM) → (CI PASS 후) 메인 즉시 regular merge · 변경 요청 → engineer POLISH → **메인 commit/push to PR branch** (엔진 B 는 PR 이 이미 생성됨 — POLISH 변경 반영 필수) → pr-reviewer 재리뷰(≤2) |
 | **build-worker** | `PASS` → 메인 git/PR → pr-reviewer · `SPEC_GAP_FOUND` → 분량 메타 분기(아래) · `TESTS_FAIL` → engineer(마저 구현) → **`IMPL_DONE` → code-validator → `PASS` 후 메인 git/PR** (self-validate 미통과분을 code-validator 가 복원 — 검증 없이 PR 금지) 또는 attempt 한도 초과 시 사용자 · `IMPLEMENTATION_ESCALATE` → 사용자 |
 | **module-architect** | `PASS` → (impl 파일 생성·보강 후) build-worker 또는 test-engineer · `ESCALATE` → 사용자 |
 | **designer** | `PASS` → 사용자 PICK → test-engineer · `ESCALATE` → 사용자. 환경 = `docs/design.md` frontmatter `medium`. 재호출 한도 X |
