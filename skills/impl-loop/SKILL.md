@@ -72,15 +72,15 @@ UI 작업 감지 시 (풀 4-agent 엔진 한정) 시퀀스 **선두에 designer 
 
 ### 부모 이슈 본문 read 의무 (MUST)
 
-Pre-flight gate 통과 후, 매치된 epic / story / task 이슈 번호 *각 본문 read 의무*:
+Pre-flight gate 통과 후, 매치된 **epic / story 이슈** 번호 *각 본문 read 의무*. **task 는 GitHub 이슈가 없다** ([`issue-lifecycle.md`](../../docs/plugin/issue-lifecycle.md) §1.1 — PR 1개 = task 1개, PR 자체가 추적 단위) → `<task-num>` read 하지 않는다. task 컨텍스트는 impl 파일 frontmatter + 본문이 진본.
 
 ```bash
 gh issue view <epic-num> | head -80
 gh issue view <story-num> | head -80
-gh issue view <task-num> | head -80
+# (bugfix 케이스로 invocation 에 이슈 번호가 명시된 경우만) gh issue view <그 이슈> | head -80   # optional 추가 컨텍스트
 ```
 
-이슈 본문에 수용 기준 / 추가 컨텍스트 / 결정 사항이 적혀있을 수 있음. read 안 하면 *impl 파일 누락 컨텍스트* 미인지 위험. chain 은 매 task 부모 이슈 read 의무 ([#375](https://github.com/alruminum/dcNess/issues/375)).
+epic/story 이슈 본문에 수용 기준 / 추가 컨텍스트 / 결정 사항이 적혀있을 수 있음. read 안 하면 *impl 파일 누락 컨텍스트* 미인지 위험. chain 은 매 task 의 부모 epic/story 이슈 read 의무 ([#375](https://github.com/alruminum/dcNess/issues/375)).
 
 ### 진입 직전 — task 진행 상태 1회 확인 (MUST, #346)
 
@@ -182,8 +182,8 @@ default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → p
 1. **test-engineer** (TESTS_WRITTEN) → 테스트 선작성
 2. **engineer:IMPL** (IMPL_DONE) → 구현 + 테스트 PASS
 3. **code-validator** (PASS) — impl 계획 ↔ 구현 정합 검증
-4. **pr-reviewer** (LGTM, read-only) — 코드 품질·보안 검토만. `tools: Read, Glob, Grep` — *commit/push/PR 생성·머지 권한 없음*
-5. **메인 Claude (git/PR)** — pr-reviewer PASS 후 worker prose 의 commit message + PR 본문 *초안* 을 받아 `scripts/pr-create.sh` 호출 → `scripts/pr-finalize.sh` 머지
+4. **pr-reviewer** (LGTM, read-only) — 코드 품질·보안 검토만. `tools: Read, Glob, Grep` — *commit/push/PR 생성·머지 권한 없음*. **엔진 A 는 PR 생성 *전* 단계라 pr-reviewer 입력 = impl 경로 + 구현 변경 파일 목록(로컬 diff)** — PR 객체 아님 (build-worker 엔진과 달리 PR 미생성 상태. [`pr-reviewer.md`](../../agents/pr-reviewer.md) 입력 규약 참조)
+5. **메인 Claude (git/PR)** — pr-reviewer PASS 후, **engineer/code-validator prose (변경 요약·의도) + [`git-spec.md`](../../docs/plugin/git-spec.md) §5 템플릿 기반으로 메인이 commit message·PR 본문 작성** (엔진 A 는 build-worker 미사용 → "worker prose" 아님. PR 트레일러 `Closes/Part of` 는 impl frontmatter `task_index`/`story` + git-spec §8 적용) → `scripts/pr-create.sh` 호출 → `scripts/pr-finalize.sh` 머지
 
 ❌ 안티패턴 (#431 실측 회귀): test-engineer + engineer 만 호출하고 commit/push/PR 안 만들고 prose "PASS" 박고 종료. 1 자식 = 1 PR + 1 이슈 close 보장 깨짐.
 
