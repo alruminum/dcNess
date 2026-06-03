@@ -64,7 +64,7 @@ UI 작업 감지 시 (풀 4-agent 엔진 한정) 시퀀스 **선두에 designer 
 
 **prev-tasks 초기화 (#525, build-worker 엔진 한정)**: `[PREVIOUS_TASKS]` 는 build-worker 진입 시 직전 task 산출을 주입(인접 task 인터페이스 정합용)한다. `begin-step build-worker` 가 *그 시점에* prev-tasks 파일을 읽어 stdout 으로 emit 하므로 ([`session_state.py`](../../harness/session_state.py) — single/chain 구분 안 함) — **reset 은 반드시 `begin-step build-worker` *호출 전* 에 해야 한다** (begin-step 후 reset 은 이미 emit 된 stdout 에 늦음). 따라서: **build-worker 진입이 (a) chain 의 첫 task 거나 (b) single 모드(`빠르게`/`worker` override 포함) 이면 `begin-step build-worker` 직전에 `dcness-helper prev-tasks-reset` 1회 호출 의무**. 안 하면 직전 chain 의 `[PREVIOUS_TASKS]` 잔재가 새 worker prompt 에 주입돼 stale 인터페이스에 맞출 위험. **chain 의 2번째+ task 는 reset 안 함** (직전 task 누적이 정합 입력). 까먹어도 FIFO cap(10) 안전망이나 명시 호출 권장. 풀 4-agent 엔진은 build-worker 미사용 → 본 룰 비대상.
 
-**Base ref 분기 (MUST, #424)**: `docs/stories.md` 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = 통합 브랜치 모드. outer worktree base ref 도 integration branch 와 정합 필요 (chain 은 `git worktree add -b <new> <path> origin/<integration>` + `EnterWorktree(path=<path>)` 패턴). 절차 = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md) §1.1.1.
+**Base ref 분기 (MUST, #424)**: epic 단위 stories.md (impl task 경로의 `epic-NN-<slug>/stories.md`; root `docs/stories.md` 는 legacy 폴백) 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = 통합 브랜치 모드. outer worktree base ref 도 integration branch 와 정합 필요 (chain 은 `git worktree add -b <new> <path> origin/<integration>` + `EnterWorktree(path=<path>)` 패턴). 절차 = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md) §1.1.1.
 
 ### Pre-flight gate (진입 직후, 1회)
 
@@ -124,7 +124,7 @@ retry / POLISH 시 기존 sub-step 재활용 — 신규 TaskCreate X.
 
 ### PR 생성 직전 — base 분기 체크 (MUST)
 
-`gh pr create` 직전 `docs/stories.md` 상단 `**Base Branch:**` 줄 매치 1회 확인:
+`gh pr create` 직전 epic 단위 stories.md (impl task 경로의 `epic-NN-<slug>/stories.md` = task 경로 조부모; root `docs/stories.md` 는 legacy 폴백) 상단 `**Base Branch:**` 줄 매치 1회 확인:
 - 매치 → `gh pr create --base <매치 값>` (통합 브랜치 케이스, sub-PR base = `feature/<slug>`)
 - 매치 없음 → `gh pr create --base main` (default, trunk-based)
 

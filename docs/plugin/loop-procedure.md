@@ -34,13 +34,15 @@ EnterWorktree(name="<skill>-{ts_short}")   # impl 류만
 
 ### 1.1.1 base-ref 분기 (통합 브랜치 모드, #424)
 
-`docs/stories.md` 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = **통합 브랜치 모드** (long-lived integration branch + sub-PR 누적 패턴, `commands/product-plan.md` Step 6.5/7). 이 경우 outer worktree base ref 도 integration branch 와 정합해야 함 — `EnterWorktree(name=)` default 인 `worktree.baseRef=fresh` (origin/main 기반) 은 base mismatch → sub-PR diff 거대화 ("삭제 변경" false).
+epic 단위 stories.md (`docs/milestones/vNN/epics/epic-NN-<slug>/stories.md`; root `docs/stories.md` 는 legacy 폴백) 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = **통합 브랜치 모드** (long-lived integration branch + sub-PR 누적 패턴, `commands/product-plan.md` Step 6.5/7). 이 경우 outer worktree base ref 도 integration branch 와 정합해야 함 — `EnterWorktree(name=)` default 인 `worktree.baseRef=fresh` (origin/main 기반) 은 base mismatch → sub-PR diff 거대화 ("삭제 변경" false).
 
 EnterWorktree tool 은 base parameter 미지원 → 사전 `git worktree add` 후 `EnterWorktree(path=)` 진입 패턴:
 
 ```bash
-# stories.md base branch 매치
-BASE_BRANCH=$(grep -m1 -E '^\*\*Base Branch:\*\*' docs/stories.md 2>/dev/null \
+# stories.md base branch 매치 — epic 단위 stories.md (impl-loop = task 경로 조부모, architect-loop = 입력 epic dir).
+# root docs/stories.md 는 legacy 폴백. 호출자가 STORIES 를 epic 단위 경로로 set (예: STORIES="$(dirname "$(dirname "$TASK_FILE")")/stories.md").
+STORIES="${STORIES:-docs/stories.md}"
+BASE_BRANCH=$(grep -m1 -E '^\*\*Base Branch:\*\*' "$STORIES" 2>/dev/null \
   | sed -E 's/.*Base Branch:\*\*[[:space:]]+//')
 
 if [ -n "$BASE_BRANCH" ] && [ "$BASE_BRANCH" != "main" ]; then
@@ -331,9 +333,13 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 #            결정 절차 = skills/impl-loop/SKILL.md "## 브랜치명 결정".
 BRANCH="feature/epic{N}_story{M}_{desc}"   # 예: feature/epic7_story2_revival-button
 
-# base 분기 = git-spec §6 — stories.md 상단 **Base Branch:** 마커 매치 시 통합 브랜치, 없으면 main (§1.1.1 추출 패턴 재사용).
+# base 분기 = git-spec §6 — epic 단위 stories.md 상단 **Base Branch:** 마커 매치 시 통합 브랜치, 없으면 main.
+# stories.md 는 epic 디렉토리(impl task 경로의 조부모 = epic-NN-<slug>/) 에 있음. root docs/stories.md 는 legacy 폴백.
 # MUST: checkout 과 gh pr create 둘 다 이 BASE 사용 — main 하드코딩 시 통합 브랜치 모드 sub-PR 이 틀린 base 로 가 epic atomic 깨짐.
-BASE=$(grep -m1 -E '^\*\*Base Branch:\*\*' docs/stories.md 2>/dev/null | sed -E 's/.*Base Branch:\*\*[[:space:]]+//')
+TASK_FILE="docs/milestones/.../epics/epic-NN-<slug>/impl/NN-*.md"   # 본 task impl 파일
+STORIES="$(dirname "$(dirname "$TASK_FILE")")/stories.md"          # epic 단위 stories.md
+[ -f "$STORIES" ] || STORIES="docs/stories.md"                     # legacy 폴백
+BASE=$(grep -m1 -E '^\*\*Base Branch:\*\*' "$STORIES" 2>/dev/null | sed -E 's/.*Base Branch:\*\*[[:space:]]+//')
 BASE="${BASE:-main}"
 git checkout -b "$BRANCH" "$BASE"
 git add src/**
@@ -341,24 +347,29 @@ git commit -m "<git-spec §2 형식>"
 git push -u origin "$BRANCH"
 
 # PR body: Closes vs Part of 자동 판단 (git-spec.md §8 PR 트레일러 적용 절차)
-# 입력 = impl 파일 frontmatter `task_index: i/total` + `story: N` (module-architect × K 시점에 있음)
-TASK_FILE="docs/milestones/.../impl/NN-*.md"
-TASK_INDEX=$(awk '/^task_index:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")  # "3/3"
+# 입력 = impl 파일 frontmatter `task_index: i/total` + `story: N` (module-architect × K 시점에 있음). TASK_FILE = 위 BASE 블록 재사용.
+TASK_INDEX=$(awk '/^task_index:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")  # "3/3" 또는 공통 task = "—"
 STORY_NUM=$(awk '/^story:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")
-I="${TASK_INDEX%/*}"
-TOTAL="${TASK_INDEX#*/}"
 
-if [ "$I" = "$TOTAL" ]; then
-  # Story 마지막 task → Closes
-  PR_BODY="Closes #${STORY_ISSUE}"
-  # epic 마지막 story 판정 (issue-lifecycle.md §2.2)
-  EPIC_OPEN_STORIES=$(gh issue list --label "epic-${EPIC_NUM}-${EPIC_SLUG}" --milestone Story --state open --json number --jq 'length' 2>/dev/null || echo 0)
-  if [ "$EPIC_OPEN_STORIES" = "1" ]; then
-    PR_BODY="${PR_BODY}
-Closes #${EPIC_ISSUE}"
-  fi
+if ! printf '%s' "$TASK_INDEX" | grep -qE '^[0-9]+/[0-9]+$'; then
+  # 공통 task (task_index: —, story: 공통) — i/total 비교 비대상 (MUST: "—" 는 I==TOTAL 로 오판돼 Closes 오발 위험).
+  # task-index trailer omit + Part of (git-spec §8.1). check_pr_body.mjs 는 task-index 부재 시 fallback path 로 트레일러 1건만 요구 → Part of 통과.
+  PR_BODY="Part of #${EPIC_ISSUE:-$STORY_ISSUE}"
 else
-  PR_BODY="Part of #${STORY_ISSUE}"
+  I="${TASK_INDEX%/*}"
+  TOTAL="${TASK_INDEX#*/}"
+  if [ "$I" = "$TOTAL" ]; then
+    # Story 마지막 task → Closes
+    PR_BODY="Closes #${STORY_ISSUE}"
+    # epic 마지막 story 판정 (issue-lifecycle.md §2.2)
+    EPIC_OPEN_STORIES=$(gh issue list --label "epic-${EPIC_NUM}-${EPIC_SLUG}" --milestone Story --state open --json number --jq 'length' 2>/dev/null || echo 0)
+    if [ "$EPIC_OPEN_STORIES" = "1" ]; then
+      PR_BODY="${PR_BODY}
+Closes #${EPIC_ISSUE}"
+    fi
+  else
+    PR_BODY="Part of #${STORY_ISSUE}"
+  fi
 fi
 gh pr create --base "$BASE" --title "<git-spec §4 형식>" --body "$PR_BODY"
 ```

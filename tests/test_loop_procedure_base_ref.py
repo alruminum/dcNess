@@ -78,6 +78,31 @@ class TestBaseBranchExtraction(unittest.TestCase):
         )
 
 
+def resolve_stories_path(task_file: str) -> str:
+    """§3.4/§1.1.1 의 epic 단위 stories.md 경로 유도 (impl task 경로 조부모 + stories.md)."""
+    cmd = f'printf %s "$(dirname "$(dirname "{task_file}")")/stories.md"'
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    return result.stdout.strip()
+
+
+class TestStoriesPathResolution(unittest.TestCase):
+    """F1-b: base 분기용 stories.md 는 root 가 아니라 epic 단위 (task 경로 조부모) 여야 함."""
+
+    def test_epic_level_stories_from_task_path(self):
+        task = "docs/milestones/v0.2/epics/epic-07-foo/impl/03-bar.md"
+        self.assertEqual(
+            resolve_stories_path(task),
+            "docs/milestones/v0.2/epics/epic-07-foo/stories.md",
+        )
+
+    def test_not_root_docs_stories(self):
+        # 회귀 차단: epic 단위 task 인데 root docs/stories.md 로 떨어지면 통합 브랜치 base 누락
+        task = "docs/milestones/v01/epics/epic-11-monkey/impl/01-theme.md"
+        resolved = resolve_stories_path(task)
+        self.assertNotEqual(resolved, "docs/stories.md")
+        self.assertTrue(resolved.endswith("/epic-11-monkey/stories.md"), resolved)
+
+
 class TestSSOTReferencePresent(unittest.TestCase):
     """SSOT (loop-procedure.md §1.1.1) 참조가 skill 본문에 박혀있는지 검증."""
 
