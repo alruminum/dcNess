@@ -10,7 +10,7 @@ agent 는 일을 마치면 prose 마지막 단락에 *어떤 결과로 끝났는
 
 라우팅은 **skill 이 소유**한다. agent 는 결론(enum)만 내고, "그 결론이면 다음 누구" 는 본 문서가 정한다. 같은 agent 가 다른 skill 에 나와도 그건 *그 skill 의 라우팅* 이지 본 문서 영역이 아니다.
 
-**개수 vs 엔진** — 개수(single/chain)는 절차 골격(1 run vs N run), 엔진(풀 4-agent / build-worker)은 각 run 안의 시퀀스를 정한다 ([`SKILL.md`](SKILL.md) §진입 분기). 본 라우팅은 *엔진별* 시퀀스 안의 결론→다음을 다룬다. chain 의 task 경계 라우팅(`clean`/`error`/`blocked`)은 §5.
+**개수 vs 엔진** — 개수(single/chain)는 절차 골격(1 run vs N run), 엔진(풀 4-agent / build-worker)은 각 run 안의 시퀀스를 정한다 ([진입 분기](SKILL.md#진입-분기-개수-엔진-직교)). 본 라우팅은 *엔진별* 시퀀스 안의 결론→다음을 다룬다. chain 의 task 경계 라우팅(`clean`/`error`/`blocked`)은 [chain 모드 task 경계 라우팅](#chain-모드-task-경계-라우팅).
 
 ## 라우팅 그래프
 
@@ -111,7 +111,7 @@ escalate 계열 결론 수신 시 **메인이 즉시 사용자 보고 후 대기
 
 ## chain 모드 task 경계 라우팅
 
-chain (N task) 에서 *각 task run* 의 종료 결론에 따른 다음 task 진입 ([`SKILL.md`](SKILL.md) §chain 모드):
+chain (N task) 에서 *각 task run* 의 종료 결론에 따른 다음 task 진입 ([chain 모드](SKILL.md#chain-모드-n-task-오케스트레이션)):
 
 | task 결론 | 다음 |
 |---|---|

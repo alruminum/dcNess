@@ -56,7 +56,7 @@ UI 작업 감지 시 (풀 4-agent 엔진 한정) 시퀀스 **선두에 designer 
 
 ## 절차 — 공통 골격 (single · chain 공유)
 
-[`loop-procedure.md`](../../docs/plugin/loop-procedure.md) §1~§6 (Step mechanics) 따름. 아래 룰은 single 1 run 과 chain 의 매 task run 에 **공통 적용**된다.
+[`loop-procedure.md`](../../docs/plugin/loop-procedure.md) 의 Step mechanics 따름. 아래 룰은 single 1 run 과 chain 의 매 task run 에 **공통 적용**된다.
 
 ### 워크트리 (기본 켜짐)
 
@@ -68,11 +68,11 @@ UI 작업 감지 시 (풀 4-agent 엔진 한정) 시퀀스 **선두에 designer 
 
 ### Pre-flight gate (진입 직후, 1회)
 
-[`issue-lifecycle.md`](../../docs/plugin/issue-lifecycle.md#참조) 매치 강제 — 부모 epic stories.md 상단 `**GitHub Epic Issue:** [#\d+]` 또는 `미등록 (사유: …)` 매치 0건 시 즉시 STOP + 사용자 보고. silent skip 금지.
+[`issue-lifecycle.md` mid-flow 누락 차단](../../docs/plugin/issue-lifecycle.md#mid-flow-누락-차단-pre-flight-gate) 매치 강제 — 부모 epic stories.md 상단 `**GitHub Epic Issue:** [#\d+]` 또는 `미등록 (사유: …)` 매치 0건 시 즉시 STOP + 사용자 보고. silent skip 금지.
 
 ### 부모 이슈 본문 read 의무 (MUST)
 
-Pre-flight gate 통과 후, 매치된 **epic / story 이슈** 번호 *각 본문 read 의무*. **task 는 GitHub 이슈가 없다** ([`issue-lifecycle.md`](../../docs/plugin/issue-lifecycle.md) §1.1 — PR 1개 = task 1개, PR 자체가 추적 단위) → `<task-num>` read 하지 않는다. task 컨텍스트는 impl 파일 frontmatter + 본문이 진본.
+Pre-flight gate 통과 후, 매치된 **epic / story 이슈** 번호 *각 본문 read 의무*. **task 는 GitHub 이슈가 없다** ([`issue-lifecycle.md` 이슈 계층](../../docs/plugin/issue-lifecycle.md#이슈-계층) — PR 1개 = task 1개, PR 자체가 추적 단위) → `<task-num>` read 하지 않는다. task 컨텍스트는 impl 파일 frontmatter + 본문이 진본.
 
 ```bash
 gh issue view <epic-num> | head -80
@@ -106,7 +106,7 @@ tail -50 "<task-path>"
 **catastrophic 안티패턴**: "begin-step 으로 트래킹 충분하다 자율 판단해서 TaskCreate skip" — 사용자가 진행 상태 불가시 → "왜 task 안 만들고 셀프로 돌려?" 지적 회귀.
 
 **호출 시점** (skip 불가):
-- 진입 직후 (Pre-flight 통과 후, 절차 진입 *전*) — task list 생성. single = task 헤더 1개 + 엔진별 sub-step. chain = 전체 task list (§chain 모드 진행 뷰).
+- 진입 직후 (Pre-flight 통과 후, 절차 진입 *전*) — task list 생성. single = task 헤더 1개 + 엔진별 sub-step. chain = 전체 task list ([진행 뷰](#진행-뷰-task-리스트)).
 - 각 step 전환 — sub-step `TaskUpdate(status=in_progress | completed)`
 - 종료 직전 — 헤더 + sub-step 전부 `TaskUpdate(status=completed)`
 
@@ -116,10 +116,10 @@ retry / POLISH 시 기존 sub-step 재활용 — 신규 TaskCreate X.
 
 브랜치·커밋·PR 네이밍은 [`git-spec.md`](../../docs/plugin/git-spec.md#브랜치) 이 **단일 SSOT** — 본 skill 은 자체 네이밍 규칙을 두지 않고 task 성격에 맞는 SSOT 패턴을 고른다. (`feat/`·`chore/` 류 자체 분류 금지 — git-naming 게이트 [`check_git_naming.mjs`](../../scripts/check_git_naming.mjs) 가 거부해 push/pre-push 에서 막힘.)
 
-- **정식 impl task** (epic/story 컨텍스트 — impl 파일 frontmatter `story: N` (숫자) + 경로 `.../epic-NN-*/impl/`) → `feature/epic{N}_story{M}_{desc}` (git-spec §1 "스토리 작업 impl")
-- **공통 task** (impl 파일 frontmatter `story: 공통` + `task_index: —` — module-architect 공통 호출 산출) → `feature/epic{N}_common_{desc}` (git-spec §1 `feature/{desc}` 의 epic-traceable 형 — story 번호 없음, 게이트는 generic feature 로 통과). 제목 = `[feature] {설명}`, 트레일러 = `Part of #<epic>` (부모 = epic 단일 룰, task-index trailer omit — git-spec §8.1)
-- **버그픽스 fallback** (invocation 에 이슈 번호 명시) → `fix/issue{N}_{desc}` (git-spec §1 "버그픽스")
-- `{desc}` = impl 파일 basename 의 앞 순번 `NN-` 를 **제거**한 설명부 (소문자 시작 + `[a-z0-9_-]` + 최소 3자 — git-spec §1 `{desc}` 제약). 순번을 안 떼면 `feature/05-foo` 처럼 desc 가 숫자로 시작해 게이트 FAIL. 예: `impl/03-revival-button.md` + `story: 2` + `epic-07-*` → `feature/epic7_story2_revival-button`.
+- **정식 impl task** (epic/story 컨텍스트 — impl 파일 frontmatter `story: N` (숫자) + 경로 `.../epic-NN-*/impl/`) → `feature/epic{N}_story{M}_{desc}` ([git-spec 브랜치](../../docs/plugin/git-spec.md#브랜치) "스토리 작업 impl")
+- **공통 task** (impl 파일 frontmatter `story: 공통` + `task_index: —` — module-architect 공통 호출 산출) → `feature/epic{N}_common_{desc}` ([git-spec 브랜치](../../docs/plugin/git-spec.md#브랜치) `feature/{desc}` 의 epic-traceable 형 — story 번호 없음, 게이트는 generic feature 로 통과). 제목 = `[feature] {설명}`, 트레일러 = `Part of #<epic>` (부모 = epic 단일 룰, task-index trailer omit — [git-spec 기본 룰](../../docs/plugin/git-spec.md#기본-룰))
+- **버그픽스 fallback** (invocation 에 이슈 번호 명시) → `fix/issue{N}_{desc}` ([git-spec 브랜치](../../docs/plugin/git-spec.md#브랜치) "버그픽스")
+- `{desc}` = impl 파일 basename 의 앞 순번 `NN-` 를 **제거**한 설명부 (소문자 시작 + `[a-z0-9_-]` + 최소 3자 — [git-spec 브랜치](../../docs/plugin/git-spec.md#브랜치) `{desc}` 제약). 순번을 안 떼면 `feature/05-foo` 처럼 desc 가 숫자로 시작해 게이트 FAIL. 예: `impl/03-revival-button.md` + `story: 2` + `epic-07-*` → `feature/epic7_story2_revival-button`.
 - base 분기 = [`git-spec.md`](../../docs/plugin/git-spec.md#git-절차) (통합 브랜치 마커 매치 시 그 base, 아니면 main).
 
 ### PR 생성 직전 — base 분기 체크 (MUST)
@@ -132,21 +132,21 @@ retry / POLISH 시 기존 sub-step 재활용 — 신규 TaskCreate X.
 
 ### git 권한
 
-worktree branch 안 commit / push / PR 생성·머지 = **메인 Claude 전담**. engineer / build-worker / test-engineer 등 sub-agent 는 git commit/push/branch + `gh pr create/merge` 금지 — 코드 변경만 (worker 는 PR 본문·commit message *초안* 만 prose return, 실제 명령은 메인). main 직접 commit/push = ❌ (main-block hook 차단). 상세 = [`git-spec.md`](../../docs/plugin/git-spec.md#git-절차) + [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#impl-task-loop-commit-구조) + [`build-worker.md`](../../agents/build-worker.md) §권한 경계.
+worktree branch 안 commit / push / PR 생성·머지 = **메인 Claude 전담**. engineer / build-worker / test-engineer 등 sub-agent 는 git commit/push/branch + `gh pr create/merge` 금지 — 코드 변경만 (worker 는 PR 본문·commit message *초안* 만 prose return, 실제 명령은 메인). main 직접 commit/push = ❌ (main-block hook 차단). 상세 = [`git-spec.md`](../../docs/plugin/git-spec.md#git-절차) + [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#impl-task-loop-commit-구조) + [`build-worker.md` 권한 경계](../../agents/build-worker.md#권한-경계-catastrophic).
 
 ### 사전 read (lazy — 필요시만, #400)
 
-정상 흐름은 본 skill 본문 + 인용된 docs §번호 만으로 진행. 본문에 있는 catastrophic / Pre-flight gate / agent boundary 룰이 1차. *룰 모호 / 분기 발생* 시에만 [`impl-loop-routing.md`](impl-loop-routing.md) (라우팅) / `loop-procedure.md` (절차 mechanics + §7.0 인덱스) / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
+정상 흐름은 본 skill 본문 + 인용된 docs 섹션 링크 만으로 진행. 본문에 있는 catastrophic / Pre-flight gate / agent boundary 룰이 1차. *룰 모호 / 분기 발생* 시에만 [`impl-loop-routing.md`](impl-loop-routing.md) (라우팅) / `loop-procedure.md` (절차 mechanics + 한눈 인덱스) / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
 
 ### impl 파일 사전 read 의무 (MUST — module-architect 7 원칙 + cost-aware #436)
 
-진입 시 engineer / test-engineer / build-worker 가 impl 파일의 `## 사전 준비` 섹션 따라 다음 파일 read 의무. **단 통째 read 금지** — `CLAUDE.md` (글로벌) §cost-aware 행동 (#402) 정합: 200 line 초과 doc 은 grep + offset/limit 부분 read.
+진입 시 engineer / test-engineer / build-worker 가 impl 파일의 `## 사전 준비` 섹션 따라 다음 파일 read 의무. **단 통째 read 금지** — `CLAUDE.md` (글로벌) 의 cost-aware 행동 (#402) 정합: 200 line 초과 doc 은 grep + offset/limit 부분 read.
 
 | 항목 | read 범위 |
 |---|---|
-| `docs/architecture.md` | 200 line 초과 시 본 task 의 `task_index` 에 해당하는 § 만 grep + offset read (예: `grep -n "## 3\." docs/architecture.md` 로 위치 잡고 offset). 100 line 이하면 통째 OK |
+| `docs/architecture.md` | 200 line 초과 시 본 task 의 `task_index` 에 해당하는 섹션만 grep + offset read (예: `grep -n "## 3\." docs/architecture.md` 로 위치 잡고 offset). 100 line 이하면 통째 OK |
 | `docs/adr.md` | 본 task 영향 ADR 만 read (예: `grep "ADR-19A\|ADR-19E" docs/adr.md` 후 매치 줄 ±10 line). 부재 시 silent skip |
-| `docs/prd.md` | 본 task 의 Story 항목 § 만. 통째 read 금지 |
+| `docs/prd.md` | 본 task 의 Story 항목 섹션만. 통째 read 금지 |
 | 의존 task 머지 PR | `gh pr view <num> --json body --jq '.body' | head -20` — 1~2줄 결정 사항만 필요. 통째 body json 금지 (이슈 #436) |
 | 형제 PR 환기 (같은 epic) | `gh pr list --search "[epic<N>]" --state merged --limit 10 --json title,url` 로 *title + url 만* 1회 훑음. body 통째 read 금지 — 인터페이스 변경 의심되면 그때 `--json body` 단건 fetch |
 | 의존 모듈 (수정 X 영역) | **grep + 시그니처만** read. 예: `grep "^export" path/to/file.ts | head -10` + 매치 줄 ±2 line. 통째 read 금지 — 본 task 가 수정하지 않는 영역의 구현 디테일 불요 |
@@ -156,9 +156,9 @@ worktree branch 안 commit / push / PR 생성·머지 = **메인 Claude 전담**
 
 **추가 — 메인 직접 read 의무 (강조 + cost-aware, #436)**: 메인 Claude 는 *진입 분기 판단* 에 필요한 **최소** 만 read. agent prompt 경로 박는 것 외에 메인이 통째 read 하지 말 것 — agent 가 자체 read 함.
 
-- 메인 진입 분기 판단 필요 정보 = (a) 이번 task 의 Scope (impl 파일 § Scope grep) / (b) 의존 task 산출물 위치 (impl 파일 § 사전 준비 grep) / (c) ADR 위반 의심 시 해당 ADR 만 grep.
+- 메인 진입 분기 판단 필요 정보 = (a) 이번 task 의 Scope (impl 파일 Scope 섹션 grep) / (b) 의존 task 산출물 위치 (impl 파일 사전 준비 섹션 grep) / (c) ADR 위반 의심 시 해당 ADR 만 grep.
 - `docs/architecture.md` / `docs/adr.md` *통째 read* 금지 (이슈 #436 실측 — task 진입 직후 80k messages / 12% context 누적, 코드 1줄 안 썼는데). 부분 read 의무.
-- 정합: `CLAUDE.md` §cost-aware 행동 (#402) — "큰 plan/docs 통째 read 회피 → grep + offset/limit. sub-agent 위임 우선".
+- 정합: `CLAUDE.md` 의 cost-aware 행동 (#402) — "큰 plan/docs 통째 read 회피 → grep + offset/limit. sub-agent 위임 우선".
 
 ### validation provider resolve (Codex opt-in)
 
@@ -186,7 +186,7 @@ default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → p
 2. **engineer:IMPL** (IMPL_DONE) → 구현 + 테스트 PASS
 3. **code-validator** (PASS) — impl 계획 ↔ 구현 정합 검증
 4. **pr-reviewer** (LGTM, read-only) — 코드 품질·보안 검토만. `tools: Read, Glob, Grep` — *commit/push/PR 생성·머지 권한 없음*. **엔진 A 는 PR 생성 *전* 단계라 pr-reviewer 입력 = impl 경로 + 구현 변경 파일 목록(로컬 diff)** — PR 객체 아님 (build-worker 엔진과 달리 PR 미생성 상태. [`pr-reviewer.md`](../../agents/pr-reviewer.md) 입력 규약 참조)
-5. **메인 Claude (git/PR)** — pr-reviewer PASS 후, **engineer/code-validator prose (변경 요약·의도) + [`git-spec.md`](../../docs/plugin/git-spec.md#pr-본문) 템플릿 기반으로 메인이 commit message·PR 본문 작성** (엔진 A 는 build-worker 미사용 → "worker prose" 아님. PR 트레일러 `Closes/Part of` 는 impl frontmatter `task_index`/`story` + git-spec §8 적용) → `scripts/pr-create.sh` 호출 → `scripts/pr-finalize.sh` 머지
+5. **메인 Claude (git/PR)** — pr-reviewer PASS 후, **engineer/code-validator prose (변경 요약·의도) + [`git-spec.md`](../../docs/plugin/git-spec.md#pr-본문) 템플릿 기반으로 메인이 commit message·PR 본문 작성** (엔진 A 는 build-worker 미사용 → "worker prose" 아님. PR 트레일러 `Closes/Part of` 는 impl frontmatter `task_index`/`story` + [git-spec PR 트레일러](../../docs/plugin/git-spec.md#pr-트레일러-part-of-closes) 적용) → `scripts/pr-create.sh` 호출 → `scripts/pr-finalize.sh` 머지
 
 ❌ 안티패턴 (#431 실측 회귀): test-engineer + engineer 만 호출하고 commit/push/PR 안 만들고 prose "PASS" 박고 종료. 1 자식 = 1 PR + 1 이슈 close 보장 깨짐.
 
@@ -199,7 +199,7 @@ default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → p
 
 시퀀스 = **build-worker (2-step: test+impl+self-validate 통합) → pr-reviewer**. impl 파일 부재 시 module-architect 선두 (3-step).
 
-1. **begin-run + (reset) + build-worker step** — `begin-run impl` → **(chain 의 첫 task 또는 single 모드면 `dcness-helper prev-tasks-reset` — `begin-step` *전*, §prev-tasks 초기화)** → `begin-step build-worker` → `Agent(build-worker, prompt=<impl 경로 + task slug + RUN_ID + (begin-step stdout 의 [PREVIOUS_TASKS] 섹션 있으면 그대로 포함, #525)>)` → 반환 prose 결론 분기 (= [`impl-loop-routing.md`](impl-loop-routing.md#결론-다음-호출-매핑)). 이후 `end-step build-worker`. worker 안 phase 별 prose (`build-test.md` / `build-impl.md` / `build-validate.md`) 는 worker 자체 Write — [`loop-procedure.md §3.2.1`](../../docs/plugin/loop-procedure.md).
+1. **begin-run + (reset) + build-worker step** — `begin-run impl` → **(chain 의 첫 task 또는 single 모드면 `dcness-helper prev-tasks-reset` — `begin-step` *전*, prev-tasks 초기화)** → `begin-step build-worker` → `Agent(build-worker, prompt=<impl 경로 + task slug + RUN_ID + (begin-step stdout 의 [PREVIOUS_TASKS] 섹션 있으면 그대로 포함, #525)>)` → 반환 prose 결론 분기 (= [`impl-loop-routing.md`](impl-loop-routing.md#결론-다음-호출-매핑)). 이후 `end-step build-worker`. worker 안 phase 별 prose (`build-test.md` / `build-impl.md` / `build-validate.md`) 는 worker 자체 Write — [`loop-procedure.md` build-worker phase prose](../../docs/plugin/loop-procedure.md#build-worker-phase-prose-impl-loop-hybrid-a-한정).
 2. **git/PR 생성 (메인)** — worker prose 의 commit message + PR 본문 초안을 임시 파일로 박고 `scripts/pr-create.sh` 통합 호출:
    ```bash
    cat > /tmp/pr-body-<slug>.md <<'PR'
@@ -263,7 +263,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/dcness-helper" end-run                      
 
 ### review 출력 재정의 (#446)
 
-chain 안에서는 §종료 조건 의 review.md *원본 그대로 출력 MUST* 가 **재정의** 된다 (매 task 전수 출력 시 N × review.md 누적 → cache_read 폭주). 메인 컨텍스트 출력 = 5줄 요약:
+chain 안에서는 [종료 조건](#종료-조건-must-메인-claude-의무) 의 review.md *원본 그대로 출력 MUST* 가 **재정의** 된다 (매 task 전수 출력 시 N × review.md 누적 → cache_read 폭주). 메인 컨텍스트 출력 = 5줄 요약:
 
 ```
 [task<i> · <slug>] <clean|error|blocked>
@@ -277,7 +277,7 @@ next: <다음 task slug 진입 | 정지 사유>
 - **build-worker 엔진**: `build-worker: N tests RED→GREEN · M files +X -Y · validate PASS|FAIL · pr-reviewer: LGTM|FAIL` (impl 부재로 module-architect 선두면 앞에 `module-architect: PASS|ESCALATE · ` 추가)
 - **풀 4-agent 엔진** (chain + `엄정하게` override): `test-engineer: N tests · engineer: M files +X -Y · code-validator: PASS|FAIL · pr-reviewer: LGTM|FAIL` (fallback module-architect 선두면 앞에 `module-architect: PASS · ` 추가)
 
-**5줄 작성 책임 = 메인 (PR 생성·머지 완료 후)** — `PR <#NNN> merged` 의 번호·merged 상태는 `scripts/pr-create.sh` / `pr-finalize.sh` 완료 후에야 확정된다. 특히 **풀 4-agent 엔진은 PR 이 pr-reviewer PASS *후* 생성**되므로 pr-reviewer 는 PR 번호조차 모른다 — pr-reviewer 가 5줄을 박을 수 없다. 따라서 pr-reviewer 는 자기 결론(LGTM/FAIL) + 엔진별 메트릭 *재료* 만 prose 에 제공하고 ([`pr-reviewer.md`](../../agents/pr-reviewer.md) §산출물 정보 의무 정합), **메인이 머지(pr-finalize) 완료 후 위 5줄을 종합해 chat 에 echo** 한다 — 자유 형식 단축 금지 (외부 사용자 [F8 실측](https://github.com/alruminum/dcNess/issues/507)). build-worker 엔진은 PR 이 pr-reviewer *전* 생성되지만, merged 상태는 동일하게 머지 후 확정이라 5줄 종합은 메인 책임으로 통일.
+**5줄 작성 책임 = 메인 (PR 생성·머지 완료 후)** — `PR <#NNN> merged` 의 번호·merged 상태는 `scripts/pr-create.sh` / `pr-finalize.sh` 완료 후에야 확정된다. 특히 **풀 4-agent 엔진은 PR 이 pr-reviewer PASS *후* 생성**되므로 pr-reviewer 는 PR 번호조차 모른다 — pr-reviewer 가 5줄을 박을 수 없다. 따라서 pr-reviewer 는 자기 결론(LGTM/FAIL) + 엔진별 메트릭 *재료* 만 prose 에 제공하고 ([`pr-reviewer.md` 산출물 정보 의무](../../agents/pr-reviewer.md#산출물-정보-의무-형식-자유) 정합), **메인이 머지(pr-finalize) 완료 후 위 5줄을 종합해 chat 에 echo** 한다 — 자유 형식 단축 금지 (외부 사용자 [F8 실측](https://github.com/alruminum/dcNess/issues/507)). build-worker 엔진은 PR 이 pr-reviewer *전* 생성되지만, merged 상태는 동일하게 머지 후 확정이라 5줄 종합은 메인 책임으로 통일.
 
 **디스크** — `<run_dir>/review.md` 는 end-run 안전망이 원본 그대로 저장. `/run-review` 진단 / compaction 후 재진입 시 디스크에서 read.
 
@@ -350,12 +350,12 @@ PR merge 직후 *반드시* 실행 (issue #396):
 - ❌ 한 task 의 PR 머지 전 다음 task 진입 — task 간 의존 깨짐.
 - ❌ escalate 신호 무시하고 다음 task 진행 — 사용자 부재 환경 추측 진행 = 폭주.
 - ❌ chain 전체 완료 후 자율 작업 (이슈 등록 / cleanup / 분석) 진입 시 `post-task-begin` marker 누락 — task ROI 측정 왜곡 (#472).
-- ❌ **TaskCreate / TaskUpdate skip — `begin-step` 트래킹으로 충분 자율 판단** (catastrophic). §강제 사전 참조.
+- ❌ **TaskCreate / TaskUpdate skip — `begin-step` 트래킹으로 충분 자율 판단** (catastrophic). [강제 사전](#강제-사전-taskcreate-taskupdate-사용자-가시성-must) 참조.
 
 ## 참조
 
 - 라우팅 (결론→다음 / retry / escalate): [`impl-loop-routing.md`](impl-loop-routing.md) — 본 skill 라우팅 SSOT
-- loop 인덱스 + 절차 mechanics: [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#한눈-인덱스-loop-진입-ssot) / §1~§6
+- loop 인덱스 + 절차 mechanics: [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#한눈-인덱스-loop-진입-ssot) / Step mechanics
 - 권한 경계: [`agent_boundary.py`](../../harness/agent_boundary.py)
 - 브랜치·커밋·PR 네이밍: [`git-spec.md`](../../docs/plugin/git-spec.md)
 - agent 정의: [`test-engineer.md`](../../agents/test-engineer.md) / [`engineer.md`](../../agents/engineer.md) / [`code-validator.md`](../../agents/code-validator.md) / [`pr-reviewer.md`](../../agents/pr-reviewer.md) / [`build-worker.md`](../../agents/build-worker.md) / [`module-architect.md`](../../agents/module-architect.md) / [`designer.md`](../../agents/designer.md)

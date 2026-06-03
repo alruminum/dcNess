@@ -114,7 +114,7 @@ task-level 세부 진행 추적 X (PR + GitHub Issue close 시스템 SSOT — [`
 
 ### Step 0 — 사전 read (lazy — 필요시만, #400)
 
-정상 흐름은 본 skill 본문 + 인용된 docs §번호 만으로 진행. *룰 모호 / 분기 발생* 시에만 [`product-plan-routing.md`](product-plan-routing.md) (라우팅) / `docs/plugin/loop-procedure.md` / `skills/architect-loop/SKILL.md` / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
+정상 흐름은 본 skill 본문 + 인용된 docs 섹션 링크 만으로 진행. *룰 모호 / 분기 발생* 시에만 [`product-plan-routing.md`](product-plan-routing.md) (라우팅) / `docs/plugin/loop-procedure.md` / `skills/architect-loop/SKILL.md` / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
 
 ### Step 1 — 사용자와 그릴 대화
 
@@ -253,7 +253,7 @@ bash scripts/create_epic_story_issues.sh docs/milestones/vNN/epics/epic-NN-<slug
 
 상세 SSOT = [`docs/plugin/issue-lifecycle.md`](../../docs/plugin/issue-lifecycle.md#sub-issue-연결-epic-story-gh-api-메커니즘).
 
-스크립트 실패 시 메인이 사용자에게 보고 + `docs/plugin/issue-lifecycle.md` §1 따라 수동 처리 가능 (`mcp__github__create_issue` + `gh api` 직접 호출).
+스크립트 실패 시 메인이 사용자에게 보고 + [`docs/plugin/issue-lifecycle.md` Sub-issue 연결](../../docs/plugin/issue-lifecycle.md#sub-issue-연결-epic-story-gh-api-메커니즘) 따라 수동 처리 가능 (`mcp__github__create_issue` + `gh api` 직접 호출).
 
 이슈 등록 후 stories.md 변경분은 별도 commit + PR 또는 사용자 자율 (스크립트 자체는 git mutation X — stories.md 만 수정).
 
