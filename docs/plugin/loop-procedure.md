@@ -32,7 +32,7 @@ EnterWorktree(name="<skill>-{ts_short}")   # impl 류만
 
 ### base-ref 분기 (통합 브랜치 모드, #424)
 
-**운전 원칙만 여기, 규칙은 git-spec.** epic 단위 stories.md 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = 통합 브랜치 모드 → outer worktree base ref 도 integration branch 와 정합해야 한다 (`EnterWorktree(name=)` default `baseRef=fresh` = origin/main 이라 base mismatch → sub-PR diff 거대화 false). EnterWorktree 가 base parameter 미지원이라 사전 `git worktree add -b <new> <path> origin/<integration>` 후 `EnterWorktree(path=<path>)` 로 진입한다.
+**운전 원칙만 여기, 규칙은 git-spec.** epic 단위 stories.md 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = 통합 브랜치 모드 → outer worktree base ref 도 integration branch 와 정합해야 한다 (`EnterWorktree(name=)` default `baseRef=fresh` = origin/main 이라 base mismatch → sub-PR diff 거대화 false). EnterWorktree 가 base parameter 미지원이라 사전 `git fetch origin <integration>` → `git worktree add -b <new> <path> origin/<integration>` → `EnterWorktree(path=<path>)` 로 진입한다. **fetch 선행 필수** — remote-tracking ref 미갱신 시 `origin/<integration>` 이 stale / unknown revision 이라 worktree add 실패 또는 stale base 로 sub-PR diff 거대화 재발.
 
 - **base 값 판정 규칙** (`**Base Branch:**` 마커 → base, 없으면 main · checkout/PR base 둘 다 적용) = [`git-spec.md` Git 절차](git-spec.md#git-절차).
 - **loop 별 적용** (epic 단위 stories.md 경로 유도 / chain outer 1회) = [`skills/architect-loop/SKILL.md`](../../skills/architect-loop/SKILL.md) · [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md).
@@ -284,7 +284,7 @@ end-run 안전망 (`session_state.py`) 이 자동으로 `finalize-run --auto-rev
 
 > **impl-task-loop 제외**: [impl-task-loop commit 구조](#impl-task-loop-commit-구조) 에서 branch/commit/push/PR 이미 완료 → Step 7a = merge only.
 
-clean 판정 통과 시 사용자 확인 없이 자동 진행 (**impl-task-loop 외** 루프): branch (`<prefix>/<short-slug>`, prefix = 해당 loop 의 branch_prefix — [`git-spec.md` 브랜치](git-spec.md#브랜치) valid 패턴) → `src` commit → push → PR create → merge → main sync. 네이밍·본문·트레일러 = [`git-spec.md`](git-spec.md), 커밋 trailer 의 모델 표기는 글로벌 `~/.claude/CLAUDE.md` 기준. 실행 = [`scripts/pr-create.sh`](../../scripts/pr-create.sh) + [`scripts/pr-finalize.sh`](../../scripts/pr-finalize.sh).
+clean 판정 통과 시 사용자 확인 없이 자동 진행 (**impl-task-loop 외** 루프): branch (`<prefix>/<short-slug>`, prefix = 해당 loop 의 branch_prefix — [`git-spec.md` 브랜치](git-spec.md#브랜치) valid 패턴) → **변경 파일 commit** → push → PR create → merge → main sync. **commit 대상 = 해당 loop 가 실제 변경한 파일 전부** (`git diff --name-only HEAD`) — architect-loop = `docs/**` 설계 산출물, ux = `docs/ux-flow.md` 등 docs/design 아티팩트라 src-only 아님 (src-only 제한은 impl-task-loop 전용, [impl-task-loop commit 구조](#impl-task-loop-commit-구조)). 네이밍·본문·트레일러 = [`git-spec.md`](git-spec.md), 커밋 trailer 의 모델 표기는 글로벌 `~/.claude/CLAUDE.md` 기준. 실행 = [`scripts/pr-create.sh`](../../scripts/pr-create.sh) + [`scripts/pr-finalize.sh`](../../scripts/pr-finalize.sh).
 
 worktree 진입 시 squash 흡수 검사 후 `ExitWorktree(action="<keep|remove>")` ([worktree 분기](#worktree-분기-impl-류-루프-한정)).
 
