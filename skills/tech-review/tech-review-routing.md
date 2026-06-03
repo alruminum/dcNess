@@ -12,32 +12,36 @@ tech-reviewer 는 stateless — PRD + 스켈레톤을 받아 본문을 채우고
 
 ```mermaid
 flowchart TB
-  TR[tech-reviewer] -->|PASS / FAIL| CP{사용자 2차 OK · Step 3}
+  TR[tech-reviewer] -->|PASS| CP{사용자 2차 OK · Step 3}
+  TR -->|FAIL| RW[기본 권고: PRD patch / 격상 / polish → 재검토]
+  TR -.->|ESCALATE| U((사용자 위임))
   CP -->|1. OK| AL([/architect-loop 권고 → 종료])
   CP -->|2. PRD 재기술| P1[메인: prd.md patch] --> TR
   CP -->|3. 격리 후보 격상| P2[메인: 스켈레톤 격상] --> TR
   CP -->|4. 항목 polish| P3[메인: 스켈레톤 polish 메모] --> TR
-  TR -.->|ESCALATE| U((사용자 위임))
+  RW --> TR
+  RW -.->|사용자 명시적 위험 감수 only| AL
   AL -. 진입 후 .->|tech-reviewer 재호출 금지| X[[단방향 catastrophic §3]]
 
   classDef verify fill:#e8f5e9,stroke:#388e3c,color:#1b5e20
   classDef main fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
   classDef user fill:#eeeeee,stroke:#757575,color:#212121
   class TR verify
-  class P1,P2,P3 main
+  class P1,P2,P3,RW main
   class U,CP user
 ```
 
 > 초록 = 검증 agent · 파랑 = 메인 patch 작업 · 회색 = 사용자 체크포인트 / 위임. 점선 = escalate / catastrophic 경계.
 >
-> tech-reviewer 결론 (PASS/FAIL/ESCALATE) 은 *판정* 일 뿐 — 실제 다음 단계는 **사용자 2차 OK** 가 결정한다 (FAIL 이어도 사용자가 OK 하면 진행 가능, PASS 여도 사용자가 polish 요청 가능).
+> **PASS** → 사용자 2차 OK 체크포인트 (OK 면 진행, 사용자가 polish 요청도 가능). **FAIL** → 기본 권고 = patch/격상/polish 후 재검토 (실패한 의존 검증이 silent 하게 통과되지 않도록 — 메인이 FAIL + 미해결 항목 echo 의무). 사용자가 *명시적 위험 감수* 를 선택할 때만 FAIL 상태로 진행 가능. **ESCALATE** → 정상 체크포인트 우회, 사용자 위임 only (검증 자체가 불가능했으므로 게이트 통과 판정 불가).
 
 ## 2. 결론 → 다음 호출 매핑
 
 | 입력 | 다음 |
 |---|---|
-| **tech-reviewer PASS / FAIL** | → 메인이 산출물 echo → 사용자 2차 OK 체크포인트 (Step 3) |
-| **tech-reviewer ESCALATE** | → 사용자 위임 (외부 검증 실행 불가 / 권한 밖 / 결론 추출 불가) |
+| **tech-reviewer PASS** | → 메인이 산출물 echo → 사용자 2차 OK 체크포인트 (Step 3). OK → `/architect-loop` |
+| **tech-reviewer FAIL** | → 메인이 *FAIL + 미해결 항목* 명시 echo → **기본 권고 = PRD patch / 격상 / polish 후 Step 1 재검토** (Step 4 옵션 2/3/4, routing.md §1 요약 정합). 사용자가 *명시적 위험 감수* OK 선택 시에만 진행 (silent 통과 금지) |
+| **tech-reviewer ESCALATE** | → 정상 체크포인트 우회 — 사용자 위임 only (외부 검증 실행 불가 / 권한 밖 / 결론 추출 불가 → 게이트 통과 판정 자체 불가) |
 | **사용자 2차 OK — 1. OK** | → Step 5 종료 + `/architect-loop` 권고 |
 | **사용자 — 2. PRD 재기술** | → 메인 `prd.md` patch (+ 필요 시 스켈레톤) → **Step 1 재진입** (cycle 컨텍스트 prompt 명시) |
 | **사용자 — 3. 격리 후보 격상** | → 메인 스켈레톤 격상 → **Step 1 재진입** |
