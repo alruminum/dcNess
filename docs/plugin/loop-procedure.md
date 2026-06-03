@@ -417,7 +417,7 @@ git checkout main && git pull --ff-only 2>/dev/null || true
 
 ## 4. Step 4.5 — 폐기 (2026-05-12)
 
-> 옛 `stories.md` / `backlog.md` task 체크 동기화 step 폐기. 진행 추적 SSOT = GitHub issue close (PR body `Closes #N` / `Part of #N` 트레일러) 단일화 — impl task PR diff 는 `src/**` only. 새 stories.md 양식 = [`commands/product-plan.md`](../../commands/product-plan.md) §stories.md 산출물 (옛 양식 잔재 허용, backfill 강제 X). 폐기 상세는 git history.
+> 옛 `stories.md` / `backlog.md` task 체크 동기화 step 폐기. 진행 추적 SSOT = GitHub issue close (PR body `Closes #N` / `Part of #N` 트레일러) 단일화 — impl task PR diff 는 `src/**` only. 새 stories.md 양식 = [`skills/product-plan/SKILL.md`](../../skills/product-plan/SKILL.md) §stories.md 산출물 (옛 양식 잔재 허용, backfill 강제 X). 폐기 상세는 git history.
 
 ---
 
