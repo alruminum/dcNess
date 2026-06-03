@@ -1,17 +1,17 @@
 # Loop Execution Procedure (메인 Claude 컨베이어 mechanics)
 
 > **Status**: ACTIVE
-> **Scope**: dcness 7 loop 의 *공통 실행 절차* SSOT — Step 0~8 mechanics. 메인 Claude 가 skill 트리거 또는 직접 발화로 루프 시작 시 본 문서를 컨베이어 매뉴얼처럼 따른다.
-> **Cross-ref**: loop 한눈 인덱스 = 본 문서 [한눈 인덱스](#한눈-인덱스-loop-진입-ssot). 각 loop 풀스펙 (allowed_enums / 분기 / sub_cycles / branch_prefix) = 해당 skill 본문 (`skills/<skill>/SKILL.md`; 예: impl-task-loop = [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)). catastrophic = [`hooks.md`](hooks.md#catastrophic-gatesh). 라우팅 = 각 loop skill 의 `<skill>-routing.md` (예: [`impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md)).
+> **단일 목적**: **"메인 Claude 가 helper 컨베이어를 운전하는 법"** — `begin-run → [ begin-step → Agent → end-step → echo·평가 ] ×N → end-run → review echo`. dcness loop 공통 골격(복붙·drift 차단) + `harness/session_state.py` helper CLI 의 유일 사용 매뉴얼.
+> **이건 여기 없음 (각 진본)**: loop 진입 spec (entry_point / task_list / advance / expected_steps) = 해당 skill 의 `## Loop` contract + 본문 (예: impl-task-loop = [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)). 결론→다음 호출·retry·escalate 라우팅 = 각 `<skill>-routing.md`. catastrophic = [`hooks.md`](hooks.md#catastrophic-gatesh). 브랜치·커밋·PR·트레일러 규칙 = [`git-spec.md`](git-spec.md).
 
 ---
 
 ## 진입 모델
 
-skill 트리거 또는 직접 발화 → 메인 Claude 가 **본 문서 [한눈 인덱스](#한눈-인덱스-loop-진입-ssot) + 해당 skill 본문 (`skills/<skill>/SKILL.md`) 풀스펙** 보고 task 리스트 동적 구성 → Step 0~8 mechanics 따름.
+skill 트리거 또는 직접 발화 → 메인 Claude 가 **해당 skill 의 `## Loop` contract + 본문 (entry_point / task_list / advance / expected_steps / routing)** 보고 task 리스트 동적 구성 → 본 문서 Step 0~8 mechanics 따름.
 
-- **skill 경유**: skill 본문 (`skills/<skill>/SKILL.md`) 의 `Loop` 필드 + 본문이 loop spec 진본 (예: impl-task-loop = `skills/impl-loop/SKILL.md`). skill 은 input 정형화 + 라우팅 추천. 절차는 본 SSOT, 인덱스는 본 문서 [한눈 인덱스](#한눈-인덱스-loop-진입-ssot).
-- **직접 발화** ("이거 impl 로 가자"): 각 loop skill 의 `<skill>-routing.md` 라우팅 + 본 문서 [한눈 인덱스](#한눈-인덱스-loop-진입-ssot) 보고 메인이 자율 구성. 강제 X.
+- **skill 경유**: skill 본문이 loop spec 진본 (예: impl-task-loop = [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)). skill 은 input 정형화 + 라우팅 추천. 절차는 본 SSOT.
+- **직접 발화** ("이거 impl 로 가자"): 각 loop skill 의 `## Loop` + `<skill>-routing.md` 보고 메인이 자율 구성. 강제 X.
 - **SessionStart inject**: 슬림 본문 (강제 영역 / 메인 Claude 필수 / 진입 매트릭스 / 안티패턴) 매 세션 자동 노출. 첫 응답 첫 줄 `[dcness 활성 확인]` 토큰 의무.
 
 ---
@@ -20,77 +20,22 @@ skill 트리거 또는 직접 발화 → 메인 Claude 가 **본 문서 [한눈 
 
 ### worktree 분기 (impl 류 루프 한정)
 
-**행동형 skill 중 *코드 변경 batch* (`/impl-loop`) 진입 시만 EnterWorktree 자동 호출**. 동시 다중 세션 충돌 회피 + 메인 working tree 보호.
-
-**`/product-plan` / 모듈 설계 / 문서·시드 작업은 워크트리 X** — 본 작업은 충돌 회피 목적 부재. 메인 working tree 에서 별 branch 따고 직접 진행.
+**행동형 skill 중 *코드 변경 batch* (`/impl-loop`) 진입 시만 EnterWorktree 자동 호출** — 동시 다중 세션 충돌 회피 + 메인 working tree 보호. `/product-plan` / 모듈 설계 / 문서·시드 작업은 충돌 회피 목적 부재라 워크트리 X (메인 working tree 에서 별 branch).
 
 ```
 EnterWorktree(name="<skill>-{ts_short}")   # impl 류만
 ```
 
-**거부 표현 시에만 건너뜀** — 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 (예: "워크트리 빼고", "워크트리 없이", "워크트리 말고") 시 EnterWorktree 호출 0, 일반 cwd 그대로 진행.
-
-수동 `git worktree add` 우회 금지 — CC permission 시스템이 EnterWorktree 만 자동 권한 처리. 수동 워크트리는 sub-agent Write 거부 회귀 (#255 W1). **예외 = [base-ref 분기 (통합 브랜치 모드, #424)](#base-ref-분기-통합-브랜치-모드-424)** (사전 `git worktree add` 후 `EnterWorktree(path=)` 진입 — CC 가 path= 도 권한 처리, #255 회귀 아님).
+- **거부 표현 시에만 건너뜀** — 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시 EnterWorktree 호출 0, 일반 cwd 그대로 진행.
+- 수동 `git worktree add` 우회 금지 — CC permission 시스템이 EnterWorktree 만 자동 권한 처리. 수동 워크트리는 sub-agent Write 거부 회귀 (#255 W1). **예외 = 통합 브랜치 모드** ([base-ref 분기](#base-ref-분기-통합-브랜치-모드-424) — 사전 `git worktree add` 후 `EnterWorktree(path=)` 진입, CC 가 path= 도 권한 처리).
+- **종료 시 ExitWorktree (squash 흡수 자동 분기)** — `main..<worktree-branch>` diff (`.claude` 제외) 가 비면 이미 머지 흡수된 것 → `ExitWorktree(action="remove", discard_changes=true)`, 남아있으면 `ExitWorktree(action="keep")`.
 
 ### base-ref 분기 (통합 브랜치 모드, #424)
 
-epic 단위 stories.md (`docs/milestones/vNN/epics/epic-NN-<slug>/stories.md`; root `docs/stories.md` 는 legacy 폴백) 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = **통합 브랜치 모드** (long-lived integration branch + sub-PR 누적 패턴, `skills/product-plan/SKILL.md` Step 6.5/7). 이 경우 outer worktree base ref 도 integration branch 와 정합해야 함 — `EnterWorktree(name=)` default 인 `worktree.baseRef=fresh` (origin/main 기반) 은 base mismatch → sub-PR diff 거대화 ("삭제 변경" false).
+**운전 원칙만 여기, 규칙은 git-spec.** epic 단위 stories.md 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = 통합 브랜치 모드 → outer worktree base ref 도 integration branch 와 정합해야 한다 (`EnterWorktree(name=)` default `baseRef=fresh` = origin/main 이라 base mismatch → sub-PR diff 거대화 false). EnterWorktree 가 base parameter 미지원이라 사전 `git worktree add -b <new> <path> origin/<integration>` 후 `EnterWorktree(path=<path>)` 로 진입한다.
 
-EnterWorktree tool 은 base parameter 미지원 → 사전 `git worktree add` 후 `EnterWorktree(path=)` 진입 패턴:
-
-```bash
-# stories.md base branch 매치 — epic 단위 stories.md 를 입력에서 *직접* 유도 (수동 env 의존 X).
-#   architect-loop = 입력 epic dir($EPIC_DIR) / impl-loop = task 경로 조부모($TASK_FILE 의 epic-NN-<slug>/).
-#   둘 다 부재(또는 derived 파일 부재) 시 root docs/stories.md legacy 폴백.
-if [ -n "${EPIC_DIR:-}" ] && [ -n "${TASK_FILE:-}" ]; then
-  # 둘 다 set — 일치 검증 (resume/chain stale env 혼선 방지). 서로 다른 epic 가리키면 정지 (조용히 한쪽 택1 금지).
-  S_EPIC="$EPIC_DIR/stories.md"
-  S_TASK="$(dirname "$(dirname "$TASK_FILE")")/stories.md"
-  if [ "$S_EPIC" != "$S_TASK" ]; then
-    echo "[base-ref] EPIC_DIR 와 TASK_FILE 가 서로 다른 epic 을 가리킴 ($S_EPIC vs $S_TASK) — stale env 의심, 정지." >&2
-    exit 1
-  fi
-  STORIES="$S_TASK"
-elif [ -n "${EPIC_DIR:-}" ]; then
-  STORIES="$EPIC_DIR/stories.md"
-elif [ -n "${TASK_FILE:-}" ]; then
-  STORIES="$(dirname "$(dirname "$TASK_FILE")")/stories.md"
-else
-  STORIES="docs/stories.md"
-fi
-[ -f "$STORIES" ] || STORIES="docs/stories.md"
-BASE_BRANCH=$(grep -m1 -E '^\*\*Base Branch:\*\*' "$STORIES" 2>/dev/null \
-  | sed -E 's/.*Base Branch:\*\*[[:space:]]+//')
-
-if [ -n "$BASE_BRANCH" ] && [ "$BASE_BRANCH" != "main" ]; then
-  # 통합 브랜치 모드 — outer worktree base = integration branch
-  git fetch origin "$BASE_BRANCH"
-  TS=$(date +%s | tail -c 6)
-  WORKTREE_PATH=".claude/worktrees/<skill>-${TS}"
-  git worktree add -b "<skill>-${TS}" "$WORKTREE_PATH" "origin/${BASE_BRANCH}"
-  # EnterWorktree(path="$WORKTREE_PATH")  — 기존 worktree 진입
-else
-  # default trunk-based — fresh = origin/main 기반
-  # EnterWorktree(name="<skill>-{ts_short}")
-fi
-```
-
-→ sub-PR diff = (worktree HEAD) vs (`feature/<slug>` HEAD) = 본 task 변경만 표시. 정상.
-
-자식 자체 sub-worktree 패턴 (자식이 `git worktree add` 호출해 sibling worktree 만드는) 도 옵션이나, outer 가 base 정합되면 main repo 안 직접 작업 위험 + 자식 cwd 분기 복잡도 회피.
-
-종료 시 squash 흡수 검사 후 자동:
-
-```bash
-UNMERGED_DIFF=$(git diff "main..$WORKTREE_BRANCH" -- ':^.claude' 2>/dev/null)
-if [ -z "$UNMERGED_DIFF" ]; then
-  ExitWorktree(action="remove", discard_changes=true)
-else
-  ExitWorktree(action="keep")
-fi
-```
-
-위 squash 흡수 검사 + ExitWorktree 자동 분기 패턴은 본 SSOT 본문이 자족. (역사 설계 컨텍스트는 [`../../README.md`](../../README.md) "참조 문서" 표 참고.)
+- **base 값 판정 규칙** (`**Base Branch:**` 마커 → base, 없으면 main · checkout/PR base 둘 다 적용) = [`git-spec.md` Git 절차](git-spec.md#git-절차).
+- **loop 별 적용** (epic 단위 stories.md 경로 유도 / chain outer 1회) = [`skills/architect-loop/SKILL.md`](../../skills/architect-loop/SKILL.md) · [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md).
 
 ### begin-run
 
@@ -100,7 +45,7 @@ RUN_ID=$("$HELPER" begin-run <entry_point> [--issue-num N])
 echo "[<entry>] run started: $RUN_ID"
 ```
 
-`<entry_point>` = [한눈 인덱스](#한눈-인덱스-loop-진입-ssot) 매트릭스 행의 `entry_point` 컬럼 (예: `impl`, `issue-report`, `architect-loop`, `ux`). begin-run 동작: sid auto-detect + run_id 발급 + `live.json.active_runs` 슬롯 + `.by-pid-current-run/{cc_pid}` 씀.
+`<entry_point>` = 해당 skill 의 `## Loop` 의 `entry_point` 필드 (예: `impl`, `issue-report`, `architect-loop`, `ux`). begin-run 동작: sid auto-detect + run_id 발급 + `live.json.active_runs` 슬롯 + `.by-pid-current-run/{cc_pid}` 씀.
 
 > `/impl-loop` 의 **chain 모드(N task)** 는 자기 run 을 갖지 않는 driver 다 — `impl-task-loop × N` 이므로 각 task 가 독립 `begin-run impl` … `end-run` run 1개씩 (N task = N run = N review.md). **single 모드(1 task)** 는 `impl` entry_point 로 run 1개. 자세히 = [`/impl-loop`](../../skills/impl-loop/SKILL.md).
 
@@ -108,7 +53,7 @@ echo "[<entry>] run started: $RUN_ID"
 
 ## Step 1 — TaskCreate
 
-본 문서 [한눈 인덱스](#한눈-인덱스-loop-진입-ssot)의 `task_list` 컬럼대로 일괄 등록. **단 `/impl-loop` chain 모드 아래의 `impl` run 은 TaskCreate skip** — task 리스트는 impl-loop skill 이 진행 뷰로 일괄 관리한다 ([진행 뷰](../../skills/impl-loop/SKILL.md#진행-뷰-task-리스트)). impl run 은 이미 생성된 sub-step task 를 TaskUpdate 만 한다.
+해당 skill 의 `## Loop` 의 `task_list` 필드대로 일괄 등록. **단 `/impl-loop` chain 모드 아래의 `impl` run 은 TaskCreate skip** — task 리스트는 impl-loop skill 이 진행 뷰로 일괄 관리한다 ([진행 뷰](../../skills/impl-loop/SKILL.md#진행-뷰-task-리스트)). impl run 은 이미 생성된 sub-step task 를 TaskUpdate 만 한다.
 
 ```
 TaskCreate("<agent>: <mode 또는 짧은 설명>")
@@ -231,54 +176,15 @@ REDO 판단 신호: 결과가 질문에 제대로 답하지 못함 / 같은 tool
 
 ### build-worker phase prose (`/impl-loop` Hybrid A 한정)
 
-build-worker 는 한 sub-agent 호출 안에서 3 phase 를 직렬 진행한다 — phase 별 begin-step / end-step 을 worker 가 helper Bash 로 직접 호출 (sub-agent nesting 아님 — Python script 실행). 메인 step 카운트 ([엔진 B](../../skills/impl-loop/SKILL.md#엔진-b-build-worker-default-chain)) 는 build-worker = 1 step / pr-reviewer = 1 step, **phase 는 그 안의 sub-step** 이다.
-
-```bash
-# build-worker sub-agent 안에서 (메인이 호출한 1 step 안)
-"$HELPER" begin-step build-test
-# ... 테스트 작성 + RED 확인
-"$HELPER" end-step   build-test
-"$HELPER" begin-step build-impl
-# ... src 작성 + GREEN 확인
-"$HELPER" end-step   build-impl
-"$HELPER" begin-step build-validate
-# ... self-validate prose
-"$HELPER" end-step   build-validate
-```
-
-prose 파일 자동 명명 ([step 명명 + prose 파일 자동 명명](#step-명명-prose-파일-자동-명명) 규약 그대로):
-- `<run_dir>/build-test.md` — phase 1 산출물 (테스트 케이스 표 + RED 확인)
-- `<run_dir>/build-impl.md` — phase 2 산출물 (변경 통계 + GREEN 확인)
-- `<run_dir>/build-validate.md` — phase 3 산출물 (A/B/C 통과 또는 Fail Items)
-
-worker 가 phase 별 prose 를 *자체 Write* 한다 — PostToolUse hook 의 자동 staging 은 sub-agent 내부 Bash 출력엔 도달 X (메인 turn 의 PostToolUse 만 발화). worker 가 명시적으로 `<run_dir>/build-{test,impl,validate}.md` 에 Write 의무.
-
-> `<run_dir>` 경로는 helper begin-run impl 가 emit 한 RUN_ID 로 계산. worker 가 호출자 prompt 로 RUN_ID 또는 run_dir 절대경로를 전달받음 (메인 책임).
-
-phase prose 입자는 review.md 출력 재정의 ([review 출력 재정의](../../skills/impl-loop/SKILL.md#review-출력-재정의-446)) 의 보상 메커니즘 — Hybrid A 에서 메인 컨텍스트 echo 는 5줄 요약이지만 phase 별 prose 가 디스크에 남으면 `/run-review` 진단 시 phase 별 입자로 분석 가능.
+build-worker 는 한 sub-agent 호출(= 메인 1 step) 안에서 3 phase (test → impl → validate) 를 직렬 진행하며, **phase 별 begin-step/end-step 을 worker 가 helper Bash 로 직접 호출하고 phase prose (`build-test.md` / `build-impl.md` / `build-validate.md`) 를 *자체 Write*** 한다 (PostToolUse 자동 staging 은 sub-agent 내부 Bash 엔 미도달). 명명 규약은 [step 명명 + prose 파일 자동 명명](#step-명명-prose-파일-자동-명명) 그대로. phase 분할·각 phase 책임·검증 항목 풀스펙 = [`agents/build-worker.md`](../../agents/build-worker.md) + [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md).
 
 ### ENUM 분기
 
-| ENUM | 처리 |
-|------|------|
-| advance enum (catalog 행의 `advance` 컬럼) | 다음 step 있으면 진행 / **마지막 step이면 사용자 대기 없이 즉시 Step 7** |
-| `SPEC_GAP_FOUND` | module-architect (보강 케이스) cycle (≤2) 또는 사용자 위임 |
-| `TESTS_FAIL` / code-validator `FAIL` | engineer 재시도 (attempt < 3) |
-| code-validator `ESCALATE` (사유: spec 부재) | module-architect (보강 케이스) |
-| code-validator `ESCALATE` (사유: 재시도 한도 초과 등) | 사용자 위임 |
-| `*_ESCALATE` (hard) | 사용자 위임 (escalate) |
-| `*_ESCALATE` (soft) | 비-yolo: 사용자 위임 / yolo: `auto-resolve` |
-| `FAIL` | engineer POLISH cycle (≤2) |
-| architecture-validator 1차 `FAIL` (Step 3.5) | system-architect 재진입 (cycle ≤2). Placeholder Leak / 공통 SSOT 룰 위반 영역 |
-| architecture-validator 2차 `FAIL` (Step 5) | 해당 module-architect 재진입 (Cross-Story Interface 영역 또는 Implementation Simulation gap 보강) 또는 system-architect 재진입 (모듈 의존 그래프). cycle ≤2 |
-| tech-reviewer `FAIL` | 메인이 사용자와 분기 토론 → (a) PRD patch + `/tech-review` 재호출 / (b) 격리 후보 격상 + 재호출 / (c) 항목 polish + 재호출. cycle 한도 X (단방향, 사용자 OK 까지) |
-| tech-reviewer `ESCALATE` | 사용자 위임 (WebFetch 차단 / 외부 API 인증 부재 / 권한 부족 / 사용자 환경 의존 도구 부재) |
-
-cycle 한도 = 각 loop skill 의 `<skill>-routing.md` 의 retry 한도 ([`architect-loop-routing.md`](../../skills/architect-loop/architect-loop-routing.md#retry-한도) / [`impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md#retry-한도)).
+**공통 골격만 본 문서 책임** — agent 결론이 그 loop 의 advance enum (해당 skill `## Loop` 의 `advance`) 이면 다음 step 진행, **마지막 step 이면 사용자 대기 없이 즉시 Step 7 (end-run)**. 그 외 결론 (`FAIL` / `*_ESCALATE` / `SPEC_GAP_FOUND` / `TESTS_FAIL` / `AMBIGUOUS` 등) → 다음 호출·재시도·cycle 한도·escalate 판정은 **각 loop skill 의 `<skill>-routing.md` 가 진본** ([`architect-loop-routing.md`](../../skills/architect-loop/architect-loop-routing.md) / [`impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md) / [`ux-routing.md`](../../skills/ux/ux-routing.md) / [`issue-report-routing.md`](../../skills/issue-report/issue-report-routing.md) / [`tech-review-routing.md`](../../skills/tech-review/tech-review-routing.md)). loop-procedure 는 enum→처리 표를 재서술하지 않는다.
 
 ### retry / POLISH 분기 시 task 재활용 (MUST)
 
-위 표의 **재시도 / 재호출 / cycle / POLISH** 분기로 진입할 때, 신규 `TaskCreate` 금지 — *기존 task 를 `in_progress` 로 되돌린다*.
+**재시도 / 재호출 / cycle / POLISH** 분기 (각 `<skill>-routing.md`) 로 진입할 때, 신규 `TaskCreate` 금지 — *기존 task 를 `in_progress` 로 되돌린다*.
 
 | 분기 | 재활용 대상 task | 행동 |
 |---|---|---|
@@ -306,118 +212,38 @@ TaskUpdate(<기존 task>, completed)
 
 ### yolo 모드
 
-발화에 `yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서` 키워드 시 ON.
-
-| 상황 | 비-yolo | yolo |
-|---|---|---|
-| `*_ESCALATE` (soft) / `AMBIGUOUS` | 사용자 위임 | `auto-resolve` 적용 |
-| `SPEC_GAP_FOUND` | 사용자 위임 | module-architect (보강 케이스) cycle (≤2) |
-| `TESTS_FAIL` / code-validator FAIL | 재시도 (≤3) | 동일 |
-| `IMPL_PARTIAL` | engineer 재호출 (split ≤ 3) | 동일 — 새 context window |
-| `FAIL` | 사용자 위임 | engineer POLISH (cycle ≤2) |
-| Step 7 주의사항 (NICE TO HAVE only, MUST FIX 0) | 사용자 위임 | 7a 자동 |
-| catastrophic 룰 | hard safety | hard safety (yolo 우회 X) |
+발화에 `yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서` 키워드 시 ON — 비-yolo 면 사용자 위임할 soft `*_ESCALATE` / `AMBIGUOUS` 등을 `auto-resolve` 로 자동 진행한다. 상황별 비-yolo↔yolo 분기는 각 `<skill>-routing.md`, catastrophic 룰은 yolo 우회 불가 (hard safety). auto-resolve 동작은 helper 코드(`session_state.py`)가 진본:
 
 ```bash
 RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
-# JSON: {"action":..., "hint":..., "next_enum":...}
-# unmapped 시 yolo 도 사용자 위임 fallback
+# JSON: {"action":..., "hint":..., "next_enum":...} — unmapped 시 yolo 도 사용자 위임 fallback
 ```
 
 ---
 
 ## impl-task-loop commit 구조
 
-`impl-task-loop` / `impl-ui-design-loop` 에서 루프 종료 전 src commit + PR create. **커밋 메시지·브랜치·PR 네이밍 규칙 SSOT** = [`git-spec.md`](git-spec.md). 본 절은 *시점·포함 파일* 만 정의.
+`impl-task-loop` / `impl-ui-design-loop` 은 루프 종료 전 src commit + PR create 를 **메인 Claude 가 전담**한다 (engineer / build-worker / test-engineer 는 코드 변경만 — race 회피). 본 절은 *시점·포함 파일* 만 정의하고, **브랜치·커밋·PR 네이밍 + 트레일러 판정 규칙은 [`git-spec.md`](git-spec.md) 가 SSOT** 다.
 
 | 시점 | 내용 |
 |---|---|
-| code-validator PASS 직후 | branch 새로 + `src/**` commit + push + `gh pr create` |
-| PASS 직후 | `gh pr merge` (merge) |
+| code-validator (또는 build-worker) PASS 직후 | branch 새로 + `src/**` commit + push + PR create |
+| PR 생성 직후 | merge ([Step 7a](#step-7a-impl-task-loop)) |
 
-> `docs/.../impl/NN-*.md` 는 `/architect-loop` 산출물이 *미리 main 에 머지* 한 상태. impl-task-loop 안에서 별도 commit X. fallback 모드 (정식 위치 부재) 는 module-architect 가 그 자리에서 새로 작성하는데, 본 PR 의 src commit 에 같이 포함.
+> `docs/.../impl/NN-*.md` 는 `/architect-loop` 산출물이 *미리 머지* 된 상태 — impl-task-loop 안에서 별도 commit X. fallback 모드 (정식 위치 부재) 는 module-architect 산출물을 본 PR src commit 에 같이 포함.
 
-> **commit = `src/**` only** — stories.md / backlog.md 등 다른 path 섞지 않는다. 진행 추적은 PR body `Closes #N` / `Part of #N` 트레일러 + GitHub native sub-issue API 가 SSOT.
+> **commit = `src/**` only** — stories.md / backlog.md 등 다른 path 섞지 않는다. 진행 추적은 PR body 트레일러 (Part of / Closes) + GitHub sub-issue API 가 SSOT.
 
-### commit 골격
+규칙은 전부 git-spec 위임 — loop-procedure 는 판정 로직(브랜치명·base·트레일러)을 재서술하지 않는다:
 
-```bash
-# 메시지 형식 = git-spec.md 의 커밋 제목~PR 본문 참조.
-
-# branch 생성 + src commit (code-validator PASS 직후)
-# 브랜치명 = git-spec.md 의 브랜치 SSOT. 정식 impl task → feature/epic{N}_story{M}_{desc} (desc = task-slug 앞 순번 NN- 제거),
-#            공통 task(story: 공통) → feature/epic{N}_common_{desc}, 버그픽스 fallback → fix/issue{N}_{desc}.
-#            결정 절차 = skills/impl-loop/SKILL.md "## 브랜치명 결정".
-BRANCH="feature/epic{N}_story{M}_{desc}"   # 예: feature/epic7_story2_revival-button
-
-# base 분기 = git-spec 의 Git 절차 — epic 단위 stories.md 상단 **Base Branch:** 마커 매치 시 통합 브랜치, 없으면 main.
-# stories.md 는 epic 디렉토리(impl task 경로의 조부모 = epic-NN-<slug>/) 에 있음. root docs/stories.md 는 legacy 폴백.
-# MUST: checkout 과 gh pr create 둘 다 이 BASE 사용 — main 하드코딩 시 통합 브랜치 모드 sub-PR 이 틀린 base 로 가 epic atomic 깨짐.
-TASK_FILE="docs/milestones/.../epics/epic-NN-<slug>/impl/NN-*.md"   # 본 task impl 파일
-STORIES="$(dirname "$(dirname "$TASK_FILE")")/stories.md"          # epic 단위 stories.md
-[ -f "$STORIES" ] || STORIES="docs/stories.md"                     # legacy 폴백
-BASE=$(grep -m1 -E '^\*\*Base Branch:\*\*' "$STORIES" 2>/dev/null | sed -E 's/.*Base Branch:\*\*[[:space:]]+//')
-BASE="${BASE:-main}"
-git checkout -b "$BRANCH" "$BASE"
-git add src/**
-git commit -m "<git-spec 의 커밋 제목 형식>"
-git push -u origin "$BRANCH"
-
-# PR body: Closes vs Part of 자동 판단 (git-spec.md 의 PR 트레일러 적용 절차)
-# 입력 = impl 파일 frontmatter `task_index: i/total` + `story: N` (module-architect × K 시점에 있음). TASK_FILE = 위 BASE 블록 재사용.
-TASK_INDEX=$(awk '/^task_index:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")  # 정식 = "3/3", 공통 task = "—"
-STORY_NUM=$(awk '/^story:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")          # 정식 = 숫자, 공통 task = "공통"
-
-# 분기 키 = STORY_NUM (공통 여부의 진본 신호). task_index 형식만으로 공통 판정하면 정식 story 의 malformed index 가
-# 공통으로 오분류돼 Part of #epic 으로 story 이슈 silent open 위험 (F2-d).
-if [ "$STORY_NUM" = "공통" ]; then
-  # 공통 task — Part of #<epic> 단일 룰 (git-spec 의 PR 트레일러 기본 룰, task-index trailer omit). check_pr_body 는 task-index 부재 시 fallback 로 트레일러 1건 요구.
-  # EPIC_ISSUE 미설정 시 epic stories.md 의 **GitHub Epic Issue:** [#NNN] 마커에서 파싱 — 빈 "Part of #" 방지 위해 미해결이면 정지.
-  EPIC_ISSUE="${EPIC_ISSUE:-$(grep -m1 -E '^\*\*GitHub Epic Issue:\*\*' "$STORIES" 2>/dev/null | grep -oE '#[0-9]+' | head -1 | tr -d '#')}"
-  if [ -z "$EPIC_ISSUE" ]; then
-    echo "[impl] 공통 task PR trailer — epic 이슈 번호 미해결. 빈 'Part of #' 방지 위해 정지 (epic stories.md **GitHub Epic Issue:** 마커 확인)." >&2
-    exit 1
-  fi
-  PR_BODY="Part of #${EPIC_ISSUE}"
-elif printf '%s' "$TASK_INDEX" | grep -qE '^[0-9]+/[0-9]+$'; then
-  # 정식 story task — i/total 판정
-  I="${TASK_INDEX%/*}"
-  TOTAL="${TASK_INDEX#*/}"
-  if [ "$I" = "$TOTAL" ]; then
-    # Story 마지막 task → Closes
-    PR_BODY="Closes #${STORY_ISSUE}"
-    # epic 마지막 story 판정 (git-spec.md 의 Epic 완료)
-    EPIC_OPEN_STORIES=$(gh issue list --label "epic-${EPIC_NUM}-${EPIC_SLUG}" --milestone Story --state open --json number --jq 'length' 2>/dev/null || echo 0)
-    if [ "$EPIC_OPEN_STORIES" = "1" ]; then
-      PR_BODY="${PR_BODY}
-Closes #${EPIC_ISSUE}"
-    fi
-  else
-    PR_BODY="Part of #${STORY_ISSUE}"
-  fi
-else
-  # story 가 숫자인데 task_index 가 i/total 도 공통(—)도 아님 = 누락/malformed (legacy / version-skew).
-  # 공통으로 오분류해 Part of #epic 내보내면 story 이슈 silent open — PR 생성 전 정지.
-  echo "[impl] task_index 형식 오류 (story=$STORY_NUM, task_index='$TASK_INDEX') — 정식 i/total 도 공통(—)도 아님. PR 생성 전 정지." >&2
-  exit 1
-fi
-gh pr create --base "$BASE" --title "<git-spec 의 PR 제목 형식>" --body "$PR_BODY"
-```
+- **브랜치명** = [`git-spec.md` 브랜치](git-spec.md#브랜치) (결정 절차 = [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)).
+- **base 분기** = [`git-spec.md` Git 절차](git-spec.md#git-절차) (stories.md `**Base Branch:**` 마커 매치 시 통합 브랜치, 없으면 main · checkout 과 PR base 둘 다 동일 BASE).
+- **PR body 트레일러 (Part of vs Closes) 판정** = [`git-spec.md` PR 트레일러](git-spec.md#pr-트레일러-part-of-closes) 의 적용 절차 (impl 파일 frontmatter 기반).
+- **실행** = [`scripts/pr-create.sh`](../../scripts/pr-create.sh) — `--branch / --base / --title / --body-file / --commit-msg-file` 받아 branch + add + commit + push + `gh pr create` 한 명령. body-file 은 메인이 위 트레일러 규칙대로 작성해 전달 (스크립트는 판정 X).
 
 ### Step 7a (impl-task-loop)
 
-PR 이미 생성된 상태 — merge only:
-
-```bash
-gh pr merge || echo "[impl] merge 대기 — CI / reviewers"
-git checkout main && git pull --ff-only 2>/dev/null || true
-```
-
----
-
-## Step 4.5 — 폐기 (2026-05-12)
-
-> 옛 `stories.md` / `backlog.md` task 체크 동기화 step 폐기. 진행 추적 SSOT = GitHub issue close (PR body `Closes #N` / `Part of #N` 트레일러) 단일화 — impl task PR diff 는 `src/**` only. 새 stories.md 양식 = [stories.md 산출물](../../skills/product-plan/SKILL.md#storiesmd-산출물-단순화-user-story-만) (옛 양식 잔재 허용, backfill 강제 X). 폐기 상세는 git history.
+PR 이미 생성된 상태 — merge only. [`scripts/pr-finalize.sh`](../../scripts/pr-finalize.sh) 가 머지 + CI 대기 + main sync 자동.
 
 ---
 
@@ -431,7 +257,7 @@ git checkout main && git pull --ff-only 2>/dev/null || true
 "$HELPER" end-run
 ```
 
-end-run 안전망 (`session_state.py:1001`) 이 자동으로 `finalize-run --auto-review` 발사 → in-process `harness.run_review` → STATUS JSON + review.md.
+end-run 안전망 (`session_state.py`) 이 자동으로 `finalize-run --auto-review` 발사 → in-process `harness.run_review` → STATUS JSON + review.md.
 
 - review 결과는 `<run_dir>/review.md` 에 저장 + stderr `[REVIEW_READY] <path>` 신호 출력. 메인 Claude 가 [Step 8 — review 결과 인지](#step-8-review-결과-인지) 따라 세션에 그대로 출력 의무.
 - (예전 2개 명령 — `finalize-run --expected-steps <N> --auto-review` + `end-run` — 폐기. end-run 1개로 단순화. issue #396)
@@ -449,48 +275,18 @@ end-run 안전망 (`session_state.py:1001`) 이 자동으로 `finalize-run --aut
 
 ### clean 판정 매트릭스
 
-다음 모두 충족 → **clean** (자동 7a):
+다음 모두 충족 → **clean** (자동 7a), 아니면 **7b (주의사항)**:
 1. `has_ambiguous == false` && `has_must_fix == false`
-2. step enum 매트릭스: catalog 행 `clean_enum` 컬럼 모두 정합
-3. git 안전 가드:
-   - `git status --porcelain` 에 `.env` / `secrets.*` / `credentials.*` 없음
-   - unstaged + untracked ≤ 10
-   - submodule 변경 없음
-
-clean 아니면 **7b (주의사항)**.
+2. step enum 이 해당 skill `## Loop` 의 advance/expected_steps 와 정합
+3. git 안전 가드: `git status --porcelain` 에 `.env` / `secrets.*` / `credentials.*` 없음 · unstaged + untracked ≤ 10 · submodule 변경 없음
 
 ### 7a — Clean 자동 commit/PR
 
-> **impl-task-loop 제외**: [impl-task-loop commit 구조](#impl-task-loop-commit-구조) 에서 branch/commit/push/PR 이미 완료. Step 7a = merge only (`gh pr merge`).
+> **impl-task-loop 제외**: [impl-task-loop commit 구조](#impl-task-loop-commit-구조) 에서 branch/commit/push/PR 이미 완료 → Step 7a = merge only.
 
-자동 진행 (사용자 확인 X, **impl-task-loop 외** 루프 적용):
+clean 판정 통과 시 사용자 확인 없이 자동 진행 (**impl-task-loop 외** 루프): branch (`<prefix>/<short-slug>`, prefix = 해당 loop 의 branch_prefix — [`git-spec.md` 브랜치](git-spec.md#브랜치) valid 패턴) → `src` commit → push → PR create → merge → main sync. 네이밍·본문·트레일러 = [`git-spec.md`](git-spec.md), 커밋 trailer 의 모델 표기는 글로벌 `~/.claude/CLAUDE.md` 기준. 실행 = [`scripts/pr-create.sh`](../../scripts/pr-create.sh) + [`scripts/pr-finalize.sh`](../../scripts/pr-finalize.sh).
 
-```bash
-CHANGED=$(git diff --name-only HEAD)
-HAS_REMOTE=$(git remote get-url origin >/dev/null 2>&1 && echo yes || echo no)
-
-BRANCH="<prefix>/<short-slug>"   # prefix = 해당 loop 의 branch_prefix (skill 본문) — git-spec.md 의 브랜치 valid 패턴(feature/ · fix/issue · docs/)만
-git checkout -b "$BRANCH" main
-git add $CHANGED
-git commit -m "$(cat <<'EOF'
-<한 줄 제목>
-
-<2~3 줄 본문 — engineer prose_excerpt + run_id 참조>
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-
-if [ "$HAS_REMOTE" = "yes" ]; then
-  git push -u origin "$BRANCH"
-  gh pr create --title "<제목>" --body "<요약 + Test plan + run_id>"
-  gh pr merge --merge --auto 2>/dev/null || gh pr merge --merge || \
-    echo "[<entry>] PR merge 차단 — branch protection / CI 대기"
-  git checkout main && git pull --ff-only 2>/dev/null || true
-fi
-```
-
-worktree 진입 시 squash 흡수 검사 후 `ExitWorktree(action="<keep|remove>")` (guidelines [Loop 카탈로그](#loop-카탈로그)).
+worktree 진입 시 squash 흡수 검사 후 `ExitWorktree(action="<keep|remove>")` ([worktree 분기](#worktree-분기-impl-류-루프-한정)).
 
 ### 7b — 주의사항 확인
 
@@ -545,30 +341,15 @@ review 리포트의 must-fix / waste finding / per-Agent metric 즉시 인지 + 
 
 ---
 
-## Loop 카탈로그
+## catastrophic 정합
 
-### 한눈 인덱스 (loop 진입 SSOT)
-
-> 메인 Claude 진입 시: 본 인덱스에서 loop 선택 → `entry_point` 로 begin-run → `task_list` 로 TaskCreate. 각 loop 의 Step 별 상세 (allowed_enums / 분기 / sub_cycles / branch_prefix) = 해당 skill 본문 (`skills/<skill>/SKILL.md`; 예: impl-task-loop = [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)) + 본 문서 [impl-task-loop commit 구조](#impl-task-loop-commit-구조) (commit 구조 / sub_cycles 명명). 결론 → 다음 호출 라우팅 = 각 loop skill 의 `<skill>-routing.md`.
-
-| loop | entry_point | task_list (Step 1) | advance | clean_enum | expected_steps |
-|------|-------------|--------------------|---------|------------|----------------|
-| `architect-loop` | `architect-loop` (사용자 명시) | (UI epic) ux-architect:UX_FLOW (self-check) / [기술 스택 그릴미 — 메인 직접, helper 비대상] / system-architect (self-check) / architecture-validator 1차 / module-architect × K / architecture-validator 2차 · (UI-less epic) ux-architect 제외 — `skills/architect-loop/SKILL.md` UI-less 분기 | `UX_FLOW_READY` → `PASS` → `PASS` → `PASS × K` → `PASS` | advance 동일 | 4 + K (UI epic) / 3 + K (UI-less epic). K = Story 수 + 공통 호출 1 회 또는 0 회. **기술 스택 그릴미는 helper begin-step 비대상이라 expected_steps 에 미포함** |
-| `impl-task-loop` | `impl` | (풀 4-agent 엔진, default=single) test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) · (build-worker 엔진, default=chain) build-worker / pr-reviewer | `PASS` → `IMPL_DONE` → `PASS` → `PASS` (풀) · `PASS` → `PASS` (build-worker) | advance 동일 | 4 (풀) / 5 (fallback) / 2 (build-worker) |
-| `impl-ui-design-loop` | `impl` (UI 감지) | (default) designer / 사용자 PICK / test-engineer / engineer:IMPL / code-validator / pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) | `PASS` → 사용자 PICK → `PASS` → `IMPL_DONE` → `PASS` → `PASS` | advance 동일 | 6 (default) / 7 (fallback) |
-| `qa-triage` | `issue-report` | qa | (5 enum 모두 — 라우팅 추천) | advance 개념 X | 1 |
-| `ux-design-stage` | `ux` | ux-architect:UX_FLOW / designer / 사용자 PICK | `UX_FLOW_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
-| `ux-refine-stage` | `ux` (REFINE) | ux-architect:UX_REFINE / designer / 사용자 PICK | `UX_REFINE_READY` → `PASS` → 사용자 PICK | advance 동일 | 3 |
-
-### catastrophic 룰 정합
-
-catastrophic 시퀀스 진본 = [`hooks.md`](hooks.md#catastrophic-gatesh) (`hooks/catastrophic-gate.sh` 강제). 각 loop sequence 가 이 룰 자연 충족 (code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `PASS` enum / module-architect × K 진입 직전 architecture-validator 1차 PASS / K = Story 수 + 공통 호출 / PRD 변경 후 사용자 2 차 OK + `/architect-loop` 진입 후 tech-reviewer 재호출 금지 단방향). 7 hook 전체 시점·차단·우회 = [`hooks.md`](hooks.md).
+각 loop 의 entry_point / task_list / advance / expected_steps 진본 = 해당 skill 의 `## Loop` contract. 그 시퀀스가 catastrophic 룰을 자연 충족한다 — catastrophic 시퀀스 진본 = [`hooks.md`](hooks.md#catastrophic-gatesh) (`hooks/catastrophic-gate.sh` 강제): code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `PASS` enum / module-architect × K 진입 직전 architecture-validator 1차 PASS / PRD 변경 후 사용자 2 차 OK + `/architect-loop` 진입 후 tech-reviewer 재호출 금지 (단방향). 7 hook 전체 시점·차단·우회 = [`hooks.md`](hooks.md).
 
 ---
 
 ## 참조
 
-- 각 loop skill 의 `<skill>-routing.md` — 라우팅 / retry / escalate ([`architect-loop-routing.md`](../../skills/architect-loop/architect-loop-routing.md) / [`impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md) / [`ux-routing.md`](../../skills/ux/ux-routing.md) / [`issue-report-routing.md`](../../skills/issue-report/issue-report-routing.md) / [`tech-review-routing.md`](../../skills/tech-review/tech-review-routing.md)) · 본 문서 [한눈 인덱스](#한눈-인덱스-loop-진입-ssot) — loop 진입 SSOT
+- 각 loop skill 의 `<skill>-routing.md` — 라우팅 / retry / escalate ([`architect-loop-routing.md`](../../skills/architect-loop/architect-loop-routing.md) / [`impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md) / [`ux-routing.md`](../../skills/ux/ux-routing.md) / [`issue-report-routing.md`](../../skills/issue-report/issue-report-routing.md) / [`tech-review-routing.md`](../../skills/tech-review/tech-review-routing.md)) · loop 진입 spec = 각 skill 의 `## Loop` contract
 - [`hooks.md`](hooks.md) — 7 hook (catastrophic-gate / file-guard / tdd-guard / stop-end-run / session-start / post-agent-clear / post-file-op-trace) 시점·차단·우회 SSOT
 - 본 문서 [표준 1 step 시퀀스](#표준-1-step-시퀀스-per-agent-의무) + [Step 8 — review 결과 인지](#step-8-review-결과-인지) — echo / 자가점검 / REDO 분류 / 개선점 코멘트 (옛 dcness-rules §3/§4 흡수)
 - `harness/session_state.py` — helper CLI (`begin-run` / `end-run` / `begin-step` / `end-step` / `finalize-run` / `run-dir` / `auto-resolve`)

@@ -254,7 +254,7 @@ $cur"
 
 - **조건**: story 의 모든 impl task PR merge
 - **Close**: 마지막 task PR body `Closes #story-issue` → GitHub 자동 close (regular merge auto-close)
-- 메인 Claude 사후 작업 없음 — stories.md `[x]` 체크 룰 폐기 (2026-05-12, [`loop-procedure.md`](loop-procedure.md#step-45-폐기-2026-05-12))
+- 메인 Claude 사후 작업 없음 — stories.md `[x]` 체크 룰 폐기 (2026-05-12, 옛 Step 4.5 동기화 step 폐기, 상세는 git history)
 
 ### Epic 완료
 
