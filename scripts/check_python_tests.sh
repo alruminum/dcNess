@@ -4,7 +4,7 @@
 #
 # 동작:
 #   1. staged 파일 목록 추출 (git diff --cached --name-only)
-#   2. harness/ | tests/ | agents/ | .github/workflows/python-tests.yml 매칭 시만 실행
+#   2. harness/ | tests/ | agents/ | skills/ | .github/workflows/python-tests.yml 매칭 시만 실행
 #   3. python3.11/python3 -m unittest discover -s tests
 #
 # 종료 코드:
@@ -26,12 +26,12 @@ if [ -z "$CHANGED" ]; then
   exit 0
 fi
 
-if ! printf '%s\n' "$CHANGED" | grep -qE '^(harness/|tests/|agents/|\.github/workflows/python-tests\.yml$)'; then
+if ! printf '%s\n' "$CHANGED" | grep -qE '^(harness/|tests/|agents/|skills/|\.github/workflows/python-tests\.yml$)'; then
   # 미매칭 — skip
   exit 0
 fi
 
-echo "[pytest-gate] harness/tests/agents 변경 감지 — 단위 테스트 실행"
+echo "[pytest-gate] harness/tests/agents/skills 변경 감지 — 단위 테스트 실행"
 # DCN-CHG-20260501-09: pre-commit 안에서 git env vars (GIT_INDEX_FILE / GIT_DIR /
 # GIT_WORK_TREE) 가 inherited 되어 자식 git worktree add 호출이 fail. unset 후 실행.
 PYTHON_BIN="${PYTHON_BIN:-}"

@@ -208,7 +208,7 @@ Tier 6: <PROJECT_ROOT>/src/__tests__/<name>.{test,spec}.{ts,tsx,js,jsx}
 **역할 1 — 자동 end-run (issue #382)**:
 - `active_runs[rid]` 슬롯 미finalized + 마지막 step end-step 호출 완료 매칭 시 in-process `_cli_end_run` 호출.
 - 부산물: `<run_dir>/review.md` 생성 + loop-insights 누적 + active_runs slot finalize.
-- 배경: `/impl` / `/impl-loop` / `/architect-loop` 종료 후 메인이 end-run 까먹는 회귀 차단.
+- 배경: `/impl-loop` / `/architect-loop` 종료 후 메인이 end-run 까먹는 회귀 차단.
 
 **역할 2 — continuation signal (issue #469 결함 A)**:
 - end-run 호출 *전* 마지막 step prose (`<run_dir>/<agent>[-<MODE>].md`) 결론 enum 추출.

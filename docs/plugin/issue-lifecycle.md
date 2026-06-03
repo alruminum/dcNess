@@ -70,7 +70,7 @@ gh api repos/{owner}/{repo}/milestones --jq '.[] | {number, title}'
 
 ## 5. mid-flow 누락 차단 (pre-flight gate)
 
-`/impl` / `/impl-loop` / `/architect-loop` (ux-architect / system-architect / module-architect × K) 진입 시 부모 epic stories.md 상단 매치 강제:
+`/impl-loop` / `/architect-loop` (ux-architect / system-architect / module-architect × K) 진입 시 부모 epic stories.md 상단 매치 강제:
 
 - `**GitHub Epic Issue:** [#\d+]` (정식 등록), 또는
 - `**GitHub Epic Issue:** 미등록 (사유: …)` (§2 허용 모드)
@@ -83,7 +83,7 @@ story 이슈 부재 시 동일 패턴 (Story N 헤더 직하 `**GitHub Issue:** 
 
 - 등록·트레일러·완료 *룰* SSOT: [`git-spec.md`](git-spec.md) §7~§9
 - 라우팅 / 핸드오프: [`routing.md`](routing.md) §1
-- loop 인덱스: [`loop-procedure.md`](loop-procedure.md) §7.0 (각 loop 풀스펙 = `commands/*.md`)
+- loop 인덱스: [`loop-procedure.md`](loop-procedure.md) §7.0 (각 loop 풀스펙 = 해당 skill 본문 `skills/<skill>/SKILL.md` 또는 `commands/<skill>.md`)
 - product-plan skill (메인 직접): [`../../commands/product-plan.md`](../../commands/product-plan.md)
 - system-architect (impl 목차 표 SSOT): [`../../agents/system-architect.md`](../../agents/system-architect.md)
 - module-architect (impl 본문 detail per task): [`../../agents/module-architect.md`](../../agents/module-architect.md)
