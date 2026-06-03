@@ -224,21 +224,34 @@ stories.md 상단에 `**Base Branch:** feature/<slug>` 마커 박힌 epic (= 통
    - **공통 task** (`story: 공통`) → `Part of #${EPIC_ISSUE}` (task-index trailer omit). 공통 여부의 진본 신호 = `story: 공통` (task_index 형식 아님).
    - **malformed/누락 가드 (MUST)**: 공통 형식(`—`)은 `story: 공통` 일 때만 유효하다. `story` 가 숫자(공통 아님)인데 `task_index` 가 `i/total` 형식이 아니면 — `—` 포함 무엇이든 (누락/malformed/legacy/version-skew) — **PR 생성 전 정지**. 숫자 story 의 `—` 를 공통으로 오분류해 `Part of #epic` 내보내면 story 이슈가 silent open 으로 남아 story-close 의미가 깨진다. `check_pr_body.mjs` 는 task-index 부재를 fallback(트레일러 1건)으로만 통과시켜 이 오분류를 못 잡으므로, 메인이 PR body 작성 전 본 가드를 직접 적용한다.
 
-bash recipe (PR body 작성 직전 — 분기 키는 `STORY_NUM`, task_index 형식만으로 공통 판정 금지):
+bash recipe (PR body 작성 직전 — 분기 키는 `STORY_NUM`, task_index 형식만으로 공통 판정 금지. 위 분기표를 그대로 PR_BODY 로 구성):
 
 ```bash
 TASK_FILE="docs/milestones/.../impl/NN-*.md"
-STORY_NUM=$(awk '/^story:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")   # 정식 = 숫자, 공통 task = "공통"
+STORIES="$(dirname "$(dirname "$TASK_FILE")")/stories.md"   # epic 단위 (root docs/stories.md = legacy 폴백)
+[ -f "$STORIES" ] || STORIES="docs/stories.md"
+STORY_NUM=$(awk '/^story:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")        # 정식 = 숫자, 공통 = "공통"
 TASK_INDEX=$(awk '/^task_index:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")  # 정식 = "3/3", 공통 = "—"
 
 if [ "$STORY_NUM" = "공통" ]; then
-  PR_BODY="Part of #${EPIC_ISSUE}"                       # 공통 task — task-index trailer omit
+  # 공통 task — Part of #<epic>. EPIC_ISSUE 미설정 시 stories.md 마커에서 파싱, 미해결이면 빈 'Part of #' 방지 위해 정지.
+  EPIC_ISSUE="${EPIC_ISSUE:-$(grep -m1 -E '^\*\*GitHub Epic Issue:\*\*' "$STORIES" 2>/dev/null | grep -oE '#[0-9]+' | head -1 | tr -d '#')}"
+  [ -n "$EPIC_ISSUE" ] || { echo "[trailer] 공통 task — epic 이슈 미해결, 정지" >&2; exit 1; }
+  PR_BODY="Part of #${EPIC_ISSUE}"
 elif printf '%s' "$TASK_INDEX" | grep -qE '^[0-9]+/[0-9]+$'; then
   I="${TASK_INDEX%/*}"; TOTAL="${TASK_INDEX#*/}"
-  # i == total → Closes #STORY (+ epic 마지막이면 Closes #EPIC) · i < total → Part of #STORY (위 분기표)
+  if [ "$I" = "$TOTAL" ]; then
+    PR_BODY="Closes #${STORY_ISSUE}"                       # Story 마지막 task
+    # epic 마지막 story 판정 (gh API 1회 — OPEN story 가 본 Story 뿐이면 epic 도 동봉, 위 Epic 완료 절)
+    OPEN=$(gh issue list --label "epic-${EPIC_NUM}-${EPIC_SLUG}" --milestone Story --state open --json number --jq 'length' 2>/dev/null || echo 0)
+    [ "$OPEN" = "1" ] && PR_BODY="${PR_BODY}
+Closes #${EPIC_ISSUE}"
+  else
+    PR_BODY="Part of #${STORY_ISSUE}"                      # 중간 task
+  fi
 else
-  echo "[trailer] story=$STORY_NUM 인데 task_index='$TASK_INDEX' 가 i/total 도 공통(—)도 아님 — PR 생성 전 정지" >&2
-  exit 1                                                  # malformed/누락 가드 (위 MUST) — 숫자 story 의 — 거부
+  echo "[trailer] story=$STORY_NUM 인데 task_index='$TASK_INDEX' 가 i/total 도 공통(—)도 아님 — 정지" >&2
+  exit 1                                                   # malformed/누락 가드 (위 MUST) — 숫자 story 의 — 거부
 fi
 ```
 

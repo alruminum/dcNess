@@ -14,7 +14,7 @@ description: impl task (architect-loop 의 module-architect × K 산출물) 를 
 - **loop**: `impl-task-loop` (UI 감지 시 `impl-ui-design-loop` — designer + 사용자 PICK 2 step 선두 추가, 아래 `## UI 작업 시 designer 선두`)
 - **entry_point**: `impl`
 - **task_list** (Step 1): (풀 4-agent, default=single) test-engineer → engineer:IMPL → code-validator → pr-reviewer · (build-worker, default=chain) build-worker → pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) · (impl-ui-design-loop) designer → 사용자 PICK 선두
-- **advance**: `PASS` → `IMPL_DONE` → `PASS` → `PASS` (풀) · `PASS` → `PASS` (build-worker)
+- **advance**: `PASS` → `IMPL_DONE` → `PASS` → `PASS` (풀 4-agent) · `PASS` → `PASS` (build-worker) · `PASS`(designer) → 사용자 PICK → `PASS` → `IMPL_DONE` → `PASS` → `PASS` (impl-ui-design-loop)
 - **expected_steps**: 4 (풀) / 5 (fallback) / 2 (build-worker) · impl-ui-design-loop = 6 (default) / 7 (fallback)
 - **routing**: [`impl-loop-routing.md`](impl-loop-routing.md)
 
