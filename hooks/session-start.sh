@@ -55,9 +55,14 @@ if [[ -n "$INSTALLED_VERSION" && "$INSTALLED_VERSION" != "null" ]]; then
     fi
   fi
 
-  # 버전 다르면 알림
+  # LATEST 가 INSTALLED 보다 semver 상 높을 때만 알림.
+  # 단순 != 비교는 설치 버전이 더 높은 경우(update 직후 + stale 24h 캐시)에도
+  # "0.4.0 → 0.3.0" 처럼 다운그레이드 권유로 오발화 → semver 대소로 방향 강제 (#593).
   if [[ -n "$LATEST_VERSION" && "$INSTALLED_VERSION" != "$LATEST_VERSION" ]]; then
-    DCNESS_UPDATE_MSG="[dcness update available: ${INSTALLED_VERSION} → ${LATEST_VERSION}. \`claude plugin update\` 권장 — 옛 운영 룰 잔재 회피]"
+    HIGHER=$(printf '%s\n%s\n' "$INSTALLED_VERSION" "$LATEST_VERSION" | sort -V | tail -1)
+    if [[ "$HIGHER" == "$LATEST_VERSION" ]]; then
+      DCNESS_UPDATE_MSG="[dcness update available: ${INSTALLED_VERSION} → ${LATEST_VERSION}. \`claude plugin update\` 권장 — 옛 운영 룰 잔재 회피]"
+    fi
   fi
 fi
 export DCNESS_UPDATE_MSG
