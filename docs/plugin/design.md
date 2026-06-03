@@ -41,7 +41,7 @@ components:
 | `Color` | `#` 로 시작하는 16진수 색상 코드 |
 | `Typography` | `fontFamily` / `fontSize` / `fontWeight` / `lineHeight` / `letterSpacing` / `fontFeature` / `fontVariation` |
 | `Dimension` | `px` / `em` / `rem` 단위 포함 문자열 |
-| `token-reference` | `{path.to.token}` 형식 (아래 §3 참조) |
+| `token-reference` | `{path.to.token}` 형식 (아래 [토큰 참조 문법](#토큰-참조-문법-google-spec-design-tokens) 참조) |
 
 ---
 
@@ -151,7 +151,7 @@ MyApp 의 기본 색상은 보라색 계열이며 Material You 기반이다.
 
 ## AI 슬롭 안티패턴 (Don'ts)
 
-§4 본문 섹션 순서 표의 8번 "Do's and Don'ts" 위치에서 **Don'ts** 카탈로그. designer / engineer 가 UI 작업 시 본 항목 회피 의무 — 위반 시 code-validator 가 grep 으로 검출 후 보고 (강제 X, 경고).
+[본문 섹션 순서](#본문-섹션-순서-google-spec-sections-section-order) 표의 8번 "Do's and Don'ts" 위치에서 **Don'ts** 카탈로그. designer / engineer 가 UI 작업 시 본 항목 회피 의무 — 위반 시 code-validator 가 grep 으로 검출 후 보고 (강제 X, 경고).
 
 | 금지 사항 | 이유 |
 |-----------|------|
