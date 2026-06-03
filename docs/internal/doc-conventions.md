@@ -59,11 +59,14 @@ GitHub 방식 (cross-ref CI의 `slugify`와 동일):
 ## 적용 범위
 
 외부 배포 영역: `docs/plugin/**`·`skills/**`·`agents/**`·`commands/**` + 루트
-`CLAUDE.md`·`README.md`·`AGENTS.md`.
+`CLAUDE.md`·`README.md`·`AGENTS.md` + contributor 문서 `.github/PULL_REQUEST_TEMPLATE.md`
+(SSOT 참조를 담는 contributor-facing 문서라 `§N` deny 대상에 포함).
 (`PROGRESS.md`·`docs/internal/**`은 self 운영/changelog 문서라 제외 — 단 본 규약 문서는
  신규 작성이므로 처음부터 규약을 따른다.)
 
 ## 회귀 차단
 
-전환 완료 후, `scripts/check_cross_refs.mjs` DENY_LIST에 prose `§[0-9]` 패턴을 추가해
-새 위치번호 참조를 CI에서 차단한다(코드펜스·historical 예외 자동 적용).
+`scripts/check_cross_refs.mjs` DENY_LIST에 prose 위치번호 `§N` 패턴(`/§(?!2\.1\.)\d/`)이
+등록되어 새 위치번호 참조를 CI(`cross-ref-validation.yml`)에서 차단한다.
+- **예외 자동 적용**: 코드펜스/인라인코드 안 `§`(`codeExempt`) · historical(`옛/폐기/...`) 라인.
+- **`§2.1.N` 룰 ID 보존**: negative-lookahead `(?!2\.1\.)`로 catastrophic 룰 ID는 차단 대상에서 제외.

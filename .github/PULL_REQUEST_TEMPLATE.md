@@ -1,9 +1,9 @@
-> 룰 SSOT: [`docs/plugin/git-spec.md`](../docs/plugin/git-spec.md) §5 (외부 활성 프로젝트 공통).
-> 본 template = dcness self 전용 — `## 배포 경로 검증` 섹션이 dcness self 작업용으로 추가됨 ([`CLAUDE.md`](../CLAUDE.md) §0.5).
+> 룰 SSOT: [`docs/plugin/git-spec.md` PR 본문](../docs/plugin/git-spec.md#pr-본문) (외부 활성 프로젝트 공통).
+> 본 template = dcness self 전용 — `## 배포 경로 검증` 섹션이 dcness self 작업용으로 추가됨 ([`CLAUDE.md` 추가한 기능은 반드시 배포 경로에도 포함](../CLAUDE.md#추가한-기능은-반드시-배포-경로에도-포함)).
 
 ## 관련 이슈 번호
 
-<!-- 트레일러 룰 (git-spec §8.1):
+<!-- 트레일러 룰 (git-spec 의 PR 트레일러 기본 룰):
      - 중간 task → Part of #N
      - 마지막 task → Closes #N
      - epic 마지막 task → Closes #story + Closes #epic
@@ -32,7 +32,7 @@ Part of #N
 
 ## 배포 경로 검증 (plug-in 영향 시)
 
-<!-- dcness self 룰 (CLAUDE.md §0.5). agents/** / commands/** / hooks/** / init-dcness 복사 파일 / docs/plugin SSOT 변경 시 의무.
+<!-- dcness self 룰 (CLAUDE.md 의 배포 경로 검증). agents/** / commands/** / hooks/** / init-dcness 복사 파일 / docs/plugin SSOT 변경 시 의무.
      해당 없음 시 "N/A — dcness self 운영 작업" -->
 -
 
