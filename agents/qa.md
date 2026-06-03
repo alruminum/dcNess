@@ -42,7 +42,7 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 
 ### 원칙 1 — Think Before Triaging (qa 의 *주요* 원칙)
 
-이미 §역질문 루프 가 본 원칙 정합. 강화:
+이미 [역질문 루프](#역질문-루프-이슈-접수-전-명확화) 가 본 원칙 정합. 강화:
 - 이슈 모호 시 *조용히 분류 X* → 역질문 루프 진입 (이미 있음)
 - 재현 경로 / 기대 동작 / 실제 동작 3 요소 부재 → 분류 보류 + 명확화 요청
 - 분류 결과에 *항상 가정 명시* — "본 이슈를 X 분류로 판정 (가정: Y) — 다르면 알려달라"
@@ -111,4 +111,4 @@ CRITICAL 이슈 발견 시 다른 이슈 분석 즉시 중단 + 보고.
 
 ## 참조
 
-- 라우팅 진본: [`skills/issue-report/issue-report-routing.md`](../skills/issue-report/issue-report-routing.md) / catastrophic: [`docs/plugin/hooks.md`](../docs/plugin/hooks.md) §3.2
+- 라우팅 진본: [`skills/issue-report/issue-report-routing.md`](../skills/issue-report/issue-report-routing.md) / catastrophic: [`docs/plugin/hooks.md`](../docs/plugin/hooks.md#catastrophic-gatesh)

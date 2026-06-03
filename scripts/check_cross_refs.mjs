@@ -11,11 +11,10 @@
  *
  * 검증 B — 옛 명칭 deny-list (외부 배포 영역 한정)
  *   - 폐기 명령어 / 옛 loop 명 / 옛 SSOT 파일명
+ *   - 위치번호 §N 참조 금지 (doc-conventions.md 규약) — `§3.2` 류 prose 위치번호.
+ *     예외: §2.1.N 룰 ID(harness 런타임) · 코드펜스/인라인코드 · historical(옛/폐기/...) 라인.
  *   - 외부 배포 영역: docs/plugin/, commands/, agents/, hooks/, .claude-plugin/
  *   - 예외 파일: commands/smart-compact.md (sample 코드블록 안 historical 인용 — M1/N 동일 사유)
- *
- * Scope 외 (별 PR 후보):
- *   - prose `<filename>.md §N.M` heuristic 인용 (false positive 분류 부담)
  *
  * 사용:
  *   node scripts/check_cross_refs.mjs
@@ -30,7 +29,7 @@ const REPO_ROOT = process.cwd();
 
 // ─── 검사 대상 ─────────────────────────────────────────────────
 const SCAN_DIRS = ['docs/plugin', 'docs/internal', 'commands', 'skills', 'agents'];
-const SCAN_ROOTS = ['README.md', 'AGENTS.md', 'PROGRESS.md', 'CLAUDE.md'];
+const SCAN_ROOTS = ['README.md', 'AGENTS.md', 'PROGRESS.md', 'CLAUDE.md', '.github/PULL_REQUEST_TEMPLATE.md'];
 
 // ─── 옛 명칭 deny-list ────────────────────────────────────────
 // historical annotation (navigation hint) 은 통과:
@@ -75,12 +74,29 @@ const DENY_LIST = [
     pattern: /(?<![\w-])routing\.md/,
     label: '폐기 SSOT `docs/plugin/routing.md` — Phase 3 (#564) 폐기, 라우팅은 각 skill `<skill>-routing.md` 로 분산',
   },
+  {
+    // 위치번호 §N 참조 금지 (doc-conventions.md). negative-lookahead 로 §2.1.N 룰 ID 보존.
+    // codeExempt: 코드펜스/인라인코드 안 § 는 검사 제외 (sample·런타임 에러 메시지).
+    pattern: /§(?!2\.1\.)\d/,
+    codeExempt: true,
+    label: '위치번호 §N 참조 — 제목 anchor 링크로 전환 (doc-conventions.md). §2.1.N 룰 ID·코드펜스/인라인코드·historical 은 예외.',
+  },
 ];
 
 const EXTERNAL_DIRS = ['docs/plugin', 'commands', 'skills', 'agents', 'hooks', '.claude-plugin'];
 
 const DENY_EXCLUDE = new Set([
   'commands/smart-compact.md',
+]);
+
+// §N (codeExempt) deny 는 외부 배포 영역 + 아래 루트 규약·contributor 문서까지 적용
+// (doc-conventions.md 적용 범위). 옛 명칭 패턴은 여전히 외부 배포 영역 한정.
+// PROGRESS.md 는 self 운영 changelog 라 §N deny 비대상.
+const DENY_ROOT_DOCS = new Set([
+  'CLAUDE.md',
+  'README.md',
+  'AGENTS.md',
+  '.github/PULL_REQUEST_TEMPLATE.md',
 ]);
 
 // ─── 헬퍼 ────────────────────────────────────────────────────
@@ -255,17 +271,33 @@ function isExternalFile(filePath) {
 }
 
 function validateDenyList(filePath) {
-  if (!isExternalFile(filePath)) return [];
   if (DENY_EXCLUDE.has(filePath)) return [];
+  const external = isExternalFile(filePath);
+  const rootDoc = DENY_ROOT_DOCS.has(filePath);
+  // 외부 배포 영역도 아니고 루트 규약 문서도 아니면 deny 비대상
+  if (!external && !rootDoc) return [];
 
   const violations = [];
   const lines = getContent(filePath).split('\n');
+  let inCodeBlock = false;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    // 코드펜스 토글 — fence 마커 줄은 검사 skip
+    if (line.trim().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
     // historical annotation 은 통과 (옛/폐기/history 키워드 동반)
     if (HISTORICAL_CTX_RE.test(line)) continue;
-    for (const { pattern, label } of DENY_LIST) {
-      if (pattern.test(line)) {
+    // codeExempt 패턴(§N)용 — 인라인 코드(백틱) 제거판
+    const codeStripped = line.replace(/`[^`]*`/g, '');
+    for (const { pattern, label, codeExempt } of DENY_LIST) {
+      // 옛 명칭 패턴 = 외부 배포 영역 한정; §N(codeExempt) = 루트 규약 문서까지 포함
+      if (!external && !codeExempt) continue;
+      // codeExempt 패턴은 코드펜스 안 / 인라인코드 안 § 를 검사 제외
+      if (codeExempt && inCodeBlock) continue;
+      const target = codeExempt ? codeStripped : line;
+      if (pattern.test(target)) {
         violations.push({
           file: filePath,
           lineNo: i + 1,

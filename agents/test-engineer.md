@@ -28,7 +28,7 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 
 **산출물 경로 백틱 의무 (#457 처방 2-(1))**: return prose 안 모든 산출물 언급 (테스트 파일 경로 / impl.md / SPEC_GAP 위치) 은 *백틱으로 감싼 경로* 형태로 쓴다. 메인 Claude 가 그대로 사용자 응답에 echo 하므로 사용자가 한 번 클릭으로 도달. 파일명만 / "위 테스트" 같은 모호 참조 / 백틱 누락 형태 금지.
 
-**구체화 (#446)**: 산출물 의무의 *테스트 케이스 표* (§산출물 정보 의무) 를 호출자 return prose 에 **전수 입력 금지** — 케이스 수 총합 + 카테고리 분포 3-5 라인 (정상/엣지/에러) + RED/GREEN 상태 + SPEC_GAP 항목 만. 케이스별 detail 은 테스트 파일 자체 + 디스크의 run review.md 에 이미 있다. 워크트리 절대경로 (`/Users/.../worktrees/...`) 반복 echo 금지 — 처음 1회만 박고 이후 상대경로 또는 생략.
+**구체화 (#446)**: 산출물 의무의 *테스트 케이스 표* ([산출물 정보 의무](#산출물-정보-의무-형식-자유)) 를 호출자 return prose 에 **전수 입력 금지** — 케이스 수 총합 + 카테고리 분포 3-5 라인 (정상/엣지/에러) + RED/GREEN 상태 + SPEC_GAP 항목 만. 케이스별 detail 은 테스트 파일 자체 + 디스크의 run review.md 에 이미 있다. 워크트리 절대경로 (`/Users/.../worktrees/...`) 반복 echo 금지 — 처음 1회만 박고 이후 상대경로 또는 생략.
 
 **호출자가 prompt 로 전달하는 정보**: impl 계획 파일 경로.
 
@@ -45,7 +45,7 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 
 ## 작업 흐름 (자율 조정 가능)
 
-impl 계획 파일 읽기 → **epic 단위 `domain-model.md` 의무 read** → **root `docs/architecture.md` + epic 단위 architecture.md 의존성 그래프 read** → **공통 SSOT [`docs/plugin/module-design-principles.md`](../docs/plugin/module-design-principles.md) 의무 read** (§2 Interface Design for Testability 룰 — DI 패턴 / 부작용 없는 반환 / 작은 표면 검증 영역) → `## 인터페이스 정의` (함수 시그니처·타입·Props) → `## 수용 기준` ((TEST) 태그 항목) → `## 핵심 로직` (의사코드에서 엣지 케이스 추출) → `## 생성/수정 파일` (**테스트 파일 경로 + import 경로 모두 이 목록에서 추출**) → 테스트 작성. **5분 이내 Write 시작** — 분석에 과도한 시간 X.
+impl 계획 파일 읽기 → **epic 단위 `domain-model.md` 의무 read** → **root `docs/architecture.md` + epic 단위 architecture.md 의존성 그래프 read** → **공통 SSOT [`docs/plugin/module-design-principles.md`](../docs/plugin/module-design-principles.md) 의무 read** ([Interface Design for Testability](../docs/plugin/module-design-principles.md#interface-design-for-testability-테스트-가능성-위한-인터페이스-설계) 룰 — DI 패턴 / 부작용 없는 반환 / 작은 표면 검증 영역) → `## 인터페이스 정의` (함수 시그니처·타입·Props) → `## 수용 기준` ((TEST) 태그 항목) → `## 핵심 로직` (의사코드에서 엣지 케이스 추출) → `## 생성/수정 파일` (**테스트 파일 경로 + import 경로 모두 이 목록에서 추출**) → 테스트 작성. **5분 이내 Write 시작** — 분석에 과도한 시간 X.
 
 vite.config.ts / vitest 설정 파일은 기존 테스트 패턴 필요 시 참조 가능.
 
@@ -114,4 +114,4 @@ impl 인터페이스 모호 시 *추측 금지*:
 
 ## 참조
 
-- 라우팅: [`impl-loop-routing.md`](../skills/impl-loop/impl-loop-routing.md) (`/impl-loop` · `/impl`) / catastrophic: [`docs/plugin/hooks.md`](../docs/plugin/hooks.md) §3.2
+- 라우팅: [`impl-loop-routing.md`](../skills/impl-loop/impl-loop-routing.md) (`/impl-loop` · `/impl`) / catastrophic: [`docs/plugin/hooks.md`](../docs/plugin/hooks.md#catastrophic-gatesh)

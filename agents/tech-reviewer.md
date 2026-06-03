@@ -21,7 +21,7 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 - **검토 일부 불가 (FAIL)** → 본문 충족 X 항목 명시 (예: 외부 의존 N 개 중 1개 정식 검증 실패 + 대안 2개 미발견) + "FAIL".
 - **검토 실행 불가 (ESCALATE)** → 부족한 자원 명시 (WebFetch 차단 / API 인증 부재 / 사용자 환경 권한 부족 등) + "ESCALATE".
 
-> 결론별 다음 호출(라우팅) 진본 = [`skills/tech-review/tech-review-routing.md`](../skills/tech-review/tech-review-routing.md). **단방향**: `/architect-loop` 진입 후 tech-reviewer 재호출 금지 ([`hooks.md`](../docs/plugin/hooks.md) §3.2 §2.1.4).
+> 결론별 다음 호출(라우팅) 진본 = [`skills/tech-review/tech-review-routing.md`](../skills/tech-review/tech-review-routing.md). **단방향**: `/architect-loop` 진입 후 tech-reviewer 재호출 금지 ([`hooks.md`](../docs/plugin/hooks.md#catastrophic-gatesh) §2.1.4).
 
 **호출자가 prompt 로 전달하는 정보**: PRD 경로 (`docs/prd.md`), tech-review.md 스켈레톤 경로 (`docs/tech-review.md`), (선택) 이전 cycle 컨텍스트 (어떤 항목이 patch 됐는지 / 격리 후보 중 어떤 게 격상됐는지).
 
@@ -180,7 +180,7 @@ return prose 안 모든 산출물 언급 = *백틱 + 절대/repo-root 상대 경
 
 ## 단방향 룰 (참조 — 메인 측 catastrophic)
 
-본 agent 호출 시점 = `/tech-review` 스킬 안. `/architect-loop` 진입 *후* 본 agent 재호출 **금지** (메인 측 catastrophic 룰 — `docs/plugin/hooks.md` §3.2 (§2.1.4) 정합). 본 agent 가 알 필요는 없지만 (호출 자체가 차단됨) — 참조만.
+본 agent 호출 시점 = `/tech-review` 스킬 안. `/architect-loop` 진입 *후* 본 agent 재호출 **금지** (메인 측 catastrophic 룰 — [`docs/plugin/hooks.md` catastrophic-gate.sh](../docs/plugin/hooks.md#catastrophic-gatesh) §2.1.4 정합). 본 agent 가 알 필요는 없지만 (호출 자체가 차단됨) — 참조만.
 
 새 cycle 시작 = 사용자 결정 → `/product-plan` 재진입 (PRD 자체 수정) → 새 `/tech-review` cycle.
 
@@ -208,5 +208,5 @@ return prose 안 모든 산출물 언급 = *백틱 + 절대/repo-root 상대 경
 ## 참조
 
 - 호출자 스킬 (cycle 관리): [`skills/tech-review/SKILL.md`](../skills/tech-review/SKILL.md)
-- 라우팅 진본: [`skills/tech-review/tech-review-routing.md`](../skills/tech-review/tech-review-routing.md) / catastrophic: [`docs/plugin/hooks.md`](../docs/plugin/hooks.md) §3.2
+- 라우팅 진본: [`skills/tech-review/tech-review-routing.md`](../skills/tech-review/tech-review-routing.md) / catastrophic: [`docs/plugin/hooks.md`](../docs/plugin/hooks.md#catastrophic-gatesh)
 - 옛 plan-reviewer 폐기 배경 (이슈 [#515](https://github.com/alruminum/dcNess/issues/515)): grill 결정 누적
