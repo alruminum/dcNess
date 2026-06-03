@@ -11,7 +11,14 @@ description: impl task (architect-loop 의 module-architect × K 산출물) 를 
 
 ## Loop
 
-`impl-task-loop` (loop 인덱스 = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#한눈-인덱스-loop-진입-ssot)). catastrophic 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh). 본 skill 본문 = impl-task-loop 풀스펙 진본. chain (N task) 은 `impl-task-loop × N` driver — 각 task 가 독립 `begin-run impl` … `end-run` run 1개씩 (N task = N run = N review.md). UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (아래 `## UI 작업 시 designer 선두`) 자동 전환.
+- **loop**: `impl-task-loop` (UI 감지 시 `impl-ui-design-loop` — designer + 사용자 PICK 2 step 선두 추가, 아래 `## UI 작업 시 designer 선두`)
+- **entry_point**: `impl`
+- **task_list** (Step 1): (풀 4-agent, default=single) test-engineer → engineer:IMPL → code-validator → pr-reviewer · (build-worker, default=chain) build-worker → pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) · (impl-ui-design-loop) designer → 사용자 PICK 선두
+- **advance**: `PASS` → `IMPL_DONE` → `PASS` → `PASS` (풀 4-agent) · `PASS` → `PASS` (build-worker) · `PASS`(designer) → 사용자 PICK → `PASS` → `IMPL_DONE` → `PASS` → `PASS` (impl-ui-design-loop)
+- **expected_steps**: 4 (풀) / 5 (fallback) / 2 (build-worker) · impl-ui-design-loop = 6 (default) / 7 (fallback)
+- **routing**: [`impl-loop-routing.md`](impl-loop-routing.md)
+
+본 skill 본문 = impl-task-loop / impl-ui-design-loop 풀스펙 진본. catastrophic 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh). chain (N task) 은 `impl-task-loop × N` driver — 각 task 가 독립 `begin-run impl` … `end-run` run 1개씩 (N task = N run = N review.md). 절차 mechanics = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md).
 
 ## Inputs (메인이 사용자에게 받아야 할 정보)
 
@@ -60,7 +67,7 @@ UI 작업 감지 시 (풀 4-agent 엔진 한정) 시퀀스 **선두에 designer 
 
 ### 워크트리 (기본 켜짐)
 
-진입 시 자동 `EnterWorktree(name="impl-{ts_short}")`. chain 은 outer 1회 — 모든 task 가 같은 worktree cwd 에서 직렬 진행 (git 충돌 X). 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#worktree-분기-impl-류-루프-한정).
+진입 시 자동 `EnterWorktree(name="impl-{ts_short}")`. chain 은 outer 1회 — 모든 task 가 같은 worktree cwd 에서 직렬 진행 (git 충돌 X). 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시에만 건너뜀. 자세히 = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#worktree-분기-action-루프-한정).
 
 **prev-tasks 초기화 (#525, build-worker 엔진 한정)**: `[PREVIOUS_TASKS]` 는 build-worker 진입 시 직전 task 산출을 주입(인접 task 인터페이스 정합용)한다. `begin-step build-worker` 가 *그 시점에* prev-tasks 파일을 읽어 stdout 으로 emit 하므로 ([`session_state.py`](../../harness/session_state.py) — single/chain 구분 안 함) — **reset 은 반드시 `begin-step build-worker` *호출 전* 에 해야 한다** (begin-step 후 reset 은 이미 emit 된 stdout 에 늦음). 따라서: **build-worker 진입이 (a) chain 의 첫 task 거나 (b) single 모드(`빠르게`/`worker` override 포함) 이면 `begin-step build-worker` 직전에 `dcness-helper prev-tasks-reset` 1회 호출 의무**. 안 하면 직전 chain 의 `[PREVIOUS_TASKS]` 잔재가 새 worker prompt 에 주입돼 stale 인터페이스에 맞출 위험. **chain 의 2번째+ task 는 reset 안 함** (직전 task 누적이 정합 입력). 까먹어도 FIFO cap(10) 안전망이나 명시 호출 권장. 풀 4-agent 엔진은 build-worker 미사용 → 본 룰 비대상.
 
@@ -136,7 +143,7 @@ worktree branch 안 commit / push / PR 생성·머지 = **메인 Claude 전담**
 
 ### 사전 read (lazy — 필요시만, #400)
 
-정상 흐름은 본 skill 본문 + 인용된 docs 섹션 링크 만으로 진행. 본문에 있는 catastrophic / Pre-flight gate / agent boundary 룰이 1차. *룰 모호 / 분기 발생* 시에만 [`impl-loop-routing.md`](impl-loop-routing.md) (라우팅) / `loop-procedure.md` (절차 mechanics + 한눈 인덱스) / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
+정상 흐름은 본 skill 본문 + 인용된 docs 섹션 링크 만으로 진행. 본문에 있는 catastrophic / Pre-flight gate / agent boundary 룰이 1차. *룰 모호 / 분기 발생* 시에만 [`impl-loop-routing.md`](impl-loop-routing.md) (라우팅) / `loop-procedure.md` (절차 mechanics) / `issue-lifecycle.md` 부분 read (grep + offset/limit). 통째 read 폐기 — 메인 cache_read 기준치 감축.
 
 ### impl 파일 사전 read 의무 (MUST — module-architect 7 원칙 + cost-aware #436)
 
@@ -355,7 +362,7 @@ PR merge 직후 *반드시* 실행 (issue #396):
 ## 참조
 
 - 라우팅 (결론→다음 / retry / escalate): [`impl-loop-routing.md`](impl-loop-routing.md) — 본 skill 라우팅 SSOT
-- loop 인덱스 + 절차 mechanics: [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#한눈-인덱스-loop-진입-ssot) / Step mechanics
+- loop spec: 본 skill `## Loop` + 본문. 공통 절차 mechanics: [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#진입-모델)
 - 권한 경계: [`agent_boundary.py`](../../harness/agent_boundary.py)
 - 브랜치·커밋·PR 네이밍: [`git-spec.md`](../../docs/plugin/git-spec.md)
 - agent 정의: [`test-engineer.md`](../../agents/test-engineer.md) / [`engineer.md`](../../agents/engineer.md) / [`code-validator.md`](../../agents/code-validator.md) / [`pr-reviewer.md`](../../agents/pr-reviewer.md) / [`build-worker.md`](../../agents/build-worker.md) / [`module-architect.md`](../../agents/module-architect.md) / [`designer.md`](../../agents/designer.md)

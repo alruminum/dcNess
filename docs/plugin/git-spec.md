@@ -107,7 +107,8 @@ Part of #N
 
 ```
 1. git checkout -b {브랜치명} {base}
-   # base 분기 — docs/stories.md 상단 `**Base Branch:**` 매치 → 해당 값, 매치 없음 → main
+   # base 분기 — epic 단위 stories.md (impl task 경로의 `epic-NN-<slug>/stories.md`; root docs/stories.md = legacy 폴백)
+   #            상단 `**Base Branch:**` 매치 → 해당 값 (통합 브랜치 모드면 사전 `git fetch origin <값>` 후 그 ref 기반), 매치 없음 → main
 2. (작업 + 커밋)
 3. git push -u origin {브랜치명}
 4. gh pr create --base {base} --title "..." --body "..."
@@ -221,14 +222,41 @@ stories.md 상단에 `**Base Branch:** feature/<slug>` 마커 박힌 epic (= 통
    - i == total + epic 마지막 story → `Closes #${STORY_ISSUE}` + `Closes #${EPIC_ISSUE}`
    - i == total + epic 중간 story → `Closes #${STORY_ISSUE}`
    - i < total → `Part of #${STORY_ISSUE}`
+   - **공통 task** (`story: 공통`) → `Part of #${EPIC_ISSUE}` (task-index trailer omit). 공통 여부의 진본 신호 = `story: 공통` (task_index 형식 아님).
+   - **malformed/누락 가드 (MUST)**: 공통 형식(`—`)은 `story: 공통` 일 때만 유효하다. `story` 가 숫자(공통 아님)인데 `task_index` 가 `i/total` 형식이 아니면 — `—` 포함 무엇이든 (누락/malformed/legacy/version-skew) — **PR 생성 전 정지**. 숫자 story 의 `—` 를 공통으로 오분류해 `Part of #epic` 내보내면 story 이슈가 silent open 으로 남아 story-close 의미가 깨진다. `check_pr_body.mjs` 는 task-index 부재를 fallback(트레일러 1건)으로만 통과시켜 이 오분류를 못 잡으므로, 메인이 PR body 작성 전 본 가드를 직접 적용한다.
 
-bash one-liner ([`loop-procedure.md`](loop-procedure.md#impl-task-loop-commit-구조) commit3 단계 안):
+bash recipe (PR body 작성 직전 — 분기 키는 `STORY_NUM`, task_index 형식만으로 공통 판정 금지. 위 분기표를 그대로 PR_BODY 로 구성):
 
 ```bash
 TASK_FILE="docs/milestones/.../impl/NN-*.md"
-TASK_INDEX=$(awk '/^task_index:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")
-I="${TASK_INDEX%/*}"
-TOTAL="${TASK_INDEX#*/}"
+STORIES="$(dirname "$(dirname "$TASK_FILE")")/stories.md"   # epic 단위 (root docs/stories.md = legacy 폴백)
+[ -f "$STORIES" ] || STORIES="docs/stories.md"
+STORY_NUM=$(awk '/^story:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")        # 정식 = 숫자, 공통 = "공통"
+TASK_INDEX=$(awk '/^task_index:/ {gsub(/[",]/,""); print $2; exit}' "$TASK_FILE")  # 정식 = "3/3", 공통 = "—"
+
+if [ "$STORY_NUM" = "공통" ]; then
+  # 공통 task — Part of #<epic>. EPIC_ISSUE 미설정 시 stories.md 마커에서 파싱, 미해결이면 빈 'Part of #' 방지 위해 정지.
+  EPIC_ISSUE="${EPIC_ISSUE:-$(grep -m1 -E '^\*\*GitHub Epic Issue:\*\*' "$STORIES" 2>/dev/null | grep -oE '#[0-9]+' | head -1 | tr -d '#')}"
+  [ -n "$EPIC_ISSUE" ] || { echo "[trailer] 공통 task — epic 이슈 미해결, 정지" >&2; exit 1; }
+  PR_BODY="Part of #${EPIC_ISSUE}"
+elif printf '%s' "$TASK_INDEX" | grep -qE '^[0-9]+/[0-9]+$'; then
+  I="${TASK_INDEX%/*}"; TOTAL="${TASK_INDEX#*/}"
+  if [ "$I" = "$TOTAL" ]; then
+    PR_BODY="Closes #${STORY_ISSUE}"                       # Story 마지막 task
+    # epic 마지막 story 판정 (gh API 1회 — OPEN story 가 본 Story 뿐이면 epic 도 동봉, 위 Epic 완료 절)
+    OPEN=$(gh issue list --label "epic-${EPIC_NUM}-${EPIC_SLUG}" --milestone Story --state open --json number --jq 'length' 2>/dev/null || echo 0)
+    [ "$OPEN" = "1" ] && PR_BODY="${PR_BODY}
+Closes #${EPIC_ISSUE}"
+  else
+    PR_BODY="Part of #${STORY_ISSUE}"                      # 중간 task
+  fi
+  # task-index trailer 필수 (위 기본 룰) — check_pr_body.mjs 가 i==total 마지막 task 식별용. story task 만 부착 (공통은 omit).
+  PR_BODY="${PR_BODY}
+task-index: ${TASK_INDEX}"
+else
+  echo "[trailer] story=$STORY_NUM 인데 task_index='$TASK_INDEX' 가 i/total 도 공통(—)도 아님 — 정지" >&2
+  exit 1                                                   # malformed/누락 가드 (위 MUST) — 숫자 story 의 — 거부
+fi
 ```
 
 ### Development 섹션 역방향 업데이트
@@ -254,7 +282,7 @@ $cur"
 
 - **조건**: story 의 모든 impl task PR merge
 - **Close**: 마지막 task PR body `Closes #story-issue` → GitHub 자동 close (regular merge auto-close)
-- 메인 Claude 사후 작업 없음 — stories.md `[x]` 체크 룰 폐기 (2026-05-12, [`loop-procedure.md`](loop-procedure.md#step-45-폐기-2026-05-12))
+- 메인 Claude 사후 작업 없음 — stories.md `[x]` 체크 룰 폐기 (2026-05-12, 옛 Step 4.5 동기화 step 폐기, 상세는 git history)
 
 ### Epic 완료
 
@@ -277,7 +305,7 @@ $cur"
 
 - lifecycle 흐름·메커니즘 (sub-issue API / 멱등성 / 마일스톤 조회 / pre-flight gate): [`issue-lifecycle.md`](issue-lifecycle.md)
 - 라우팅 / 핸드오프: 각 loop skill 의 `<skill>-routing.md` (예: [`../../skills/impl-loop/impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md))
-- loop 인덱스: [`loop-procedure.md`](loop-procedure.md#한눈-인덱스-loop-진입-ssot) (각 loop 풀스펙 = 해당 skill 본문 `skills/<skill>/SKILL.md`)
+- loop 진입 spec: 각 skill 본문 `skills/<skill>/SKILL.md` 의 `## Loop` contract + `<skill>-routing.md`. 공통 실행 절차 = [`loop-procedure.md`](loop-procedure.md#진입-모델)
 - product-plan skill (메인 직접): [`../../skills/product-plan/SKILL.md`](../../skills/product-plan/SKILL.md)
 - system-architect (모듈 토폴로지 + 공통 task 목록 SSOT): [`../../agents/system-architect.md`](../../agents/system-architect.md)
 - module-architect (Story 안 task 분할 + impl 파일 N 개 산출 SSOT): [`../../agents/module-architect.md`](../../agents/module-architect.md)

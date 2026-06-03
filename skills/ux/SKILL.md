@@ -11,7 +11,14 @@ description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-ar
 
 ## Loop
 
-`ux-design-stage` (UX_FLOW) / `ux-refine-stage` (UX_REFINE). loop 한눈 인덱스 = [`docs/plugin/loop-procedure.md`](../../docs/plugin/loop-procedure.md#한눈-인덱스-loop-진입-ssot).
+- **loop**: `ux-design-stage` (UX_FLOW) / `ux-refine-stage` (UX_REFINE)
+- **entry_point**: `ux` (UX_REFINE 는 REFINE 발화 동반)
+- **task_list** (Step 1): ux-architect:UX_FLOW (또는 :UX_REFINE) → designer → 사용자 PICK
+- **advance**: `UX_FLOW_READY` (또는 `UX_REFINE_READY`) → `PASS` → 사용자 PICK
+- **expected_steps**: 3 (양 모드 공통)
+- **routing**: [`ux-routing.md`](ux-routing.md)
+
+본 skill 본문 = ux-design-stage / ux-refine-stage 풀스펙 진본. 코드 변경 X (commit 없음). 절차 mechanics = [`docs/plugin/loop-procedure.md`](../../docs/plugin/loop-procedure.md).
 
 ## 모드 판정 (진입 시)
 
@@ -59,7 +66,7 @@ description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-ar
 ## 참조
 
 - 라우팅 (결론→다음 / 모드 전환 / cycle / escalate / 후속): [`ux-routing.md`](ux-routing.md) — 본 skill 라우팅 SSOT
-- loop 인덱스: [`docs/plugin/loop-procedure.md`](../../docs/plugin/loop-procedure.md#한눈-인덱스-loop-진입-ssot)
+- loop spec: 본 skill `## Loop` + 본문. 공통 절차 mechanics: [`docs/plugin/loop-procedure.md`](../../docs/plugin/loop-procedure.md#진입-모델)
 - 절차 mechanics: [`docs/plugin/loop-procedure.md`](../../docs/plugin/loop-procedure.md) 의 Step mechanics
 - agent 정의: [`agents/ux-architect.md`](../../agents/ux-architect.md) / [`agents/designer.md`](../../agents/designer.md)
 - design 가이드: [`docs/plugin/design.md`](../../docs/plugin/design.md)

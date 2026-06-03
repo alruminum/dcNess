@@ -1,11 +1,14 @@
-"""docs/plugin/loop-procedure.md 의 base-ref 분기 — base-ref 추출 sh 명령 검증 (#424).
+"""base-ref / PR 트레일러 추출·판정 로직 회귀 검증 (#424, #580 위임 반영).
 
-base-ref 분기 의 sh 블록:
+base-ref·트레일러 *규칙* SSOT 는 git-spec.md (Git 절차 / PR 트레일러) 다 —
+옛 loop-procedure.md 의 긴 추출·판정 bash 는 #580 (단일 목적 SSOT 재정의) 로
+git-spec + 각 행동형 skill + pr-create.sh 로 위임·제거됐다.
 
-    BASE_BRANCH=$(grep -m1 -E '^\\*\\*Base Branch:\\*\\*' docs/stories.md 2>/dev/null \\
-      | sed -E 's/.*Base Branch:\\*\\*[[:space:]]+//')
-
-이 추출 로직이 다양한 stories.md 입력에 대해 정상 동작하는지 검증.
+본 테스트는 그 git-spec 규칙이 규정하는 추출·판정 로직 (Base Branch 마커
+grep+sed / task_index i/total 트레일러 분기 / epic 단위 stories.md 경로 유도)
+이 다양한 입력에 정상 동작하는지를 지키는 *회귀 가드* 다. (위임 구조 자체 —
+loop-procedure 가 원칙만 남기고 규칙을 git-spec 에 위임했는지 — 는 아래
+TestSSOTReferencePresent 가 검증.)
 """
 
 import os
@@ -80,7 +83,7 @@ class TestBaseBranchExtraction(unittest.TestCase):
 
 
 def resolve_stories_path(task_file: str) -> str:
-    """impl-task-loop commit 구조 의 epic 단위 stories.md 경로 유도 (impl task 경로 조부모 + stories.md)."""
+    """epic 단위 stories.md 경로 유도 (impl task 경로 조부모 + stories.md). 규칙 SSOT = git-spec / impl-loop SKILL."""
     cmd = f'printf %s "$(dirname "$(dirname "{task_file}")")/stories.md"'
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     return result.stdout.strip()
@@ -233,30 +236,49 @@ class TestStoriesPathResolution(unittest.TestCase):
 
 
 class TestSSOTReferencePresent(unittest.TestCase):
-    """SSOT (loop-procedure.md 의 base-ref 분기) 참조가 skill 본문에 박혀있는지 검증."""
+    """위임 구조 보존 검증 (#580 — loop-procedure 단일 목적 SSOT 재정의).
+
+    base-ref·트레일러 규칙 SSOT 가 loop-procedure 의 긴 bash 에서 git-spec 으로
+    이전됐다. 검증 3 축:
+    (a) loop-procedure 는 base-ref 운전 원칙(heading) + git-spec 링크만 보유 —
+        판정 bash(STORIES 유도 / task_index 트레일러) 는 제거.
+    (b) impl-loop / architect-loop SKILL 이 base-ref 적용을 설명 (anchor 참조).
+    (c) git-spec 이 Base Branch / sub-PR base / 트레일러 규칙 보유.
+    """
 
     ROOT = Path(__file__).resolve().parent.parent
 
     def _read(self, rel: str) -> str:
         return (self.ROOT / rel).read_text(encoding="utf-8")
 
-    def test_loop_procedure_section_present(self):
+    def test_loop_procedure_keeps_principle_and_delegates(self):
+        # (a) 원칙 heading(skill cross-ref anchor 대상) + Base Branch 마커 + git-spec 위임 링크 보존
         body = self._read("docs/plugin/loop-procedure.md")
         self.assertIn("### base-ref 분기 (통합 브랜치 모드, #424)", body)
         self.assertIn("**Base Branch:**", body)
-        self.assertIn("git worktree add -b", body)
-        self.assertIn("EnterWorktree(path=", body)
+        self.assertIn("git-spec.md#git-절차", body)
+        # 그림자 판정 bash 는 제거됨 (git-spec / pr-create.sh 위임)
+        self.assertNotIn("EPIC_OPEN_STORIES", body)
+        self.assertNotIn("task_index", body)
 
     def test_impl_loop_references_section(self):
-        # impl + impl-loop 통합 — skills/impl-loop/SKILL.md 단일 진본
+        # (b) impl + impl-loop 통합 — skills/impl-loop/SKILL.md 단일 진본
         body = self._read("skills/impl-loop/SKILL.md")
         self.assertIn("#base-ref-분기-통합-브랜치-모드-424", body)
         self.assertIn("Base ref 분기", body)
 
     def test_architect_loop_references_section(self):
+        # (b)
         body = self._read("skills/architect-loop/SKILL.md")
         self.assertIn("#base-ref-분기-통합-브랜치-모드-424", body)
         self.assertIn("Base ref 분기", body)
+
+    def test_git_spec_has_base_and_trailer_rules(self):
+        # (c) base 분기 + 트레일러 규칙 SSOT = git-spec
+        body = self._read("docs/plugin/git-spec.md")
+        self.assertIn("**Base Branch:**", body)
+        self.assertIn("## Git 절차", body)
+        self.assertIn("## PR 트레일러", body)
 
 
 if __name__ == "__main__":
