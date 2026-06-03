@@ -80,7 +80,7 @@ flowchart TB
 | architecture-validator | PASS(1차) → module-architect × K / PASS(2차) → architect-loop Step 6 / FAIL → 해당 architect 재진입(cycle ≤ 2) / ESCALATE → 사용자. 두 시점 호출 — 1차(Step 3.5) = Placeholder + 공통 SSOT, 2차(Step 5) = Cross-Story Interface + Impl Simulation + Origin Anchor + Placeholder 재검증 |
 | pr-reviewer | PASS → (CI PASS 후) 메인 즉시 regular merge / 변경 요청 → engineer POLISH |
 | qa | FUNCTIONAL_BUG → module-architect(버그픽스) / CLEANUP → engineer(light) / DESIGN_ISSUE → designer·ux-architect(REFINE) / KNOWN_ISSUE → 종료 / SCOPE_ESCALATE → 사용자 |
-| build-worker (`/impl-loop` 한정) | PASS → 메인 git/PR → pr-reviewer / SPEC_GAP_FOUND → module-architect(≤ 2) / TESTS_FAIL → engineer 재시도 또는 사용자 / IMPLEMENTATION_ESCALATE → 사용자. 권한 = engineer + test-engineer 합집합, git/PR/pr-reviewer 호출 금지(메인 위임). 풀 4-agent 엔진(엄정) 미사용. **상세 분기·retry 진본 = [`impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md) §2** (SPEC_GAP_FOUND small=메인 직접 Edit·cycle 미카운트 / medium·large=module-architect ≤2 — 본 행은 요약) |
+| build-worker (`/impl-loop` 한정) | PASS → 메인 git/PR → pr-reviewer / SPEC_GAP_FOUND → module-architect(≤ 2) / **TESTS_FAIL → engineer → code-validator → PASS 후 메인 git/PR** (self-validate 미통과분을 code-validator 가 복원 — 검증 없이 PR 금지) 또는 한도 초과 시 사용자 / IMPLEMENTATION_ESCALATE → 사용자. 권한 = engineer + test-engineer 합집합, git/PR/pr-reviewer 호출 금지(메인 위임). 풀 4-agent 엔진(엄정) 미사용. **상세 분기·retry 진본 = [`impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md) §2** (SPEC_GAP_FOUND small=메인 직접 Edit·cycle 미카운트 / medium·large=module-architect ≤2 / POLISH→메인 commit/push→재리뷰 — 본 행은 요약) |
 
 > 각 agent 의 진입 입력 / 산출물 / self-check 의무 / 결론 prose 표현 상세 = `agents/<agent>.md` 본문 진본. Spike Gate 폐기(이슈 #511) — tech-reviewer 가 PRD 단계 외부 의존 검증 cover.
 >

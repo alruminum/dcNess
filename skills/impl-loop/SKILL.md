@@ -196,7 +196,7 @@ default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → p
 
 시퀀스 = **build-worker (2-step: test+impl+self-validate 통합) → pr-reviewer**. impl 파일 부재 시 module-architect 선두 (3-step).
 
-1. **begin-run + build-worker step** — `begin-run impl` → `begin-step build-worker` → `Agent(build-worker, prompt=<impl 경로 + task slug + RUN_ID + (begin-step stdout 의 [PREVIOUS_TASKS] 섹션 있으면 그대로 포함, #525)>)` → 반환 prose 결론 분기 (= [`impl-loop-routing.md`](impl-loop-routing.md) §2). 이후 `end-step build-worker`. worker 안 phase 별 prose (`build-test.md` / `build-impl.md` / `build-validate.md`) 는 worker 자체 Write — [`loop-procedure.md §3.2.1`](../../docs/plugin/loop-procedure.md).
+1. **begin-run + (reset) + build-worker step** — `begin-run impl` → **(chain 의 첫 task 또는 single 모드면 `dcness-helper prev-tasks-reset` — `begin-step` *전*, §prev-tasks 초기화)** → `begin-step build-worker` → `Agent(build-worker, prompt=<impl 경로 + task slug + RUN_ID + (begin-step stdout 의 [PREVIOUS_TASKS] 섹션 있으면 그대로 포함, #525)>)` → 반환 prose 결론 분기 (= [`impl-loop-routing.md`](impl-loop-routing.md) §2). 이후 `end-step build-worker`. worker 안 phase 별 prose (`build-test.md` / `build-impl.md` / `build-validate.md`) 는 worker 자체 Write — [`loop-procedure.md §3.2.1`](../../docs/plugin/loop-procedure.md).
 2. **git/PR 생성 (메인)** — worker prose 의 commit message + PR 본문 초안을 임시 파일로 박고 `scripts/pr-create.sh` 통합 호출:
    ```bash
    cat > /tmp/pr-body-<slug>.md <<'PR'
