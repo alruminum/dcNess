@@ -11,7 +11,14 @@ description: impl task (architect-loop 의 module-architect × K 산출물) 를 
 
 ## Loop
 
-`impl-task-loop` (loop 인덱스 = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md#한눈-인덱스-loop-진입-ssot)). catastrophic 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh). 본 skill 본문 = impl-task-loop 풀스펙 진본. chain (N task) 은 `impl-task-loop × N` driver — 각 task 가 독립 `begin-run impl` … `end-run` run 1개씩 (N task = N run = N review.md). UI 디자인 mid-loop 필요 시 → `impl-ui-design-loop` (아래 `## UI 작업 시 designer 선두`) 자동 전환.
+- **loop**: `impl-task-loop` (UI 감지 시 `impl-ui-design-loop` — designer + 사용자 PICK 2 step 선두 추가, 아래 `## UI 작업 시 designer 선두`)
+- **entry_point**: `impl`
+- **task_list** (Step 1): (풀 4-agent, default=single) test-engineer → engineer:IMPL → code-validator → pr-reviewer · (build-worker, default=chain) build-worker → pr-reviewer · (fallback: impl 부재 시 module-architect 선두 추가) · (impl-ui-design-loop) designer → 사용자 PICK 선두
+- **advance**: `PASS` → `IMPL_DONE` → `PASS` → `PASS` (풀) · `PASS` → `PASS` (build-worker)
+- **expected_steps**: 4 (풀) / 5 (fallback) / 2 (build-worker) · impl-ui-design-loop = 6 (default) / 7 (fallback)
+- **routing**: [`impl-loop-routing.md`](impl-loop-routing.md)
+
+본 skill 본문 = impl-task-loop / impl-ui-design-loop 풀스펙 진본. catastrophic 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh). chain (N task) 은 `impl-task-loop × N` driver — 각 task 가 독립 `begin-run impl` … `end-run` run 1개씩 (N task = N run = N review.md). 절차 mechanics = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md).
 
 ## Inputs (메인이 사용자에게 받아야 할 정보)
 
