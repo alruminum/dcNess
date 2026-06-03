@@ -87,7 +87,7 @@ prose 마지막 단락에 자기 언어로 명시. 권장 표현:
 1. system-architect PASS 산출물 read — root `docs/architecture.md` + root `docs/adr.md` + epic 단위 architecture.md + epic 단위 adr.md + epic 단위 domain-model.md
 2. PRD read (`docs/prd.md`) — Must / Should / Could 분류 확인
 3. (있으면) `docs/sdk.md` / `docs/reference.md` read
-4. [`docs/plugin/module-design-principles.md`](../docs/plugin/module-design-principles.md) read — §5 자동 검증 영역 확인
+4. [`docs/plugin/module-design-principles.md`](../docs/plugin/module-design-principles.md) read — [validator 의 자동 검증 영역](../docs/plugin/module-design-principles.md#validator-의-자동-검증-영역) 확인
 5. 검증 영역 1 (Placeholder Leak) + 영역 3 (공통 SSOT 룰 자동 영역) 적용
 
 ### Step 5 호출 시
@@ -148,14 +148,14 @@ prose 마지막 단락에 자기 언어로 명시. 권장 표현:
 
 **자동 검증 영역 (validator 가 직접)**:
 
-- **§3.1 순환 의존** — 모듈 간 import 영역 grep + 그래프 영역 분석. 순환 영역 발견 시 FAIL
-- **§3.1 미허가 의존** — architecture.md 의 의존 그래프 ↔ 실제 import 영역 비교. 그래프 영역에 없는 import 발견 시 FAIL 후보
-- **§3.2 public API contract 위반** — architecture.md 의 모듈 공개 API 시그니처 ↔ 실제 impl 의 시그니처 grep 비교. mismatch 발견 시 FAIL
+- **[영역 1](../docs/plugin/module-design-principles.md#영역-1-순환-의존-미허가-의존-빌드-시점-차단) 순환 의존** — 모듈 간 import 영역 grep + 그래프 영역 분석. 순환 영역 발견 시 FAIL
+- **[영역 1](../docs/plugin/module-design-principles.md#영역-1-순환-의존-미허가-의존-빌드-시점-차단) 미허가 의존** — architecture.md 의 의존 그래프 ↔ 실제 import 영역 비교. 그래프 영역에 없는 import 발견 시 FAIL 후보
+- **[영역 2](../docs/plugin/module-design-principles.md#영역-2-모듈-공개-비공개-영역-구분-강제) public API contract 위반** — architecture.md 의 모듈 공개 API 시그니처 ↔ 실제 impl 의 시그니처 grep 비교. mismatch 발견 시 FAIL
 
 **수동 review 권고 영역 (사용자에게 안내)**:
 
-- **§1 Deep Modules** 의 *작은 인터페이스 + 풍부한 구현* 룰 — 질적 판단 필요
-- **§2 Interface Design 룰 2** 의 *부작용 없는 결과 반환* 영역 — 코드 의도 판단 영역
+- **[Deep Modules](../docs/plugin/module-design-principles.md#deep-modules-깊은-모듈)** 의 *작은 인터페이스 + 풍부한 구현* 룰 — 질적 판단 필요
+- **[Interface Design 룰 2](../docs/plugin/module-design-principles.md#룰-2-결과를-반환하라-부작용을-만들지-말라)** 의 *부작용 없는 결과 반환* 영역 — 코드 의도 판단 영역
 
 validator prose 결론에 *자동 검증 통과 영역* + *수동 review 권고 영역* 분리 명시. 사용자가 수동 review 권고 영역에 PASS 주면 그게 곧 완료.
 

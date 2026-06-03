@@ -71,7 +71,7 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 | 기술 부채 마커·임시 코드 | ✗ | ✗ | ✅ |
 | 보안 코드 패턴 (OWASP + WebView) | ✗ | ✗ | ✅ |
 
-> **Hybrid A 모드 (`/impl-loop`) 의 build-worker 1차 lint 흡수 의미**: 외부 사용자 [F12 실측](https://github.com/alruminum/dcNess/issues/506) — pr-reviewer FAIL 13/27 = 48%, 그중 A (DRY) 7 / E (dead code) 5 / B (네이밍) 4 등 build-worker 영역에서 사전 차단 가능한 1차 lint 항목 ~15건. build-worker phase 3 lint 강제 ([`agents/build-worker.md`](build-worker.md) §작업 흐름) 도입 후 본 reviewer 는 *깊은 영역 (DRY 의미적 추출 / 의미 있는 네이밍 / 복잡도 / 비즈니스 로직 권한 우회 / 깊은 보안 위협)* 만 집중 — 2차 게이트 역할 회복. 풀 4-agent 엔진(single 디폴트) 은 build-worker 부재라 pr-reviewer 가 1차 + 2차 둘 다 — 본 표의 build-worker 컬럼 항목도 pr-reviewer 가 흡수.
+> **Hybrid A 모드 (`/impl-loop`) 의 build-worker 1차 lint 흡수 의미**: 외부 사용자 [F12 실측](https://github.com/alruminum/dcNess/issues/506) — pr-reviewer FAIL 13/27 = 48%, 그중 A (DRY) 7 / E (dead code) 5 / B (네이밍) 4 등 build-worker 영역에서 사전 차단 가능한 1차 lint 항목 ~15건. build-worker phase 3 lint 강제 ([`agents/build-worker.md` 작업 흐름](build-worker.md#작업-흐름-3-phase-helper-self-call)) 도입 후 본 reviewer 는 *깊은 영역 (DRY 의미적 추출 / 의미 있는 네이밍 / 복잡도 / 비즈니스 로직 권한 우회 / 깊은 보안 위협)* 만 집중 — 2차 게이트 역할 회복. 풀 4-agent 엔진(single 디폴트) 은 build-worker 부재라 pr-reviewer 가 1차 + 2차 둘 다 — 본 표의 build-worker 컬럼 항목도 pr-reviewer 가 흡수.
 
 ## 리뷰 체크리스트 (요약)
 
@@ -144,7 +144,7 @@ prose 마지막 단락에 결론 (+ 사유) 자연어로:
 
 ### `/impl-loop` chain 모드 한정 (엔진 무관) — 5줄 요약 *재료* 제공
 
-chain 의 5줄 요약 ([`/impl-loop`](../skills/impl-loop/SKILL.md) §review 출력 재정의) 은 **메인이 PR 머지(pr-finalize) 완료 후 종합·echo** 한다 — `PR <#NNN> merged` 의 번호·merged 상태가 pr-reviewer 시점엔 미확정이기 때문 (풀 4-agent 엔진은 PR 이 pr-reviewer PASS *후* 생성). 따라서 pr-reviewer 는 5줄을 직접 박지 않고, 메인이 채울 **재료** 를 prose 에 명확히 남긴다:
+chain 의 5줄 요약 ([review 출력 재정의](../skills/impl-loop/SKILL.md#review-출력-재정의-446)) 은 **메인이 PR 머지(pr-finalize) 완료 후 종합·echo** 한다 — `PR <#NNN> merged` 의 번호·merged 상태가 pr-reviewer 시점엔 미확정이기 때문 (풀 4-agent 엔진은 PR 이 pr-reviewer PASS *후* 생성). 따라서 pr-reviewer 는 5줄을 직접 박지 않고, 메인이 채울 **재료** 를 prose 에 명확히 남긴다:
 
 - 자기 결론: `LGTM` 또는 `FAIL` (+ FAIL 시 finding 1-2 문장)
 - (메인이 종합할 5줄 형식 참고 — 2번째 줄은 엔진별):
