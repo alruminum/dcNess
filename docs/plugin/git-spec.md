@@ -107,7 +107,8 @@ Part of #N
 
 ```
 1. git checkout -b {브랜치명} {base}
-   # base 분기 — docs/stories.md 상단 `**Base Branch:**` 매치 → 해당 값, 매치 없음 → main
+   # base 분기 — epic 단위 stories.md (impl task 경로의 `epic-NN-<slug>/stories.md`; root docs/stories.md = legacy 폴백)
+   #            상단 `**Base Branch:**` 매치 → 해당 값 (통합 브랜치 모드면 사전 `git fetch origin <값>` 후 그 ref 기반), 매치 없음 → main
 2. (작업 + 커밋)
 3. git push -u origin {브랜치명}
 4. gh pr create --base {base} --title "..." --body "..."
