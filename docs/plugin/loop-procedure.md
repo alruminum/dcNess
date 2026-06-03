@@ -245,14 +245,14 @@ RESOLVE_JSON=$("$HELPER" auto-resolve "<agent>:<enum_or_mode>")
 
 > `docs/.../impl/NN-*.md` 는 `/architect-loop` 산출물이 *미리 머지* 된 상태 — impl-task-loop 안에서 별도 commit X. fallback 모드 (정식 위치 부재) 는 module-architect 산출물을 본 PR src commit 에 같이 포함.
 
-> **commit = `src/**` only** — stories.md / backlog.md 등 다른 path 섞지 않는다. 진행 추적은 PR body 트레일러 (Part of / Closes) + GitHub sub-issue API 가 SSOT.
+> **commit = `src/**` only** — 이 invariant 의 진본은 *권한 경계* 다: impl 루프 worktree 의 변경은 engineer / build-worker 권한 경계([`agent_boundary.py`](../../harness/agent_boundary.py) ALLOW_MATRIX = `src/**` 계열)상 src 계열뿐이라, stories.md / backlog.md 등은 애초에 worktree 에 안 들어온다. 진행 추적은 PR body 트레일러 (Part of / Closes) + GitHub sub-issue API 가 SSOT.
 
 규칙은 전부 git-spec 위임 — loop-procedure 는 판정 로직(브랜치명·base·트레일러)을 재서술하지 않는다:
 
 - **브랜치명** = [`git-spec.md` 브랜치](git-spec.md#브랜치) (결정 절차 = [`skills/impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)).
 - **base 분기** = [`git-spec.md` Git 절차](git-spec.md#git-절차) (stories.md `**Base Branch:**` 마커 매치 시 통합 브랜치, 없으면 main · checkout 과 PR base 둘 다 동일 BASE).
 - **PR body 트레일러 (Part of vs Closes) 판정** = [`git-spec.md` PR 트레일러](git-spec.md#pr-트레일러-part-of-closes) 의 적용 절차 (impl 파일 frontmatter 기반).
-- **실행** = [`scripts/pr-create.sh`](../../scripts/pr-create.sh) — `--branch / --base / --title / --body-file / --commit-msg-file` 받아 branch + add + commit + push + `gh pr create` 한 명령. body-file 은 메인이 위 트레일러 규칙대로 작성해 전달 (스크립트는 판정 X).
+- **실행** = [`scripts/pr-create.sh`](../../scripts/pr-create.sh) — `--branch / --base / --title / --body-file / --commit-msg-file` 받아 branch + add + commit + push + `gh pr create` 한 명령. body-file 은 메인이 위 트레일러 규칙대로 작성해 전달 (스크립트는 판정 X). **주의**: pr-create.sh 는 `git add -A`(worktree 전체 stage) — 위 권한 경계로 worktree 가 src-only 라 곧 src-only 커밋이 되지만, 메인이 stray non-src 변경(임시 파일·`.DS_Store` 등)을 발견하면 호출 *전* 정리하거나 명시 pathspec 으로 직접 stage 한다.
 
 ### Step 7a (impl-task-loop)
 
