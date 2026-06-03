@@ -20,10 +20,10 @@ skill 트리거 또는 직접 발화 → 메인 Claude 가 **해당 skill 의 `#
 
 ### worktree 분기 (impl 류 루프 한정)
 
-**행동형 skill 중 *코드 변경 batch* (`/impl-loop`) 진입 시만 EnterWorktree 자동 호출** — 동시 다중 세션 충돌 회피 + 메인 working tree 보호. `/product-plan` / 모듈 설계 / 문서·시드 작업은 충돌 회피 목적 부재라 워크트리 X (메인 working tree 에서 별 branch).
+**worktree 격리로 산출물을 커밋하는 action 루프 (`/impl-loop` · `/architect-loop`) 진입 시 Step 0 에서 EnterWorktree 자동 호출** — 동시 다중 세션 충돌 회피 + 메인 working tree 보호. `/product-plan` / `/tech-review` / `/ux` (commit 없음) / qa-triage 는 commit 격리 목적 부재라 워크트리 X (메인 working tree 에서 직접 또는 별 branch). loop 별 적용 여부는 각 skill 본문 (예: [`architect-loop/SKILL.md`](../../skills/architect-loop/SKILL.md) 워크트리 절 · [`impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)).
 
 ```
-EnterWorktree(name="<skill>-{ts_short}")   # impl 류만
+EnterWorktree(name="<skill>-{ts_short}")   # action 루프 (impl-loop / architect-loop)
 ```
 
 - **거부 표현 시에만 건너뜀** — 사용자 발화에 정규식 `워크트리\s*(빼|없|말)` 매치 시 EnterWorktree 호출 0, 일반 cwd 그대로 진행.

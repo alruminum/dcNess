@@ -250,6 +250,9 @@ Closes #${EPIC_ISSUE}"
   else
     PR_BODY="Part of #${STORY_ISSUE}"                      # 중간 task
   fi
+  # task-index trailer 필수 (위 기본 룰) — check_pr_body.mjs 가 i==total 마지막 task 식별용. story task 만 부착 (공통은 omit).
+  PR_BODY="${PR_BODY}
+task-index: ${TASK_INDEX}"
 else
   echo "[trailer] story=$STORY_NUM 인데 task_index='$TASK_INDEX' 가 i/total 도 공통(—)도 아님 — 정지" >&2
   exit 1                                                   # malformed/누락 가드 (위 MUST) — 숫자 story 의 — 거부
