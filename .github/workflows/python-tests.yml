@@ -5,7 +5,8 @@
 # - DCN-CHG-20260429-13 prose-only 패턴 회귀 차단
 #
 # 트리거:
-# - PR / push to main 시 tests/ 또는 harness/ 또는 agents/ 변경 시
+# - PR / push to main 시 tests/ 또는 harness/ 또는 agents/ 또는 skills/ 변경 시
+#   (skills/ = test_loop_procedure_base_ref / test_impl_cost_aware 가 skills/<n>/SKILL.md 내용 단언)
 # - paths 필터로 docs-only PR 에서 불필요 실행 회피
 # - DCN-CHG-20260501-06: branch protection 폐기 후 paths 필터 복구
 #   (BLOCKED 영원히 문제는 protection 자체를 끄면서 자연 해소)
@@ -21,6 +22,7 @@ on:
       - 'harness/**'
       - 'tests/**'
       - 'agents/**'
+      - 'skills/**'
       - '.github/workflows/python-tests.yml'
   push:
     branches: [main]
@@ -28,6 +30,7 @@ on:
       - 'harness/**'
       - 'tests/**'
       - 'agents/**'
+      - 'skills/**'
       - '.github/workflows/python-tests.yml'
 
 permissions:
