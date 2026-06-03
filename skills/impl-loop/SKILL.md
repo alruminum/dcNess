@@ -64,7 +64,7 @@ UI 작업 감지 시 (풀 4-agent 엔진 한정) 시퀀스 **선두에 designer 
 
 **prev-tasks 초기화 (#525, build-worker 엔진 한정)**: `[PREVIOUS_TASKS]` 는 build-worker 진입 시 직전 task 산출을 주입(인접 task 인터페이스 정합용)한다. `begin-step build-worker` 가 *그 시점에* prev-tasks 파일을 읽어 stdout 으로 emit 하므로 ([`session_state.py`](../../harness/session_state.py) — single/chain 구분 안 함) — **reset 은 반드시 `begin-step build-worker` *호출 전* 에 해야 한다** (begin-step 후 reset 은 이미 emit 된 stdout 에 늦음). 따라서: **build-worker 진입이 (a) chain 의 첫 task 거나 (b) single 모드(`빠르게`/`worker` override 포함) 이면 `begin-step build-worker` 직전에 `dcness-helper prev-tasks-reset` 1회 호출 의무**. 안 하면 직전 chain 의 `[PREVIOUS_TASKS]` 잔재가 새 worker prompt 에 주입돼 stale 인터페이스에 맞출 위험. **chain 의 2번째+ task 는 reset 안 함** (직전 task 누적이 정합 입력). 까먹어도 FIFO cap(10) 안전망이나 명시 호출 권장. 풀 4-agent 엔진은 build-worker 미사용 → 본 룰 비대상.
 
-**Base ref 분기 (MUST, #424)**: `docs/stories.md` 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = 통합 브랜치 모드. outer worktree base ref 도 integration branch 와 정합 필요 (chain 은 `git worktree add -b <new> <path> origin/<integration>` + `EnterWorktree(path=<path>)` 패턴). 절차 = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md) §1.1.1.
+**Base ref 분기 (MUST, #424)**: epic 단위 stories.md (impl task 경로의 `epic-NN-<slug>/stories.md`; root `docs/stories.md` 는 legacy 폴백) 상단 `**Base Branch:** feature/<slug>` 마커 매치 시 = 통합 브랜치 모드. outer worktree base ref 도 integration branch 와 정합 필요 (chain 은 `git worktree add -b <new> <path> origin/<integration>` + `EnterWorktree(path=<path>)` 패턴). 절차 = [`loop-procedure.md`](../../docs/plugin/loop-procedure.md) §1.1.1.
 
 ### Pre-flight gate (진입 직후, 1회)
 
@@ -112,16 +112,19 @@ tail -50 "<task-path>"
 
 retry / POLISH 시 기존 sub-step 재활용 — 신규 TaskCreate X.
 
-### branch_prefix 결정 (loop clean 후 자동 commit/PR)
+### 브랜치명 결정 (loop clean 후 자동 commit/PR)
 
-- 신규 기능 (src 신규 파일 / 인터페이스 추가) → `feat/<task-slug>`
-- 리팩토링 / 정리 / 테스트 보강 only → `chore/<task-slug>`
-- 버그픽스 (의도 vs 실제 격차 수정) → `fix/<task-slug>`
-- 메인이 task 의 `## 변경 요약` / worker prose 보고 결정. base 분기 = [`git-spec.md`](../../docs/plugin/git-spec.md) §6.
+브랜치·커밋·PR 네이밍은 [`git-spec.md`](../../docs/plugin/git-spec.md) §1 이 **단일 SSOT** — 본 skill 은 자체 네이밍 규칙을 두지 않고 task 성격에 맞는 SSOT 패턴을 고른다. (`feat/`·`chore/` 류 자체 분류 금지 — git-naming 게이트 [`check_git_naming.mjs`](../../scripts/check_git_naming.mjs) 가 거부해 push/pre-push 에서 막힘.)
+
+- **정식 impl task** (epic/story 컨텍스트 — impl 파일 frontmatter `story: N` (숫자) + 경로 `.../epic-NN-*/impl/`) → `feature/epic{N}_story{M}_{desc}` (git-spec §1 "스토리 작업 impl")
+- **공통 task** (impl 파일 frontmatter `story: 공통` + `task_index: —` — module-architect 공통 호출 산출) → `feature/epic{N}_common_{desc}` (git-spec §1 `feature/{desc}` 의 epic-traceable 형 — story 번호 없음, 게이트는 generic feature 로 통과). 제목 = `[feature] {설명}`, 트레일러 = `Part of #<epic>` (부모 = epic 단일 룰, task-index trailer omit — git-spec §8.1)
+- **버그픽스 fallback** (invocation 에 이슈 번호 명시) → `fix/issue{N}_{desc}` (git-spec §1 "버그픽스")
+- `{desc}` = impl 파일 basename 의 앞 순번 `NN-` 를 **제거**한 설명부 (소문자 시작 + `[a-z0-9_-]` + 최소 3자 — git-spec §1 `{desc}` 제약). 순번을 안 떼면 `feature/05-foo` 처럼 desc 가 숫자로 시작해 게이트 FAIL. 예: `impl/03-revival-button.md` + `story: 2` + `epic-07-*` → `feature/epic7_story2_revival-button`.
+- base 분기 = [`git-spec.md`](../../docs/plugin/git-spec.md) §6 (통합 브랜치 마커 매치 시 그 base, 아니면 main).
 
 ### PR 생성 직전 — base 분기 체크 (MUST)
 
-`gh pr create` 직전 `docs/stories.md` 상단 `**Base Branch:**` 줄 매치 1회 확인:
+`gh pr create` 직전 epic 단위 stories.md (impl task 경로의 `epic-NN-<slug>/stories.md` = task 경로 조부모; root `docs/stories.md` 는 legacy 폴백) 상단 `**Base Branch:**` 줄 매치 1회 확인:
 - 매치 → `gh pr create --base <매치 값>` (통합 브랜치 케이스, sub-PR base = `feature/<slug>`)
 - 매치 없음 → `gh pr create --base main` (default, trunk-based)
 
@@ -206,7 +209,7 @@ default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → p
    <worker prose 의 commit message 그대로>
    COMMIT
    bash scripts/pr-create.sh \
-     --branch <branch_prefix>/<task-slug> --base <base> \
+     --branch <§브랜치명 결정 산출: feature/epic{N}_story{M}_{desc} 또는 fix/issue{N}_{desc}> --base <base> \
      --title "<...>" --body-file /tmp/pr-body-<slug>.md \
      --commit-msg-file /tmp/commit-msg-<slug>.md
    ```
