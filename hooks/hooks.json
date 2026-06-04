@@ -1,5 +1,5 @@
 {
-  "description": "dcNess — 컨베이어 인프라 훅 (SessionStart sid + PreToolUse Agent catastrophic-gate + Edit/Write/Read/Bash/mcp__.* file-guard + PostToolUse Agent post-clear + PostToolUse Edit/Write/Read/Bash/mcp__.* post-file-op-trace + Stop auto-end-run)",
+  "description": "dcNess — 컨베이어 인프라 훅 (SessionStart sid + PreToolUse Agent catastrophic-gate + Edit/Write/Read/Bash/mcp__.* file-guard + PostToolUse Agent post-clear + PostToolUse Edit/Write/Read/Bash/mcp__.* post-file-op-trace + SubagentStop active_agent clear + Stop auto-end-run)",
   "hooks": {
     "Stop": [
       {
@@ -8,6 +8,17 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-end-run.sh\"",
             "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-stop-clear.sh\"",
+            "timeout": 5
           }
         ]
       }

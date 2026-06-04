@@ -145,6 +145,7 @@ def histogram_since(
     run_id: str,
     since_ts: str,
     *,
+    agent: Optional[str] = None,
     base_dir: Optional[Path] = None,
 ) -> Dict[str, int]:
     """`since_ts` (ISO8601) *이후* pre phase 의 tool 카운트 (#272 W3 진짜 fix).
@@ -152,8 +153,14 @@ def histogram_since(
     PreToolUse Agent 시각 ~ PostToolUse Agent 시각 사이 trace = 그 sub 의 행동.
     `agent_id` 폴백 (직전 step 오기록 위험) 대신 *시각 범위* 로 정확히 매칭.
 
+    issue #598 finding1 — `agent` 명시 시 시각 범위 *AND* `entry.agent == agent`
+    로 좁힌다. file-op trace 가 payload self-attribution 으로 정확한 agent 를
+    담으므로 (commit1), 동시 sub-agent 의 시각대 겹침에도 다른 sub 의 행동이
+    histogram 에 섞이지 않는다. `agent` None 이면 시각 범위만 (기존 동작).
+
     Args:
         since_ts: ISO8601 UTC ("2026-05-08T01:23:45Z"). 이 시각 *이상* 의 entry 포함.
+        agent: 지정 시 해당 agent 의 entry 만 카운트 (동시 sub 분리).
 
     Returns:
         {"Read": 4, ...}. since_ts 빈 문자열이면 빈 dict (안전 폴백 X — 호출자가
@@ -167,6 +174,8 @@ def histogram_since(
             continue
         ts = entry.get("ts", "") or ""
         if not ts or ts < since_ts:
+            continue
+        if agent and (entry.get("agent", "") or "") != agent:
             continue
         tool = entry.get("tool", "") or "?"
         counts[tool] = counts.get(tool, 0) + 1

@@ -932,6 +932,166 @@ class PostToolUseFileOpTests(_PreToolBase):
 
 
 # ---------------------------------------------------------------------------
+# issue #598 — file-op self-attribution (payload agent_type/agent_id 우선)
+# ---------------------------------------------------------------------------
+
+
+class FileOpSelfAttributionTests(FileOpHookTests):
+    """payload 의 agent_type 로 acting agent self-attribution — 동시 sub-agent 안전.
+
+    공식 CC docs (code.claude.com/docs/en/hooks): PreToolUse/PostToolUse 가
+    sub-agent 안에서 발화하면 payload 에 `agent_id` + `agent_type` 가 실린다.
+    file-guard 가 공유 단일 슬롯(`live.active_agent`) 대신 *각 호출의 payload* 로
+    acting agent 를 귀속하면, 두 번째 sub 가 active_agent 를 덮어써도 권한 판정이
+    서로 안 섞인다 (issue #598 근본원인 해결).
+    """
+
+    def _payload_with_agent(self, tool_name, agent_type, **tool_input):
+        d = self._file_op_payload(tool_name, **tool_input)
+        d["agent_type"] = agent_type
+        return d
+
+    def test_payload_agent_type_overrides_active_agent_allow(self):
+        # active_agent 가 다른 sub(qa: write 전면 불가)로 덮어써져 있어도
+        # payload agent_type=engineer → engineer 매트릭스로 판정 → src 허용.
+        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Edit", "engineer", file_path="src/foo.ts"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)  # qa 로 판정됐다면 차단(rc 1)됐을 것
+
+    def test_payload_agent_type_overrides_active_agent_block(self):
+        # active_agent=engineer(src 허용) 인데 payload agent_type=qa → qa 로 판정 → src 차단.
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Edit", "qa", file_path="src/foo.ts"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)  # engineer 로 판정됐다면 통과(rc 0)됐을 것
+
+    def test_payload_agent_type_enforced_without_active_agent(self):
+        # active_agent 미설정(다른 sub 의 SubagentStop 으로 clear됨)이라도 payload
+        # agent_type 있으면 sub 로 인지 → 경계 강제. 단일 슬롯 의존 시 BUG: 메인으로 오인 통과.
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Write", "engineer", file_path="README.md"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)  # engineer 는 README write 불가
+
+    def test_no_agent_type_falls_back_to_active_agent(self):
+        # payload 에 agent_type 없으면 (구버전 CC) 기존 active_agent 폴백 유지.
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload("Write", file_path="README.md"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)  # 폴백: engineer README 차단 (기존 동작)
+
+    def test_no_agent_type_no_active_agent_passes(self):
+        # payload agent_type 없음 + active_agent 없음 → 메인 Claude → 통과.
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload("Write", file_path="README.md"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_pre_trace_uses_payload_agent_type(self):
+        # 통과한 file-op 의 pre-trace agent 도 payload agent_type 로 귀속.
+        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Read", "engineer", file_path="src/foo.ts"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        pre = [e for e in entries if e.get("phase") == "pre"]
+        self.assertTrue(pre)
+        self.assertEqual(pre[-1]["agent"], "engineer")
+
+    def test_namespaced_payload_agent_type_enforced(self):
+        # issue #598 codex P1 — namespaced agent_type(dcness:qa)도 정규화되어 경계 강제.
+        # 정규화 없으면 ALLOW_MATRIX 미정의 → pass-through bypass (qa 가 src write).
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Edit", "dcness:qa", file_path="src/foo.ts"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)  # dcness:qa → qa → src write 불가
+
+    def test_namespaced_payload_agent_type_allow(self):
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Edit", "dcness:engineer", file_path="src/foo.ts"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)  # dcness:engineer → engineer → src 허용
+
+    def test_namespaced_trace_agent_normalized(self):
+        # namespaced payload 의 trace agent 도 canonical 로 기록.
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Read", "dcness:engineer", file_path="src/foo.ts"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        pre = [e for e in entries if e.get("phase") == "pre"]
+        self.assertTrue(pre)
+        self.assertEqual(pre[-1]["agent"], "engineer")  # dcness: prefix 제거
+
+
+class PostFileOpSelfAttributionTests(PostToolUseFileOpTests):
+    """post trace 의 agent 귀속도 payload agent_type 우선 (issue #598)."""
+
+    def test_post_trace_uses_payload_agent_type(self):
+        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        d = self._post_payload(
+            "Bash", {"exit_code": 0, "stdout": "x"}, command="echo x"
+        )
+        d["agent_type"] = "engineer"
+        d["agent_id"] = "sub-eng-1"
+        rc = handle_posttooluse_file_op(
+            stdin_data=d, cc_pid=self.cc_pid, base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(entries[-1]["agent"], "engineer")  # active_agent(qa) 아님
+
+    def test_post_trace_records_with_payload_only(self):
+        # active_agent 미설정이라도 payload agent_type 있으면 trace 기록.
+        d = self._post_payload("Bash", {"exit_code": 0}, command="ls")
+        d["agent_type"] = "engineer"
+        rc = handle_posttooluse_file_op(
+            stdin_data=d, cc_pid=self.cc_pid, base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["agent"], "engineer")
+
+
+# ---------------------------------------------------------------------------
 # DCN-CHG-20260501-13 — PostToolUse Agent histogram inject + auto redo_log
 # ---------------------------------------------------------------------------
 
@@ -1029,11 +1189,43 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
         # issue #392 — redo_log auto append 폐기로 측정 결과 검증 단순화.
-        # pending_agent 가 정상 clear 되는지만 검증 (#272 W3 핵심).
+        # pending_agents 가 정상 clear 되는지만 검증 (#272 W3 핵심, #598 multi-slot).
         from harness.session_state import read_live as _rl
         live = _rl(self.sid, base_dir=self.base)
         slot = live.get("active_runs", {}).get(self.rid, {})
-        self.assertNotIn("pending_agent", slot)
+        self.assertNotIn("pending_agents", slot)
+
+    def test_histogram_filters_by_matched_agent(self):
+        # issue #598 finding1 — 동시 sub 환경: since_ts 이후 다른 agent(qa)의 trace 가
+        # 끝난 agent(engineer)의 histogram 에 섞이지 않음 (시각 범위 + agent 필터).
+        import io
+        import contextlib
+        self._simulate_pre("engineer", tool_use_id="toolu_eng")
+        for tool in ["Read", "Edit"]:
+            trace_append(
+                self.sid, self.rid,
+                {"phase": "pre", "agent": "engineer", "tool": tool},
+                base_dir=self.base,
+            )
+        for tool in ["Bash", "Bash", "Grep"]:
+            trace_append(
+                self.sid, self.rid,
+                {"phase": "pre", "agent": "qa", "tool": tool},
+                base_dir=self.base,
+            )
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = handle_posttooluse_agent(
+                stdin_data=self._post_payload("engineer", tool_use_id="toolu_eng"),
+                cc_pid=self.cc_pid, base_dir=self.base,
+            )
+        self.assertEqual(rc, 0)
+        ctx = out.getvalue()
+        self.assertIn("Read:1", ctx)
+        self.assertIn("Edit:1", ctx)
+        # 동시 qa 행동(Bash/Grep)은 engineer histogram 에 누설 안 됨.
+        self.assertNotIn("Grep", ctx)
+        self.assertNotIn("Bash", ctx)
 
     def test_tool_use_id_drift_logged(self):
         """tool_use_id 가 PreToolUse 와 PostToolUse 사이 다르면 stderr WARN."""
@@ -1057,12 +1249,13 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         # issue #392 — redo_log auto append 폐기. drift 신호는 stderr WARN 으로만 확인.
 
     def test_pending_agent_cleared_after_post(self):
-        """PostToolUse Agent 후 live.json.active_runs[rid].pending_agent 제거."""
+        """PostToolUse Agent 후 live.json.active_runs[rid].pending_agents 제거."""
         from harness.session_state import read_live as _rl
         self._simulate_pre("engineer", tool_use_id="toolu_x")
         live = _rl(self.sid, base_dir=self.base)
         slot = live.get("active_runs", {}).get(self.rid, {})
-        self.assertIn("pending_agent", slot)
+        self.assertIn("pending_agents", slot)
+        self.assertIn("toolu_x", slot["pending_agents"])
         self._seed_trace("engineer", ["Read"])
         handle_posttooluse_agent(
             stdin_data=self._post_payload("engineer", tool_use_id="toolu_x"),
@@ -1071,10 +1264,275 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         )
         live2 = _rl(self.sid, base_dir=self.base)
         slot2 = live2.get("active_runs", {}).get(self.rid, {})
-        self.assertNotIn("pending_agent", slot2)
+        self.assertNotIn("pending_agents", slot2)
 
     # issue #392 — test_prose_only_subtype_no_decision_inject 폐기.
     # redo_log auto append 매커니즘 자체 폐기되어 본 테스트 의미 없음.
+
+
+# ---------------------------------------------------------------------------
+# issue #598 — pending_agents multi-slot (tool_use_id 키) + 동시성 경고
+# ---------------------------------------------------------------------------
+
+
+class PendingAgentsMultiSlotTests(_PreToolBase):
+    """set_pending_agent / clear_pending_agent 를 tool_use_id 키 multi-slot 으로 확장.
+
+    동시 Agent 호출 시 각 tool_use_id 별 독립 추적 — 단일 슬롯이면 둘째가 첫째를
+    덮어써 prose-staging 시각 범위/trace 귀속이 섞인다 (issue #598).
+    """
+
+    def test_set_two_tool_use_ids_both_present(self):
+        from harness.session_state import set_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            base_dir=self.base,
+        )
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertIn("pending_agents", slot)
+        self.assertEqual(set(slot["pending_agents"]), {"t1", "t2"})
+        self.assertEqual(slot["pending_agents"]["t1"]["sub_type"], "engineer")
+        self.assertEqual(slot["pending_agents"]["t2"]["sub_type"], "qa")
+
+    def test_clear_by_tool_use_id_pops_only_match(self):
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            base_dir=self.base,
+        )
+        popped = clear_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", base_dir=self.base
+        )
+        self.assertEqual(popped["tool_use_id"], "t1")
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertEqual(set(slot["pending_agents"]), {"t2"})
+
+    def test_clear_last_removes_key(self):
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        clear_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", base_dir=self.base
+        )
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertNotIn("pending_agents", slot)
+
+    def test_clear_none_single_fallback_pops(self):
+        # tool_use_id 미지정인데 슬롯 1개 → 폴백 pop (drift 시각 범위 보존).
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        popped = clear_pending_agent(self.sid, self.rid, base_dir=self.base)
+        self.assertIsNotNone(popped)
+        self.assertEqual(popped["tool_use_id"], "t1")
+
+    def test_clear_none_multiple_ambiguous_noop(self):
+        # tool_use_id 미지정 + 여러 개 → 모호 → pop 안 함 (잘못된 슬롯 제거 방지).
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            base_dir=self.base,
+        )
+        popped = clear_pending_agent(self.sid, self.rid, base_dir=self.base)
+        self.assertIsNone(popped)
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertEqual(set(slot["pending_agents"]), {"t1", "t2"})
+
+    def test_clear_unmatched_tuid_multiple_noop(self):
+        # tool_use_id 매칭 없음 + 여러 개 → pop 안 함 (drift 폴백은 단일일 때만).
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            base_dir=self.base,
+        )
+        popped = clear_pending_agent(
+            self.sid, self.rid, tool_use_id="tX", base_dir=self.base
+        )
+        self.assertIsNone(popped)
+
+    def test_clear_legacy_singular_absorbed(self):
+        # 구버전 단일 슬롯(pending_agent) 잔존분 흡수 (in-flight 업그레이드 호환).
+        from harness.session_state import clear_pending_agent
+        live = read_live(self.sid, base_dir=self.base)
+        active = live["active_runs"]
+        active[self.rid]["pending_agent"] = {
+            "tool_use_id": "old", "sub_type": "engineer",
+            "started_at": "2026-01-01T00:00:00+00:00",
+        }
+        update_live(self.sid, base_dir=self.base, active_runs=active)
+        popped = clear_pending_agent(
+            self.sid, self.rid, tool_use_id="old", base_dir=self.base
+        )
+        self.assertIsNotNone(popped)
+        self.assertEqual(popped["tool_use_id"], "old")
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertNotIn("pending_agent", slot)
+
+
+class PreAgentConcurrencyWarnTests(_PreToolBase):
+    """PreToolUse Agent — 이미 미완 pending 상태에서 새 Agent 발사 시 동시성 경고 (issue #598)."""
+
+    def _agent_payload(self, subagent, tool_use_id):
+        return {
+            "sessionId": self.sid,
+            "tool_use_id": tool_use_id,
+            "tool_input": {"subagent_type": subagent, "mode": ""},
+        }
+
+    def test_second_concurrent_agent_warns(self):
+        import io
+        import contextlib
+        # 1st Agent — pending 박힘, 경고 없음.
+        buf1 = io.StringIO()
+        with contextlib.redirect_stderr(buf1):
+            rc1 = handle_pretooluse_agent(
+                stdin_data=self._agent_payload("qa", "toolu_a"),
+                cc_pid=self.cc_pid, base_dir=self.base,
+            )
+        self.assertEqual(rc1, 0)
+        self.assertNotIn("동시 sub-agent", buf1.getvalue())
+        # 2nd Agent (1st 아직 미완) — stderr 동시성 경고.
+        buf2 = io.StringIO()
+        with contextlib.redirect_stderr(buf2):
+            rc2 = handle_pretooluse_agent(
+                stdin_data=self._agent_payload("qa", "toolu_b"),
+                cc_pid=self.cc_pid, base_dir=self.base,
+            )
+        self.assertEqual(rc2, 0)
+        self.assertIn("동시 sub-agent", buf2.getvalue())
+        # 둘 다 pending_agents 에 존재 (multi-slot push).
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertEqual(set(slot["pending_agents"]), {"toolu_a", "toolu_b"})
+
+    def test_sequential_agents_no_warn(self):
+        # 1st Agent → PostToolUse 로 clear → 2nd Agent: pending 비어있음 → 경고 없음.
+        import io
+        import contextlib
+        handle_pretooluse_agent(
+            stdin_data=self._agent_payload("qa", "toolu_a"),
+            cc_pid=self.cc_pid, base_dir=self.base,
+        )
+        handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid, "tool_use_id": "toolu_a",
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "qa"},
+            },
+            cc_pid=self.cc_pid, base_dir=self.base,
+        )
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            handle_pretooluse_agent(
+                stdin_data=self._agent_payload("qa", "toolu_b"),
+                cc_pid=self.cc_pid, base_dir=self.base,
+            )
+        self.assertNotIn("동시 sub-agent", buf.getvalue())
+
+
+# ---------------------------------------------------------------------------
+# issue #598 — SubagentStop 훅 (active_agent 신뢰 clear)
+# ---------------------------------------------------------------------------
+
+
+class SubagentStopClearTests(_PreToolBase):
+    """SubagentStop 훅 — sub 종료 시 live.json.active_agent 신뢰 clear (issue #598).
+
+    PostToolUse Agent 매칭(취약 — 메인 ctx)보다 신뢰도 높은 SubagentStop(sub 종료
+    직발, agent_id+agent_type 동반)으로 단일 슬롯 clear 승격. match-guard 로 동시
+    sub 의 슬롯 오클리어 방지. 차단 권한 사용 안 함 — 항상 exit 0.
+    """
+
+    def _payload(self, agent_type="", agent_id="sub-1"):
+        return {
+            "sessionId": self.sid,
+            "agent_type": agent_type,
+            "agent_id": agent_id,
+            "hook_event_name": "SubagentStop",
+        }
+
+    def test_clears_matching_active_agent(self):
+        from harness.hooks import handle_subagent_stop
+        update_live(
+            self.sid, base_dir=self.base,
+            active_agent="engineer", active_mode="IMPL",
+        )
+        rc = handle_subagent_stop(
+            self._payload(agent_type="engineer"), base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+        self.assertNotIn("active_mode", live)
+
+    def test_clears_when_agent_type_absent(self):
+        # 구버전 payload (agent_type 부재) → best-effort 무조건 clear.
+        from harness.hooks import handle_subagent_stop
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_subagent_stop(self._payload(agent_type=""), base_dir=self.base)
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+
+    def test_no_clobber_on_mismatch(self):
+        # 동시 sub: active_agent=qa 인데 engineer 의 SubagentStop → qa 슬롯 보존.
+        from harness.hooks import handle_subagent_stop
+        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        rc = handle_subagent_stop(
+            self._payload(agent_type="engineer"), base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertEqual(live.get("active_agent"), "qa")
+
+    def test_noop_when_no_active_agent(self):
+        from harness.hooks import handle_subagent_stop
+        rc = handle_subagent_stop(
+            self._payload(agent_type="engineer"), base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+
+    def test_clears_namespaced_agent_type(self):
+        # issue #598 codex P1 — namespaced agent_type(dcness:engineer)도 정규화 후 매칭 clear.
+        from harness.hooks import handle_subagent_stop
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_subagent_stop(
+            self._payload(agent_type="dcness:engineer"), base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+
+    def test_invalid_sid_silent(self):
+        from harness.hooks import handle_subagent_stop
+        rc = handle_subagent_stop({"sessionId": "!"}, base_dir=self.base)
+        self.assertEqual(rc, 0)
+
+    def test_empty_payload_silent(self):
+        from harness.hooks import handle_subagent_stop
+        rc = handle_subagent_stop({}, base_dir=self.base)
+        self.assertEqual(rc, 0)
 
 
 # ---------------------------------------------------------------------------
