@@ -18,7 +18,7 @@ risk tier 는 "더 무거운 하나"를 고르는 배타 선택이 **아니다**
 세 문장으로 못 박는다:
 
 1. **concrete signal 은 direct impl 의 *필요조건*이지 *충분조건*이 아니다** — high-risk trigger 가 하나라도 있으면 direct impl 이 아니다. (예: "auth/payment 파일 X 고쳐 구독 SDK 붙여줘" 는 파일 path 가 있어도 high-risk 라 tier 3.)
-2. **direct impl 은 *절차 생략*이 아니라 *기획/설계 gate 생략*이다** — branch / PR / test / pr-reviewer / CI 게이트는 그대로 지킨다. 새 command/skill 이 아니라 메인이 직접 도는 단발 구현 경로다.
+2. **direct impl 은 *절차 생략*이 아니라 *기획/설계 gate 생략*이다** — branch / PR / test / pr-reviewer / CI 게이트는 그대로 지킨다. 새 command/skill 이 아니라 메인이 직접 도는 단발 구현 경로다. 단발 경로는 conveyor loop *밖*이라 code-validator(구현↔impl task 계획 정합 검증) 단계가 없다 — 검증할 impl task 계획 자체가 없는 케이스이기 때문. impl task 가 있으면 `/impl-loop` 로 가서 code-validator 를 포함한다. (catastrophic "src 변경 후 code-validator 없는 pr-reviewer 금지" 룰은 active run 안에서만 적용 — 단발 경로엔 해당 없음.)
 3. **high-risk 와 durable 은 합성된다** — 둘 다 맞으면 `/product-plan → (외부 의존 시) /tech-review → /architect-loop → /impl-loop chain`.
 
 **gate 축** (먼저 — *어느 workflow 로 진입*할지. 위에서 아래로):
@@ -31,13 +31,13 @@ risk tier 는 "더 무거운 하나"를 고르는 배타 선택이 **아니다**
 
 4. 구현이 여러 task/PR 로 나뉘나(resume/handoff/long-running 포함)? → `/impl-loop` **chain**, 아니면 single. chain 은 impl task list 가 있어야 시작하므로, **모호한 multi-PR 요청은 durable 로 직행하지 말고 먼저 gate(1~2)로** 보낸다.
 
-> 버그/이슈 신고는 gate 판정 *전*에 `/issue-report` 로 먼저 분류한다 ([issue-report 와의 경계](#issue-report-와의-경계)) — KNOWN_ISSUE / DESIGN_ISSUE / SCOPE_ESCALATE 를 건너뛰지 않기 위해. 분류 결과가 다시 위 tier 로 흐른다.
+> **아직 분류 안 된 새 버그/이슈 신고**("이거 안 돼 / 이상해")는 gate 판정 *전*에 `/issue-report` 로 먼저 분류한다 ([issue-report 와의 경계](#issue-report-와의-경계)) — KNOWN_ISSUE / DESIGN_ISSUE / SCOPE_ESCALATE 를 건너뛰지 않기 위해. 분류 결과가 다시 위 tier 로 흐른다. (반면 이미 분류·승인된 GitHub issue/PR 번호를 "구현/수정해줘"는 concrete signal 이므로 곧장 tier 1.)
 
 ## 라우팅 그래프
 
 ```mermaid
 flowchart TB
-  REQ["자유 형식 작업 요청"] --> BUG{"버그/이슈 신고?"}
+  REQ["자유 형식 작업 요청"] --> BUG{"새(미분류) 버그/이슈 신고?"}
   BUG -->|예| IR["/issue-report 분류 → 결과가 tier 로"]
   BUG -->|아니오| HR{"high-risk trigger?"}
   HR -->|예| T3["product-plan → (외부 의존 시) tech-review → architect-loop → impl-loop"]
@@ -66,7 +66,7 @@ flowchart TB
 
 | tier | 트리거 (signal) | 진입점 | 왜 이 tier |
 |---|---|---|---|
-| **1. direct impl** | concrete signal(파일 path · 함수/클래스/symbol · issue/PR 번호 · 명시 테스트 명령 · 작은 docs-only · 이미 승인된 impl 파일) **1개 이상 AND high-risk trigger 0개**. (버그/이슈 신고는 tier 1 직행 X — 먼저 `/issue-report` 분류) | impl task/issue 있으면 `/impl-loop`, 없으면 **메인이 branch → PR → test → pr-reviewer → CI 를 지키는 단발 구현 경로** (새 skill 아님) | 의도·범위·수용 기준이 신호로 이미 명확 → 기획/설계 gate 만 비용. **검증·리뷰 게이트는 유지** |
+| **1. direct impl** | concrete signal(파일 path · 함수/클래스/symbol · **이미 분류·승인된** issue/PR 번호 · 명시 테스트 명령 · 작은 docs-only · 이미 승인된 impl 파일) **1개 이상 AND high-risk trigger 0개**. (아직 분류 안 된 새 버그/이슈 신고는 tier 1 직행 X — 먼저 `/issue-report` 분류) | impl task/issue 있으면 `/impl-loop`, 없으면 **메인이 branch → PR → test → pr-reviewer → CI 를 지키는 단발 구현 경로** (새 skill 아님) | 의도·범위·수용 기준이 신호로 이미 명확 → 기획/설계 gate 만 비용. **검증·리뷰 게이트는 유지** |
 | **2. clarify** | 목표/사용자/성공 기준 모호 · "좋게 만들어줘 / 개선해줘 / 새 기능"처럼 범위 넓음 · 사용자가 "뭘 원하는지 모르겠다" | `/product-plan` 그릴미 (또는 메인이 명확화 질문) | shared understanding 부재 → 구현 전에 의도부터 |
 | **3. plan + review** | high-risk trigger 1개 이상 (아래 표) | `/product-plan` → (외부 의존 시) `/tech-review` → `/architect-loop` → `/impl-loop` | 되돌리기 비싼 결정 → 설계·검증 consensus 필요 |
 | **4. durable chain** | (gate 통과 후) 구현이 여러 task/PR 로 분할 · resume/handoff/audit · long-running · 병렬 후보 | `/impl-loop` chain 모드 — **impl task list 가 있어야 시작** (모호하면 먼저 tier 2/3) | **shape 축** — gate 가 아니라 실행 형태. 단일 PR 로 안 끝남 → task 경계 라우팅·재개 이득 |
@@ -87,10 +87,10 @@ flowchart TB
 
 본 router 와 [`issue-report`](../../skills/issue-report/issue-report-routing.md) 의 qa 분류는 **scope 가 다르다**:
 
-- **issue-report (qa 분류)** = *이미 발견된 버그/이슈* 를 분류한다.
+- **issue-report (qa 분류)** = *아직 분류 안 된 새 버그/이슈 신고* 를 분류한다 (KNOWN_ISSUE / DESIGN_ISSUE / SCOPE_ESCALATE 등).
 - **본 router** = *자유 형식 작업 요청* 을 사전 분류해 entrypoint 를 고른다.
 
-버그/이슈 신고는 먼저 `/issue-report` 로 분류하고, 그 결과가 다시 본 router 의 tier 로 흐른다 — 예: 기능 버그/정리 작업 → tier 1(direct impl) fallback, 큰 변경/다중 모듈 → tier 3(plan + review).
+아직 분류 안 된 새 버그/이슈 신고는 먼저 `/issue-report` 로 분류하고, 그 결과가 다시 본 router 의 tier 로 흐른다 — 예: 기능 버그/정리 작업 → tier 1(direct impl) fallback, 큰 변경/다중 모듈 → tier 3(plan + review). 반면 **이미 분류·승인된** GitHub issue/PR 번호를 "구현/수정해줘"는 그 자체가 concrete signal 이라 곧장 tier 1 (재분류 불필요).
 
 ## 하위 routing 과의 관계 (top-down 단방향)
 

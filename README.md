@@ -63,7 +63,7 @@ dcness-helper routing disable-codex-validation
 
 | 리스크 신호 | 진입점 |
 |---|---|
-| 구체 파일 path · symbol · 이슈 번호 (high-risk 없음) | `/impl-loop` 또는 단발 구현 — 기획/설계 gate 만 skip (branch/PR/test/리뷰 유지) |
+| 구체 파일 path · symbol · 승인된 이슈/PR 번호 (high-risk 없음) | `/impl-loop` 또는 단발 구현 — 기획/설계 gate 만 skip (branch/PR/test/리뷰 유지) |
 | 목표·범위 모호 ("개선해줘 / 새 기능") | `/product-plan` 그릴미 |
 | 새 feature · 외부 의존(API/SDK/model) · auth/보안 · migration · public API breakage | `/product-plan → (외부 의존 시) /tech-review → /architect-loop → /impl-loop` |
 | (설계 완료 후) 여러 task/PR 로 분할 · 재개/handoff | `/impl-loop` chain |
