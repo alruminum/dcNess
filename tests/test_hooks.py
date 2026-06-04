@@ -2137,6 +2137,33 @@ class StopHookGuardTests(unittest.TestCase):
         rc = handle_stop(stdin_data={})
         self.assertEqual(rc, 0)
 
+    def test_current_step_none_after_end_step_still_allows_end_run_candidate(self):
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+
+        from harness.session_state import run_dir, start_run, update_live
+
+        sid = "sid-stop-current-step-none"
+        rid = "run-feedbeef"
+        with TemporaryDirectory() as td:
+            base = Path(td)
+            update_live(sid, base_dir=base)
+            start_run(sid, rid, "impl", base_dir=base)
+            steps_path = run_dir(sid, rid, base_dir=base) / ".steps.jsonl"
+            steps_path.write_text(
+                json.dumps({"agent": "pr-reviewer", "mode": None}) + "\n",
+                encoding="utf-8",
+            )
+
+            env = {"DCNESS_SESSION_ID": sid, "DCNESS_RUN_ID": rid}
+            with patch.dict(os.environ, env, clear=False), patch(
+                "harness.session_state._cli_end_run", return_value=0
+            ) as end_run:
+                rc = handle_stop(stdin_data={}, base_dir=base)
+
+        self.assertEqual(rc, 0)
+        end_run.assert_called_once()
+
 
 # ---------------------------------------------------------------------------
 # _maybe_emit_continuation_signal — issue #469 결함 A

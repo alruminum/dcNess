@@ -1182,7 +1182,7 @@ def handle_stop(
     # 일치 = end-step 호출됨 (step 종료 상태) / 불일치 = begin-step 후 end-step
     # 미호출 (sub-agent 진행 중 응답 종료 케이스 — end-run 발사 false positive).
     try:
-        steps = _read_steps_jsonl(sid, rid)
+        steps = _read_steps_jsonl(sid, rid, base_dir=base_dir)
     except Exception:
         return 0
     if not steps:
