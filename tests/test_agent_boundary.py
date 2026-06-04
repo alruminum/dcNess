@@ -607,6 +607,23 @@ class BashMutationTests(unittest.TestCase):
         self.assertIsNone(check_bash_mutation(""))
         self.assertIsNone(check_bash_mutation("ls -la && cat README.md"))
 
+    def test_quoted_mutation_not_false_positive(self):
+        # codex P2 (round8) — 따옴표 안 `&&`/git push 는 데이터 → over-block 안 함.
+        self.assertIsNone(
+            check_bash_mutation("echo 'npm test && git push' > docs/x.md")
+        )
+        self.assertIsNone(check_bash_mutation('echo "run: git push" >> notes.md'))
+
+    def test_quoted_args_preserve_real_mutation(self):
+        # 인자만 따옴표인 진짜 mutation 은 여전히 차단 (명령부 보존).
+        self.assertIsNotNone(check_bash_mutation("git push 'origin' main"))
+        self.assertIsNotNone(check_bash_mutation("gh pr create --title 'my title'"))
+
+    def test_single_ampersand_separator_blocked(self):
+        # codex P2 (round8) — 단일 `&`(백그라운드) 뒤 mutation 도 식별.
+        self.assertIsNotNone(check_bash_mutation("sleep 1 & git push origin main"))
+        self.assertIsNotNone(check_bash_mutation("gh pr create --title x &"))
+
     def test_heredoc_body_not_treated_as_command(self):
         # codex P2 — heredoc 데이터 안 git/gh 텍스트는 실행 명령 아님 → 차단 X.
         cmd = "cat > deploy.md <<'EOF'\ngit push origin main\ngh issue create --title x\nEOF\n"

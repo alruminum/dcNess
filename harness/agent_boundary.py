@@ -368,8 +368,16 @@ def extract_bash_paths(command: str) -> list[str]:
 # 차단. push·이슈·PR 은 메인 영역 (git-spec 절차). read-only 는 통과.
 # 토큰 단위 파싱 — 문자열 grep 아님 (`gh issue list` 같은 read 를 오차단하지 않기 위함).
 
-# segment 분리용 shell 연산자.
-_SHELL_SEP = re.compile(r"&&|\|\||[;|\n]")
+# segment 분리용 shell 연산자 — `&&` `||` `;` `|` `&`(백그라운드) `\n` (codex P2 round8: `&` 추가).
+_SHELL_SEP = re.compile(r"&&|\|\||[;|&\n]")
+
+# 따옴표 문자열 제거 — quoted `&&` 가 가짜 segment 를 만들어 legit 명령(예 doc 작성)을 over-block
+# 하는 false positive 방지 (codex P2 round8). quoted 내용 미스캔은 nested-shell 우회 한계와 정합.
+_QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def _strip_quoted(command: str) -> str:
+    return _QUOTED_RE.sub(" ", command)
 
 # heredoc *본문(body)* 만 제거 — `cat > f <<'EOF' … git push … EOF` 처럼 heredoc 데이터
 # 안의 git/gh 텍스트를 실행 명령으로 오인해 차단하는 false positive 방지 (codex P2).
@@ -539,6 +547,7 @@ def check_bash_mutation(command: str) -> Optional[str]:
     if not command:
         return None
     command = _strip_heredocs(command)  # heredoc 데이터 안 git/gh 텍스트 오인 방지 (codex P2)
+    command = _strip_quoted(command)    # 따옴표 안 `&&`/git/gh 오인 방지 (codex P2 round8)
     for segment in _SHELL_SEP.split(command):
         toks = _peel_wrappers(_segment_tokens(segment))  # sudo/env/subshell/키워드 래퍼 제거
         if not toks:
