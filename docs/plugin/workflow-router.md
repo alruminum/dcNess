@@ -19,7 +19,7 @@ risk tier 는 "더 무거운 하나"를 고르는 배타 선택이 **아니다**
 
 1. **concrete signal 은 direct impl 의 *필요조건*이지 *충분조건*이 아니다** — high-risk trigger 가 하나라도 있으면 direct impl 이 아니다. (예: "auth/payment 파일 X 고쳐 구독 SDK 붙여줘" 는 파일 path 가 있어도 high-risk 라 tier 3.)
 2. **direct impl 은 *절차 생략*이 아니라 *기획/설계 gate 생략*이다** — branch / PR / test / pr-reviewer / CI 게이트는 그대로 지킨다. 새 command/skill 이 아니라 메인이 직접 도는 단발 구현 경로다.
-3. **high-risk 와 durable 은 합성된다** — 둘 다 맞으면 `/product-plan → /tech-review → /architect-loop → /impl-loop chain`.
+3. **high-risk 와 durable 은 합성된다** — 둘 다 맞으면 `/product-plan → (외부 의존 시) /tech-review → /architect-loop → /impl-loop chain`.
 
 판정은 위에서 아래로 본다:
 
