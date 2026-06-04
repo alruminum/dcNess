@@ -350,19 +350,28 @@ def extract_bash_paths(command: str) -> list[str]:
     """
     if not any(re.search(ind, command) for ind in _BASH_WRITE_INDICATORS):
         return []
-    # 토큰화 — quote 단순 처리.
-    tokens = re.findall(r"[\"'][^\"']+[\"']|\S+", command)
+    # 토큰화 — quote 보존 (따옴표 친 토큰을 식별해 통째로 제외하기 위함).
+    tokens = re.findall(r"[\"'][^\"']*[\"']|\S+", command)
     paths: list[str] = []
     for t in tokens:
-        t = t.strip("\"'")
+        # 따옴표로 감싼 토큰은 path 후보에서 제외 (codex P2 round10). sed/awk/perl 스크립트
+        # (`'s/foo/bar/'`)가 `/` 를 포함한다는 이유로 write path 로 오인돼 정상 편집
+        # (`sed -i 's/foo/bar/' src/main.ts`)이 차단되던 false positive 방지. 따옴표 친 write
+        # 대상이 누락되는 것은 본 guard 의 "false negative 우선" 원칙 + nested-shell 한계와 정합.
+        if len(t) >= 2 and t[0] in "\"'" and t[-1] == t[0]:
+            continue
         if not t or t.startswith("-"):
             continue
         # URL/원격 스킴 토큰(`https://…`, `ssh://…`, `git://…`)은 로컬 write 대상이 아님 → 제외
         # (codex P2 round9). `curl https://… > docs/…/x.json` 의 URL 이 `/` 를 포함한다는 이유로
         # write path 후보로 오인돼 tech-reviewer 의 정상 evidence 수집이 차단되던 false positive 방지.
-        # shell `>` 리다이렉트 대상은 항상 로컬 path 이므로 URL 제외가 write 누락(false negative)을
-        # 만들지 않는다 — 로컬 path 에는 `://` 가 등장하지 않는다.
+        # shell `>` 리다이렉트 대상은 항상 로컬 path 이므로 URL 제외가 write 누락을 만들지 않는다.
         if "://" in t:
+            continue
+        # 따옴표 없이 쓴 sed/awk 치환 스크립트(`s/foo/bar/`, `y/abc/def/`)도 명령 syntax → 제외
+        # (codex P2 round10). delimiter 가 2번 이상 등장하는 `[sy]<delim>…<delim>` 형태만 매칭해
+        # `src/main.ts` 같은 정상 path(`s` 다음이 delimiter 아님)는 보존.
+        if re.match(r"^[sy]([/|#@,!~]).+\1", t):
             continue
         # path 후보 — `/` 포함 또는 알려진 확장자.
         if "/" in t or re.search(r"\.(md|py|json|sh|mjs|ts|tsx|js|jsx)$", t):
@@ -375,24 +384,70 @@ def extract_bash_paths(command: str) -> list[str]:
 # 차단. push·이슈·PR 은 메인 영역 (git-spec 절차). read-only 는 통과.
 # 토큰 단위 파싱 — 문자열 grep 아님 (`gh issue list` 같은 read 를 오차단하지 않기 위함).
 
-# segment 분리용 shell 연산자 — `&&` `||` `;` `|` `&`(백그라운드) `\n` (codex P2 round8: `&` 추가).
-_SHELL_SEP = re.compile(r"&&|\|\||[;|&\n]")
+# 따옴표-인지 segment 분리 — shell 연산자(`&&` `||` `;` `|` `&`(백그라운드) `\n`)로 나누되
+# *따옴표 안* 의 연산자는 무시한다 (codex P2 round10). 옛 방식(따옴표를 placeholder/공백으로
+# 먼저 치환 후 정규식 split)은 두 결함의 근원이었다:
+#   - 공백 치환(round8): value-flag(`-C`) 직후 따옴표 값을 통째로 없애 짝 파괴 → push 미탐.
+#   - placeholder 치환(round9): 따옴표 친 verb/method(`git 'push'`, `gh api -X 'POST'`)가
+#     placeholder 로 바뀌어 mutation 미탐.
+# 따옴표-인지 스캐너는 (a) 따옴표 안 `&&` 가 가짜 segment 를 안 만들고(round8 목적 유지),
+# (b) 따옴표를 *벗긴 내용* 을 토큰으로 보존해 verb/method/value 짝을 모두 살린다.
+def _split_segments_quote_aware(command: str) -> list[str]:
+    segments: list[str] = []
+    cur: list[str] = []
+    quote: Optional[str] = None
+    i, n = 0, len(command)
+    while i < n:
+        c = command[i]
+        if quote:
+            cur.append(c)
+            if c == quote:
+                quote = None
+            i += 1
+            continue
+        if c in "'\"":
+            quote = c
+            cur.append(c)
+            i += 1
+            continue
+        if command[i:i + 2] in ("&&", "||"):
+            segments.append("".join(cur)); cur = []; i += 2; continue
+        if c in ";|&\n":
+            segments.append("".join(cur)); cur = []; i += 1; continue
+        cur.append(c); i += 1
+    segments.append("".join(cur))
+    return segments
 
-# 따옴표 문자열 제거 — quoted `&&` 가 가짜 segment 를 만들어 legit 명령(예 doc 작성)을 over-block
-# 하는 false positive 방지 (codex P2 round8). quoted 내용 미스캔은 nested-shell 우회 한계와 정합.
-_QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
 
-# quoted 영역을 *공백* 이 아니라 separator/공백 없는 단일 placeholder 토큰으로 치환한다 (codex P2 round9).
-# 공백 치환은 `git -C '/repo' push` 처럼 value-flag(`-C`) *직후* 의 따옴표 값을 통째로 없애,
-# `_positional_args` 가 `-C` 의 값으로 다음 토큰(`push`)을 소비 → push 미탐(false negative)을 만들었다
-# (round8 자가 회귀). placeholder 는 (a) 안에 shell separator(`&& ; | &`)가 없어 가짜 segment 를 안 만들고,
-# (b) 공백이 없어 *한 토큰* 으로 남아 value-flag 의 값 짝을 보존한다. quoted 내용 자체를 못 보는 것은
-# nested-shell(`bash -c "git push"`) 우회 한계와 동일 — 의도된 best-effort 경계.
-_QUOTE_PLACEHOLDER = "\x00Q\x00"
+def _tokenize_quote_aware(segment: str) -> list[str]:
+    """공백으로 토큰 분리하되 따옴표 안 공백은 무시하고 따옴표는 *벗겨 내용 보존*.
 
-
-def _strip_quoted(command: str) -> str:
-    return _QUOTED_RE.sub(_QUOTE_PLACEHOLDER, command)
+    그룹 punctuation `(){}` 는 공백 처리 — `(git push)` 안 명령도 토큰 분리 (codex P2).
+    따옴표 친 verb/method(`'push'`, `'POST'`)의 *내용* 이 토큰으로 남아 mutation 식별 가능.
+    """
+    segment = re.sub(r"[(){}]", " ", segment)
+    tokens: list[str] = []
+    cur: list[str] = []
+    in_tok = False
+    quote: Optional[str] = None
+    for c in segment:
+        if quote:
+            if c == quote:
+                quote = None
+            else:
+                cur.append(c)
+            in_tok = True
+        elif c in "'\"":
+            quote = c
+            in_tok = True
+        elif c.isspace():
+            if in_tok:
+                tokens.append("".join(cur)); cur = []; in_tok = False
+        else:
+            cur.append(c); in_tok = True
+    if in_tok:
+        tokens.append("".join(cur))
+    return tokens
 
 # heredoc *본문(body)* 만 제거 — `cat > f <<'EOF' … git push … EOF` 처럼 heredoc 데이터
 # 안의 git/gh 텍스트를 실행 명령으로 오인해 차단하는 false positive 방지 (codex P2).
@@ -448,13 +503,11 @@ _MCP_GH_MUTATION_PREFIXES = (
 
 
 def _segment_tokens(segment: str) -> list[str]:
-    """한 shell segment 를 토큰화 + 선행 `KEY=VAL` env 프리픽스 제거.
+    """한 shell segment 를 따옴표-인지 토큰화 + 선행 `KEY=VAL` env 프리픽스 제거.
 
-    그룹 punctuation `(){}` 는 공백 처리 — `(git push)` 같은 subshell 안 명령도 토큰 분리 (codex P2).
+    따옴표는 벗겨 *내용* 을 토큰으로 보존 (`git 'push'` → `push`) — codex P2 round10.
     """
-    segment = re.sub(r"[(){}]", " ", segment)
-    toks = re.findall(r"[\"'][^\"']*[\"']|\S+", segment.strip())
-    toks = [t.strip("\"'") for t in toks]
+    toks = _tokenize_quote_aware(segment)
     i = 0
     while i < len(toks) and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", toks[i]):
         i += 1  # env 할당 프리픽스 (FOO=bar cmd ...) skip
@@ -562,8 +615,7 @@ def check_bash_mutation(command: str) -> Optional[str]:
     if not command:
         return None
     command = _strip_heredocs(command)  # heredoc 데이터 안 git/gh 텍스트 오인 방지 (codex P2)
-    command = _strip_quoted(command)    # 따옴표 안 `&&`/git/gh 오인 방지 (codex P2 round8)
-    for segment in _SHELL_SEP.split(command):
+    for segment in _split_segments_quote_aware(command):  # 따옴표-인지 분리 (codex P2 round10)
         toks = _peel_wrappers(_segment_tokens(segment))  # sudo/env/subshell/키워드 래퍼 제거
         if not toks:
             continue

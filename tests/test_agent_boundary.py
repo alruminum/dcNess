@@ -530,6 +530,17 @@ class BashHeuristicTests(unittest.TestCase):
         self.assertNotIn("https://example.com/api/v1", paths)
         self.assertIn("docs/tech-review/evidence/x.json", paths)
 
+    def test_sed_script_not_extracted_as_path(self):
+        # codex P2 (round10) — `sed -i 's/foo/bar/' src/main.ts` 의 치환 스크립트는
+        # 명령 syntax → path 후보 아님. 실제 대상(src/main.ts)만 남아야 정상 편집이 안 막힘.
+        paths = extract_bash_paths("sed -i 's/foo/bar/' src/main.ts")
+        self.assertNotIn("s/foo/bar/", paths)
+        self.assertIn("src/main.ts", paths)
+        # 따옴표 없이 쓴 치환 스크립트도 제외.
+        paths2 = extract_bash_paths("sed -i s/foo/bar/ src/main.ts")
+        self.assertNotIn("s/foo/bar/", paths2)
+        self.assertIn("src/main.ts", paths2)
+
 
 class BashMutationTests(unittest.TestCase):
     """#597 커밋5 — check_bash_mutation: git push / gh mutation 차단, read-only 통과."""
@@ -643,6 +654,21 @@ class BashMutationTests(unittest.TestCase):
         # 같은 따옴표-값 형태라도 read-only 는 통과 (over-block 회피).
         self.assertIsNone(check_bash_mutation("git -C '/repo' status"))
         self.assertIsNone(check_bash_mutation("gh -R 'owner/repo' issue list"))
+
+    def test_quoted_verb_and_method_still_blocks(self):
+        # codex P2 (round10) — 따옴표 친 verb/method 도 식별 (normal shell quoting).
+        # placeholder 치환이 verb/method 를 안 보이게 만들던 회귀 수정 검증.
+        self.assertIsNotNone(check_bash_mutation("git 'push' origin main"))
+        self.assertIsNotNone(check_bash_mutation("gh 'pr' 'create' --title x"))
+        self.assertIsNotNone(check_bash_mutation("gh api -X 'POST' repos/o/r/issues"))
+        self.assertIsNotNone(check_bash_mutation('gh api --method "PATCH" repos/o/r/x'))
+
+    def test_quoted_separator_still_no_false_positive(self):
+        # round10 따옴표-인지 분리 — 따옴표 안 `&&` 는 여전히 가짜 segment 안 만듦.
+        self.assertIsNone(
+            check_bash_mutation("echo 'npm test && git push' > docs/x.md")
+        )
+        self.assertIsNone(check_bash_mutation('git commit -m "fix; gh pr create"'))
 
     def test_single_ampersand_separator_blocked(self):
         # codex P2 (round8) — 단일 `&`(백그라운드) 뒤 mutation 도 식별.
@@ -782,6 +808,17 @@ class BashIntegrationTests(unittest.TestCase):
             self.assertEqual(
                 blocked, [], f"tech-reviewer evidence 수집이 차단됨: {blocked}"
             )
+
+    def test_engineer_sed_legit_edit_not_blocked(self):
+        # codex P2 (round10) — engineer 의 정상 `sed -i 's/x/y/' src/…` 가
+        # sed 스크립트 오인으로 차단되면 안 됨.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            blocked = [
+                p for p in extract_bash_paths("sed -i 's/foo/bar/' src/main.ts")
+                if check_write_allowed("engineer", p, cwd=cwd) is not None
+            ]
+            self.assertEqual(blocked, [], f"engineer 정상 편집이 차단됨: {blocked}")
 
 
 if __name__ == "__main__":
