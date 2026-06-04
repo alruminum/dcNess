@@ -58,6 +58,18 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
 )
 
 
+# ── run_dir prose carve-out (#597 커밋4) ──────────────────────────────
+# sub-agent 의 자기 step prose self-write 보존. build-worker 는
+# `<run_dir>/build-{test,impl,validate}.md` 를 자기 Write 로 쓴다
+# (`agents/build-worker.md` 권한 경계). run_dir 는 INFRA 패턴 `(^|/)\.claude/` 에
+# 걸리고, build-worker 가 ALLOW_MATRIX 에 등재된 순간 ALLOW 미매칭으로도 막힌다.
+# → INFRA / ALLOW_MATRIX 검사보다 *먼저*, run_dir 직속 `.md` 만 좁게 허용한다.
+# 임의 `.claude/` write 는 여전히 차단 (carve-out 이 run_dir prose 한정이므로).
+RUN_DIR_PROSE_ALLOW: tuple[str, ...] = (
+    r'(^|/)\.claude/harness-state/\.sessions/[^/]+/runs/[^/]+/[^/]+\.md$',
+)
+
+
 # ── ALLOW_MATRIX (agent 별 Write 허용) ─────────────────────────
 # RWHarness agent-boundary.py:48~84 와 동일 패턴.
 ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
@@ -104,6 +116,11 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
     "ux-architect": (
         r'(^|/)docs/ux-flow\.md$',
     ),
+    # tech-reviewer — PRD 기술 선행 검토 산출물만 (agents/tech-reviewer.md 권한 경계).
+    "tech-reviewer": (
+        r'(^|/)docs/tech-review\.md$',
+        r'(^|/)docs/tech-review/',
+    ),
     # 판정 전용 agent — Write 0.
     "qa": (),
     "code-validator": (),
@@ -111,6 +128,12 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
     "pr-reviewer": (),
     "plan-reviewer": (),
 }
+
+# build-worker — engineer ∪ test-engineer (agents/build-worker.md 권한 경계).
+# 합집합으로 정의해 engineer / test-engineer 패턴 변경 시 자동 동기화 (drift 방지).
+# 키 부재 시 "미정의 agent = 통과" fallback 으로 빠져 /impl-loop 핵심 mutation agent 의
+# 경계가 무력화되던 결함(#597) 수정. (run_dir prose self-write 는 RUN_DIR_PROSE_ALLOW carve-out.)
+ALLOW_MATRIX["build-worker"] = ALLOW_MATRIX["engineer"] + ALLOW_MATRIX["test-engineer"]
 
 
 # ── READ_DENY_MATRIX (agent 별 Read 금지) ──────────────────────
@@ -238,6 +261,11 @@ def check_write_allowed(
         return None
 
     norm = _normalize(file_path, cwd)
+
+    # 0. run_dir prose carve-out — sub-agent 의 자기 step prose self-write 보존.
+    #    INFRA / ALLOW_MATRIX 검사보다 먼저, 좁게(run_dir 직속 .md) 허용 (#597 커밋4).
+    if _matches_any(norm, RUN_DIR_PROSE_ALLOW):
+        return None
 
     # 1. INFRA pattern → 모든 agent 차단.
     matched = _matches_any(norm, DCNESS_INFRA_PATTERNS)

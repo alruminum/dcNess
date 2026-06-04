@@ -299,6 +299,118 @@ class WriteAllowedAllowMatrixTests(unittest.TestCase):
             )
 
 
+class AllowMatrixCoverageTests(unittest.TestCase):
+    """#597 커밋4 — agents/*.md 전 agent 가 ALLOW_MATRIX key 로 등재 (누락 재발 차단).
+
+    미정의 agent 는 false-positive 회피로 통과한다. 즉 새 mutation agent 가 ALLOW_MATRIX
+    에 빠지면 경계가 *조용히* 무력화된다 (build-worker / tech-reviewer 가 그랬던 결함).
+    본 테스트는 agents 디렉토리의 모든 frontmatter name 을 ALLOW_MATRIX key 와 대조한다.
+    """
+
+    def _agent_names(self):
+        import re
+        names = []
+        for md in (REPO_ROOT / "agents").glob("*.md"):
+            text = md.read_text(encoding="utf-8")
+            m = re.search(r"^name:\s*(.+)$", text, re.MULTILINE)
+            if m:
+                names.append(m.group(1).strip().strip("'\""))
+        return names
+
+    def test_all_agents_have_allow_matrix_key(self):
+        names = self._agent_names()
+        self.assertGreaterEqual(len(names), 12, "agents/*.md 파싱 실패 의심")
+        missing = [n for n in names if n not in ALLOW_MATRIX]
+        self.assertEqual(
+            missing, [],
+            f"ALLOW_MATRIX 누락 agent: {missing} — 미정의 agent 는 경계가 무력화됨",
+        )
+
+    def test_build_worker_is_engineer_test_engineer_union(self):
+        self.assertEqual(
+            set(ALLOW_MATRIX["build-worker"]),
+            set(ALLOW_MATRIX["engineer"]) | set(ALLOW_MATRIX["test-engineer"]),
+        )
+
+
+class RunDirProseCarveOutTests(unittest.TestCase):
+    """#597 커밋4 — build-worker run_dir prose self-write 허용 + 임의 .claude/ 차단."""
+
+    def setUp(self):
+        self._patcher = patch.dict(
+            os.environ, {"DCNESS_INFRA": "", "CLAUDE_PLUGIN_ROOT": ""}, clear=False
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+
+    def test_build_worker_run_dir_prose_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for fname in ("build-test.md", "build-impl.md", "build-validate.md"):
+                p = f".claude/harness-state/.sessions/SID123/runs/run-abcd1234/{fname}"
+                self.assertIsNone(
+                    check_write_allowed("build-worker", p, cwd=cwd),
+                    f"run_dir prose {fname} self-write 가 허용되어야 함",
+                )
+
+    def test_build_worker_arbitrary_claude_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # run_dir 밖의 임의 .claude/ write 는 여전히 차단 (carve-out 은 run_dir prose 한정).
+            reason = check_write_allowed(
+                "build-worker", ".claude/settings.json", cwd=cwd
+            )
+            self.assertIsNotNone(reason)
+            self.assertIn("인프라", reason)
+
+    def test_run_dir_non_md_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # run_dir 안이라도 .md 아닌 파일은 carve-out 밖 → INFRA 차단.
+            reason = check_write_allowed(
+                "build-worker",
+                ".claude/harness-state/.sessions/SID/runs/run-x/live.json",
+                cwd=cwd,
+            )
+            self.assertIsNotNone(reason)
+
+    def test_build_worker_src_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(check_write_allowed("build-worker", "src/a.ts", cwd=cwd))
+            self.assertIsNone(
+                check_write_allowed("build-worker", "src/__tests__/a.test.ts", cwd=cwd)
+            )
+
+    def test_build_worker_docs_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            reason = check_write_allowed("build-worker", "docs/impl/01-x.md", cwd=cwd)
+            self.assertIsNotNone(reason)
+            self.assertIn("ALLOW_MATRIX", reason)
+
+    def test_tech_reviewer_allowed_paths(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(
+                check_write_allowed("tech-reviewer", "docs/tech-review.md", cwd=cwd)
+            )
+            self.assertIsNone(
+                check_write_allowed(
+                    "tech-reviewer", "docs/tech-review/report.html", cwd=cwd
+                )
+            )
+
+    def test_tech_reviewer_prd_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            reason = check_write_allowed("tech-reviewer", "docs/prd.md", cwd=cwd)
+            self.assertIsNotNone(reason)
+            self.assertIn("ALLOW_MATRIX", reason)
+
+
 class OptOutMarkerTests(unittest.TestCase):
     """`.no-dcness-guard` 마커 — 사용자 임시 우회."""
 
