@@ -664,6 +664,37 @@ class FileOpHookTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
 
+    def test_opt_out_marker_bypasses_bash_mutation(self) -> None:
+        # codex P2 (round6) — .no-dcness-guard 면 git push 도 통과 (opt-out 일관성).
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        (self.base / ".no-dcness-guard").write_text("")
+        try:
+            rc = handle_pretooluse_file_op(
+                stdin_data=self._file_op_payload("Bash", command="git push origin main"),
+                cc_pid=self.cc_pid,
+                base_dir=self.base,
+            )
+            self.assertEqual(rc, 0)
+        finally:
+            (self.base / ".no-dcness-guard").unlink()
+
+    def test_opt_out_marker_bypasses_mcp_mutation(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        (self.base / ".no-dcness-guard").write_text("")
+        try:
+            rc = handle_pretooluse_file_op(
+                stdin_data={
+                    "sessionId": self.sid,
+                    "tool_name": "mcp__github__merge_pull_request",
+                    "tool_input": {"pullNumber": 1},
+                },
+                cc_pid=self.cc_pid,
+                base_dir=self.base,
+            )
+            self.assertEqual(rc, 0)
+        finally:
+            (self.base / ".no-dcness-guard").unlink()
+
     def test_main_claude_mutation_passes(self) -> None:
         # active_agent 미설정 (메인) → git push / MCP mutation 모두 통과.
         rc_push = handle_pretooluse_file_op(

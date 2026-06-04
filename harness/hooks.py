@@ -373,6 +373,8 @@ def handle_pretooluse_file_op(
         check_read_allowed,
         check_write_allowed,
         extract_bash_paths,
+        is_infra_project,
+        is_opt_out,
     )
 
     if stdin_data is None:
@@ -401,6 +403,11 @@ def handle_pretooluse_file_op(
 
     cwd = Path.cwd()
 
+    # #597 codex P2 (round6) — mutation 검사도 file-guard 우회(.no-dcness-guard / infra)를 존중.
+    # path 검사(check_write_allowed/check_read_allowed)는 내부에서 opt-out/infra 를 이미 해제하지만,
+    # check_bash_mutation/check_github_mcp_mutation 은 cwd 무관 순수 함수라 별도 가드 필요.
+    mutation_guard_off = is_opt_out(cwd) or is_infra_project(cwd)
+
     # boundary 검사 — 차단 시 즉시 return (trace 미기록 — 차단된 행동은 file-guard 가 stderr 에 별도 기록)
     if tool_name == "Read":
         fp = tool_input.get("file_path", "") or ""
@@ -418,19 +425,22 @@ def handle_pretooluse_file_op(
                 return 1
     elif tool_name == "Bash":
         cmd = tool_input.get("command", "") or ""
-        # 외부 시스템 mutation (git push / gh pr·issue mutation) — sub-agent 차단 (#597 커밋5).
-        reason = check_bash_mutation(cmd)
-        if reason:
-            print(f"[agent-boundary][Bash] {reason}", file=sys.stderr)
-            return 1
+        # 외부 시스템 mutation (git push / gh pr mutation) — sub-agent 차단 (#597 커밋5).
+        # opt-out/infra 면 우회 (path 검사와 동일 우회 시맨틱).
+        if not mutation_guard_off:
+            reason = check_bash_mutation(cmd)
+            if reason:
+                print(f"[agent-boundary][Bash] {reason}", file=sys.stderr)
+                return 1
         for fp in extract_bash_paths(cmd):
             reason = check_write_allowed(active_agent, fp, cwd=cwd)
             if reason:
                 print(f"[agent-boundary][Bash] {reason}", file=sys.stderr)
                 return 1
     elif tool_name.startswith("mcp__github__"):
-        # GitHub MCP mutation (create_issue / merge_pull_request / push_files 등) — 차단 (#597 커밋5).
-        reason = check_github_mcp_mutation(tool_name)
+        # GitHub MCP PR/repo mutation (merge_pull_request / push_files 등) — 차단 (#597 커밋5).
+        # opt-out/infra 면 우회.
+        reason = None if mutation_guard_off else check_github_mcp_mutation(tool_name)
         if reason:
             print(f"[agent-boundary][MCP] {reason}", file=sys.stderr)
             return 1

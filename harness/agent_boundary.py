@@ -524,10 +524,13 @@ def check_bash_mutation(command: str) -> Optional[str]:
     global flag (`git -C ...`, `gh -R ...`) 가 앞에 와도 noun/verb 를 정확히 식별 (codex P2).
     흔한 래퍼(`sudo`/`env`/subshell/쉘 키워드)도 벗겨 식별 (codex P2).
 
-    ⚠️ 한계 (의도적): 본 guard 는 *보안 경계* 가 아니라 실수 방지용 best-effort denylist.
-    nested shell (`bash -c`, `eval`), command substitution (`$(...)`), 문자열 조립 등으로
-    우회 가능 — sub-agent 는 Bash 도구를 가지므로 완전 차단은 원천 불가. 실제 경계는
-    "외부 mutation 은 메인 영역" 이라는 시퀀스 규약 + 흔한 직접 호출 차단의 조합이다.
+    ⚠️ 한계 (의도적 — 본 guard 는 *보안 경계* 가 아니라 실수 방지용 best-effort denylist):
+      - nested shell (`bash -c`, `eval`), command substitution (`$(...)`), 문자열 조립 우회 가능.
+      - 값-소비 래퍼 옵션 뒤 명령 (`sudo -u root git push`, `nice -n 10 git push`) 은 미탐 —
+        같은 short flag 가 래퍼마다 값 유무가 달라(`-n`: nice=값 / sudo=bare) 정확한 arity
+        판정이 충돌하기 때문. bare 옵션(`sudo -E`, `command --`, `env -i`)까지는 식별.
+      sub-agent 는 Bash 도구를 가지므로 완전 차단은 원천 불가. 실제 경계는 "외부 mutation 은
+      메인 영역" 시퀀스 규약 + 흔한 직접 호출 차단의 조합이다. 추가 강화는 별도 follow-up 영역.
     """
     if not command:
         return None
