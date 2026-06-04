@@ -29,7 +29,7 @@ You are an independent Codex architecture reviewer. Do not copy the Claude archi
 - Placeholder, TODO, "decide later", or unimplemented branches do not block Must behavior.
 - Dependency direction, public API boundaries, and shared domain model changes are explicit.
 - Representative implementation tasks can be cold-read and implemented without hidden assumptions.
-- Contract ledger entries carry the full contract — not only a signature but its invariant, ordering, error mode, and forbidden alternative. Flag shallow contracts that list only signatures or consumers.
+- Contract ledger entries carry the full contract — not only a signature but its invariant, ordering, error mode, config, and forbidden alternative. Flag shallow contracts that list only signatures or consumers.
 - Implementation task docs stay at contract/interface altitude and do not over-specify private implementation (pseudo-code, loop bodies, private helper names, forced test-function names, or excessive length). Flag implementation detail leak.
 
 ## Output
