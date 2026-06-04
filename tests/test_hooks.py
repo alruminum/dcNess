@@ -623,9 +623,23 @@ class FileOpHookTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
 
-    def test_mcp_github_mutation_blocked(self) -> None:
-        # #597 커밋5 — sub-agent 의 GitHub MCP mutation 차단.
+    def test_mcp_github_pr_mutation_blocked(self) -> None:
+        # #597 커밋5 — sub-agent 의 GitHub MCP PR/repo mutation 차단.
         update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "mcp__github__merge_pull_request",
+                "tool_input": {"pullNumber": 1},
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_mcp_github_issue_mutation_exempt(self) -> None:
+        # codex P1 (round4) — issue mutation 은 qa/designer 설계 권한 → 통과.
+        update_live(self.sid, base_dir=self.base, active_agent="qa")
         rc = handle_pretooluse_file_op(
             stdin_data={
                 "sessionId": self.sid,
@@ -635,7 +649,7 @@ class FileOpHookTests(_PreToolBase):
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
-        self.assertEqual(rc, 1)
+        self.assertEqual(rc, 0)
 
     def test_mcp_github_read_passes(self) -> None:
         update_live(self.sid, base_dir=self.base, active_agent="engineer")

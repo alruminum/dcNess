@@ -619,19 +619,28 @@ class BashMutationTests(unittest.TestCase):
 
 
 class GithubMcpMutationTests(unittest.TestCase):
-    """#597 커밋5 — check_github_mcp_mutation: mutation tool 차단, read tool 통과."""
+    """#597 커밋5 — check_github_mcp_mutation: PR/repo mutation 차단, read·issue mutation 통과."""
 
-    def test_mutation_tools_blocked(self):
+    def test_pr_repo_mutation_blocked(self):
         for t in (
-            "mcp__github__create_issue",
-            "mcp__github__update_issue",
             "mcp__github__merge_pull_request",
             "mcp__github__push_files",
             "mcp__github__create_pull_request",
             "mcp__github__create_or_update_file",
-            "mcp__github__add_issue_comment",
         ):
             self.assertIsNotNone(check_github_mcp_mutation(t), f"{t} 는 차단되어야 함")
+
+    def test_issue_mutation_exempt(self):
+        # codex P1 (round4) — issue mutation 은 qa/designer 설계 권한 → 통과.
+        for t in (
+            "mcp__github__create_issue",
+            "mcp__github__update_issue",
+            "mcp__github__add_issue_comment",
+        ):
+            self.assertIsNone(
+                check_github_mcp_mutation(t),
+                f"{t} 는 qa/designer 설계 권한 — 통과해야 함",
+            )
 
     def test_read_tools_pass(self):
         for t in (
@@ -645,6 +654,31 @@ class GithubMcpMutationTests(unittest.TestCase):
     def test_non_github_mcp_passes(self):
         self.assertIsNone(check_github_mcp_mutation("mcp__pencil__batch_design"))
         self.assertIsNone(check_github_mcp_mutation("Edit"))
+
+
+class BashWrapperBypassTests(unittest.TestCase):
+    """#597 codex P2 (round4) — 흔한 래퍼로 감싼 git/gh mutation 도 식별."""
+
+    def test_sudo_wrapped_blocked(self):
+        self.assertIsNotNone(check_bash_mutation("sudo git push origin main"))
+
+    def test_env_command_wrapped_blocked(self):
+        self.assertIsNotNone(check_bash_mutation("env GH_TOKEN=x gh issue create --title x"))
+
+    def test_subshell_wrapped_blocked(self):
+        self.assertIsNotNone(check_bash_mutation("(git push origin main)"))
+
+    def test_if_then_wrapped_blocked(self):
+        self.assertIsNotNone(
+            check_bash_mutation("if true; then git push origin main; fi")
+        )
+
+    def test_nohup_wrapped_blocked(self):
+        self.assertIsNotNone(check_bash_mutation("nohup gh pr create --title x"))
+
+    def test_wrapped_readonly_passes(self):
+        self.assertIsNone(check_bash_mutation("sudo git status"))
+        self.assertIsNone(check_bash_mutation("(gh issue list)"))
 
 
 class BashIntegrationTests(unittest.TestCase):

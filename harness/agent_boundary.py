@@ -406,6 +406,16 @@ _GIT_VALUE_FLAGS = frozenset({
 })
 _GH_VALUE_FLAGS = frozenset({"-R", "--repo"})
 
+# 명령 래퍼 / 쉘 키워드 — segment 선두에 와서 실제 명령어를 가리는 흔한 형태 (codex P2).
+# 이들을 벗겨낸 *뒤* 의 첫 토큰을 실제 명령으로 본다.
+_CMD_WRAPPERS = frozenset({
+    "sudo", "doas", "command", "builtin", "exec", "nice", "nohup",
+    "time", "stdbuf", "setsid", "ionice", "then", "else", "elif", "do",
+})
+_SHELL_KEYWORDS = frozenset({
+    "if", "fi", "done", "while", "until", "for", "case", "esac", "!",
+})
+
 # GitHub MCP — read-only prefix (통과) / mutation verb prefix (차단).
 _MCP_GH_READ_PREFIXES = ("get_", "list_", "search_")
 _MCP_GH_MUTATION_PREFIXES = (
@@ -415,13 +425,43 @@ _MCP_GH_MUTATION_PREFIXES = (
 
 
 def _segment_tokens(segment: str) -> list[str]:
-    """한 shell segment 를 토큰화 + 선행 `KEY=VAL` env 프리픽스 제거."""
+    """한 shell segment 를 토큰화 + 선행 `KEY=VAL` env 프리픽스 제거.
+
+    그룹 punctuation `(){}` 는 공백 처리 — `(git push)` 같은 subshell 안 명령도 토큰 분리 (codex P2).
+    """
+    segment = re.sub(r"[(){}]", " ", segment)
     toks = re.findall(r"[\"'][^\"']*[\"']|\S+", segment.strip())
     toks = [t.strip("\"'") for t in toks]
     i = 0
     while i < len(toks) and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", toks[i]):
         i += 1  # env 할당 프리픽스 (FOO=bar cmd ...) skip
     return toks[i:]
+
+
+def _peel_wrappers(toks: list[str]) -> list[str]:
+    """선두 명령 래퍼/쉘 키워드를 벗겨 실제 명령 토큰 list 반환 (codex P2).
+
+    `sudo git push` / `env X=y gh issue create` / `then git push` / `(git push)` 처럼
+    실제 git/gh 가 래퍼 뒤에 숨는 흔한 형태 대응. `env` 는 뒤따르는 `VAR=val` 인자도 skip.
+
+    한계: nested shell (`bash -c "..."`, `eval`), command substitution (`$(...)`),
+    문자열 조립 등은 본 휴리스틱으로 잡지 못한다 — 본 guard 는 *보안 경계* 가 아니라
+    실수 방지용 best-effort denylist (sub-agent 는 Bash 가 있어 우회는 원천적으로 가능).
+    """
+    i = 0
+    n = len(toks)
+    while i < n:
+        t = toks[i]
+        if t == "env":
+            i += 1
+            while i < n and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", toks[i]):
+                i += 1
+            continue
+        if t in _CMD_WRAPPERS or t in _SHELL_KEYWORDS:
+            i += 1
+            continue
+        return toks[i:]
+    return []
 
 
 def _positional_args(toks: list[str], value_flags: frozenset) -> list[str]:
@@ -477,12 +517,18 @@ def check_bash_mutation(command: str) -> Optional[str]:
           `gh api` (mutating method / field flag).
     통과: read-only (`gh pr view`, `gh issue list`, `gh api` GET, 그 외 모든 명령).
     global flag (`git -C ...`, `gh -R ...`) 가 앞에 와도 noun/verb 를 정확히 식별 (codex P2).
+    흔한 래퍼(`sudo`/`env`/subshell/쉘 키워드)도 벗겨 식별 (codex P2).
+
+    ⚠️ 한계 (의도적): 본 guard 는 *보안 경계* 가 아니라 실수 방지용 best-effort denylist.
+    nested shell (`bash -c`, `eval`), command substitution (`$(...)`), 문자열 조립 등으로
+    우회 가능 — sub-agent 는 Bash 도구를 가지므로 완전 차단은 원천 불가. 실제 경계는
+    "외부 mutation 은 메인 영역" 이라는 시퀀스 규약 + 흔한 직접 호출 차단의 조합이다.
     """
     if not command:
         return None
     command = _strip_heredocs(command)  # heredoc 데이터 안 git/gh 텍스트 오인 방지 (codex P2)
     for segment in _SHELL_SEP.split(command):
-        toks = _segment_tokens(segment)
+        toks = _peel_wrappers(_segment_tokens(segment))  # sudo/env/subshell/키워드 래퍼 제거
         if not toks:
             continue
         cmd = toks[0]
@@ -518,6 +564,14 @@ def check_github_mcp_mutation(tool_name: str) -> Optional[str]:
 
     read (`get_*`, `list_*`, `search_*`) = 통과. mutation verb prefix = 차단.
     보수적 — 알려진 mutation prefix 만 차단, 그 외 unknown 은 통과 (false positive 회피).
+
+    🔴 GitHub *issue* mutation (`create_issue`/`update_issue`/`add_issue_comment` 등 op 에
+    'issue' 포함) 은 **예외 — 통과** (codex review P1). qa / designer 는 frontmatter `tools:` 로
+    이 도구를 *부여받아* 이슈 등록·추적 코멘트를 수행하도록 설계됐고 (`agents/qa.md`,
+    `agents/designer.md`), CC 가 MCP 도구를 per-agent `tools:` 로 이미 gate 한다 (미부여 agent 는
+    호출 자체 불가). 따라서 본 hook 이 issue mutation 을 막으면 *설계된 흐름만* 깨고
+    실질 방어 이득은 없다. PR/repo mutation (`merge_pull_request`/`push_files`/
+    `create_pull_request`/`create_or_update_file` 등) 은 어떤 agent 도 부여받지 않으므로 계속 차단.
     """
     prefix = "mcp__github__"
     if not tool_name.startswith(prefix):
@@ -525,9 +579,11 @@ def check_github_mcp_mutation(tool_name: str) -> Optional[str]:
     op = tool_name[len(prefix):]
     if op.startswith(_MCP_GH_READ_PREFIXES):
         return None
+    if "issue" in op:
+        return None  # issue mutation = qa/designer 설계 권한 (CC per-agent gate) — 예외
     if op.startswith(_MCP_GH_MUTATION_PREFIXES):
         return (
             f"GitHub MCP mutation 차단: {tool_name} — 외부 시스템 mutation 은 메인 영역 "
-            f"(git-spec 이슈/PR 절차)."
+            f"(git-spec PR/repo 절차)."
         )
     return None
