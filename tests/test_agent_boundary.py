@@ -595,6 +595,16 @@ class BashMutationTests(unittest.TestCase):
         self.assertIsNone(check_bash_mutation(""))
         self.assertIsNone(check_bash_mutation("ls -la && cat README.md"))
 
+    def test_heredoc_body_not_treated_as_command(self):
+        # codex P2 — heredoc 데이터 안 git/gh 텍스트는 실행 명령 아님 → 차단 X.
+        cmd = "cat > deploy.md <<'EOF'\ngit push origin main\ngh issue create --title x\nEOF\n"
+        self.assertIsNone(check_bash_mutation(cmd))
+
+    def test_real_push_after_heredoc_still_blocked(self):
+        # heredoc 본문만 제거 — heredoc 뒤의 진짜 git push 는 여전히 차단.
+        cmd = "cat > f.md <<'EOF'\nhello\nEOF\ngit push origin main\n"
+        self.assertIsNotNone(check_bash_mutation(cmd))
+
 
 class GithubMcpMutationTests(unittest.TestCase):
     """#597 커밋5 — check_github_mcp_mutation: mutation tool 차단, read tool 통과."""

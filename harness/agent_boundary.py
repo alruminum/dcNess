@@ -371,6 +371,18 @@ def extract_bash_paths(command: str) -> list[str]:
 # segment 분리용 shell 연산자.
 _SHELL_SEP = re.compile(r"&&|\|\||[;|\n]")
 
+# heredoc 본문 제거 — `cat > f <<'EOF' … git push … EOF` 처럼 heredoc *데이터* 안의
+# git/gh 텍스트를 실행 명령으로 오인해 차단하는 false positive 방지 (codex P2).
+# `<<['"]?MARKER` 부터 줄 단독 `MARKER` 까지를 통째로 제거. 명령 라인의 `<<` 앞부분은 보존.
+_HEREDOC_RE = re.compile(
+    r"<<-?\s*(['\"]?)([A-Za-z_]\w*)\1.*?^\s*\2\s*$",
+    re.DOTALL | re.MULTILINE,
+)
+
+
+def _strip_heredocs(command: str) -> str:
+    return _HEREDOC_RE.sub(" ", command)
+
 # gh <noun> <verb> mutation 조합.
 _GH_MUTATION: dict[str, frozenset] = {
     "pr": frozenset({"create", "merge", "close", "edit", "comment", "ready", "reopen"}),
@@ -466,6 +478,7 @@ def check_bash_mutation(command: str) -> Optional[str]:
     """
     if not command:
         return None
+    command = _strip_heredocs(command)  # heredoc 데이터 안 git/gh 텍스트 오인 방지 (codex P2)
     for segment in _SHELL_SEP.split(command):
         toks = _segment_tokens(segment)
         if not toks:
