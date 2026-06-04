@@ -2104,8 +2104,13 @@ _YOLO_FALLBACKS: Dict[str, Dict[str, str]] = {
         "next_enum": None,
     },
     "architecture-validator:FAIL": {
-        "action": "re-invoke-prev",
-        "hint": "architect SYSTEM_DESIGN 재진입 (cycle ≤ 2)",
+        "action": "re-invoke",
+        "hint": (
+            "finding 분류로 라우팅 (architect-loop-routing): "
+            "SYSTEM_BOUNDARY → system-architect 재진입 / "
+            "CONTRACT_PROPAGATION → module-architect mode=contract_sweep / "
+            "TASK_LOCAL → module-architect 보강 (cycle ≤ 2)"
+        ),
         "next_enum": None,
     },
     "*:AMBIGUOUS": {

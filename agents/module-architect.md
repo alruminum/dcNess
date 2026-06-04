@@ -218,7 +218,7 @@ module 단계에서 public contract 를 *바꾸게* 되면 (시그니처 / invar
 2. **변경 없으면 "Ledger 변경 없음" 명시** — 침묵 금지. 계약을 안 건드렸다는 것도 적극 신고.
 3. **seam 이 모듈 경계를 넘어 이동하면** (소유 모듈 자체가 바뀜) → 이건 `SYSTEM_BOUNDARY` — 직접 고치지 말고 prose 로 보고 → 메인이 system-architect 로 라우팅.
 
-이렇게 하면 architecture-validator 가 loop 마지막 Contract Ledger sweep 에서 producer → consumer → forbidden 정합을 검증할 수 있고, 갱신 누락이 `CONTRACT_PROPAGATION` finding 으로 드러난다.
+이렇게 하면 architecture-validator 가 loop 마지막 Contract Ledger sweep 에서 각 계약 행의 모든 필드 (producer · consumer · invariant · ordering · error mode · config · forbidden alternative) 정합을 검증할 수 있고, 갱신 누락이 `CONTRACT_PROPAGATION` finding 으로 드러난다.
 
 ## 계약 전파 sweep
 
@@ -229,9 +229,10 @@ module 단계에서 public contract 를 *바꾸게* 되면 (시그니처 / invar
 행동:
 
 1. Contract Ledger 의 해당 행을 canonical 기준으로 확정.
-2. sweep 키워드로 `rg` 전수 검색 — architecture / domain-model / adr / 후속 impl / (있으면) runbook · skill · helper 같은 agent-facing SSOT 전반.
-3. canonical 과 어긋난 **stale 줄만 patch** — 새 설계 결정 추가 X, 기존 결정 재해석 X. 사본을 진본에 맞추는 것만.
-4. sweep 결과 보고 — 검색 키워드 / 발견한 stale 위치 (file:line) / patch 한 줄 수 / 남은 미해결 (있으면).
+2. sweep 키워드로 `rg` 전수 검색 — 검색은 repo 전반이되, **patch 대상은 본 agent write 경계(`docs/**` — epic 단위 architecture.md / domain-model.md / adr.md / impl) 안** 으로 한정.
+3. write 경계 안에서 canonical 과 어긋난 **stale 줄만 patch** — 새 설계 결정 추가 X, 기존 결정 재해석 X. 사본을 진본에 맞추는 것만.
+4. **write 경계 밖 stale** (예: `skills/` · `scripts/` · runbook · helper 같은 agent-facing SSOT — `docs/**` 가 아닌 곳) 은 patch 하지 않고 **위치 (file:line) 를 prose 로 보고 + escalate** — 권한 가진 주체(메인 / 해당 agent)가 처리. agent_boundary 가 쓰기를 차단하므로 직접 쓰기 시도 X ([`harness/agent_boundary.py`](../harness/agent_boundary.py)).
+5. sweep 결과 보고 — 검색 키워드 / 경계 안 patch (file:line · 줄 수) / 경계 밖 stale 보고 목록 / 남은 미해결.
 
 **금지**: sweep 도중 새 인터페이스 설계 / 모듈 분할 변경 / 도메인 모델 변경. 그런 필요가 보이면 그건 `CONTRACT_PROPAGATION` 이 아니라 `SYSTEM_BOUNDARY` 또는 계약 변경(`CONTRACT_AMENDMENT`) — prose 로 보고 + escalate (메인이 재라우팅).
 
