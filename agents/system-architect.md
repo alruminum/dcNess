@@ -136,9 +136,11 @@ DDD 4 요소:
 
 | contract | owner | producer | consumer | invariant | ordering | error mode | config | forbidden alternative | refs |
 |---|---|---|---|---|---|---|---|---|---|
-| scene_count | ScenesUseCase.prepare_scenes | narration.duration_sec | SceneSplitter, mark_scenes_ready | canonical D = narration.duration_sec | prepare 시 1회 산정 | 0 장면 시 빈 timeline | — | SceneSplitter 가 timeline_duration_sec 재계산 | ADR-NN, impl/05 |
+| scene_count | ScenesUseCase.prepare_scenes | narration.duration_sec | SceneSplitter, mark_scenes_ready | canonical D = narration.duration_sec | prepare 시 1회 산정 | 0 장면 시 빈 timeline | — | SceneSplitter 가 timeline_duration_sec 재계산 | ADR-NN |
 
 (cross-task public contract 가 없으면 "Contract 없음" 명시)
+
+> **refs 는 현존 참조만** — 본 agent 단계(Step 3)는 module-architect 가 task 를 쪼개기 *전* 이라 `impl/NN` 경로가 아직 없다. refs 에는 ADR / owner 등 *지금 존재하는* 참조만 적고, impl 경로는 module-architect 가 task 생성 후 채운다 (없는 impl 경로 선점 금지 — task 단위 impl 분할은 본 agent 영역 밖).
 
 ## 공통 task 목록
 
