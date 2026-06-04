@@ -147,7 +147,7 @@ I5 (메인 misdiagnosis) 회귀 방지 — engineer 보고 → 메인 즉시 신
 
 - **code-validator FAIL 재시도 max 3회** → 초과 시 `IMPLEMENTATION_ESCALATE`
 - **SPEC_GAP 는 attempt 미소비 (동결)** — 별도 `spec_gap_count` (max 2). 합산 최대 라운드 = attempt 3 + spec_gap 2 = 5회
-- 같은 방식으로 같은 FAIL 반복 시 → `SPEC_GAP_FOUND` 보고 후 중단
+- 같은 방식으로 같은 FAIL 반복 시 → `SPEC_GAP_FOUND` 보고 후 중단. **같은 영역 finding 이 2회+ 반복 = 점 패치 신호** — 표면만 좁게 고치지 말고 근본 원인을 짚는다 (코드 내 뿌리면 그 뿌리를 surgical 하게 수정, 스펙·설계 차원이면 `SPEC_GAP_FOUND` 로 module-architect 보강). 진본 = [`loop-procedure.md` finding 수용 원칙](../docs/plugin/loop-procedure.md#finding-수용-원칙-점-패치-금지-근본-수정)
 
 **attempt 1+ 출력 토큰 최소화** (실측: engineer out_tok 20K~37K 폭주가 ESCALATE 비용의 80%):
 - 금지: 직전 attempt 와 동일 파일 처음부터 끝까지 재출력 / 의사결정 과정 새 단어로 재서술
