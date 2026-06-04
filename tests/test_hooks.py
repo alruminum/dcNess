@@ -353,6 +353,37 @@ class CatastrophicArchitectureValidatorTests(_ArchitectLoopBase):
             self.assertEqual(rc, 0)
 
 
+class CatastrophicTechReviewerRecallTests(_ArchitectLoopBase):
+    """#597 커밋7 — §2.1.4 부분 코드강제: architect-loop 중 tech-reviewer 재호출 차단."""
+
+    def test_tech_reviewer_blocked_in_architect_loop(self) -> None:
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("tech-reviewer"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_tech_reviewer_allowed_outside_architect_loop(self) -> None:
+        # 비-architect-loop run (entry_point=impl) 에선 tech-reviewer 통과.
+        with TemporaryDirectory() as td:
+            base = Path(td)
+            sid, rid, cc_pid = "sid-impl2", "run-impl5678", 33333
+            write_pid_session(cc_pid, sid, base_dir=base)
+            update_live(sid, base_dir=base)
+            start_run(sid, rid, "impl", base_dir=base)
+            write_pid_current_run(cc_pid, rid, base_dir=base)
+            rc = handle_pretooluse_agent(
+                stdin_data={
+                    "sessionId": sid,
+                    "tool_input": {"subagent_type": "tech-reviewer", "mode": ""},
+                },
+                cc_pid=cc_pid,
+                base_dir=base,
+            )
+            self.assertEqual(rc, 0)
+
+
 # ---------------------------------------------------------------------------
 # rid 폴백 (by-pid-current-run 없을 때 live.json 에서 추정)
 # ---------------------------------------------------------------------------
@@ -559,6 +590,129 @@ class FileOpHookTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
+
+    def test_bash_git_push_blocked(self) -> None:
+        # #597 커밋5 — sub-agent 의 git push 차단.
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload("Bash", command="git push -u origin x"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_bash_gh_issue_create_blocked(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload(
+                "Bash", command="gh issue create --title x --body y"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_bash_gh_readonly_passes(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload(
+                "Bash", command="gh issue list --state open"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_mcp_github_pr_mutation_blocked(self) -> None:
+        # #597 커밋5 — sub-agent 의 GitHub MCP PR/repo mutation 차단.
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "mcp__github__merge_pull_request",
+                "tool_input": {"pullNumber": 1},
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_mcp_github_issue_mutation_exempt(self) -> None:
+        # codex P1 (round4) — issue mutation 은 qa/designer 설계 권한 → 통과.
+        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        rc = handle_pretooluse_file_op(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "mcp__github__create_issue",
+                "tool_input": {"title": "x"},
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_mcp_github_read_passes(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_pretooluse_file_op(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "mcp__github__get_issue",
+                "tool_input": {"issue_number": 5},
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_opt_out_marker_bypasses_bash_mutation(self) -> None:
+        # codex P2 (round6) — .no-dcness-guard 면 git push 도 통과 (opt-out 일관성).
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        (self.base / ".no-dcness-guard").write_text("")
+        try:
+            rc = handle_pretooluse_file_op(
+                stdin_data=self._file_op_payload("Bash", command="git push origin main"),
+                cc_pid=self.cc_pid,
+                base_dir=self.base,
+            )
+            self.assertEqual(rc, 0)
+        finally:
+            (self.base / ".no-dcness-guard").unlink()
+
+    def test_opt_out_marker_bypasses_mcp_mutation(self) -> None:
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        (self.base / ".no-dcness-guard").write_text("")
+        try:
+            rc = handle_pretooluse_file_op(
+                stdin_data={
+                    "sessionId": self.sid,
+                    "tool_name": "mcp__github__merge_pull_request",
+                    "tool_input": {"pullNumber": 1},
+                },
+                cc_pid=self.cc_pid,
+                base_dir=self.base,
+            )
+            self.assertEqual(rc, 0)
+        finally:
+            (self.base / ".no-dcness-guard").unlink()
+
+    def test_main_claude_mutation_passes(self) -> None:
+        # active_agent 미설정 (메인) → git push / MCP mutation 모두 통과.
+        rc_push = handle_pretooluse_file_op(
+            stdin_data=self._file_op_payload("Bash", command="git push origin main"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        rc_mcp = handle_pretooluse_file_op(
+            stdin_data={
+                "sessionId": self.sid,
+                "tool_name": "mcp__github__merge_pull_request",
+                "tool_input": {"pullNumber": 1},
+            },
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc_push, 0)
+        self.assertEqual(rc_mcp, 0)
 
     def test_mcp_tool_passes_boundary_and_records_trace(self) -> None:
         # #255 W5 — mcp__* 도구는 boundary 검사 skip + trace pre append.
@@ -1517,6 +1671,87 @@ class ShortenPathTests(unittest.TestCase):
         result = _summarize_input("Bash", {"command": f"cat {cwd}/foo.ts"})
         # command 그대로 — Bash 는 _shorten_path 미적용
         self.assertIn(cwd, result)
+
+
+class PostToolUseStagingDiagnosticsTests(_PreToolBase):
+    """#597 커밋6 — staging 실패 진단이 histogram 없어도 additionalContext 로 노출."""
+
+    def _capture(self, stdin_data: dict):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = handle_posttooluse_agent(
+                stdin_data=stdin_data, cc_pid=self.cc_pid, base_dir=self.base
+            )
+        return rc, buf.getvalue()
+
+    def test_diagnostics_surfaced_without_histogram(self) -> None:
+        # current_step 미설정 + subagent_type 없음(histogram 빈) + prose 존재 → 진단만 노출.
+        stdin = {
+            "sessionId": self.sid,
+            "tool_name": "Agent",
+            "tool_input": {},  # subagent_type 없음 → sub_type 빈 → histogram_str 빈
+            "tool_response": [{"type": "text", "text": "## 결론\nPASS\n"}],
+        }
+        rc, out = self._capture(stdin)
+        self.assertEqual(rc, 0)
+        self.assertIn("staging 진단", out)
+        self.assertIn("current_step 부재", out)
+
+    def test_no_output_when_staging_ok_and_no_histogram(self) -> None:
+        # current_step 정상 + staging 성공 + histogram 없음 → additionalContext 미출력.
+        from harness.session_state import update_current_step
+        update_current_step(self.sid, self.rid, "qa", None, base_dir=self.base)
+        stdin = {
+            "sessionId": self.sid,
+            "tool_name": "Agent",
+            "tool_input": {},
+            "tool_response": [{"type": "text", "text": "## 결론\nPASS\n"}],
+        }
+        rc, out = self._capture(stdin)
+        self.assertEqual(rc, 0)
+        self.assertNotIn("staging 진단", out)
+
+
+class MainFailOpenTests(unittest.TestCase):
+    """#597 codex P2 (round5) — CLI _main: 정책 위반 exit 2 / 핸들러 크래시 fail-open exit 0."""
+
+    def test_policy_block_maps_to_exit_2(self) -> None:
+        from unittest.mock import patch
+        import harness.hooks as H
+        with patch.object(H, "handle_pretooluse_agent", return_value=1):
+            self.assertEqual(H._main(["pretooluse-agent", "--cc-pid", "1"]), 2)
+
+    def test_file_op_policy_block_maps_to_exit_2(self) -> None:
+        from unittest.mock import patch
+        import harness.hooks as H
+        with patch.object(H, "handle_pretooluse_file_op", return_value=1):
+            self.assertEqual(H._main(["pretooluse-file-op", "--cc-pid", "1"]), 2)
+
+    def test_handler_crash_fails_open(self) -> None:
+        # 핸들러 내부 예외 → exit 0 (fail-open) — hook 버그가 전 호출을 과차단하지 않게.
+        from unittest.mock import patch
+        import harness.hooks as H
+
+        def _boom(**kw):
+            raise RuntimeError("simulated hook bug")
+
+        with patch.object(H, "handle_pretooluse_agent", side_effect=_boom):
+            self.assertEqual(H._main(["pretooluse-agent", "--cc-pid", "1"]), 0)
+
+    def test_allow_returns_0(self) -> None:
+        from unittest.mock import patch
+        import harness.hooks as H
+        with patch.object(H, "handle_pretooluse_agent", return_value=0):
+            self.assertEqual(H._main(["pretooluse-agent", "--cc-pid", "1"]), 0)
+
+    def test_non_blocking_hook_never_exit_2(self) -> None:
+        # session-start 등 비-blocking hook 은 정책 차단 개념 없음 → 항상 0.
+        from unittest.mock import patch
+        import harness.hooks as H
+        with patch.object(H, "handle_session_start", return_value=1):
+            self.assertEqual(H._main(["session-start", "--cc-pid", "1"]), 0)
 
 
 if __name__ == "__main__":

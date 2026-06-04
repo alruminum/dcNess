@@ -8,7 +8,9 @@
 #
 # 반환:
 #   exit 0: allow (CC 가 tool 호출 진행)
-#   exit 1: block (stderr 메시지 + CC 가 호출 거부)
+#   exit 2: block (stderr 메시지 + CC 가 호출 거부)
+#          — CC docs: PreToolUse 는 exit 2 라야 차단 + stderr 가 Claude 에 피드백.
+#            exit 1 = non-blocking error → 도구 그대로 진행 (차단 안 됨).
 #
 # 강제 룰 (harness/agent_boundary.py — 권한 경계 코드 SSOT):
 #   §4.4 DCNESS_INFRA_PATTERNS — 인프라 path (모든 sub-agent 차단)
@@ -35,9 +37,13 @@ CC_PID=$PPID
 python3 -m harness.hooks pretooluse-file-op --cc-pid "$CC_PID"
 RC=$?
 
-# #404 — 정상 통과 시 suppressOutput: true 써서 transcript attachment 숨김 시도.
-# CC 본체 알려진 버그 (anthropics/claude-code#34859) 회피 가설. 차단 path 는 기존 (stderr + exit 1) 유지.
-if [ "$RC" = "0" ]; then
-  echo '{"suppressOutput": true, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+# 정책 위반만 차단: Python CLI 가 정책 위반을 exit 2 로 내보낸다 (#597 round5).
+# RC=2 → CC 차단 (handler 가 stderr 로 reason 출력 완료). exit 2 라야 차단 + stderr 피드백.
+if [ "$RC" = "2" ]; then
+  exit 2
 fi
-exit $RC
+# 그 외 전부 fail-open(allow): RC=0(정상 통과) / RC=1·기타(import·문법 오류 등 파이썬 크래시).
+# 크래시를 exit 2 로 매핑하면 hook 버그가 *모든* 도구 호출을 과차단하므로 반드시 fail-open.
+# (#404 — suppressOutput: true 로 transcript attachment 숨김 시도. CC 버그 anthropics/claude-code#34859 회피 가설.)
+echo '{"suppressOutput": true, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+exit 0

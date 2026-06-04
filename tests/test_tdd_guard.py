@@ -7,7 +7,14 @@
 - 일반 src 파일 + 테스트 부재 → deny (기존 동작 보존)
 - 매칭 테스트 파일 존재 → allow
 
-호출 메커니즘: hook 은 bash. stdin 으로 JSON payload 받고 stdout 으로 JSON 결정 반환.
+호출 메커니즘: hook 은 bash. stdin 으로 JSON payload 받음.
+  - allow → exit 0 + stdout 에 suppressOutput JSON
+  - deny  → exit 2 + stderr 에 reason (CC docs: PreToolUse 차단은 exit 2)
+따라서 결정은 **returncode 로 판정** (0=allow / 2=deny). stdout JSON 파싱 아님.
+
+활성 게이트: tdd-guard.sh 는 `is-active` 게이트를 가진다 (#597 커밋3). temp cwd 는
+whitelist 미등록이라 게이트가 즉시 allow 시키므로, deny 동작 검증을 위해
+`DCNESS_FORCE_ENABLE=1` + `PYTHONPATH=<repo>` 를 env 로 주입한다 (multisession smoke 정합).
 """
 
 import json
@@ -22,27 +29,34 @@ ROOT = Path(__file__).resolve().parent.parent
 HOOK_PATH = ROOT / "hooks" / "tdd-guard.sh"
 
 
-def run_hook(file_path: str, cwd: str, tool_name: str = "Edit") -> dict:
-    """tdd-guard.sh 호출 → 결정 JSON 반환."""
+def run_hook(
+    file_path: str, cwd: str, tool_name: str = "Edit"
+) -> subprocess.CompletedProcess:
+    """tdd-guard.sh 호출 → CompletedProcess 반환 (returncode 로 결정 판정)."""
     payload = {
         "tool_name": tool_name,
         "tool_input": {"file_path": file_path},
     }
-    result = subprocess.run(
+    return subprocess.run(
         ["bash", str(HOOK_PATH)],
         input=json.dumps(payload),
         capture_output=True, text=True, cwd=cwd, timeout=10,
+        env={
+            **os.environ,
+            "PYTHONPATH": str(ROOT),
+            # temp cwd 는 whitelist 미등록 → is-active 게이트 우회 강제 활성화 (커밋3)
+            "DCNESS_FORCE_ENABLE": "1",
+        },
     )
-    try:
-        return json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return {}
 
 
-def decision(out: dict) -> str:
-    """allow / deny 추출."""
-    spec = out.get("hookSpecificOutput", {})
-    return spec.get("permissionDecision", "unknown")
+def decision(result: subprocess.CompletedProcess) -> str:
+    """allow / deny 를 returncode 로 판정 — exit 0=allow / exit 2=deny."""
+    if result.returncode == 0:
+        return "allow"
+    if result.returncode == 2:
+        return "deny"
+    return "unknown"
 
 
 class TestEntryFileHeuristic(unittest.TestCase):
@@ -288,6 +302,94 @@ class TestPathMatcherTier5_MonorepoSrcRoot(unittest.TestCase):
         )
         path = str(Path(self._tmp) / "packages/core/src/utils/format.ts")
         self.assertEqual(decision(run_hook(path, self._tmp)), "allow")
+
+
+class TestIsActiveGate(unittest.TestCase):
+    """#597 커밋3 — tdd-guard 는 미활성 프로젝트에서 no-op (allow).
+
+    DCNESS_FORCE_ENABLE 미설정 + temp cwd(whitelist 미등록) → is-active 게이트가
+    deny 로직 도달 전에 allow 시킨다. (다른 6 wrapper 와 동일 게이트.)
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        subprocess.run(["git", "init"], cwd=self._tmp, capture_output=True)
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _touch(self, rel: str, content: str = "// stub\n") -> str:
+        p = Path(self._tmp) / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return str(p)
+
+    def _run_inactive(self, file_path: str) -> subprocess.CompletedProcess:
+        # harness 는 import 가능(PYTHONPATH)하되 활성 신호는 주지 않음 → is-active=inactive.
+        env = {k: v for k, v in os.environ.items() if k != "DCNESS_FORCE_ENABLE"}
+        env["PYTHONPATH"] = str(ROOT)
+        return subprocess.run(
+            ["bash", str(HOOK_PATH)],
+            input=json.dumps({"tool_name": "Edit", "tool_input": {"file_path": file_path}}),
+            capture_output=True, text=True, cwd=self._tmp, timeout=10, env=env,
+        )
+
+    def test_inactive_project_allows_even_without_test(self):
+        # 활성이면 deny 였을 src 파일이, 미활성에선 게이트로 즉시 allow.
+        path = self._touch(
+            "src/biz.ts",
+            "export function calc(a, b) { return a + b; }\n",
+        )
+        result = self._run_inactive(path)
+        self.assertEqual(
+            result.returncode, 0,
+            f"미활성 프로젝트는 allow(exit 0) 여야 함. stderr={result.stderr!r}",
+        )
+
+    def test_active_project_still_denies(self):
+        # 대조군 — DCNESS_FORCE_ENABLE=1 (run_hook 기본) 이면 동일 파일이 deny.
+        path = self._touch(
+            "src/biz2.ts",
+            "export function calc2(a, b) { return a + b; }\n",
+        )
+        self.assertEqual(decision(run_hook(path, self._tmp)), "deny")
+
+
+class TestBlockingSemantics(unittest.TestCase):
+    """#597 커밋1 — deny = exit 2 + stderr reason (exit 1/JSON 아님)."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        subprocess.run(["git", "init"], cwd=self._tmp, capture_output=True)
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _touch(self, rel: str, content: str = "// stub\n") -> str:
+        p = Path(self._tmp) / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return str(p)
+
+    def test_deny_exits_2_with_stderr_reason(self):
+        """테스트 부재 src → exit 2 + stderr 에 TDD GUARD reason."""
+        path = self._touch(
+            "src/biz.ts",
+            "export function calc(a, b) { return a + b; }\n",
+        )
+        result = run_hook(path, self._tmp)
+        self.assertEqual(result.returncode, 2, f"stdout={result.stdout}")
+        self.assertIn("TDD GUARD", result.stderr)
+        # 차단 reason 은 stderr 로 — stdout 에 deny JSON 을 더는 쓰지 않는다.
+        self.assertNotIn("permissionDecision", result.stdout)
+
+    def test_allow_exits_0(self):
+        """매칭 테스트 존재 → exit 0 (allow)."""
+        self._touch("src/biz.ts", "export const x = 1;\n")
+        self._touch("src/biz.test.ts", "test('ok', () => {})\n")
+        path = str(Path(self._tmp) / "src/biz.ts")
+        result = run_hook(path, self._tmp)
+        self.assertEqual(result.returncode, 0)
 
 
 if __name__ == "__main__":

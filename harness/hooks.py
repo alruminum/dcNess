@@ -309,9 +309,22 @@ def handle_pretooluse_agent(
             )
             return 1
 
-    # §2.1.2 (LGTM 없이 merge — 자연어 폐기) / §2.1.4 / §2.1.6~§2.1.8 (3-commit) —
+    # §2.1.4 (부분 코드강제) — architect-loop active run 중 tech-reviewer 재호출 금지.
+    # tech-review 는 architect-loop 진입 *전* 단방향 선행 단계다. loop 진입 후 재호출은
+    # catastrophic 시퀀스 역행 → 차단. ("PRD 변경 후 2차 tech-review 없이 진입 금지" 라는
+    # *진입 gate* 는 skill/pre-flight 잔존 — 자연어. 여기선 재호출만 코드강제.)
+    if subagent == "tech-reviewer" and _is_architect_loop(sid, rid, base_dir=base_dir):
+        print(
+            "[catastrophic §2.1.4] architect-loop 진행 중 tech-reviewer 재호출 금지 "
+            "(tech-review 는 architect-loop 진입 전 단방향 선행 단계)",
+            file=sys.stderr,
+        )
+        return 1
+
+    # §2.1.2 (LGTM 없이 merge — 자연어 폐기) / §2.1.6~§2.1.8 (3-commit) —
     # /architect-loop 가 impl/NN-*.md 미리 머지로 의미 소멸 또는 prerequisite
     # 검증은 메인 영역 (skill 안에서 보장) 으로 이전. 코드 강제 폐기.
+    # (§2.1.4 는 위에서 재호출 차단으로 부분 코드강제.)
 
     # DCN-CHG-20260501-01: 통과 시 live.json.active_agent 기록 — sub-agent 내부
     # PreToolUse(Edit/Write/Read/Bash) 훅이 활성 agent 판정에 사용 (agent_boundary).
@@ -355,9 +368,13 @@ def handle_pretooluse_file_op(
     governance Document Sync 게이트가 별도 보호하므로 본 훅 통과.
     """
     from harness.agent_boundary import (
+        check_bash_mutation,
+        check_github_mcp_mutation,
         check_read_allowed,
         check_write_allowed,
         extract_bash_paths,
+        is_infra_project,
+        is_opt_out,
     )
 
     if stdin_data is None:
@@ -386,6 +403,11 @@ def handle_pretooluse_file_op(
 
     cwd = Path.cwd()
 
+    # #597 codex P2 (round6) — mutation 검사도 file-guard 우회(.no-dcness-guard / infra)를 존중.
+    # path 검사(check_write_allowed/check_read_allowed)는 내부에서 opt-out/infra 를 이미 해제하지만,
+    # check_bash_mutation/check_github_mcp_mutation 은 cwd 무관 순수 함수라 별도 가드 필요.
+    mutation_guard_off = is_opt_out(cwd) or is_infra_project(cwd)
+
     # boundary 검사 — 차단 시 즉시 return (trace 미기록 — 차단된 행동은 file-guard 가 stderr 에 별도 기록)
     if tool_name == "Read":
         fp = tool_input.get("file_path", "") or ""
@@ -403,11 +425,25 @@ def handle_pretooluse_file_op(
                 return 1
     elif tool_name == "Bash":
         cmd = tool_input.get("command", "") or ""
+        # 외부 시스템 mutation (git push / gh pr mutation) — sub-agent 차단 (#597 커밋5).
+        # opt-out/infra 면 우회 (path 검사와 동일 우회 시맨틱).
+        if not mutation_guard_off:
+            reason = check_bash_mutation(cmd)
+            if reason:
+                print(f"[agent-boundary][Bash] {reason}", file=sys.stderr)
+                return 1
         for fp in extract_bash_paths(cmd):
             reason = check_write_allowed(active_agent, fp, cwd=cwd)
             if reason:
                 print(f"[agent-boundary][Bash] {reason}", file=sys.stderr)
                 return 1
+    elif tool_name.startswith("mcp__github__"):
+        # GitHub MCP PR/repo mutation (merge_pull_request / push_files 등) — 차단 (#597 커밋5).
+        # opt-out/infra 면 우회.
+        reason = None if mutation_guard_off else check_github_mcp_mutation(tool_name)
+        if reason:
+            print(f"[agent-boundary][MCP] {reason}", file=sys.stderr)
+            return 1
 
     # DCN-CHG-20260501-11 — sub 행동 trace append (rid 활성 시만)
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
@@ -528,6 +564,10 @@ def handle_posttooluse_agent(
 
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
 
+    # #597 커밋6 — staging 실패 진단을 모델에도 노출 (기존엔 stderr→/tmp 로만 묻혀
+    # histogram 있을 때만 additionalContext 출력 → prose 미staging 원인이 모델에 안 보임).
+    diagnostics: list[str] = []
+
     # prose auto-staging — tool_response → run_dir 에 저장, current_step.prose_file 기록
     # #272 W2 진짜 fix — robust extraction. 도입(2026-05-01) 시 dict 만 가정 → fail.
     # issue-232 가 list[{type:"text",text:...}] 한 형식만 추가 → jajang 보고에서 또 fail.
@@ -543,6 +583,10 @@ def handle_posttooluse_agent(
                 f"[hook prose stage] tool_response 추출 예외: "
                 f"{type(e).__name__}: {e}",
                 file=sys.stderr,
+            )
+            diagnostics.append(
+                f"prose 추출 예외 ({type(e).__name__}) — sub 결과 prose 가 run_dir 에 "
+                f"미저장. 다음 step 전 직전 sub 의 결론을 메인이 직접 확인할 것."
             )
 
         if not prose_text.strip():
@@ -562,6 +606,10 @@ def handle_posttooluse_agent(
                 f"[hook prose stage] robust extraction 실패 — staging skip. {_shape}",
                 file=sys.stderr,
             )
+            diagnostics.append(
+                "sub 결과에서 prose 텍스트를 못 뽑아 run_dir staging skip "
+                f"({_shape}) — 직전 sub 결론을 메인이 직접 확인 후 진행."
+            )
         else:
             try:
                 live_data = read_live(sid, base_dir=base_dir) or {}
@@ -577,6 +625,10 @@ def handle_posttooluse_agent(
                         f"begin-step 호출 누락 의심. staging skip.",
                         file=sys.stderr,
                     )
+                    diagnostics.append(
+                        "current_step 부재 — begin-step 호출 누락 의심. 이번 sub 결과가 "
+                        "run_dir 에 미staging. 다음 step 은 begin-step 먼저 호출할 것."
+                    )
                 else:
                     step_agent = cur_step.get("agent")
                     step_mode = cur_step.get("mode") or None
@@ -585,6 +637,10 @@ def handle_posttooluse_agent(
                             "[hook prose stage] current_step.agent 비어있음 — "
                             "staging skip.",
                             file=sys.stderr,
+                        )
+                        diagnostics.append(
+                            "current_step.agent 공백 — staging skip. begin-step 에 agent "
+                            "인자가 빠졌는지 확인."
                         )
                     else:
                         from harness.signal_io import write_prose as _write_prose
@@ -614,6 +670,10 @@ def handle_posttooluse_agent(
                 print(
                     f"[hook prose stage] write 예외: {type(e).__name__}: {e}",
                     file=sys.stderr,
+                )
+                diagnostics.append(
+                    f"prose write 예외 ({type(e).__name__}) — run_dir staging 실패. "
+                    f"직전 sub 결론을 메인이 직접 확인 후 진행."
                 )
 
     # rid 활성 시만 측정 inject + redo_log auto append
@@ -681,10 +741,17 @@ def handle_posttooluse_agent(
 
     # additionalContext — *raw 측정 데이터* + 가이드 1줄. 결정 메시지 X.
     # 메인 LLM 이 loop-procedure.md 의 표준 1 step 시퀀스 가이드 (REDO 판단 신호) 보고 자율 판단.
-    if histogram_str:
-        ctx = f"[감시자 hook] sub={sub_type or '?'} tool histogram: {histogram_str}"
-        if input_repeats_str:
-            ctx += f"\n같은 input 반복: {input_repeats_str}"
+    # #597 커밋6 — histogram 없어도 staging 진단(diagnostics)이 있으면 모델에 노출.
+    if histogram_str or diagnostics:
+        lines = []
+        if histogram_str:
+            line = f"[감시자 hook] sub={sub_type or '?'} tool histogram: {histogram_str}"
+            if input_repeats_str:
+                line += f"\n같은 input 반복: {input_repeats_str}"
+            lines.append(line)
+        if diagnostics:
+            lines.append("[staging 진단] " + " / ".join(diagnostics))
+        ctx = "\n".join(lines)
 
         try:
             output = {
@@ -1014,18 +1081,34 @@ def _main(argv: Optional[list] = None) -> int:
     # cc_pid 미명시 시 PPID 사용 (bash 훅 의 PPID = CC main)
     cc_pid = args.cc_pid if args.cc_pid is not None else os.getppid()
 
-    if args.cmd == "session-start":
-        return handle_session_start(cc_pid=cc_pid)
-    elif args.cmd == "pretooluse-agent":
-        return handle_pretooluse_agent(cc_pid=cc_pid)
-    elif args.cmd == "pretooluse-file-op":
-        return handle_pretooluse_file_op(cc_pid=cc_pid)
-    elif args.cmd == "posttooluse-agent":
-        return handle_posttooluse_agent(cc_pid=cc_pid)
-    elif args.cmd == "posttooluse-file-op":
-        return handle_posttooluse_file_op(cc_pid=cc_pid)
-    elif args.cmd == "stop":
-        return handle_stop()
+    # #597 codex P2 (round5) — fail-open 보장:
+    # PreToolUse blocking hook 은 *정책 위반* 일 때만 process exit 2 (wrapper 차단 신호).
+    # handler 가 return 1 (정책 위반) → exit 2. handler 내부 예외 (import 외 런타임) → exit 0 (fail-open).
+    # 이로써 RC=2=정책차단 / RC=0=allow·fail-open / RC=1(파이썬 크래시·import 실패)=wrapper 가 fail-open.
+    # (과거엔 정책위반·크래시 모두 RC=1 이라, wrapper 가 둘 다 exit 2 로 과차단했음 — hook 버그가 전 호출 차단.)
+    blocking = args.cmd in ("pretooluse-agent", "pretooluse-file-op")
+    try:
+        if args.cmd == "session-start":
+            rc = handle_session_start(cc_pid=cc_pid)
+        elif args.cmd == "pretooluse-agent":
+            rc = handle_pretooluse_agent(cc_pid=cc_pid)
+        elif args.cmd == "pretooluse-file-op":
+            rc = handle_pretooluse_file_op(cc_pid=cc_pid)
+        elif args.cmd == "posttooluse-agent":
+            rc = handle_posttooluse_agent(cc_pid=cc_pid)
+        elif args.cmd == "posttooluse-file-op":
+            rc = handle_posttooluse_file_op(cc_pid=cc_pid)
+        elif args.cmd == "stop":
+            rc = handle_stop()
+        else:
+            rc = 0
+    except Exception:  # noqa: BLE001 — hook 버그가 도구 호출을 과차단하지 않게 fail-open
+        import traceback
+        traceback.print_exc()
+        return 0
+    # 정책 위반(rc==1)은 blocking hook 에서만 exit 2. 그 외(비-blocking / allow) 는 0.
+    if blocking and rc == 1:
+        return 2
     return 0
 
 
