@@ -2104,8 +2104,18 @@ _YOLO_FALLBACKS: Dict[str, Dict[str, str]] = {
         "next_enum": None,
     },
     "architecture-validator:FAIL": {
-        "action": "re-invoke-prev",
-        "hint": "architect SYSTEM_DESIGN 재진입 (cycle ≤ 2)",
+        # 분류 의존 라우팅 — 단일 정적 action 으로 target 을 못 정한다.
+        # re-invoke(현재=read-only validator 재호출, 같은 FAIL 반복) X.
+        # re-invoke-prev(직전 step 고정) X — Step 5 SYSTEM_BOUNDARY 는 직전이 module-architect
+        # 라도 target 이 system-architect. 실제 target 은 finding 분류(hint)가 진본 —
+        # 메인이 분류를 읽고 라우팅, 분류 모호하면 사용자 위임 (mechanical 재호출 금지).
+        "action": "route-by-classification",
+        "hint": (
+            "validator 재호출 X — finding 분류로 architect 라우팅 (architect-loop-routing): "
+            "SYSTEM_BOUNDARY → system-architect 재진입 / "
+            "CONTRACT_PROPAGATION → module-architect mode=contract_sweep / "
+            "TASK_LOCAL → module-architect 보강(해당 task). 분류 모호 시 사용자 위임 (cycle ≤ 2)"
+        ),
         "next_enum": None,
     },
     "*:AMBIGUOUS": {
