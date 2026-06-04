@@ -361,6 +361,10 @@ def handle_pretooluse_agent(
         if tuid:
             try:
                 from harness.session_state import set_pending_agent
+                # issue #598 — set 전 동시성 감지 (이미 미완 pending 있으면 경고).
+                _warn_concurrent_subagent(
+                    sid, rid, tuid, subagent, base_dir=base_dir
+                )
                 set_pending_agent(
                     sid, rid,
                     tool_use_id=tuid, sub_type=subagent, mode=(mode or None),
@@ -370,6 +374,41 @@ def handle_pretooluse_agent(
                 pass  # 실패해도 Agent 호출 통과 — histogram 폴백 의존.
 
     return 0
+
+
+def _warn_concurrent_subagent(
+    sid: str,
+    rid: str,
+    new_tuid: str,
+    subagent: str,
+    *,
+    base_dir: Optional[Path] = None,
+) -> None:
+    """issue #598 — PreToolUse Agent 가 *이미 미완 pending* 상태에서 새 Agent 를
+    발사하면 동시 sub-agent (컨베이어 순차 전제 위반) 로 보고 stderr 진단 (비차단).
+
+    self-attribution (file-op payload agent_type) 덕에 boundary/trace 는 이미
+    안전하지만, dcness 컨베이어는 step 당 agent 1개 순차 전제라 동시 발사는 메인
+    로직 버그 신호일 수 있어 가시화한다. 차단·inject 아님 (권고 — 측정+경고).
+    """
+    try:
+        live = read_live(sid, base_dir=base_dir) or {}
+        active = live.get("active_runs", {})
+        slot = active.get(rid, {}) if isinstance(active, dict) else {}
+        pending = slot.get("pending_agents") if isinstance(slot, dict) else None
+        if not isinstance(pending, dict):
+            return
+        others = [tid for tid in pending if tid != new_tuid]
+        if others:
+            print(
+                f"[hook concurrency] 동시 sub-agent 감지 — 이미 미완 Agent "
+                f"{len(others)}개(pending) 상태에서 '{subagent}' 추가 발사. dcness "
+                f"컨베이어는 step 당 agent 1개 순차 전제. self-attribution 으로 "
+                f"권한/trace 는 안전하나 순차 전제 위반 여부 점검 권장.",
+                file=sys.stderr,
+            )
+    except Exception:  # noqa: BLE001 — 진단 실패는 무시 (Agent 호출 통과)
+        pass
 
 
 # ── DCN-CHG-20260501-01 — sub-agent path 강제 (agent_boundary.py 권한 경계) ─
@@ -718,7 +757,11 @@ def handle_posttooluse_agent(
 
             # #272 W3 — pending_agent.started_at 이후 trace = 그 sub 의 행동.
             tuid_now = stdin_data.get("tool_use_id", "") or ""
-            pending = clear_pending_agent(sid, rid, base_dir=base_dir)
+            # issue #598 multi-slot — 끝난 Agent 의 tool_use_id 로 그 슬롯만 정확 pop
+            # (동시 Agent 시 다른 sub 의 pending 보존). tuid 없으면 단일 슬롯 폴백.
+            pending = clear_pending_agent(
+                sid, rid, tool_use_id=(tuid_now or None), base_dir=base_dir
+            )
             since_ts = ""
             if isinstance(pending, dict):
                 since_ts = pending.get("started_at", "") or ""

@@ -1152,11 +1152,11 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
         # issue #392 — redo_log auto append 폐기로 측정 결과 검증 단순화.
-        # pending_agent 가 정상 clear 되는지만 검증 (#272 W3 핵심).
+        # pending_agents 가 정상 clear 되는지만 검증 (#272 W3 핵심, #598 multi-slot).
         from harness.session_state import read_live as _rl
         live = _rl(self.sid, base_dir=self.base)
         slot = live.get("active_runs", {}).get(self.rid, {})
-        self.assertNotIn("pending_agent", slot)
+        self.assertNotIn("pending_agents", slot)
 
     def test_tool_use_id_drift_logged(self):
         """tool_use_id 가 PreToolUse 와 PostToolUse 사이 다르면 stderr WARN."""
@@ -1180,12 +1180,13 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         # issue #392 — redo_log auto append 폐기. drift 신호는 stderr WARN 으로만 확인.
 
     def test_pending_agent_cleared_after_post(self):
-        """PostToolUse Agent 후 live.json.active_runs[rid].pending_agent 제거."""
+        """PostToolUse Agent 후 live.json.active_runs[rid].pending_agents 제거."""
         from harness.session_state import read_live as _rl
         self._simulate_pre("engineer", tool_use_id="toolu_x")
         live = _rl(self.sid, base_dir=self.base)
         slot = live.get("active_runs", {}).get(self.rid, {})
-        self.assertIn("pending_agent", slot)
+        self.assertIn("pending_agents", slot)
+        self.assertIn("toolu_x", slot["pending_agents"])
         self._seed_trace("engineer", ["Read"])
         handle_posttooluse_agent(
             stdin_data=self._post_payload("engineer", tool_use_id="toolu_x"),
@@ -1194,10 +1195,189 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         )
         live2 = _rl(self.sid, base_dir=self.base)
         slot2 = live2.get("active_runs", {}).get(self.rid, {})
-        self.assertNotIn("pending_agent", slot2)
+        self.assertNotIn("pending_agents", slot2)
 
     # issue #392 — test_prose_only_subtype_no_decision_inject 폐기.
     # redo_log auto append 매커니즘 자체 폐기되어 본 테스트 의미 없음.
+
+
+# ---------------------------------------------------------------------------
+# issue #598 — pending_agents multi-slot (tool_use_id 키) + 동시성 경고
+# ---------------------------------------------------------------------------
+
+
+class PendingAgentsMultiSlotTests(_PreToolBase):
+    """set_pending_agent / clear_pending_agent 를 tool_use_id 키 multi-slot 으로 확장.
+
+    동시 Agent 호출 시 각 tool_use_id 별 독립 추적 — 단일 슬롯이면 둘째가 첫째를
+    덮어써 prose-staging 시각 범위/trace 귀속이 섞인다 (issue #598).
+    """
+
+    def test_set_two_tool_use_ids_both_present(self):
+        from harness.session_state import set_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            base_dir=self.base,
+        )
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertIn("pending_agents", slot)
+        self.assertEqual(set(slot["pending_agents"]), {"t1", "t2"})
+        self.assertEqual(slot["pending_agents"]["t1"]["sub_type"], "engineer")
+        self.assertEqual(slot["pending_agents"]["t2"]["sub_type"], "qa")
+
+    def test_clear_by_tool_use_id_pops_only_match(self):
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            base_dir=self.base,
+        )
+        popped = clear_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", base_dir=self.base
+        )
+        self.assertEqual(popped["tool_use_id"], "t1")
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertEqual(set(slot["pending_agents"]), {"t2"})
+
+    def test_clear_last_removes_key(self):
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        clear_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", base_dir=self.base
+        )
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertNotIn("pending_agents", slot)
+
+    def test_clear_none_single_fallback_pops(self):
+        # tool_use_id 미지정인데 슬롯 1개 → 폴백 pop (drift 시각 범위 보존).
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        popped = clear_pending_agent(self.sid, self.rid, base_dir=self.base)
+        self.assertIsNotNone(popped)
+        self.assertEqual(popped["tool_use_id"], "t1")
+
+    def test_clear_none_multiple_ambiguous_noop(self):
+        # tool_use_id 미지정 + 여러 개 → 모호 → pop 안 함 (잘못된 슬롯 제거 방지).
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            base_dir=self.base,
+        )
+        popped = clear_pending_agent(self.sid, self.rid, base_dir=self.base)
+        self.assertIsNone(popped)
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertEqual(set(slot["pending_agents"]), {"t1", "t2"})
+
+    def test_clear_unmatched_tuid_multiple_noop(self):
+        # tool_use_id 매칭 없음 + 여러 개 → pop 안 함 (drift 폴백은 단일일 때만).
+        from harness.session_state import set_pending_agent, clear_pending_agent
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t1", sub_type="engineer",
+            base_dir=self.base,
+        )
+        set_pending_agent(
+            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            base_dir=self.base,
+        )
+        popped = clear_pending_agent(
+            self.sid, self.rid, tool_use_id="tX", base_dir=self.base
+        )
+        self.assertIsNone(popped)
+
+    def test_clear_legacy_singular_absorbed(self):
+        # 구버전 단일 슬롯(pending_agent) 잔존분 흡수 (in-flight 업그레이드 호환).
+        from harness.session_state import clear_pending_agent
+        live = read_live(self.sid, base_dir=self.base)
+        active = live["active_runs"]
+        active[self.rid]["pending_agent"] = {
+            "tool_use_id": "old", "sub_type": "engineer",
+            "started_at": "2026-01-01T00:00:00+00:00",
+        }
+        update_live(self.sid, base_dir=self.base, active_runs=active)
+        popped = clear_pending_agent(
+            self.sid, self.rid, tool_use_id="old", base_dir=self.base
+        )
+        self.assertIsNotNone(popped)
+        self.assertEqual(popped["tool_use_id"], "old")
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertNotIn("pending_agent", slot)
+
+
+class PreAgentConcurrencyWarnTests(_PreToolBase):
+    """PreToolUse Agent — 이미 미완 pending 상태에서 새 Agent 발사 시 동시성 경고 (issue #598)."""
+
+    def _agent_payload(self, subagent, tool_use_id):
+        return {
+            "sessionId": self.sid,
+            "tool_use_id": tool_use_id,
+            "tool_input": {"subagent_type": subagent, "mode": ""},
+        }
+
+    def test_second_concurrent_agent_warns(self):
+        import io
+        import contextlib
+        # 1st Agent — pending 박힘, 경고 없음.
+        buf1 = io.StringIO()
+        with contextlib.redirect_stderr(buf1):
+            rc1 = handle_pretooluse_agent(
+                stdin_data=self._agent_payload("qa", "toolu_a"),
+                cc_pid=self.cc_pid, base_dir=self.base,
+            )
+        self.assertEqual(rc1, 0)
+        self.assertNotIn("동시 sub-agent", buf1.getvalue())
+        # 2nd Agent (1st 아직 미완) — stderr 동시성 경고.
+        buf2 = io.StringIO()
+        with contextlib.redirect_stderr(buf2):
+            rc2 = handle_pretooluse_agent(
+                stdin_data=self._agent_payload("qa", "toolu_b"),
+                cc_pid=self.cc_pid, base_dir=self.base,
+            )
+        self.assertEqual(rc2, 0)
+        self.assertIn("동시 sub-agent", buf2.getvalue())
+        # 둘 다 pending_agents 에 존재 (multi-slot push).
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
+        self.assertEqual(set(slot["pending_agents"]), {"toolu_a", "toolu_b"})
+
+    def test_sequential_agents_no_warn(self):
+        # 1st Agent → PostToolUse 로 clear → 2nd Agent: pending 비어있음 → 경고 없음.
+        import io
+        import contextlib
+        handle_pretooluse_agent(
+            stdin_data=self._agent_payload("qa", "toolu_a"),
+            cc_pid=self.cc_pid, base_dir=self.base,
+        )
+        handle_posttooluse_agent(
+            stdin_data={
+                "sessionId": self.sid, "tool_use_id": "toolu_a",
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "qa"},
+            },
+            cc_pid=self.cc_pid, base_dir=self.base,
+        )
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            handle_pretooluse_agent(
+                stdin_data=self._agent_payload("qa", "toolu_b"),
+                cc_pid=self.cc_pid, base_dir=self.base,
+            )
+        self.assertNotIn("동시 sub-agent", buf.getvalue())
 
 
 # ---------------------------------------------------------------------------

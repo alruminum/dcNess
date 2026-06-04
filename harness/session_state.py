@@ -551,7 +551,7 @@ def set_pending_agent(
     mode: Optional[str] = None,
     base_dir: Optional[Path] = None,
 ) -> None:
-    """`active_runs[run_id].pending_agent` 갱신 — PreToolUse Agent 시점.
+    """`active_runs[run_id].pending_agents[tool_use_id]` 갱신 — PreToolUse Agent 시점.
 
     PostToolUse Agent 가 *시각 범위* 로 sub trace 를 식별 (#272 W3 진짜 fix).
     기존 `agent_id` 폴백은 sub 가 file-op 안 한 경우 직전 step 의 ID 가 들어와
@@ -559,8 +559,12 @@ def set_pending_agent(
     가 *없을 수 있음*. `tool_use_id` (PreToolUse↔PostToolUse 매칭 키) + 시작 시각
     으로 정확히 식별.
 
+    issue #598 — **multi-slot**: `pending_agents` 를 `tool_use_id` 키 dict 로 유지.
+    동시 Agent 호출 시 각 호출이 독립 슬롯을 차지 (단일 슬롯이면 둘째가 첫째를
+    덮어써 prose-staging 시각 범위/trace 귀속이 섞임).
+
     Args:
-        tool_use_id: CC PreToolUse Agent payload 의 tool_use_id (필수)
+        tool_use_id: CC PreToolUse Agent payload 의 tool_use_id (필수, multi-slot 키)
         sub_type: subagent_type (검증/디버그용)
         mode: 옵션 mode hint
     """
@@ -571,12 +575,15 @@ def set_pending_agent(
     if not isinstance(active, dict) or run_id not in active:
         return  # idempotent — run 미시작 케이스 (컨베이어 외부 Agent 호출)
     slot = dict(active[run_id])
-    slot["pending_agent"] = {
+    pending = slot.get("pending_agents")
+    pending = dict(pending) if isinstance(pending, dict) else {}
+    pending[tool_use_id] = {
         "tool_use_id": tool_use_id,
         "sub_type": sub_type or "",
         "mode": mode or None,
         "started_at": _now_iso(),
     }
+    slot["pending_agents"] = pending
     active = dict(active)
     active[run_id] = slot
     update_live(session_id, base_dir=base_dir, active_runs=active)
@@ -586,23 +593,54 @@ def clear_pending_agent(
     session_id: str,
     run_id: str,
     *,
+    tool_use_id: Optional[str] = None,
     base_dir: Optional[Path] = None,
 ) -> Optional[Dict[str, Any]]:
-    """`active_runs[run_id].pending_agent` 제거 + 직전 값 반환.
+    """`active_runs[run_id].pending_agents[tool_use_id]` 제거 + 그 값 반환.
 
     PostToolUse Agent 가 호출. 반환값으로 sub_type / started_at / tool_use_id
     검증 → trace 시각 범위 집계 + tool_use_id 매칭.
+
+    issue #598 multi-slot 매칭 정책:
+      - `tool_use_id` 명시 + 매칭 슬롯 존재 → 그 슬롯만 pop (동시 Agent 정확 귀속).
+      - `tool_use_id` 미매칭/None + 슬롯 *1개뿐* → 그 1개 pop (단일/구버전·drift 폴백).
+      - `tool_use_id` 미매칭/None + 슬롯 여러 개 → 모호 → pop 안 함 (None 반환).
+      - `pending_agents` 비었고 구버전 단일 슬롯(`pending_agent`) 잔존 → 흡수 (업그레이드 호환).
     """
     live = read_live(session_id, base_dir=base_dir) or {}
     active = live.get("active_runs", {})
     if not isinstance(active, dict) or run_id not in active:
         return None
     slot = dict(active[run_id])
-    pending = slot.pop("pending_agent", None)
+    pending = slot.get("pending_agents")
+    pending = dict(pending) if isinstance(pending, dict) else {}
+
+    popped: Optional[Dict[str, Any]] = None
+    changed = False
+    if pending:
+        if tool_use_id and tool_use_id in pending:
+            popped = pending.pop(tool_use_id)
+            changed = True
+        elif len(pending) == 1:
+            # tool_use_id 미매칭/None 인데 슬롯 1개 — drift 시각 범위 폴백 pop.
+            popped = pending.popitem()[1]
+            changed = True
+        # else: 여러 개 + 매칭 없음 → 모호 → pop 안 함.
+    elif isinstance(slot.get("pending_agent"), dict):
+        # 구버전 단일 슬롯(pending_agent) 잔존분 흡수 (in-flight 업그레이드 호환).
+        popped = slot.pop("pending_agent")
+        changed = True
+
+    if not changed:
+        return None  # 변경 없음 — write skip
+    if pending:
+        slot["pending_agents"] = pending
+    else:
+        slot.pop("pending_agents", None)  # 빈 dict 제거 (깔끔)
     active = dict(active)
     active[run_id] = slot
     update_live(session_id, base_dir=base_dir, active_runs=active)
-    return pending if isinstance(pending, dict) else None
+    return popped if isinstance(popped, dict) else None
 
 
 def complete_run(
