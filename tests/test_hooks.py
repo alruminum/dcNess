@@ -9,13 +9,13 @@ Coverage matrix:
         - 기존 live.json 보존 (재호출 안전)
 
     handle_pretooluse_agent:
-        - §2.1.1 — pr-reviewer 직전 CODE_VALIDATION 없으면 차단
-        - §2.1.1 — engineer 변경 후 CODE_VALIDATION PASS 있으면 통과
-        - §2.1.1 — BUGFIX_VALIDATION PASS 도 인정
-        - §2.1.3 — engineer 직전 module-architect PASS 없으면 차단
-        - §2.1.3 — module-architect.md 안 PASS 있으면 통과
-        - §2.1.3 — module-architect-N.md (occurrence) 안 PASS 도 인정
-        - §2.1.3 — engineer POLISH 모드는 plan 검사 skip
+        - pr-reviewer 게이트 — pr-reviewer 직전 CODE_VALIDATION 없으면 차단
+        - pr-reviewer 게이트 — engineer 변경 후 CODE_VALIDATION PASS 있으면 통과
+        - pr-reviewer 게이트 — BUGFIX_VALIDATION PASS 도 인정
+        - engineer 게이트 — engineer 직전 module-architect PASS 없으면 차단
+        - engineer 게이트 — module-architect.md 안 PASS 있으면 통과
+        - engineer 게이트 — module-architect-N.md (occurrence) 안 PASS 도 인정
+        - engineer 게이트 — engineer POLISH 모드는 plan 검사 skip
         - 그 외 agent (architect MODULE_PLAN, qa 등) — run 외부에서도 통과
         - sid 없음 → silent allow
         - tool_input 비정상 → silent allow
@@ -177,7 +177,7 @@ class _PreToolBase(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# §2.1.3 — engineer 직전 plan READY 검사
+# engineer 게이트 — engineer 직전 plan READY 검사
 # ---------------------------------------------------------------------------
 
 
@@ -223,7 +223,7 @@ class CatastrophicEngineerTests(_PreToolBase):
 
 
 # ---------------------------------------------------------------------------
-# §2.1.1 — pr-reviewer 직전 validator PASS 검사
+# pr-reviewer 게이트 — pr-reviewer 직전 validator PASS 검사
 # ---------------------------------------------------------------------------
 
 
@@ -273,13 +273,13 @@ class CatastrophicPrReviewerTests(_PreToolBase):
 
 
 # ---------------------------------------------------------------------------
-# §2.1.5 — architect-loop 안 module-architect × N 첫 호출 직전
+# module-architect 게이트 — architect-loop 안 module-architect × N 첫 호출 직전
 # architecture-validator PASS 필수 (PR B-4 부활, β-strong)
 # ---------------------------------------------------------------------------
 
 
 class _ArchitectLoopBase(unittest.TestCase):
-    """architect-loop entry_point 컨텍스트 — §2.1.5 gate 발동 조건."""
+    """architect-loop entry_point 컨텍스트 — module-architect 게이트 발동 조건."""
 
     sid = "test-sid-arch"
     rid = "run-archloop"
@@ -337,7 +337,7 @@ class CatastrophicArchitectureValidatorTests(_ArchitectLoopBase):
         self.assertEqual(rc, 0)
 
     def test_gate_skipped_for_non_architect_loop(self) -> None:
-        """impl-task-loop 등 다른 entry_point 는 §2.1.5 미적용."""
+        """impl-task-loop 등 다른 entry_point 는 module-architect 게이트 미적용."""
         with TemporaryDirectory() as td:
             base = Path(td)
             sid, rid, cc_pid = "sid-impl", "run-impl1234", 44444

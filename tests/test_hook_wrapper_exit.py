@@ -46,7 +46,7 @@ def _run_wrapper(
 
 
 class CatastrophicGateWrapperExitTests(unittest.TestCase):
-    """catastrophic-gate.sh — §2.1 위반 시 exit 2 + stderr."""
+    """catastrophic-gate.sh — 게이트 위반 시 exit 2 + stderr."""
 
     def setUp(self) -> None:
         self._td = TemporaryDirectory()
@@ -76,7 +76,7 @@ class CatastrophicGateWrapperExitTests(unittest.TestCase):
         }
 
     def test_violation_exits_2_with_stderr(self) -> None:
-        # engineer 직전 module-architect PASS 부재 → §2.1.3 위반 → handler return 1.
+        # engineer 직전 module-architect PASS 부재 → engineer 게이트 위반 → handler return 1.
         result = _run_wrapper(
             "catastrophic-gate.sh",
             self._agent_payload("engineer", "IMPL"),
@@ -86,7 +86,7 @@ class CatastrophicGateWrapperExitTests(unittest.TestCase):
             result.returncode, 2,
             f"위반은 exit 2 여야 차단됨. stdout={result.stdout!r} stderr={result.stderr!r}",
         )
-        self.assertIn("§2.1.3", result.stderr)
+        self.assertIn("catastrophic: engineer", result.stderr)
 
     def test_allow_exits_0(self) -> None:
         from harness.session_state import run_dir
