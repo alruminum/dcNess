@@ -409,7 +409,7 @@ _GH_VALUE_FLAGS = frozenset({"-R", "--repo"})
 # 명령 래퍼 / 쉘 키워드 — segment 선두에 와서 실제 명령어를 가리는 흔한 형태 (codex P2).
 # 이들을 벗겨낸 *뒤* 의 첫 토큰을 실제 명령으로 본다.
 _CMD_WRAPPERS = frozenset({
-    "sudo", "doas", "command", "builtin", "exec", "nice", "nohup",
+    "sudo", "doas", "env", "command", "builtin", "exec", "nice", "nohup",
     "time", "stdbuf", "setsid", "ionice", "then", "else", "elif", "do",
 })
 _SHELL_KEYWORDS = frozenset({
@@ -452,12 +452,14 @@ def _peel_wrappers(toks: list[str]) -> list[str]:
     n = len(toks)
     while i < n:
         t = toks[i]
-        if t == "env":
-            i += 1
-            while i < n and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", toks[i]):
-                i += 1
-            continue
-        if t in _CMD_WRAPPERS or t in _SHELL_KEYWORDS:
+        # 선두의 래퍼/키워드/옵션/`VAR=val` 은 모두 건너뛴다 (codex P2 round5):
+        #   `sudo -E git push` / `env -i GH_TOKEN=x gh pr create` / `command -- gh pr create`.
+        if (
+            t in _CMD_WRAPPERS
+            or t in _SHELL_KEYWORDS
+            or t.startswith("-")
+            or re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", t)
+        ):
             i += 1
             continue
         return toks[i:]
@@ -496,9 +498,12 @@ def _gh_api_mutation(toks: list[str]) -> Optional[str]:
     has_field = False
     for j, t in enumerate(toks):
         if t in ("-X", "--method") and j + 1 < len(toks):
-            explicit_method = toks[j + 1].upper()
+            explicit_method = toks[j + 1].upper()          # `-X POST` / `--method POST`
         elif t.startswith("--method="):
-            explicit_method = t.split("=", 1)[1].upper()
+            explicit_method = t.split("=", 1)[1].upper()    # `--method=POST`
+        elif t.startswith("-X") and len(t) > 2:
+            # `-XPOST` (붙임) / `-X=POST` (codex P2 round5)
+            explicit_method = t[2:].lstrip("=").upper()
         elif t in _GH_API_FIELD_FLAGS or t.split("=", 1)[0] in _GH_API_FIELD_FLAGS:
             has_field = True
     if explicit_method in _HTTP_MUTATION_METHODS:

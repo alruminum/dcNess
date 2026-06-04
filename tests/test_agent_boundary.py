@@ -680,6 +680,17 @@ class BashWrapperBypassTests(unittest.TestCase):
         self.assertIsNone(check_bash_mutation("sudo git status"))
         self.assertIsNone(check_bash_mutation("(gh issue list)"))
 
+    def test_wrapper_options_skipped(self):
+        # codex P2 (round5) — 래퍼 자체 옵션(-E/-i/--)이 명령으로 오인되지 않게.
+        self.assertIsNotNone(check_bash_mutation("sudo -E git push origin main"))
+        self.assertIsNotNone(check_bash_mutation("env -i GH_TOKEN=x gh pr create --title x"))
+        self.assertIsNotNone(check_bash_mutation("command -- gh pr create --title x"))
+
+    def test_gh_api_attached_method_blocked(self):
+        # codex P2 (round5) — `-XPOST` 붙임 / `-X=DELETE` 형태.
+        self.assertIsNotNone(check_bash_mutation("gh api -XPOST repos/o/r/issues"))
+        self.assertIsNotNone(check_bash_mutation("gh api -X=DELETE repos/o/r/x"))
+
 
 class BashIntegrationTests(unittest.TestCase):
     """Bash heuristic + check_write_allowed 합."""

@@ -1683,5 +1683,45 @@ class PostToolUseStagingDiagnosticsTests(_PreToolBase):
         self.assertNotIn("staging 진단", out)
 
 
+class MainFailOpenTests(unittest.TestCase):
+    """#597 codex P2 (round5) — CLI _main: 정책 위반 exit 2 / 핸들러 크래시 fail-open exit 0."""
+
+    def test_policy_block_maps_to_exit_2(self) -> None:
+        from unittest.mock import patch
+        import harness.hooks as H
+        with patch.object(H, "handle_pretooluse_agent", return_value=1):
+            self.assertEqual(H._main(["pretooluse-agent", "--cc-pid", "1"]), 2)
+
+    def test_file_op_policy_block_maps_to_exit_2(self) -> None:
+        from unittest.mock import patch
+        import harness.hooks as H
+        with patch.object(H, "handle_pretooluse_file_op", return_value=1):
+            self.assertEqual(H._main(["pretooluse-file-op", "--cc-pid", "1"]), 2)
+
+    def test_handler_crash_fails_open(self) -> None:
+        # 핸들러 내부 예외 → exit 0 (fail-open) — hook 버그가 전 호출을 과차단하지 않게.
+        from unittest.mock import patch
+        import harness.hooks as H
+
+        def _boom(**kw):
+            raise RuntimeError("simulated hook bug")
+
+        with patch.object(H, "handle_pretooluse_agent", side_effect=_boom):
+            self.assertEqual(H._main(["pretooluse-agent", "--cc-pid", "1"]), 0)
+
+    def test_allow_returns_0(self) -> None:
+        from unittest.mock import patch
+        import harness.hooks as H
+        with patch.object(H, "handle_pretooluse_agent", return_value=0):
+            self.assertEqual(H._main(["pretooluse-agent", "--cc-pid", "1"]), 0)
+
+    def test_non_blocking_hook_never_exit_2(self) -> None:
+        # session-start 등 비-blocking hook 은 정책 차단 개념 없음 → 항상 0.
+        from unittest.mock import patch
+        import harness.hooks as H
+        with patch.object(H, "handle_session_start", return_value=1):
+            self.assertEqual(H._main(["session-start", "--cc-pid", "1"]), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

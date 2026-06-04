@@ -1071,18 +1071,34 @@ def _main(argv: Optional[list] = None) -> int:
     # cc_pid 미명시 시 PPID 사용 (bash 훅 의 PPID = CC main)
     cc_pid = args.cc_pid if args.cc_pid is not None else os.getppid()
 
-    if args.cmd == "session-start":
-        return handle_session_start(cc_pid=cc_pid)
-    elif args.cmd == "pretooluse-agent":
-        return handle_pretooluse_agent(cc_pid=cc_pid)
-    elif args.cmd == "pretooluse-file-op":
-        return handle_pretooluse_file_op(cc_pid=cc_pid)
-    elif args.cmd == "posttooluse-agent":
-        return handle_posttooluse_agent(cc_pid=cc_pid)
-    elif args.cmd == "posttooluse-file-op":
-        return handle_posttooluse_file_op(cc_pid=cc_pid)
-    elif args.cmd == "stop":
-        return handle_stop()
+    # #597 codex P2 (round5) — fail-open 보장:
+    # PreToolUse blocking hook 은 *정책 위반* 일 때만 process exit 2 (wrapper 차단 신호).
+    # handler 가 return 1 (정책 위반) → exit 2. handler 내부 예외 (import 외 런타임) → exit 0 (fail-open).
+    # 이로써 RC=2=정책차단 / RC=0=allow·fail-open / RC=1(파이썬 크래시·import 실패)=wrapper 가 fail-open.
+    # (과거엔 정책위반·크래시 모두 RC=1 이라, wrapper 가 둘 다 exit 2 로 과차단했음 — hook 버그가 전 호출 차단.)
+    blocking = args.cmd in ("pretooluse-agent", "pretooluse-file-op")
+    try:
+        if args.cmd == "session-start":
+            rc = handle_session_start(cc_pid=cc_pid)
+        elif args.cmd == "pretooluse-agent":
+            rc = handle_pretooluse_agent(cc_pid=cc_pid)
+        elif args.cmd == "pretooluse-file-op":
+            rc = handle_pretooluse_file_op(cc_pid=cc_pid)
+        elif args.cmd == "posttooluse-agent":
+            rc = handle_posttooluse_agent(cc_pid=cc_pid)
+        elif args.cmd == "posttooluse-file-op":
+            rc = handle_posttooluse_file_op(cc_pid=cc_pid)
+        elif args.cmd == "stop":
+            rc = handle_stop()
+        else:
+            rc = 0
+    except Exception:  # noqa: BLE001 — hook 버그가 도구 호출을 과차단하지 않게 fail-open
+        import traceback
+        traceback.print_exc()
+        return 0
+    # 정책 위반(rc==1)은 blocking hook 에서만 exit 2. 그 외(비-blocking / allow) 는 0.
+    if blocking and rc == 1:
+        return 2
     return 0
 
 

@@ -319,7 +319,8 @@ class CatastrophicRuleE2eTests(unittest.TestCase):
             self.cc_pid,
             cwd=self.cwd,
         )
-        self.assertEqual(result.returncode, 1, f"stdout: {result.stdout}")
+        # #597 round5 — 정책 위반은 CLI 가 exit 2 (crash exit 1 과 구분, wrapper 차단 신호).
+        self.assertEqual(result.returncode, 2, f"stdout: {result.stdout}")
         self.assertIn("§2.1.3", result.stderr)
 
     def test_engineer_with_plan_passes_e2e(self) -> None:
@@ -364,7 +365,7 @@ class CatastrophicRuleE2eTests(unittest.TestCase):
             self.cc_pid,
             cwd=self.cwd,
         )
-        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.returncode, 2)
         self.assertIn("§2.1.1", result.stderr)
 
 if __name__ == "__main__":
