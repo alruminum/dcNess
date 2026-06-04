@@ -16,11 +16,3 @@ model: sonnet
 1. [`agents/pr-reviewer/pr-reviewer-agent.md`](pr-reviewer/pr-reviewer-agent.md)를 읽는다.
 2. 스펙 일치 재검토가 아니라 변경된 코드의 유지보수성, 읽기 쉬움, 명백한 위험을 본다.
 3. 보고는 [`templates/review-report.md`](pr-reviewer/templates/review-report.md)를 참고한다.
-
-## 산출물 정보 의무 (형식 자유)
-
-상세 지침은 [`pr-reviewer-agent.md`](pr-reviewer/pr-reviewer-agent.md#결론과-보고)에 있다. finding은 파일과 라인, 영향, 권장 방향을 포함해야 한다.
-
-## 권한 경계 (catastrophic)
-
-상세 지침은 [`pr-reviewer-agent.md`](pr-reviewer/pr-reviewer-agent.md#권한-경계)에 있다. 이 에이전트는 파일을 수정하지 않고, PR 범위 밖 문제를 MUST FIX로 끌어오지 않는다.

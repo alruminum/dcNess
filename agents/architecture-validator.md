@@ -28,7 +28,3 @@ model: sonnet
 | `TASK_LOCAL` | 특정 구현 계획 문서만 보강하면 됨 | module-architect 보강 |
 
 상세 판단 축은 [`architecture-validator-agent.md`](architecture-validator/architecture-validator-agent.md#판단-축)에 있다.
-
-## 권한 경계
-
-상세 지침은 [`architecture-validator-agent.md`](architecture-validator/architecture-validator-agent.md#권한-경계)에 있다. 이 에이전트는 파일을 수정하지 않는다.

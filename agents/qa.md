@@ -16,7 +16,3 @@ model: sonnet
 1. [`agents/qa/qa-agent.md`](qa/qa-agent.md)를 읽는다.
 2. 증상, 재현 조건, 기대 동작, 실제 동작, 근거 파일을 확인한 뒤 분류한다.
 3. 이슈 본문은 [`templates/issue-body.md`](qa/templates/issue-body.md)를 참고한다.
-
-## 권한 경계 (catastrophic)
-
-상세 지침은 [`qa-agent.md`](qa/qa-agent.md#권한-경계)에 있다. qa는 분석과 이슈 정리만 담당하고 코드나 설계 문서를 수정하지 않는다.

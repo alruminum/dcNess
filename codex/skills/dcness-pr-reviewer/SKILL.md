@@ -6,7 +6,7 @@ dcNess가 `pr-reviewer`를 Codex 교차 검토로 route할 때 사용한다. mer
 
 ## 목적
 
-code-validator가 이미 본 스펙 일치 검증을 반복하지 않는다. PR diff를 중심으로 merge risk, 유지보수성, 명백한 보안 위험, 테스트 신뢰도를 검토한다.
+`code-validator`가 이미 수행한 spec validation을 반복하지 않는다. PR diff를 중심으로 merge risk, maintainability, security-sensitive code pattern, 그리고 이 PR이 integrate되어도 안전한지 검토한다.
 
 ## 입력
 
@@ -24,13 +24,13 @@ code-validator가 이미 본 스펙 일치 검증을 반복하지 않는다. PR 
 
 ## 판단 축
 
-- 변경 범위: 이번 PR이 바꾼 줄과 직접 연결되는 문제인가.
-- 단순성: 요구보다 과한 abstraction, branch, flag, 구조 변경이 들어갔는가.
-- 읽기 쉬움: 이름, 함수 크기, 조건 분기, 주석이 장기 유지보수에 충분한가.
-- 중복: 의미 있는 중복이 늘었거나 기존 helper/API를 무시했는가.
-- 운영 위험: temporary code, debug leftover, hardcoded env/value, cleanup 누락이 있는가.
-- 명백한 보안 위험: injection, unsafe HTML/code execution, secret leakage, weak token, sensitive logging, unchecked origin/storage 같은 패턴이 새로 들어왔는가.
-- 테스트 신뢰도: 테스트가 변경 계약을 실제로 검증하며 superficial 또는 fake test가 아닌가.
+아래는 빠짐없이 채우는 검사표가 아니라 finding을 탐색하는 방향이다.
+
+- Changed code가 understandable, maintainable하고 local convention과 일관되는가.
+- Error handling, cleanup, async ordering, state update, edge case가 안전한가.
+- Injection, unsafe HTML/code execution, secret leakage, weak token generation, sensitive logging, unchecked origin handling, unsafe storage 같은 security-sensitive pattern을 새로 만들지 않았는가.
+- 테스트가 credible하고 merely superficial하지 않은가.
+- Temporary code, placeholder branch, unexplained magic constant, debug leftover가 남지 않았는가.
 
 ## 작업 흐름
 

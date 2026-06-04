@@ -4,6 +4,10 @@ agent 문서는 사람이 먼저 읽고, 모델이 그 다음 읽는 문서다. 
 
 `agents/<name>.md` entrypoint와 agent별 디렉터리의 링크는 dcNess plug-in root 기준이다. 외부 활성 프로젝트에서는 plug-in 업데이트로 `agents/**` 전체가 함께 배포되는 경로 1 산출물로 본다.
 
+`agents/<name>.md` entrypoint에는 frontmatter, 호환 안내, 첫 행동, 필수 routing enum만 남긴다. 판단 축, 산출물 서식, 반복 결함 사례는 agent 디렉터리의 본문, `templates/`, `references/`로 내린다.
+
+Claude plugin details가 보여주는 on-invoke token은 entrypoint 기준이다. 분리본과 references는 첫 행동 이후 Read로 추가 로드되므로, 이 변경은 always-on description/entrypoint 비용 절감이지 전체 실행 비용의 절대 감소로 해석하지 않는다.
+
 ## 기본 목차
 
 모든 agent 지침 파일은 같은 순서로 쓴다.

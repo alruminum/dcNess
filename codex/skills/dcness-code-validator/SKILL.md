@@ -6,7 +6,7 @@ dcNess가 `code-validator`를 Codex 교차 검토로 route할 때 사용한다. 
 
 ## 목적
 
-Claude-side validator를 복제하지 않는다. 같은 `PASS` / `FAIL` / `ESCALATE` 결론 vocabulary를 쓰되, 별도 시각으로 구현 drift, 테스트 공백, 숨은 회귀 가능성을 찾는다.
+Claude-side `code-validator` prompt의 clone이 아니다. 구현, 테스트, 계약이 제공된 plan과 현재 repository state를 만족하는지 별도 시각으로 검증한다.
 
 ## 입력
 
@@ -24,12 +24,13 @@ Claude-side validator를 복제하지 않는다. 같은 `PASS` / `FAIL` / `ESCAL
 
 ## 판단 축
 
-- 스펙 충실도: 계획한 생성/수정 파일, public interface, error behavior가 실제 코드와 맞는가.
-- 범위 통제: 요청 밖 동작, 파일, abstraction, feature flag가 섞이지 않았는가.
-- 의존 계약: 외부 API, module import, DB schema, config key, design token 계약을 깨지 않았는가.
-- 도메인/디자인 정합: domain invariant와 user-visible/design contract가 구현에서 보존되는가.
-- 구현 위험: async ordering, null/empty input, stale state, cleanup, error propagation, security-sensitive handling에 실제 결함 가능성이 있는가.
-- bugfix 회귀: 보고된 원인이 제거됐고 주변 동작을 불필요하게 바꾸지 않았는가.
+아래는 빠짐없이 채우는 검사표가 아니라 finding을 탐색하는 방향이다.
+
+- 구현이 요청 scope와 맞고 unrelated behavior를 추가하지 않았는가.
+- 테스트가 변경된 contract를 검증하며, 호출자가 제공한 test result가 그 주장을 실제로 뒷받침하는가.
+- Public API, data shape, config key, import boundary가 plan과 맞는가.
+- Async ordering, null/empty input, error propagation, stale state, resource cleanup, security-sensitive handling, user-visible edge case 같은 hidden regression을 고려했는가.
+- `any`, ignored error, placeholder branch, dead code, fake test 같은 명백한 bypass가 들어오지 않았는가.
 
 ## 작업 흐름
 

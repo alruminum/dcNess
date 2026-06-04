@@ -310,4 +310,4 @@ $cur"
 - system-architect (모듈 토폴로지 + 공통 task 목록 SSOT): [`../../agents/system-architect.md`](../../agents/system-architect.md)
 - module-architect (Story 안 task 분할 + impl 파일 N 개 산출 SSOT): [`../../agents/module-architect.md`](../../agents/module-architect.md)
 - module-architect (impl 본문 detail per task): [`../../agents/module-architect.md`](../../agents/module-architect.md)
-- engineer: [`../../agents/engineer.md`](../../agents/engineer.md#1-task-1-pr-engineer-는-src-만) 1 task = 1 PR
+- engineer: [`../../agents/engineer/engineer-agent.md`](../../agents/engineer/engineer-agent.md#권한-경계) 1 task = 1 PR

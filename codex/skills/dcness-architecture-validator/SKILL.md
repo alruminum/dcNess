@@ -6,7 +6,7 @@ dcNess가 `architecture-validator`를 Codex 교차 검토로 route할 때 사용
 
 ## 목적
 
-Claude-side validator를 복제하지 않는다. 같은 결론 vocabulary를 쓰되, 별도 시각으로 설계 drift, 숨은 결합, 검증 불가능한 acceptance criteria를 찾는다.
+Claude-side `architecture-validator` prompt를 복제하지 않는다. 같은 결론 vocabulary를 쓰되, 구현 churn, 숨은 coupling, 검증 불가능한 acceptance criteria를 만들 설계 gap을 별도 시각으로 찾는다.
 
 ## 입력
 
@@ -24,12 +24,16 @@ Claude-side validator를 복제하지 않는다. 같은 결론 vocabulary를 쓰
 
 ## 판단 축
 
-- 요구사항 출처 충실도: PRD Must와 story intent가 architecture 결정과 impl REQ에서 다른 의미로 변하지 않았는가.
-- 설계 표준: 모듈 설계 원칙, 의존 방향, public surface, DI 판단이 문서 evidence로 남았는가.
-- 계약과 인터페이스: producer/consumer, public API, state transition, data contract가 같은 의미를 공유하는가.
-- 구현 가능성: engineer가 impl 문서만 cold-read해도 정책을 새로 발명하지 않고 구현할 수 있는가.
-- drift와 scope: 상위 설계 자체가 틀렸는지, 맞는 결정의 stale copy만 남았는지 구분되는가.
-- 표현 수준: impl task가 contract/interface altitude를 지키고 private helper, loop body, forced test name 같은 구현 세부를 선점하지 않는가.
+아래는 빠짐없이 채우는 검사표가 아니라 finding을 탐색하는 방향이다.
+
+- Engineer가 정책을 새로 만들지 않고 구현할 수 있을 만큼 concrete interface, ownership boundary, state transition, data contract가 충분한가.
+- Acceptance criteria가 원 PRD/story intent에 붙어 있는가, 아니면 문서끼리만 self-consistent하고 원 요구와 어긋났는가.
+- Cross-story 또는 cross-module producer/consumer contract가 서로 같은 의미를 가리키는가.
+- Placeholder, TODO, "decide later", 미구현 branch가 Must behavior를 막지 않는가.
+- Dependency direction, public API boundary, shared domain model 변경이 명시되어 있는가.
+- 대표 implementation task를 cold-read했을 때 숨은 assumption 없이 구현 가능한가.
+- Contract Ledger가 signature만이 아니라 invariant, ordering, error mode, config, forbidden alternative까지 담는가.
+- Implementation task doc이 contract/interface altitude를 지키고 pseudo-code, loop body, private helper name, forced test-function name 같은 private implementation을 과하게 선점하지 않는가.
 
 ## 작업 흐름
 
