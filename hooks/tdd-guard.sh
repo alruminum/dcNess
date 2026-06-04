@@ -7,7 +7,10 @@
 # 차이: dcness 환경 (Claude Code plug-in hook) 매처 정합 + 한국어 메시지 보강
 #
 # 시점: agent Edit/Write tool_use 직전. tool_input.file_path 추출 + 검증.
-# 차단 시 plug-in 표준 hookSpecificOutput JSON 으로 deny.
+# 차단 시 stderr 로 reason 출력 + exit 2.
+#   — CC docs: PreToolUse 는 exit 2 라야 차단 + stderr 가 Claude 에 피드백.
+#     (deny JSON + exit 0 은 CC 본체 버그 anthropics/claude-code#37210 영향 가변 →
+#      catastrophic-gate / file-guard 와 동일하게 exit 2 로 통일.)
 
 set -u
 
@@ -23,18 +26,8 @@ INPUT=$(cat)
 PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 
 deny() {
-  local reason="$1"
-  python3 - "$reason" <<'PY'
-import json
-import sys
-print(json.dumps({
-    "hookSpecificOutput": {
-        "hookEventName": "PreToolUse",
-        "permissionDecision": "deny",
-        "permissionDecisionReason": sys.argv[1],
-    }
-}, ensure_ascii=False))
-PY
+  # reason 을 stderr 로 — exit 2 (호출부) 와 짝지어 CC 가 Claude 에 피드백.
+  printf '%s\n' "$1" >&2
 }
 
 # tool_input.file_path 추출
@@ -171,7 +164,7 @@ if ! has_test_for "$FILE_PATH"; then
   <PROJECT_ROOT>= ${PROJECT_ROOT}
 
 회피 안티패턴 금지: 위 location 외 다른 위치 (예: <parent>/__tests__/<subdir>/<name>.test.<ext>) 에 같은 본문 복사 쓰지 말 것. false negative 발견 시 본 hook 자체 fix (#469 결함 C 영역) 후속 PR 영역."
-  exit 0
+  exit 2
 fi
 
 allow

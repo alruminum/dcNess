@@ -8,7 +8,9 @@
 #
 # 반환:
 #   exit 0: allow (CC 가 tool 호출 진행)
-#   exit 1: block (stderr 메시지 + CC 가 호출 거부)
+#   exit 2: block (stderr 메시지 + CC 가 호출 거부)
+#          — CC docs: PreToolUse 는 exit 2 라야 차단 + stderr 가 Claude 에 피드백.
+#            exit 1 = non-blocking error → 도구 그대로 진행 (차단 안 됨).
 #
 # 강제 룰 (harness/agent_boundary.py — 권한 경계 코드 SSOT):
 #   §4.4 DCNESS_INFRA_PATTERNS — 인프라 path (모든 sub-agent 차단)
@@ -36,8 +38,13 @@ python3 -m harness.hooks pretooluse-file-op --cc-pid "$CC_PID"
 RC=$?
 
 # #404 — 정상 통과 시 suppressOutput: true 써서 transcript attachment 숨김 시도.
-# CC 본체 알려진 버그 (anthropics/claude-code#34859) 회피 가설. 차단 path 는 기존 (stderr + exit 1) 유지.
+# CC 본체 알려진 버그 (anthropics/claude-code#34859) 회피 가설.
 if [ "$RC" = "0" ]; then
   echo '{"suppressOutput": true, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+  exit 0
 fi
-exit $RC
+# 정책 위반 (handler 가 정확히 1 반환) → exit 2 라야 CC 가 차단 + stderr 를 Claude 에 피드백.
+# (exit 1 = non-blocking error → 도구 그대로 진행하므로 차단 효과 없음 — 본 hook 의 핵심 fix.)
+# 그 외 nonzero (인터프리터 오류 등) → fail-open (exit 0) 으로 hook 버그발 과차단 회피.
+[ "$RC" = "1" ] && exit 2
+exit 0
