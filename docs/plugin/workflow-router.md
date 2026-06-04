@@ -25,7 +25,7 @@ risk tier 는 "더 무거운 하나"를 고르는 배타 선택이 **아니다**
 
 1. **high-risk trigger 가 있나?** → **plan + review** (tier 3)
 2. **목표/범위가 모호한가?** → **clarify** (tier 2)
-3. **high-risk 없고 concrete signal + impl task/issue 가 있나?** → **direct impl** (tier 1)
+3. **high-risk 없고 concrete signal 이 있나?** → **direct impl** (tier 1). impl task/issue 가 있으면 `/impl-loop`, 없으면 단발 구현 경로 — 이건 tier 1 *내부* 분기일 뿐, 진입 조건이 아니다.
 
 **shape 축** (gate 통과 *후* — *구현을 어떻게 실행*할지):
 
