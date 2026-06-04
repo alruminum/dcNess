@@ -563,6 +563,16 @@ def set_pending_agent(
     동시 Agent 호출 시 각 호출이 독립 슬롯을 차지 (단일 슬롯이면 둘째가 첫째를
     덮어써 prose-staging 시각 범위/trace 귀속이 섞임).
 
+    ⚠️ **알려진 한계 (cross-process lost-write, follow-up)**: live.json 은 lock
+    없는 atomic_write(원자적 rename) 설계라 read-modify-write 가 프로세스 간
+    원자적이지 않다. 두 PreToolUse Agent hook 프로세스가 *동시에* 실행되면 각자
+    자기 `tool_use_id` 만 추가 후 active_runs 전체를 덮어써, last-writer 가 상대
+    슬롯을 잃을 수 있다 (전 mutator 공통 기존 속성 — 본 함수만의 결함 아님).
+    영향 범위는 prose-staging 시각 범위/histogram 라는 *측정 신호* 한정 —
+    file-guard 권한 경계는 payload self-attribution(`_resolve_acting_agent`)으로
+    판정하므로 이 race 와 **무관**(보안 영향 0). 시스템 차원 live.json lock 은
+    별도 follow-up.
+
     Args:
         tool_use_id: CC PreToolUse Agent payload 의 tool_use_id (필수, multi-slot 키)
         sub_type: subagent_type (검증/디버그용)

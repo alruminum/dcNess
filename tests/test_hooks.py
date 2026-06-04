@@ -1158,6 +1158,38 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         slot = live.get("active_runs", {}).get(self.rid, {})
         self.assertNotIn("pending_agents", slot)
 
+    def test_histogram_filters_by_matched_agent(self):
+        # issue #598 finding1 — 동시 sub 환경: since_ts 이후 다른 agent(qa)의 trace 가
+        # 끝난 agent(engineer)의 histogram 에 섞이지 않음 (시각 범위 + agent 필터).
+        import io
+        import contextlib
+        self._simulate_pre("engineer", tool_use_id="toolu_eng")
+        for tool in ["Read", "Edit"]:
+            trace_append(
+                self.sid, self.rid,
+                {"phase": "pre", "agent": "engineer", "tool": tool},
+                base_dir=self.base,
+            )
+        for tool in ["Bash", "Bash", "Grep"]:
+            trace_append(
+                self.sid, self.rid,
+                {"phase": "pre", "agent": "qa", "tool": tool},
+                base_dir=self.base,
+            )
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = handle_posttooluse_agent(
+                stdin_data=self._post_payload("engineer", tool_use_id="toolu_eng"),
+                cc_pid=self.cc_pid, base_dir=self.base,
+            )
+        self.assertEqual(rc, 0)
+        ctx = out.getvalue()
+        self.assertIn("Read:1", ctx)
+        self.assertIn("Edit:1", ctx)
+        # 동시 qa 행동(Bash/Grep)은 engineer histogram 에 누설 안 됨.
+        self.assertNotIn("Grep", ctx)
+        self.assertNotIn("Bash", ctx)
+
     def test_tool_use_id_drift_logged(self):
         """tool_use_id 가 PreToolUse 와 PostToolUse 사이 다르면 stderr WARN."""
         import io

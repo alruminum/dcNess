@@ -779,8 +779,14 @@ def handle_posttooluse_agent(
                 else:
                     pending_match = "ok"
 
+            # issue #598 finding1 — 시각 범위 + 끝난 sub 의 agent 로 필터해 동시
+            # sub-agent 의 행동이 이 histogram 에 섞이지 않게 한다 (trace 가 payload
+            # self-attribution 으로 정확한 agent 를 담으므로). sub_type 미상 시 시각만.
+            _agent_filter = sub_type or None
             hist = (
-                _trace_hist_since(sid, rid, since_ts, base_dir=base_dir)
+                _trace_hist_since(
+                    sid, rid, since_ts, agent=_agent_filter, base_dir=base_dir
+                )
                 if since_ts else {}
             )
             # 같은 input 반복 — 메인 자율 판단용 raw 신호 (다중 파일 vs 동일 파일 구분)
@@ -788,6 +794,7 @@ def handle_posttooluse_agent(
                 trace_subset = [
                     e for e in _trace_read(sid, rid, base_dir=base_dir)
                     if e.get("ts", "") >= since_ts
+                    and (not _agent_filter or (e.get("agent", "") or "") == _agent_filter)
                 ]
                 input_repeats = summarize_input_repeats(trace_subset)
                 input_repeats_str = format_input_repeats(input_repeats)
