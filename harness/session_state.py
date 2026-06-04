@@ -2104,9 +2104,11 @@ _YOLO_FALLBACKS: Dict[str, Dict[str, str]] = {
         "next_enum": None,
     },
     "architecture-validator:FAIL": {
-        "action": "re-invoke",
+        # read-only validator 재호출 금지 — 분류된 architect 로 라우팅.
+        # action 은 "직전 architect 재호출" 신호, 정확한 target 은 hint 의 분류가 진본.
+        "action": "re-invoke-prev",
         "hint": (
-            "finding 분류로 라우팅 (architect-loop-routing): "
+            "validator 재호출 X — finding 분류로 architect 라우팅 (architect-loop-routing): "
             "SYSTEM_BOUNDARY → system-architect 재진입 / "
             "CONTRACT_PROPAGATION → module-architect mode=contract_sweep / "
             "TASK_LOCAL → module-architect 보강 (cycle ≤ 2)"

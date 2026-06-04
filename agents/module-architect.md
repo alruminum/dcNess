@@ -47,6 +47,8 @@ model: sonnet
 4. **단위 안 cross-task interface 가 grep 으로 검증되어 시그니처 일치** (또는 producer 미작성 시 dependency 표시)
 5. **도메인 모델 / 시스템 구조 변경 발생 시 epic 단위 architecture.md / domain-model.md 동기화 완료**
 
+> **`mode=contract_sweep` 예외** — 계약 전파 sweep 는 impl 파일을 만들지 않는 순수 docs 동기화다. 위 1·2 (impl 파일 생성 + 7 원칙) 는 N/A. 본 모드 DoD = **stale 계약 사본을 canonical 로 동기화 완료 + write 경계 밖 stale 보고** ([`## 계약 전파 sweep`](#계약-전파-sweep) 의 sweep 결과 보고). 임의 impl 파일을 만들어 1·2 를 형식 충족하지 말 것. (마찬가지로 *문서 동기화 케이스* 도 impl 신규 생성이 아니라 기존 섹션 patch 라 1·2 를 작업 형태에 맞춰 해석.)
+
 ## 호출자가 prompt 로 전달
 
 - **신규 Story 케이스 (단일 Story)** — 대상 epic 경로 + 대상 Story 식별자 (예: `Story 1` / `사용자 등록 가능`) + 설계 문서 경로 + (선택) DESIGN_HANDOFF 패키지
