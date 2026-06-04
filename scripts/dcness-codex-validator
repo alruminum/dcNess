@@ -151,7 +151,7 @@ done
     echo "Use the $SKILL_NAME Codex skill if it is installed."
   fi
   echo
-  echo "You are running as a read-only dcNess validation agent."
+  echo "Read-only dcNess validation request."
   echo "Do not edit files, create files inside the repo, commit, push, or open PRs."
   echo "Return prose only. The final paragraph must contain exactly one conclusion word: PASS, FAIL, or ESCALATE."
   echo
