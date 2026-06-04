@@ -1023,6 +1023,43 @@ class FileOpSelfAttributionTests(FileOpHookTests):
         self.assertTrue(pre)
         self.assertEqual(pre[-1]["agent"], "engineer")
 
+    def test_namespaced_payload_agent_type_enforced(self):
+        # issue #598 codex P1 — namespaced agent_type(dcness:qa)도 정규화되어 경계 강제.
+        # 정규화 없으면 ALLOW_MATRIX 미정의 → pass-through bypass (qa 가 src write).
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Edit", "dcness:qa", file_path="src/foo.ts"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)  # dcness:qa → qa → src write 불가
+
+    def test_namespaced_payload_agent_type_allow(self):
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Edit", "dcness:engineer", file_path="src/foo.ts"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)  # dcness:engineer → engineer → src 허용
+
+    def test_namespaced_trace_agent_normalized(self):
+        # namespaced payload 의 trace agent 도 canonical 로 기록.
+        rc = handle_pretooluse_file_op(
+            stdin_data=self._payload_with_agent(
+                "Read", "dcness:engineer", file_path="src/foo.ts"
+            ),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+        entries = read_trace(self.sid, self.rid, base_dir=self.base)
+        pre = [e for e in entries if e.get("phase") == "pre"]
+        self.assertTrue(pre)
+        self.assertEqual(pre[-1]["agent"], "engineer")  # dcness: prefix 제거
+
 
 class PostFileOpSelfAttributionTests(PostToolUseFileOpTests):
     """post trace 의 agent 귀속도 payload agent_type 우선 (issue #598)."""
@@ -1471,6 +1508,17 @@ class SubagentStopClearTests(_PreToolBase):
         from harness.hooks import handle_subagent_stop
         rc = handle_subagent_stop(
             self._payload(agent_type="engineer"), base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+
+    def test_clears_namespaced_agent_type(self):
+        # issue #598 codex P1 — namespaced agent_type(dcness:engineer)도 정규화 후 매칭 clear.
+        from harness.hooks import handle_subagent_stop
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_subagent_stop(
+            self._payload(agent_type="dcness:engineer"), base_dir=self.base
         )
         self.assertEqual(rc, 0)
         live = read_live(self.sid, base_dir=self.base)

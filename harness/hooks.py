@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from harness.agent_names import normalize_agent_type
 from harness.session_state import (
     read_live,
     read_pid_current_run,
@@ -206,11 +207,15 @@ def _resolve_acting_agent(
 
     우선순위: payload `agent_type` (자기 식별, 동시 안전) → `live.active_agent`
     단일 슬롯 폴백 (구버전 CC / payload 미탑재 케이스). 둘 다 없으면 "" = 메인 Claude.
+
+    issue #598 (codex P1) — 반환 전 `normalize_agent_type` 으로 정규화. namespaced
+    payload(`dcness:qa`) 가 ALLOW_MATRIX 미정의 → check_*_allowed pass-through 로
+    경계를 우회하던 결함 차단. 정규화 후 boundary + trace 가 canonical 이름 사용.
     """
     payload_agent = stdin_data.get("agent_type")
     if isinstance(payload_agent, str) and payload_agent:
-        return payload_agent
-    return live.get("active_agent") or ""
+        return normalize_agent_type(payload_agent) or ""
+    return normalize_agent_type(live.get("active_agent") or "") or ""
 
 
 def handle_session_start(
@@ -622,7 +627,11 @@ def handle_posttooluse_agent(
     sub_type = ""
     tool_input = stdin_data.get("tool_input") or {}
     if isinstance(tool_input, dict):
-        sub_type = str(tool_input.get("subagent_type", "") or "")
+        # issue #598 — sub_type 도 정규화 (histogram filter 가 정규화된 trace agent 와
+        # 매칭하도록 + 라벨 canonical). namespaced(`dcness:engineer`) → `engineer`.
+        sub_type = normalize_agent_type(
+            str(tool_input.get("subagent_type", "") or "")
+        ) or ""
 
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
 
@@ -872,14 +881,16 @@ def handle_subagent_stop(
     if not valid_session_id(sid):
         return 0
 
-    agent_type = stdin_data.get("agent_type", "") or ""
+    # issue #598 — namespaced(`dcness:engineer`) 정규화 후 match-guard 비교.
+    agent_type = normalize_agent_type(stdin_data.get("agent_type", "") or "") or ""
     try:
         live = read_live(sid, base_dir=base_dir) or {}
         active_agent = live.get("active_agent") or ""
         if not active_agent:
             return 0  # 이미 clear됨 (PostToolUse Agent 선처리 / sub 아님) — noop
         # match-guard — agent_type 있으면 일치할 때만 clear. 부재 시 best-effort.
-        if agent_type and active_agent != agent_type:
+        # 양쪽 모두 정규화해 namespaced/legacy alias 불일치로 인한 미clear 방지.
+        if agent_type and (normalize_agent_type(active_agent) or "") != agent_type:
             return 0
         update_live(sid, base_dir=base_dir, active_agent=None, active_mode=None)
     except (OSError, ValueError):

@@ -98,13 +98,10 @@ EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
 
 DCNESS_AGENT_NAMES = set(EXPECTED_AGENT_BUDGETS.keys())
 
-# issue #383 — 옛 통합형 agent 이름 alias. 0.2.16 loop-procedure.md 의 bare
-# `validator` 표현 학습으로 메인 Claude 가 `dcness:validator` 호출한 잔재
-# (jajang 21건 trace 확인). 0.2.17 docs cleanup 이후 미래 호출은 차단됐지만
-# 옛 데이터 review 회복 + backward compat 위해 정식 이름으로 흡수.
-LEGACY_AGENT_ALIASES: dict[str, str] = {
-    "validator": "code-validator",
-}
+# issue #383 — 옛 통합형 agent 이름 alias. issue #598 에서 SSOT 를
+# `harness/agent_names.py` 로 이전 (file-guard 핫패스에서도 공유). 본 모듈은
+# backward compat 위해 재-export (옛 `run_review.LEGACY_AGENT_ALIASES` 참조 보존).
+from harness.agent_names import LEGACY_AGENT_ALIASES  # noqa: E402,F401
 
 # issue #383 B1 — window padding. step.ts = end-step 호출 시각이므로
 # sub-agent TUR ts (완료 시각) 는 first_ts 보다 약간 이전. padding 없으면
@@ -848,19 +845,9 @@ def detect_notes(steps: list[StepRecord]) -> list[NoteFinding]:
 # ── Per-Agent invocation extraction (DCN-CHG-20260430-20, Phase 2) ────
 
 
-def _normalize_agent_type(agent_type: Optional[str]) -> Optional[str]:
-    """`dcness:architect:system-design` → `architect`. None / 비-dcness → 원형 그대로.
-
-    issue #383: LEGACY_AGENT_ALIASES 도 적용 — 옛 `dcness:validator` → `code-validator`.
-    """
-    if not agent_type:
-        return None
-    if agent_type.startswith("dcness:"):
-        parts = agent_type.split(":")
-        normalized = parts[1] if len(parts) > 1 else agent_type
-    else:
-        normalized = agent_type
-    return LEGACY_AGENT_ALIASES.get(normalized, normalized)
+# issue #598 — 정규화 SSOT 를 harness/agent_names.normalize_agent_type 로 이전.
+# 옛 이름 `_normalize_agent_type` 는 backward compat 위해 재-export (테스트 + 호출처 보존).
+from harness.agent_names import normalize_agent_type as _normalize_agent_type  # noqa: E402,F401
 
 
 def _compute_invocation_cost(model: str, usage: dict) -> float:
