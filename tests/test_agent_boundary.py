@@ -378,6 +378,29 @@ class RunDirProseCarveOutTests(unittest.TestCase):
             )
             self.assertIsNotNone(reason)
 
+    def test_non_build_worker_cannot_forge_validator_pass(self):
+        # codex P1 — engineer 등 임의 agent 가 run_dir 에 validator PASS 마커 위조 시도 → 차단.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for marker in (
+                "module-architect.md",
+                "code-validator.md",
+                "architecture-validator.md",
+            ):
+                p = f".claude/harness-state/.sessions/SID/runs/run-x/{marker}"
+                reason = check_write_allowed("engineer", p, cwd=cwd)
+                self.assertIsNotNone(
+                    reason, f"engineer 가 {marker} 위조 → 차단되어야 함 (catastrophic gate 우회 방지)"
+                )
+
+    def test_build_worker_cannot_forge_validator_pass(self):
+        # build-worker 라도 build-*.md 외 run_dir 파일(validator 마커)은 차단.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            p = ".claude/harness-state/.sessions/SID/runs/run-x/code-validator.md"
+            reason = check_write_allowed("build-worker", p, cwd=cwd)
+            self.assertIsNotNone(reason)
+
     def test_build_worker_src_allowed(self):
         with tempfile.TemporaryDirectory() as td:
             cwd = Path(td)
@@ -535,6 +558,34 @@ class BashMutationTests(unittest.TestCase):
         self.assertIsNotNone(
             check_bash_mutation("gh api --method=DELETE repos/o/r/x")
         )
+
+    def test_gh_api_field_flag_blocked(self):
+        # codex P1 — field flag 는 method 미지정 시 POST 기본 → 차단.
+        self.assertIsNotNone(check_bash_mutation("gh api repos/o/r/issues -f title=x"))
+        self.assertIsNotNone(
+            check_bash_mutation("gh api repos/o/r/issues -F labels[]=bug")
+        )
+        self.assertIsNotNone(
+            check_bash_mutation("gh api --field title=x repos/o/r/issues")
+        )
+
+    def test_gh_api_explicit_get_with_field_passes(self):
+        # 명시적 GET 이면 field 있어도 read.
+        self.assertIsNone(
+            check_bash_mutation("gh api -X GET repos/o/r/issues -f per_page=5")
+        )
+
+    def test_global_flags_before_subcommand_blocked(self):
+        # codex P2 — global flag 가 noun/verb 앞에 와도 정확히 식별.
+        self.assertIsNotNone(check_bash_mutation("git -C /repo push"))
+        self.assertIsNotNone(check_bash_mutation("gh -R owner/repo issue create --title x"))
+        self.assertIsNotNone(
+            check_bash_mutation("gh --repo owner/repo pr merge 5 --merge")
+        )
+
+    def test_global_flags_readonly_still_passes(self):
+        self.assertIsNone(check_bash_mutation("git -C /repo status"))
+        self.assertIsNone(check_bash_mutation("gh -R owner/repo issue list"))
 
     def test_env_prefix_stripped(self):
         # `FOO=bar git push` 도 토큰 프리픽스 제거 후 git push 로 인식.

@@ -61,14 +61,18 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
 
 
 # ── run_dir prose carve-out (#597 커밋4) ──────────────────────────────
-# sub-agent 의 자기 step prose self-write 보존. build-worker 는
-# `<run_dir>/build-{test,impl,validate}.md` 를 자기 Write 로 쓴다
+# build-worker 의 `<run_dir>/build-{test,impl,validate}.md` self-write 만 보존
 # (`agents/build-worker.md` 권한 경계). run_dir 는 INFRA 패턴 `(^|/)\.claude/` 에
 # 걸리고, build-worker 가 ALLOW_MATRIX 에 등재된 순간 ALLOW 미매칭으로도 막힌다.
-# → INFRA / ALLOW_MATRIX 검사보다 *먼저*, run_dir 직속 `.md` 만 좁게 허용한다.
-# 임의 `.claude/` write 는 여전히 차단 (carve-out 이 run_dir prose 한정이므로).
+# → INFRA / ALLOW_MATRIX 검사보다 *먼저*, build-worker + build-*.md 만 좁게 허용한다.
+#
+# 🔴 반드시 (agent == build-worker) AND (파일명 = build-{test,impl,validate}.md) 둘 다 좁힌다.
+#    넓게(임의 agent, 임의 .md) 열면 engineer 같은 agent 가 run_dir 에 module-architect.md /
+#    code-validator.md / architecture-validator.md 를 `PASS` 로 *위조* → `_has_pass` 가 신뢰 →
+#    catastrophic gate (§2.1.1/§2.1.3/§2.1.5) 우회 (codex review P1). build-* 파일명은 어떤
+#    gate 도 신뢰하지 않으므로 forge 불가.
 RUN_DIR_PROSE_ALLOW: tuple[str, ...] = (
-    r'(^|/)\.claude/harness-state/\.sessions/[^/]+/runs/[^/]+/[^/]+\.md$',
+    r'(^|/)\.claude/harness-state/\.sessions/[^/]+/runs/[^/]+/build-(test|impl|validate)\.md$',
 )
 
 
@@ -264,9 +268,9 @@ def check_write_allowed(
 
     norm = _normalize(file_path, cwd)
 
-    # 0. run_dir prose carve-out — sub-agent 의 자기 step prose self-write 보존.
-    #    INFRA / ALLOW_MATRIX 검사보다 먼저, 좁게(run_dir 직속 .md) 허용 (#597 커밋4).
-    if _matches_any(norm, RUN_DIR_PROSE_ALLOW):
+    # 0. run_dir prose carve-out — build-worker 의 build-{test,impl,validate}.md self-write 한정.
+    #    agent + 파일명 둘 다 좁혀 PASS 마커 위조를 차단 (codex P1). INFRA/ALLOW 검사보다 먼저.
+    if agent == "build-worker" and _matches_any(norm, RUN_DIR_PROSE_ALLOW):
         return None
 
     # 1. INFRA pattern → 모든 agent 차단.
@@ -378,6 +382,16 @@ _GH_MUTATION: dict[str, frozenset] = {
 # gh api 의 mutating method.
 _HTTP_MUTATION_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
+# gh api 의 field/input flag — 존재 시 method 미지정이면 POST 기본 (codex P1).
+_GH_API_FIELD_FLAGS = frozenset({"-f", "-F", "--field", "--raw-field", "--input"})
+
+# 서브커맨드 *앞* 에 올 수 있는 값-소비 global flag (codex P2) — 값 토큰을 noun 으로 오인 방지.
+_GIT_VALUE_FLAGS = frozenset({
+    "-C", "-c", "--git-dir", "--work-tree", "--namespace",
+    "--exec-path", "--super-prefix", "--config-env",
+})
+_GH_VALUE_FLAGS = frozenset({"-R", "--repo"})
+
 # GitHub MCP — read-only prefix (통과) / mutation verb prefix (차단).
 _MCP_GH_READ_PREFIXES = ("get_", "list_", "search_")
 _MCP_GH_MUTATION_PREFIXES = (
@@ -396,12 +410,59 @@ def _segment_tokens(segment: str) -> list[str]:
     return toks[i:]
 
 
+def _positional_args(toks: list[str], value_flags: frozenset) -> list[str]:
+    """option 토큰을 건너뛰고 positional (noun/verb) 만 추출.
+
+    값-분리형 global flag (예 `git -C <dir>`, `gh -R <owner/repo>`) 의 *값* 을
+    positional 로 오인하지 않도록 value_flags 의 다음 토큰을 함께 skip (codex P2).
+    """
+    out: list[str] = []
+    i = 0
+    while i < len(toks):
+        t = toks[i]
+        if t.startswith("-"):
+            base = t.split("=", 1)[0]
+            if base in value_flags and "=" not in t:
+                i += 2  # `-C dir` 분리형 — 값 토큰도 skip
+            else:
+                i += 1
+        else:
+            out.append(t)
+            i += 1
+    return out
+
+
+def _gh_api_mutation(toks: list[str]) -> Optional[str]:
+    """`gh api` segment 가 mutation 인지 — block reason / None.
+
+    explicit `-X/--method <mutating>` → 차단. 명시적 GET → 통과.
+    method 미지정 + field/input flag(`-f`/`-F`/`--field`/`--raw-field`/`--input`) → POST 기본 → 차단.
+    """
+    explicit_method: Optional[str] = None
+    has_field = False
+    for j, t in enumerate(toks):
+        if t in ("-X", "--method") and j + 1 < len(toks):
+            explicit_method = toks[j + 1].upper()
+        elif t.startswith("--method="):
+            explicit_method = t.split("=", 1)[1].upper()
+        elif t in _GH_API_FIELD_FLAGS or t.split("=", 1)[0] in _GH_API_FIELD_FLAGS:
+            has_field = True
+    if explicit_method in _HTTP_MUTATION_METHODS:
+        return f"gh api {explicit_method} 차단 — 외부 mutation 은 메인 영역 (git-spec 절차)."
+    if explicit_method == "GET":
+        return None  # 명시적 GET — field 있어도 GET
+    if has_field:
+        return "gh api field flag (method 미지정 = POST 기본) 차단 — 외부 mutation 은 메인 영역."
+    return None
+
+
 def check_bash_mutation(command: str) -> Optional[str]:
     """Bash command 안의 외부 시스템 mutation 차단 — block reason str / None=allow.
 
     차단: `git push`, `gh pr (create|merge|...)`, `gh issue (create|edit|close|comment|...)`,
-          `gh api -X POST|PUT|PATCH|DELETE`.
+          `gh api` (mutating method / field flag).
     통과: read-only (`gh pr view`, `gh issue list`, `gh api` GET, 그 외 모든 명령).
+    global flag (`git -C ...`, `gh -R ...`) 가 앞에 와도 noun/verb 를 정확히 식별 (codex P2).
     """
     if not command:
         return None
@@ -410,27 +471,28 @@ def check_bash_mutation(command: str) -> Optional[str]:
         if not toks:
             continue
         cmd = toks[0]
-        # `git push`
-        if cmd == "git" and len(toks) >= 2 and toks[1] == "push":
-            return "git push 차단 — push 는 메인 영역 (git-spec 절차). sub-agent 는 src/문서 변경만."
-        if cmd != "gh" or len(toks) < 2:
+        if cmd == "git":
+            pos = _positional_args(toks[1:], _GIT_VALUE_FLAGS)
+            if pos and pos[0] == "push":
+                return "git push 차단 — push 는 메인 영역 (git-spec 절차). sub-agent 는 src/문서 변경만."
             continue
-        noun = toks[1]
-        # `gh api` — mutating method flag 있을 때만 차단.
+        if cmd != "gh":
+            continue
+        pos = _positional_args(toks[1:], _GH_VALUE_FLAGS)
+        if not pos:
+            continue
+        noun = pos[0]
+        # `gh api` — mutating method / field flag 차단.
         if noun == "api":
-            for j, t in enumerate(toks):
-                if t in ("-X", "--method") and j + 1 < len(toks):
-                    if toks[j + 1].upper() in _HTTP_MUTATION_METHODS:
-                        return f"gh api {toks[j + 1].upper()} 차단 — 외부 mutation 은 메인 영역."
-                if t.startswith("--method="):
-                    if t.split("=", 1)[1].upper() in _HTTP_MUTATION_METHODS:
-                        return "gh api mutation method 차단 — 외부 mutation 은 메인 영역."
-            continue  # method flag 없음 = GET = 통과
+            reason = _gh_api_mutation(toks)
+            if reason:
+                return reason
+            continue
         # `gh <noun> <verb>`
         verbs = _GH_MUTATION.get(noun)
-        if verbs and len(toks) >= 3 and toks[2] in verbs:
+        if verbs and len(pos) >= 2 and pos[1] in verbs:
             return (
-                f"gh {noun} {toks[2]} 차단 — 외부 시스템 mutation 은 메인 영역 "
+                f"gh {noun} {pos[1]} 차단 — 외부 시스템 mutation 은 메인 영역 "
                 f"(git-spec 이슈/PR 절차). read-only (view/list) 는 허용."
             )
     return None
