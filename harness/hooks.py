@@ -48,6 +48,7 @@ __all__ = [
     "handle_pretooluse_file_op",
     "handle_posttooluse_agent",
     "handle_posttooluse_file_op",
+    "handle_subagent_stop",
     "handle_stop",
 ]
 
@@ -832,6 +833,53 @@ def handle_posttooluse_agent(
     return 0
 
 
+def handle_subagent_stop(
+    stdin_data: Optional[Dict[str, Any]] = None,
+    *,
+    base_dir: Optional[Path] = None,
+) -> int:
+    """SubagentStop 훅 — sub-agent 종료 시 live.json.active_agent 신뢰 clear (issue #598).
+
+    PostToolUse Agent 매칭(취약 — 메인 ctx 에서 발화, agent_id 가 없을 수 있음)보다
+    신뢰도 높은 SubagentStop(sub 종료 직발, agent_id+agent_type 동반)으로 단일 슬롯
+    clear 를 승격한다. PostToolUse Agent 의 clear 는 그대로 유지 (이중 안전망, 멱등).
+
+    match-guard: `live.active_agent == payload agent_type` 일 때만 clear — 동시
+    sub-agent 환경에서 다른 agent 의 슬롯을 오클리어하지 않는다. agent_type 부재
+    (구버전 CC) 시 best-effort 무조건 clear.
+
+    차단 권한 사용 안 함 — 항상 `exit 0`. SubagentStop 에 `stop_hook_active` 가
+    없고 본 핸들러는 block(decision) 도 안 쓰므로 무한 루프 무관.
+    """
+    if stdin_data is None:
+        try:
+            raw = sys.stdin.read()
+            stdin_data = json.loads(raw) if raw.strip() else {}
+        except (json.JSONDecodeError, OSError):
+            return 0
+
+    if not isinstance(stdin_data, dict):
+        return 0
+
+    sid = _extract_sid(stdin_data)
+    if not valid_session_id(sid):
+        return 0
+
+    agent_type = stdin_data.get("agent_type", "") or ""
+    try:
+        live = read_live(sid, base_dir=base_dir) or {}
+        active_agent = live.get("active_agent") or ""
+        if not active_agent:
+            return 0  # 이미 clear됨 (PostToolUse Agent 선처리 / sub 아님) — noop
+        # match-guard — agent_type 있으면 일치할 때만 clear. 부재 시 best-effort.
+        if agent_type and active_agent != agent_type:
+            return 0
+        update_live(sid, base_dir=base_dir, active_agent=None, active_mode=None)
+    except (OSError, ValueError):
+        pass  # clear 실패해도 sub 종료엔 영향 X (PostToolUse Agent 가 백업 clear)
+    return 0
+
+
 def _read_or_empty(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8") if path.exists() else ""
@@ -1141,6 +1189,10 @@ def _main(argv: Optional[list] = None) -> int:
                           help="Stop 훅 — 메인 응답 종료 시 자동 end-run (issue #382)")
     p_st.add_argument("--cc-pid", type=int, default=None)
 
+    p_sas = sub.add_parser("subagent-stop",
+                           help="SubagentStop 훅 — sub 종료 시 active_agent clear (issue #598)")
+    p_sas.add_argument("--cc-pid", type=int, default=None)
+
     args = parser.parse_args(argv)
 
     # cc_pid 미명시 시 PPID 사용 (bash 훅 의 PPID = CC main)
@@ -1165,6 +1217,8 @@ def _main(argv: Optional[list] = None) -> int:
             rc = handle_posttooluse_file_op(cc_pid=cc_pid)
         elif args.cmd == "stop":
             rc = handle_stop()
+        elif args.cmd == "subagent-stop":
+            rc = handle_subagent_stop()
         else:
             rc = 0
     except Exception:  # noqa: BLE001 — hook 버그가 도구 호출을 과차단하지 않게 fail-open

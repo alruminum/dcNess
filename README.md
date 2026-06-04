@@ -163,7 +163,7 @@ bash scripts/dcness-codex-validator --help # Codex validator wrapper smoke
 | [`CLAUDE.md`](CLAUDE.md#dcness-강제-원칙-룰-추가설계-시-가드레일) | 정체성 SSOT (강제 영역 2 + 안티패턴 4) |
 | 각 skill 의 `<skill>-routing.md` ([`architect-loop`](skills/architect-loop/architect-loop-routing.md) / [`impl-loop`](skills/impl-loop/impl-loop-routing.md) 등) | 라우팅 진본 (mermaid + enum 표 + retry + escalate) |
 | [`docs/plugin/loop-procedure.md`](docs/plugin/loop-procedure.md#진입-모델) | 컨베이어 운전법 — Step 0~8 mechanics (각 loop spec = 해당 skill `## Loop`) |
-| [`docs/plugin/hooks.md`](docs/plugin/hooks.md#catastrophic-gatesh) | catastrophic 시퀀스 + 7 hook SSOT |
+| [`docs/plugin/hooks.md`](docs/plugin/hooks.md#catastrophic-gatesh) | catastrophic 시퀀스 + 8 hook SSOT |
 | [`PROGRESS.md`](PROGRESS.md) | 현재 상태 / TODO / Blockers |
 | [`CLAUDE.md`](CLAUDE.md) | 메인 Claude 작업 지침 |
 | [`AGENTS.md`](AGENTS.md) | 외부 에이전트(Codex 등) 지침 |

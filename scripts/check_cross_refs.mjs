@@ -62,8 +62,8 @@ const DENY_LIST = [
     label: '옛 agent 카운트 (10 또는 11 종) — 현재 12 종 (designer / build-worker 포함)',
   },
   {
-    pattern: /\b[68]\s*hook\s+(상세|전체|공유|충족|시점)/,
-    label: '옛 hook 카운트 (6 또는 8) — 현재 7 hook (hooks.md §3 sub-section 정합)',
+    pattern: /\b[79]\s*hook\s+(상세|전체|공유|충족|시점)/,
+    label: '옛 hook 카운트 (7 또는 9) — 현재 8 hook (hooks.md §3 sub-section 정합, issue #598 SubagentStop 추가)',
   },
   {
     pattern: /\b8\s+loop\s+(행별|풀스펙)/,

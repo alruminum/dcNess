@@ -1381,6 +1381,81 @@ class PreAgentConcurrencyWarnTests(_PreToolBase):
 
 
 # ---------------------------------------------------------------------------
+# issue #598 — SubagentStop 훅 (active_agent 신뢰 clear)
+# ---------------------------------------------------------------------------
+
+
+class SubagentStopClearTests(_PreToolBase):
+    """SubagentStop 훅 — sub 종료 시 live.json.active_agent 신뢰 clear (issue #598).
+
+    PostToolUse Agent 매칭(취약 — 메인 ctx)보다 신뢰도 높은 SubagentStop(sub 종료
+    직발, agent_id+agent_type 동반)으로 단일 슬롯 clear 승격. match-guard 로 동시
+    sub 의 슬롯 오클리어 방지. 차단 권한 사용 안 함 — 항상 exit 0.
+    """
+
+    def _payload(self, agent_type="", agent_id="sub-1"):
+        return {
+            "sessionId": self.sid,
+            "agent_type": agent_type,
+            "agent_id": agent_id,
+            "hook_event_name": "SubagentStop",
+        }
+
+    def test_clears_matching_active_agent(self):
+        from harness.hooks import handle_subagent_stop
+        update_live(
+            self.sid, base_dir=self.base,
+            active_agent="engineer", active_mode="IMPL",
+        )
+        rc = handle_subagent_stop(
+            self._payload(agent_type="engineer"), base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+        self.assertNotIn("active_mode", live)
+
+    def test_clears_when_agent_type_absent(self):
+        # 구버전 payload (agent_type 부재) → best-effort 무조건 clear.
+        from harness.hooks import handle_subagent_stop
+        update_live(self.sid, base_dir=self.base, active_agent="engineer")
+        rc = handle_subagent_stop(self._payload(agent_type=""), base_dir=self.base)
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+
+    def test_no_clobber_on_mismatch(self):
+        # 동시 sub: active_agent=qa 인데 engineer 의 SubagentStop → qa 슬롯 보존.
+        from harness.hooks import handle_subagent_stop
+        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        rc = handle_subagent_stop(
+            self._payload(agent_type="engineer"), base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertEqual(live.get("active_agent"), "qa")
+
+    def test_noop_when_no_active_agent(self):
+        from harness.hooks import handle_subagent_stop
+        rc = handle_subagent_stop(
+            self._payload(agent_type="engineer"), base_dir=self.base
+        )
+        self.assertEqual(rc, 0)
+        live = read_live(self.sid, base_dir=self.base)
+        self.assertNotIn("active_agent", live)
+
+    def test_invalid_sid_silent(self):
+        from harness.hooks import handle_subagent_stop
+        rc = handle_subagent_stop({"sessionId": "!"}, base_dir=self.base)
+        self.assertEqual(rc, 0)
+
+    def test_empty_payload_silent(self):
+        from harness.hooks import handle_subagent_stop
+        rc = handle_subagent_stop({}, base_dir=self.base)
+        self.assertEqual(rc, 0)
+
+
+# ---------------------------------------------------------------------------
 # DCN-CHG-20260501-15 — PostToolUse Agent prose auto-staging
 # ---------------------------------------------------------------------------
 
