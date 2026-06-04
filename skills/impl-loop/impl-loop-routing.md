@@ -100,6 +100,8 @@ flowchart TB
 > cycle 발생 시 **working tree only — commit X.** PASS 후에만 commit.
 > `.attempts.json` = fail_type → 카운터 매핑. force-retry 시 리셋.
 
+> **finding 수용 자세** (점 패치 X, 근본 재설계) — code-validator / pr-reviewer finding 이 같은 영역에서 2회+ 반복되면 점 패치 retry 로 한도를 소진하지 말고 근본 원인을 짚는다 (코드 내 뿌리면 그 뿌리를, 스펙·설계 차원이면 `SPEC_GAP_FOUND` 로 module-architect 보강). 진본 = [`loop-procedure.md` finding 수용 원칙](../../docs/plugin/loop-procedure.md#finding-수용-원칙-점-패치-금지-근본-수정).
+
 ## escalate 처리
 
 escalate 계열 결론 수신 시 **메인이 즉시 사용자 보고 후 대기** (자동 복구 / 우회 / 재시도 금지 — [`../../CLAUDE.md`](../../CLAUDE.md) 강제 영역). **단 아래 code-validator `ESCALATE`(사유: spec 부재) 만 예외** — 그 외 모든 escalate 는 하드스톱.

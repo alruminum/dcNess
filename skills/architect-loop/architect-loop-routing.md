@@ -66,6 +66,8 @@ flowchart TB
 > **architecture-validator FAIL 재진입 대상 = 시점·영역별** — **1차**(Placeholder·공통 SSOT) → **system-architect** 재진입 (이 시점 module-architect 미실행 — 검증 대상이 system-architect 산출물이므로). **2차**(Cross-Story Interface·Implementation Simulation·Origin Anchor) → 해당 **module-architect** 재진입, 단 모듈 의존 그래프 영역이면 **system-architect** 재진입.
 > cycle 발생 시 **working tree only — commit X.** PASS 후에만 commit (cycle 도중 산출물은 덮어쓰기 전제).
 
+> **finding 수용 자세** (점 패치 X, 근본 재설계) — 같은 영역 finding 이 2회+ 반복되면 점 패치 retry 로 한도를 소진하지 말고 근본 원인을 짚어 그 영역을 재설계한다. 진본 = [`loop-procedure.md` finding 수용 원칙](../../docs/plugin/loop-procedure.md#finding-수용-원칙-점-패치-금지-근본-수정).
+
 ## escalate 처리
 
 escalate 계열 결론(`UX_FLOW_ESCALATE` / `ESCALATE` / `NEW_DEP_ESCALATE`) 수신 시 **메인이 즉시 사용자 보고 후 대기** (자동 복구 / 우회 / 재시도 금지 — [`../../CLAUDE.md`](../../CLAUDE.md) 강제 영역).

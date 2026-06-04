@@ -213,6 +213,14 @@ ENUM=$("$HELPER" end-step ...)
 TaskUpdate(<기존 task>, completed)
 ```
 
+### finding 수용 원칙: 점 패치 금지, 근본 수정
+
+validator (`code-validator` / `architecture-validator` / `pr-reviewer`) 의 FAIL finding·수정 권고는 **"그 점/그 줄만 고쳐라"가 아니다.** 권고가 나온 *의미* = finding 이 가리키는 **근본 원인을 파악해 그 영역을 재설계하라** 이다.
+
+- **메인 (relay)**: 재진입 prompt 에 finding 을 "이 점만 고쳐"로 좁게 전달 금지. finding 이 구조적 누수의 *증상*인지 먼저 판단 → 증상이면 "근본 원인 + 증상 패턴 전체"를 주고 "이 접근을 재설계하라"로 프레이밍한다. **같은 영역 finding 이 2회+ 반복 = 점 패치 신호 → 즉시 근본 재설계로 전환** (위 REDO 분류의 `REDO_DIFF` 와 정합 — 같은 접근 재시도가 아니라 접근 자체 교체). 해법 메커니즘은 메인이 처방하지 말 것 — 증상·사실관계만 넘기고 설계 소유는 producer agent 가 갖는다.
+- **producer (architect / engineer)**: finding 수신 시 점 패치 전에 "더 깊은 설계 문제의 신호인가?"를 먼저 본다. 신호면 점이 아니라 접근을 재설계한다. 재설계가 상위 산출물 (architecture / adr / domain-model 등) 을 건드리면 직접 편집하지 말고 변경점을 prose 로 보고 → 메인이 상위 agent 로 라우팅 (각 `<skill>-routing.md` 의 retry 경로).
+- **이유**: 점 패치는 finding cascade 를 부른다 — 좁은 수정이 다음 결함을 드러내 같은 영역 FAIL 이 N 라운드 반복. 한 번의 근본 재설계 < N 번 점 패치 + N 번 재검증. 같은 영역을 점 패치로 retry 한도 ([architect-loop-routing](../../skills/architect-loop/architect-loop-routing.md#retry-한도) / [impl-loop-routing](../../skills/impl-loop/impl-loop-routing.md#retry-한도)) 까지 소진하지 말 것.
+
 ### yolo 모드
 
 발화에 `yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서` 키워드 시 ON — 평소 사용자 위임할 신호를 자동 진행한다. yolo↔비-yolo 케이스별 동작은 cross-cutting 운전 규칙이라 본 문서가 SSOT (각 `<skill>-routing.md` 의 enum→호출 매핑과 별개):
