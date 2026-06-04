@@ -9,13 +9,13 @@ Coverage matrix:
         - 기존 live.json 보존 (재호출 안전)
 
     handle_pretooluse_agent:
-        - §2.1.1 — pr-reviewer 직전 CODE_VALIDATION 없으면 차단
-        - §2.1.1 — engineer 변경 후 CODE_VALIDATION PASS 있으면 통과
-        - §2.1.1 — BUGFIX_VALIDATION PASS 도 인정
-        - §2.1.3 — engineer 직전 module-architect PASS 없으면 차단
-        - §2.1.3 — module-architect.md 안 PASS 있으면 통과
-        - §2.1.3 — module-architect-N.md (occurrence) 안 PASS 도 인정
-        - §2.1.3 — engineer POLISH 모드는 plan 검사 skip
+        - pr-reviewer 게이트 — pr-reviewer 직전 CODE_VALIDATION 없으면 차단
+        - pr-reviewer 게이트 — engineer 변경 후 CODE_VALIDATION PASS 있으면 통과
+        - pr-reviewer 게이트 — BUGFIX_VALIDATION PASS 도 인정
+        - engineer 게이트 — engineer 직전 module-architect PASS 없으면 차단
+        - engineer 게이트 — module-architect.md 안 PASS 있으면 통과
+        - engineer 게이트 — module-architect-N.md (occurrence) 안 PASS 도 인정
+        - engineer 게이트 — engineer POLISH 모드는 plan 검사 skip
         - 그 외 agent (architect MODULE_PLAN, qa 등) — run 외부에서도 통과
         - sid 없음 → silent allow
         - tool_input 비정상 → silent allow
@@ -183,7 +183,7 @@ class _PreToolBase(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# §2.1.3 — engineer 직전 plan READY 검사
+# engineer 게이트 — engineer 직전 plan READY 검사
 # ---------------------------------------------------------------------------
 
 
@@ -229,7 +229,7 @@ class CatastrophicEngineerTests(_PreToolBase):
 
 
 # ---------------------------------------------------------------------------
-# §2.1.1 — pr-reviewer 직전 validator PASS 검사
+# pr-reviewer 게이트 — pr-reviewer 직전 validator PASS 검사
 # ---------------------------------------------------------------------------
 
 
@@ -279,13 +279,13 @@ class CatastrophicPrReviewerTests(_PreToolBase):
 
 
 # ---------------------------------------------------------------------------
-# §2.1.5 — architect-loop 안 module-architect × N 첫 호출 직전
+# module-architect 게이트 — architect-loop 안 module-architect × N 첫 호출 직전
 # architecture-validator PASS 필수 (PR B-4 부활, β-strong)
 # ---------------------------------------------------------------------------
 
 
 class _ArchitectLoopBase(unittest.TestCase):
-    """architect-loop entry_point 컨텍스트 — §2.1.5 gate 발동 조건."""
+    """architect-loop entry_point 컨텍스트 — module-architect 게이트 발동 조건."""
 
     sid = "test-sid-arch"
     rid = "run-archloop"
@@ -351,7 +351,7 @@ class CatastrophicArchitectureValidatorTests(_ArchitectLoopBase):
         self.assertEqual(rc, 0)
 
     def test_gate_skipped_for_non_architect_loop(self) -> None:
-        """impl-task-loop 등 다른 entry_point 는 §2.1.5 미적용."""
+        """impl-task-loop 등 다른 entry_point 는 module-architect 게이트 미적용."""
         with TemporaryDirectory() as td:
             base = Path(td)
             sid, rid, cc_pid = "sid-impl", "run-impl1234", 44444
@@ -370,20 +370,26 @@ class CatastrophicArchitectureValidatorTests(_ArchitectLoopBase):
             self.assertEqual(rc, 0)
 
 
-class CatastrophicTechReviewerRecallTests(_ArchitectLoopBase):
-    """#597 커밋7 — §2.1.4 부분 코드강제: architect-loop 중 tech-reviewer 재호출 차단."""
+class TechReviewerRecallNotBlockedTests(_ArchitectLoopBase):
+    """#609 — architect-loop 중 tech-reviewer 재호출은 코드 강제 차단하지 않는다.
 
-    def test_tech_reviewer_blocked_in_architect_loop(self) -> None:
+    옛 #597 커밋7 의 부분 코드강제 (재호출 시 exit) 를 제거했다 (forcing function 은
+    catastrophic 이 아님 — CLAUDE.md 대원칙). 재호출 비권장은 자연어 관례로만 남는다.
+    in/out 양쪽 모두 통과(rc=0) — 차단 부활 회귀 방지.
+    """
+
+    def test_tech_reviewer_allowed_in_architect_loop(self) -> None:
+        # strict-conveyor gate(#604) 통과 위해 begin-step 으로 current_step 설정.
         self._begin_step("tech-reviewer")
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("tech-reviewer"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
-        self.assertEqual(rc, 1)
+        self.assertEqual(rc, 0)
 
     def test_tech_reviewer_allowed_outside_architect_loop(self) -> None:
-        # 비-architect-loop run (entry_point=impl) 에선 tech-reviewer 통과.
+        # 비-architect-loop run (entry_point=impl) 에서도 tech-reviewer 통과.
         with TemporaryDirectory() as td:
             base = Path(td)
             sid, rid, cc_pid = "sid-impl2", "run-impl5678", 33333

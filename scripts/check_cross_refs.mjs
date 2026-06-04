@@ -12,7 +12,7 @@
  * 검증 B — 옛 명칭 deny-list (외부 배포 영역 한정)
  *   - 폐기 명령어 / 옛 loop 명 / 옛 SSOT 파일명
  *   - 위치번호 §N 참조 금지 (doc-conventions.md 규약) — `§3.2` 류 prose 위치번호.
- *     예외: §2.1.N 룰 ID(harness 런타임) · 코드펜스/인라인코드 · historical(옛/폐기/...) 라인.
+ *     예외: 코드펜스/인라인코드 · historical(옛/폐기/...) 라인.
  *   - 외부 배포 영역: docs/plugin/, commands/, agents/, hooks/, .claude-plugin/
  *   - 예외 파일: commands/smart-compact.md (sample 코드블록 안 historical 인용 — M1/N 동일 사유)
  *
@@ -75,11 +75,11 @@ const DENY_LIST = [
     label: '폐기 SSOT `docs/plugin/routing.md` — Phase 3 (#564) 폐기, 라우팅은 각 skill `<skill>-routing.md` 로 분산',
   },
   {
-    // 위치번호 §N 참조 금지 (doc-conventions.md). negative-lookahead 로 §2.1.N 룰 ID 보존.
+    // 위치번호 §N 참조 금지 (doc-conventions.md). §2.1.N 룰 번호 체계 폐기 → 예외 없음.
     // codeExempt: 코드펜스/인라인코드 안 § 는 검사 제외 (sample·런타임 에러 메시지).
-    pattern: /§(?!2\.1\.)\d/,
+    pattern: /§\d/,
     codeExempt: true,
-    label: '위치번호 §N 참조 — 제목 anchor 링크로 전환 (doc-conventions.md). §2.1.N 룰 ID·코드펜스/인라인코드·historical 은 예외.',
+    label: '위치번호 §N 참조 — 제목 anchor 링크로 전환 (doc-conventions.md). 코드펜스/인라인코드·historical 은 예외.',
   },
 ];
 

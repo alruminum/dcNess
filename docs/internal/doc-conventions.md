@@ -45,10 +45,10 @@ GitHub 방식 (cross-ref CI의 `slugify`와 동일):
 - `ADR-001` — 결정 기록 ID
 - `F1`~`F14`·`M1`/`N`/`H1`/`L2` — 외부 실측 이슈·audit 코드
 - `task_index: i/total` — 기술 명세
-- **catastrophic 룰 ID `§2.1.1`~`§2.1.8`** — `harness/hooks.py`·`catastrophic-gate.sh`가
-  런타임 에러 메시지(`[catastrophic §2.1.3] …`)·분기 ID로 사용한다(번호 = 룰 ID, 위치 아님).
-  `hooks.md` heading의 위치번호 `§2.1`(local provider)과는 **별개 체계** — `§2.1.N` 표기를
-  그대로 보존한다(anchor 링크로 바꾸지 않는다).
+
+> catastrophic 게이트는 옛 `§2.1.N` 룰 번호 대신 *게이트 이름* (`pr-reviewer` / `engineer` /
+> `module-architect` 게이트) 으로 부른다. 런타임 에러 메시지도 `[catastrophic: <게이트>]` 형식
+> (번호 없음). `§2.1.N` 번호 체계는 폐기됐다.
 
 ## 예외 (변환·검증 제외)
 
@@ -66,7 +66,6 @@ GitHub 방식 (cross-ref CI의 `slugify`와 동일):
 
 ## 회귀 차단
 
-`scripts/check_cross_refs.mjs` DENY_LIST에 prose 위치번호 `§N` 패턴(`/§(?!2\.1\.)\d/`)이
+`scripts/check_cross_refs.mjs` DENY_LIST에 prose 위치번호 `§N` 패턴(`/§\d/`)이
 등록되어 새 위치번호 참조를 CI(`cross-ref-validation.yml`)에서 차단한다.
 - **예외 자동 적용**: 코드펜스/인라인코드 안 `§`(`codeExempt`) · historical(`옛/폐기/...`) 라인.
-- **`§2.1.N` 룰 ID 보존**: negative-lookahead `(?!2\.1\.)`로 catastrophic 룰 ID는 차단 대상에서 제외.

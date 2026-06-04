@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dcNess catastrophic-gate 훅 — PreToolUse Agent 직전 §2.1 catastrophic 룰 검사
+# dcNess catastrophic-gate 훅 — PreToolUse Agent 직전 catastrophic 룰 검사
 #
 # 트리거: Claude Code PreToolUse event, tool=Agent
 # stdin: CC payload (sessionId + tool_input.{subagent_type, mode})
@@ -11,10 +11,10 @@
 #          — CC docs: PreToolUse 는 exit 2 라야 차단 + stderr 가 Claude 에 피드백.
 #            exit 1 = non-blocking error → 도구 그대로 진행 (차단 안 됨).
 #
-# 강제 룰:
-#   - §2.1.1 — pr-reviewer 직전 code-validator PASS 확인
-#   - §2.1.3 — engineer 직전 module-architect PASS 확인
-#   - §2.1.5 — architect-loop 안 module-architect × K 첫 호출 직전 architecture-validator PASS
+# 강제 룰 (3 게이트):
+#   - pr-reviewer 게이트 — pr-reviewer 직전 code-validator PASS 확인
+#   - engineer 게이트 — engineer 직전 module-architect PASS 확인
+#   - module-architect 게이트 — architect-loop 안 module-architect × K 첫 호출 직전 architecture-validator PASS
 
 set -uo pipefail
 

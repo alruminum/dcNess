@@ -317,7 +317,7 @@ class MultiSessionIsolationTests(unittest.TestCase):
 
 
 class CatastrophicRuleE2eTests(unittest.TestCase):
-    """실 bash 훅 → python 파이프라인으로 §2.1 룰 발화 검증."""
+    """실 bash 훅 → python 파이프라인으로 catastrophic 게이트 발화 검증."""
 
     def setUp(self) -> None:
         self._td = TemporaryDirectory()
@@ -366,7 +366,7 @@ class CatastrophicRuleE2eTests(unittest.TestCase):
         )
         # #597 round5 — 정책 위반은 CLI 가 exit 2 (crash exit 1 과 구분, wrapper 차단 신호).
         self.assertEqual(result.returncode, 2, f"stdout: {result.stdout}")
-        self.assertIn("§2.1.3", result.stderr)
+        self.assertIn("catastrophic: engineer", result.stderr)
 
     def test_engineer_with_plan_passes_e2e(self) -> None:
         # module-architect.md 작성
@@ -411,7 +411,7 @@ class CatastrophicRuleE2eTests(unittest.TestCase):
             cwd=self.cwd,
         )
         self.assertEqual(result.returncode, 2)
-        self.assertIn("§2.1.1", result.stderr)
+        self.assertIn("catastrophic: pr-reviewer", result.stderr)
 
 if __name__ == "__main__":
     unittest.main()
