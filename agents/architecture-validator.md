@@ -130,7 +130,7 @@ prose 마지막 단락에 자기 언어로 명시. 권장 표현:
 5. 검증 영역 4 (Implementation Simulation) — PRD Must 직결 impl task 2~3 개 선정 후 각각 cold-seat 시뮬레이션 (체크리스트 4 절차)
 6. 검증 영역 5 (Origin Anchor) — PRD `## 수용 기준` 의 AC-NNN 목록 추출 → impl `## 수용 기준` 의 `(from AC-NNN)` 인용 grep → 커버리지·리터럴·참조실재·present-vs-예정·절차의미 5 sub-area 대조 (체크리스트 5 절차)
 7. 검증 영역 6 (Implementation Detail Leak) — 각 impl 파일의 줄 수 / fenced code block 수 / 금지 토큰 (loop body · private helper · 의사코드 · 테스트 함수명) 측정 (체크리스트 6 절차)
-8. **Contract Ledger sweep** (Step 5 PASS 게이트) — `## Contract Ledger` 각 행을 기준으로 **모든 계약 필드** (producer · consumer · invariant · ordering · error mode · config · forbidden alternative) 가 architecture / domain / adr / impl 전반에서 owner(canonical) 와 self-consistent 한지 `rg` 키워드 sweep. 한 행이라도 어느 필드든 문서마다 어긋나면 `CONTRACT_PROPAGATION` FAIL (producer/consumer 가 같아도 ordering·error mode·config 가 stale 이면 잡는다)
+8. **Contract Ledger sweep** (Step 5 PASS 게이트) — `## Contract Ledger` 각 행을 기준으로 **모든 계약 필드** (producer · consumer · invariant · ordering · error mode · config · forbidden alternative) 가 architecture / domain / adr / impl 전반에서 owner(canonical) 와 self-consistent 한지 `Grep` 도구로 키워드 전수 검색 (sweep). 한 행이라도 어느 필드든 문서마다 어긋나면 `CONTRACT_PROPAGATION` FAIL (producer/consumer 가 같아도 ordering·error mode·config 가 stale 이면 잡는다)
 
 ## 체크리스트
 
@@ -257,7 +257,7 @@ validator prose 결론에 *자동 검증 통과 영역* + *수동 review 권고 
 
 > impl 문서가 contract / task planner 를 넘어 "partial implementation spec" 으로 과상세화돼 drift 표면을 키우는 영역. 시그니처 하나 바뀌면 contract 뿐 아니라 의사코드 · 테스트명 · composition snippet 까지 전부 stale 이 된다. 원칙: **contract 는 자세히, implementation 은 얕게.** **Step 5 전용** (impl 파일 존재해야 측정).
 
-**검출 기준** (impl 파일별 측정 — `Read` / `Grep` 로 실재 확인):
+**검출 기준** (impl 파일별 측정 — **Bash 불필요, `Read` / `Grep` 만**: 줄 수 = `Read` 의 마지막 라인 번호 / fenced block·금지 토큰 = `Grep` 매치 count):
 
 | 신호 | 임계 | 판정 |
 |---|---|---|

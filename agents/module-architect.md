@@ -231,7 +231,7 @@ module 단계에서 public contract 를 *바꾸게* 되면 (시그니처 / invar
 행동:
 
 1. Contract Ledger 의 해당 행을 canonical 기준으로 확정.
-2. sweep 키워드로 `rg` 전수 검색 — 검색은 repo 전반이되, **patch 대상은 [`## 권한 경계`](#권한-경계) 의 `mode=contract_sweep` 확장 범위(`docs/**` — root + epic 단위 architecture.md / adr.md / domain-model.md / impl) 안** 으로 한정.
+2. sweep 키워드로 `Grep` 도구 전수 검색 (Bash 없이 Grep/Read 만) — 검색은 repo 전반이되, **patch 대상은 [`## 권한 경계`](#권한-경계) 의 `mode=contract_sweep` 확장 범위(`docs/**` — root + epic 단위 architecture.md / adr.md / domain-model.md / impl) 안** 으로 한정.
 3. write 경계 안에서 canonical 과 어긋난 **stale 줄만 patch** — 새 설계 결정 추가 X, 기존 결정 재해석 X. 사본을 진본에 맞추는 것만.
 4. **write 경계 밖 stale** (예: `skills/` · `scripts/` · runbook · helper 같은 agent-facing SSOT — `docs/**` 가 아닌 곳) 은 patch 하지 않고 **위치 (file:line) 를 prose 로 보고 + escalate** — 권한 가진 주체(메인 / 해당 agent)가 처리. agent_boundary 가 쓰기를 차단하므로 직접 쓰기 시도 X ([`harness/agent_boundary.py`](../harness/agent_boundary.py)).
 5. sweep 결과 보고 — 검색 키워드 / 경계 안 patch (file:line · 줄 수) / 경계 밖 stale 보고 목록 / 남은 미해결.

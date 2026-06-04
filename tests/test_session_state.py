@@ -2027,6 +2027,29 @@ PASS — 빈 문자열 가드 추가.
         payload = json.loads(out.getvalue())
         self.assertEqual(payload["action"], "unmapped")
 
+    def test_auto_resolve_architecture_validator_fail_routes_by_classification(self) -> None:
+        # issue #612 — validator FAIL 은 finding 분류 의존 라우팅.
+        # read-only validator 재호출(re-invoke) / 직전 step 고정(re-invoke-prev) 둘 다
+        # 오라우팅 — action 은 route-by-classification, 실제 target 은 hint 의 분류가 진본.
+        from harness.session_state import _cli_auto_resolve
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_auto_resolve(
+                SimpleNamespace(agent_mode="architecture-validator:FAIL")
+            )
+        self.assertEqual(rc, 0)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload["action"], "route-by-classification")
+        # mechanical 재호출 action 이 아니어야 함 (read-only validator 재실행 = 같은 FAIL)
+        self.assertNotIn(payload["action"], ("re-invoke", "re-invoke-prev"))
+        # hint 에 3 분류 토큰이 모두 있어야 메인이 분류로 라우팅 가능
+        self.assertIn("SYSTEM_BOUNDARY", payload["hint"])
+        self.assertIn("CONTRACT_PROPAGATION", payload["hint"])
+        self.assertIn("TASK_LOCAL", payload["hint"])
+
 
 # ---------------------------------------------------------------------------
 # auto_detect_session_id / auto_detect_run_id 폴백 — issue #469 결함 B
