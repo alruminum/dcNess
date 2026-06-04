@@ -466,12 +466,18 @@ def handle_pretooluse_agent(
             )
             return 1
 
-    # tech-reviewer 재호출 (architect-loop 진입 후) 은 코드 강제 차단하지 않는다 (#609).
-    # tech-review 는 architect-loop 진입 *전* 단방향 선행 단계라 재호출이 거의 필요 없지만,
-    # 재호출 자체는 docs/tech-review.md + 증거물만 쓰는 read-mostly 작업 — 회복 비용 비대칭이
-    # 없어 catastrophic 이 아니다. 따라서 "재호출 비권장" 은 자연어 관례 (skill/agent prose) 로
-    # 두고 재호출 여부는 메인/사용자 자율 판단 (forcing function 을 코드 강제하지 않는 대원칙
-    # — CLAUDE.md). architect-loop 도중 미검증 새 외부 의존 발견 = NEW_DEP_ESCALATE 3안.
+    # tech-reviewer 재호출 (architect-loop 진입 후) 은 *tech-reviewer 전용* 코드 강제로
+    # 차단하지 않는다 (#609). tech-review 는 architect-loop 진입 *전* 단방향 선행 단계라
+    # 재호출이 거의 필요 없지만, 재호출 자체는 docs/tech-review.md + 증거물만 쓰는 read-mostly
+    # 작업 — 회복 비용 비대칭이 없어 catastrophic 이 아니다. 따라서 "재호출 비권장" 은 자연어
+    # 관례 (skill/agent prose) 로 두고 재호출 여부는 메인/사용자 자율 판단 (forcing function 을
+    # 코드 강제하지 않는 대원칙 — CLAUDE.md). architect-loop 도중 미검증 새 외부 의존 발견 =
+    # NEW_DEP_ESCALATE 3안.
+    #   ※ 자유 재호출은 active conveyor run *밖* (메인 루프 / 루프 finalize 후) 에서 일어난다 —
+    #   그 경우 rid 부재 또는 strict-conveyor 의 finalize 분기로 게이트가 발화하지 않는다. active
+    #   conveyor run *안* 에서는 위 strict-conveyor gate(#604) 가 *모든* off-sequence agent
+    #   (tech-reviewer 포함) 에 begin-step 선언을 요구한다 — 이는 tech-reviewer 전용 차단이 아닌
+    #   일반 conveyor 무결성 룰이라 #609 범위 밖이고, 루프 도중 의존 검증은 NEW_DEP_ESCALATE 로 간다.
 
     # 옛 merge-gate (LGTM 없이 merge) / impl-task-loop 3-commit 룰 (자연어 폐기) —
     # /architect-loop 가 impl/NN-*.md 미리 머지로 의미 소멸 또는 prerequisite
