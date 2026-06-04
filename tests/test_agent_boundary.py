@@ -691,6 +691,11 @@ class BashWrapperBypassTests(unittest.TestCase):
         self.assertIsNotNone(check_bash_mutation("gh api -XPOST repos/o/r/issues"))
         self.assertIsNotNone(check_bash_mutation("gh api -X=DELETE repos/o/r/x"))
 
+    def test_gh_api_attached_field_blocked(self):
+        # codex P2 (round7) — `-Ftitle=x` / `-fbody=x` 붙임 short field (POST 기본).
+        self.assertIsNotNone(check_bash_mutation("gh api repos/o/r/issues -Ftitle=x"))
+        self.assertIsNotNone(check_bash_mutation("gh api repos/o/r/issues -fbody=hi"))
+
 
 class BashIntegrationTests(unittest.TestCase):
     """Bash heuristic + check_write_allowed 합."""

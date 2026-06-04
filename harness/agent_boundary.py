@@ -504,7 +504,11 @@ def _gh_api_mutation(toks: list[str]) -> Optional[str]:
         elif t.startswith("-X") and len(t) > 2:
             # `-XPOST` (붙임) / `-X=POST` (codex P2 round5)
             explicit_method = t[2:].lstrip("=").upper()
-        elif t in _GH_API_FIELD_FLAGS or t.split("=", 1)[0] in _GH_API_FIELD_FLAGS:
+        elif (
+            t in _GH_API_FIELD_FLAGS
+            or t.split("=", 1)[0] in _GH_API_FIELD_FLAGS
+            or (len(t) > 2 and t[:2] in ("-f", "-F"))  # `-Ftitle=x` / `-fbody=x` 붙임 (round7)
+        ):
             has_field = True
     if explicit_method in _HTTP_MUTATION_METHODS:
         return f"gh api {explicit_method} 차단 — 외부 mutation 은 메인 영역 (git-spec 절차)."
