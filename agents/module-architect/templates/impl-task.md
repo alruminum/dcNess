@@ -3,7 +3,7 @@ depth: simple|std|deep
 design: optional|required
 story: <N|공통>
 task_index: <i>/<total>|—
-depends_on: []          # [<NN-slug>, ...] — 선행 task (contract/ordering 의존도 여기로 흡수). 없으면 [] — 빈 값은 "독립"이 아니라 "미상"이라 병렬에서 직렬 강등
+depends_on:             # [<NN-slug>, ...] 선행 task (contract/ordering 의존 흡수). 선행 없으면 [] 로 명시. 비운 채로 두면(미작성) 미상 → 병렬에서 직렬 강등
 contract:
   produces:             # 이 task 가 만드는 public contract
   consumes:             # 소비하는 contract → 그 producer task 를 depends_on 에 반영

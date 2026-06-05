@@ -45,7 +45,7 @@
 - 대상 단위의 impl 문서가 필요한 수만큼 생성 또는 보강된다.
 - compact plan 요청에서는 `docs/compact-plans/<slug>.md` 가 생성되고 수정 허용/금지, 변경 방향, 테스트 기준, 수용 기준을 포함한다.
 - 각 impl 문서가 scope, contract/interface, acceptance criteria, 금지 경계를 포함한다.
-- task 분할이 있는 경우 각 impl 문서의 `depends_on` 과 `수정 허용`(파일 경로 단위)이 채워져 병렬 독립성 판정 입력이 빈 채로 남지 않는다.
+- task 분할이 있는 경우 각 impl 문서의 `depends_on`(선행 있으면 목록, 없으면 명시적 `[]`)과 `수정 허용`(파일 경로 단위)이 채워진다. 비운 채/placeholder 잔존은 미상으로 읽혀 병렬에서 직렬 강등된다.
 - cross-task contract가 있으면 Contract Ledger와 impl 문서가 같은 값을 가리킨다.
 - `Module Design Check` 또는 동등한 문구로 모듈 설계 원칙 적용 증거가 남는다.
 - contract_sweep에서는 canonical 값, patch 위치, 남은 stale 위치를 보고한다.
