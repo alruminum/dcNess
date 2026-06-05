@@ -2192,6 +2192,70 @@ class StopHookGuardTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         end_run.assert_called_once()
 
+    def test_finalized_without_run_finished_is_end_run_candidate(self):
+        """이슈 #587 (codex review) — finalize-run 후 end-run 까먹어 run_finished 없으면 Stop 이 복구."""
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+
+        from harness import ledger
+        from harness.session_state import read_live, start_run, update_live
+
+        sid = "sid-finalize-only"
+        rid = "run-cafe1234"
+        with TemporaryDirectory() as td:
+            base = Path(td)
+            update_live(sid, base_dir=base)
+            start_run(sid, rid, "impl", base_dir=base)
+            ledger.append_step_completed(
+                sid, rid, "pr-reviewer", None, "PROSE_LOGGED", "ok", "/tmp/pr.md", base_dir=base)
+            # finalize-run 흉내 — finalized_at 세팅, run_finished 는 없음
+            live = read_live(sid, base_dir=base)
+            slot = dict(live["active_runs"][rid])
+            slot["finalized_at"] = "2026-06-05T00:00:00+00:00"
+            active = dict(live["active_runs"])
+            active[rid] = slot
+            update_live(sid, base_dir=base, active_runs=active)
+
+            env = {"DCNESS_SESSION_ID": sid, "DCNESS_RUN_ID": rid}
+            with patch.dict(os.environ, env, clear=False), patch(
+                "harness.session_state._cli_end_run", return_value=0
+            ) as end_run:
+                rc = handle_stop(stdin_data={}, base_dir=base)
+        self.assertEqual(rc, 0)
+        end_run.assert_called_once()
+
+    def test_finalized_with_run_finished_skips(self):
+        """run_finished 가 이미 있으면 (run 닫힘) Stop 이 end-run 재발사 안 함."""
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+
+        from harness import ledger
+        from harness.session_state import read_live, start_run, update_live
+
+        sid = "sid-already-finished"
+        rid = "run-beef5678"
+        with TemporaryDirectory() as td:
+            base = Path(td)
+            update_live(sid, base_dir=base)
+            start_run(sid, rid, "impl", base_dir=base)
+            ledger.append_step_completed(
+                sid, rid, "pr-reviewer", None, "PROSE_LOGGED", "ok", "/tmp/pr.md", base_dir=base)
+            ledger.append_event(sid, rid, "run_finished", base_dir=base)
+            live = read_live(sid, base_dir=base)
+            slot = dict(live["active_runs"][rid])
+            slot["finalized_at"] = "2026-06-05T00:00:00+00:00"
+            active = dict(live["active_runs"])
+            active[rid] = slot
+            update_live(sid, base_dir=base, active_runs=active)
+
+            env = {"DCNESS_SESSION_ID": sid, "DCNESS_RUN_ID": rid}
+            with patch.dict(os.environ, env, clear=False), patch(
+                "harness.session_state._cli_end_run", return_value=0
+            ) as end_run:
+                rc = handle_stop(stdin_data={}, base_dir=base)
+        self.assertEqual(rc, 0)
+        end_run.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # _maybe_emit_continuation_signal — issue #469 결함 A

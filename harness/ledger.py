@@ -270,14 +270,19 @@ def _drop_invalid_primary_steps(
     kept: List[Dict[str, Any]] = []
     dropped = 0
     for e in events:
-        if e.get("event") == "step_completed" and not e.get("prose_file"):
+        if e.get("event") == "step_completed" and not (
+            e.get("prose_file") and e.get("sha256")
+        ):
+            # prose_file + sha256 둘 다 있어야 정당한 receipt (append_step_completed 산출).
+            # 한쪽이라도 없으면 위조(append API 우회)/손상이므로 drop.
             dropped += 1
             continue
         kept.append(e)
     if dropped:
         print(
-            f"[ledger] {dropped} step_completed without receipt(prose_file) "
-            f"dropped from {primary} — 위조/손상 의심 (prose-as-SSOT).",
+            f"[ledger] {dropped} step_completed without complete receipt "
+            f"(prose_file + sha256) dropped from {primary} — 위조/손상 의심 (prose-as-SSOT). "
+            f"prose 파일 실존·digest 매치 strict 검증은 follow-up.",
             file=sys.stderr,
         )
     return kept

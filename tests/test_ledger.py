@@ -208,9 +208,11 @@ class ReadEventsFallbackTests(unittest.TestCase):
             lp = ledger.ledger_path(_SID, _RID, base_dir=base)
             lp.write_text(
                 json.dumps({"event": "step_completed", "ts": "2026-05-01T10:00:00+00:00",
-                            "agent": "early", "mode": None, "prose_file": "/tmp/a.md"}) + "\n"
+                            "agent": "early", "mode": None, "prose_file": "/tmp/a.md",
+                            "sha256": "h1"}) + "\n"
                 + json.dumps({"event": "step_completed", "ts": "2026-05-01T12:00:00+00:00",
-                              "agent": "late", "mode": None, "prose_file": "/tmp/c.md"}) + "\n",
+                              "agent": "late", "mode": None, "prose_file": "/tmp/c.md",
+                              "sha256": "h2"}) + "\n",
                 encoding="utf-8")
             legacy = ledger.legacy_steps_path(_SID, _RID, base_dir=base)
             legacy.write_text(
@@ -227,7 +229,7 @@ class ReadEventsFallbackTests(unittest.TestCase):
             base = Path(d)
             _seed_run(base)
             ident = {"ts": "2026-05-01T10:00:00+00:00", "agent": "dup",
-                     "mode": None, "prose_file": "/tmp/d.md"}
+                     "mode": None, "prose_file": "/tmp/d.md", "sha256": "hd"}
             lp = ledger.ledger_path(_SID, _RID, base_dir=base)
             lp.write_text(json.dumps({"event": "step_completed", **ident}) + "\n", encoding="utf-8")
             legacy = ledger.legacy_steps_path(_SID, _RID, base_dir=base)
@@ -251,14 +253,18 @@ class ReadEventsFallbackTests(unittest.TestCase):
                 json.dumps({"event": "step_completed", "ts": "2026-05-01T10:00:00+00:00",
                             "agent": "valid", "mode": None, "prose_file": "/tmp/v.md",
                             "sha256": "x"}) + "\n"
+                # prose_file 없음 → drop
                 + json.dumps({"event": "step_completed", "ts": "2026-05-01T10:01:00+00:00",
-                              "agent": "forged", "mode": None}) + "\n",
+                              "agent": "forged", "mode": None}) + "\n"
+                # prose_file 있지만 sha256 없음 → drop (receipt 불완전)
+                + json.dumps({"event": "step_completed", "ts": "2026-05-01T10:02:00+00:00",
+                              "agent": "no_sha", "mode": None, "prose_file": "/tmp/n.md"}) + "\n",
                 encoding="utf-8")
             buf = io.StringIO()
             with contextlib.redirect_stderr(buf):
                 steps = ledger.read_step_completed(_SID, _RID, base_dir=base)
             self.assertEqual([s["agent"] for s in steps], ["valid"])
-            self.assertIn("prose_file", buf.getvalue())
+            self.assertIn("receipt", buf.getvalue())
 
     def test_legacy_step_without_prose_file_preserved(self) -> None:
         """옛 .steps.jsonl 의 prose_file 없는 row 는 호환 보존 (primary 검증과 분리 — codex review)."""
