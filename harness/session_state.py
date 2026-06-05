@@ -1254,6 +1254,15 @@ def _cli_begin_run(args: Any) -> int:
     rid = generate_run_id()
     issue_num = args.issue_num if args.issue_num is not None else None
     start_run(sid, rid, args.entry_point, issue_num=issue_num)
+    # 이슈 #587 — ledger run_started checkpoint. 기록 실패가 begin-run 막지 않게 silent.
+    try:
+        from harness import ledger
+        _extra = {"entry_point": args.entry_point}
+        if issue_num is not None:
+            _extra["issue_num"] = issue_num
+        ledger.append_event(sid, rid, "run_started", **_extra)
+    except Exception:
+        pass
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         write_pid_current_run(cc_pid, rid)
@@ -1289,6 +1298,12 @@ def _cli_end_run(args: Any) -> int:
         print(f"[session_state] end-run finalize guard FAIL — {exc}", file=sys.stderr)
 
     complete_run(sid, rid)
+    # 이슈 #587 — ledger run_finished checkpoint (complete_run 후 = run 종료 기록).
+    try:
+        from harness import ledger
+        ledger.append_event(sid, rid, "run_finished")
+    except Exception:
+        pass
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         clear_pid_current_run(cc_pid)
@@ -1559,6 +1574,12 @@ def _cli_begin_step(args: Any) -> int:
         return 1
     mode = args.mode if args.mode else None
     update_current_step(sid, rid, args.agent, mode)
+    # 이슈 #587 — ledger step_started checkpoint. 기록 실패가 begin-step 막지 않게 silent.
+    try:
+        from harness import ledger
+        ledger.append_event(sid, rid, "step_started", agent=args.agent, mode=mode)
+    except Exception:
+        pass
 
     # DCN-CHG-20260430-36: agent="engineer" 시 직전 engineer invocation 의
     # tool_use_count stderr hint. LLM self-monitor 불가 영역 정보 보강.
@@ -1614,6 +1635,50 @@ def _cli_run_dir(args: Any) -> int:
         return 1
     rd = run_dir(sid, rid)
     print(str(rd))
+    return 0
+
+
+def _cli_run_status(args: Any) -> int:
+    """현재 (또는 --run-id) run 의 ledger 기반 진행 상태 요약 (이슈 #587).
+
+    compaction/resume 후 메인 Claude 가 긴 prose 재주입 없이 ledger 만 보고
+    task / phase / last event / next action / evidence pointer 를 복원한다.
+    """
+    sid = auto_detect_session_id()
+    rid = getattr(args, "run_id", None) or auto_detect_run_id()
+    if not sid or not rid:
+        print(diagnose_sid_rid_resolution(mode="both"), file=sys.stderr)
+        return 1
+    from harness import ledger
+
+    print(ledger.render_status(sid, rid))
+    return 0
+
+
+def _cli_ledger_event(args: Any) -> int:
+    """ledger 에 임의 event 한 줄 기록 (pr_created/pr_merged/task_completed/blocked 등 — 이슈 #587).
+
+    강제 아님 — 메인/skill 이 PR 생성·머지·차단 같은 checkpoint 를 *선택적* 으로
+    남기는 경로. event type 은 ledger.EVENT_TYPES 검증.
+    """
+    sid = auto_detect_session_id()
+    rid = auto_detect_run_id()
+    if not sid or not rid:
+        print(diagnose_sid_rid_resolution(mode="both"), file=sys.stderr)
+        return 1
+    from harness import ledger
+
+    fields: Dict[str, Any] = {}
+    for key in ("agent", "mode", "pr_number", "url", "issue_num", "reason"):
+        val = getattr(args, key, None)
+        if val is not None:
+            fields[key] = val
+    try:
+        rec = ledger.append_event(sid, rid, args.event_type, **fields)
+    except ValueError as exc:
+        print(f"[session_state] {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(rec, ensure_ascii=False))
     return 0
 
 
@@ -1873,7 +1938,14 @@ def _has_positive_must_fix(prose: str) -> bool:
 
 
 def _steps_jsonl_path(sid: str, rid: str, *, base_dir: Optional[Path] = None) -> Path:
-    return run_dir(sid, rid, base_dir=base_dir) / ".steps.jsonl"
+    """[deprecated] 옛 `.steps.jsonl` 경로 — ledger.jsonl 로 흡수됨 (이슈 #587).
+
+    `ledger.legacy_steps_path` 위임 (마이그레이션 폴백 참조 전용). 새 코드는
+    `harness.ledger` 모듈을 직접 쓴다.
+    """
+    from harness import ledger
+
+    return ledger.legacy_steps_path(sid, rid, base_dir=base_dir)
 
 
 def _count_step_occurrences(
@@ -1884,19 +1956,13 @@ def _count_step_occurrences(
     *,
     base_dir: Optional[Path] = None,
 ) -> int:
-    """`.steps.jsonl` 에 기록된 (agent, mode) 쌍의 수 반환 (write_prose occurrence 계산용)."""
-    target = _steps_jsonl_path(sid, rid, base_dir=base_dir)
-    if not target.exists():
-        return 0
-    count = 0
-    for line in target.read_text(encoding="utf-8").splitlines():
-        try:
-            r = json.loads(line)
-            if r.get("agent") == agent and r.get("mode") == mode:
-                count += 1
-        except json.JSONDecodeError:
-            pass
-    return count
+    """(agent, mode) step_completed 수 반환 (write_prose occurrence 계산용 — 이슈 #587).
+
+    `ledger.count_step_completed` 위임 (ledger.jsonl 우선, 옛 .steps.jsonl 폴백).
+    """
+    from harness import ledger
+
+    return ledger.count_step_completed(sid, rid, agent, mode, base_dir=base_dir)
 
 
 def _append_step_status(
@@ -1908,21 +1974,15 @@ def _append_step_status(
     prose: str,
     prose_path: "Path",
 ) -> None:
-    """end-step 호출마다 jsonl 에 한 줄 append. atomic 보장 X (append-only)."""
-    record = {
-        "ts": _now_iso(),
-        "agent": agent,
-        "mode": mode,
-        "enum": enum,
-        "prose_excerpt": _extract_prose_summary(prose, max_lines=12),
-        "must_fix": _has_positive_must_fix(prose),
-        "prose_file": str(prose_path),
-    }
-    target = _steps_jsonl_path(sid, rid)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    line = json.dumps(record, ensure_ascii=False) + "\n"
-    with open(target, "a", encoding="utf-8") as f:
-        f.write(line)
+    """end-step 호출마다 ledger.jsonl 에 step_completed event append (이슈 #587).
+
+    옛 단일 .steps.jsonl row → `ledger.append_step_completed` 위임. receipt
+    (sha256 / evidence_paths / next_action) 가 옛 필드 (prose_excerpt / must_fix /
+    prose_file) 의 superset 으로 기록된다. prose 가 SSOT, ledger 는 색인 장부.
+    """
+    from harness import ledger
+
+    ledger.append_step_completed(sid, rid, agent, mode, enum, prose, prose_path)
 
 
 def _latest_step_per_role(steps: list) -> list:
@@ -1949,23 +2009,15 @@ def _read_steps_jsonl(
     *,
     base_dir: Optional[Path] = None,
 ) -> list:
-    """`.steps.jsonl` 전체 읽기. 파일 없으면 빈 리스트."""
-    target = _steps_jsonl_path(sid, rid, base_dir=base_dir)
-    if not target.exists():
-        return []
-    out = []
-    try:
-        for line in target.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                out.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
-    except OSError:
-        return []
-    return out
+    """run 의 step_completed event 를 시간순 반환 (옛 `.steps.jsonl` 호환 — 이슈 #587).
+
+    `ledger.read_step_completed` 위임. ledger.jsonl 우선, 없으면 옛 .steps.jsonl
+    폴백 (마이그레이션 셔틀). 반환 레코드는 옛 row 필드명 호환 — 소비처
+    (finalize-run / strict-conveyor / Stop hook) 는 그대로 읽는다.
+    """
+    from harness import ledger
+
+    return ledger.read_step_completed(sid, rid, base_dir=base_dir)
 
 
 def _cli_finalize_run(args: Any) -> int:
@@ -2319,6 +2371,26 @@ def _build_arg_parser() -> Any:
 
     p_rd = sub.add_parser("run-dir", help="현재 active run 의 run_dir 절대 경로 (DCN-30-21)")
     p_rd.set_defaults(func=_cli_run_dir)
+
+    p_rs = sub.add_parser(
+        "run-status",
+        help="현재 run 의 phase/task/last event/next action/evidence 요약 (resume 복원 — 이슈 #587)",
+    )
+    p_rs.add_argument("--run-id", default=None, dest="run_id")
+    p_rs.set_defaults(func=_cli_run_status)
+
+    p_le = sub.add_parser(
+        "ledger-event",
+        help="ledger 에 임의 event 기록 (pr_created/pr_merged/task_completed/blocked 등 — 이슈 #587)",
+    )
+    p_le.add_argument("event_type")
+    p_le.add_argument("--agent", default=None)
+    p_le.add_argument("--mode", default=None)
+    p_le.add_argument("--pr", type=int, default=None, dest="pr_number")
+    p_le.add_argument("--url", default=None)
+    p_le.add_argument("--issue", type=int, default=None, dest="issue_num")
+    p_le.add_argument("--reason", default=None)
+    p_le.set_defaults(func=_cli_ledger_event)
 
     p_en = sub.add_parser("enable", help="현재 cwd 의 main repo 활성화 (whitelist 추가)")
     p_en.set_defaults(func=_cli_enable)
