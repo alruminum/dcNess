@@ -726,6 +726,50 @@ class BashMutationTests(unittest.TestCase):
         self.assertIsNone(check_bash_mutation("eval 'git status'"))
         self.assertIsNone(check_bash_mutation("eval 'echo git push'"))
 
+    # ── #636 — leader-owned dcness helper 서브커맨드 (병렬 wave worker 금지) ──
+
+    def test_helper_leader_subcommand_blocked_direct(self):
+        # wrapper 직접 호출 (basename = dcness-helper)
+        self.assertIsNotNone(
+            check_bash_mutation("/x/scripts/dcness-helper end-run")
+        )
+        self.assertIsNotNone(
+            check_bash_mutation("scripts/dcness-helper begin-run impl")
+        )
+        self.assertIsNotNone(check_bash_mutation("dcness-helper next-task"))
+        self.assertIsNotNone(
+            check_bash_mutation("dcness-helper ledger-event pr_merged --pr 5")
+        )
+
+    def test_helper_leader_subcommand_blocked_via_bash(self):
+        # `bash <path>/dcness-helper end-run` — bash 가 toks[0] 여도 식별
+        self.assertIsNotNone(
+            check_bash_mutation("bash scripts/dcness-helper end-run")
+        )
+        self.assertIsNotNone(
+            check_bash_mutation('bash "${CLAUDE_PLUGIN_ROOT}/scripts/dcness-helper" begin-step build-worker')
+        )
+
+    def test_helper_leader_subcommand_blocked_via_module(self):
+        # python -m harness.session_state <subcommand>
+        self.assertIsNotNone(
+            check_bash_mutation("python3 -m harness.session_state finalize-run")
+        )
+
+    def test_helper_readonly_subcommand_passes(self):
+        # read-only 서브커맨드는 통과 (worker 가 run_dir 등 조회는 무해)
+        self.assertIsNone(check_bash_mutation("dcness-helper run-dir"))
+        self.assertIsNone(check_bash_mutation("dcness-helper run-status"))
+        self.assertIsNone(check_bash_mutation("dcness-helper is-active"))
+        self.assertIsNone(
+            check_bash_mutation("bash scripts/dcness-helper wave-plan docs/x/impl")
+        )
+
+    def test_helper_unrelated_command_passes(self):
+        # dcness-helper 아닌 명령은 무관 — end-run 같은 토큰이 있어도 false-positive 없음
+        self.assertIsNone(check_bash_mutation("echo end-run"))
+        self.assertIsNone(check_bash_mutation("ls scripts/dcness-helper"))
+
 
 class GithubMcpMutationTests(unittest.TestCase):
     """#597 커밋5 — check_github_mcp_mutation: PR/repo mutation 차단, read·issue mutation 통과."""
