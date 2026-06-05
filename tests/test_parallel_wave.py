@@ -183,6 +183,12 @@ class TestParseScope(unittest.TestCase):
         self.assertTrue(t.scope_ambiguous)
         self.assertTrue(t.serial_only)
 
+    def test_scope_bullet_inline_comment_stripped(self):
+        # 사전 감사 — depends_on 처럼 Scope bullet 의 inline 주석도 strip (일관성).
+        t = self._parse_scope("- src/a.py  # 메인 핸들러\n- `src/b.py`  # 코멘트\n")
+        self.assertEqual(t.scope_paths, frozenset({"src/a.py", "src/b.py"}))
+        self.assertFalse(t.scope_ambiguous)
+
     def test_directory_scope(self):
         t = self._parse_scope("- src/feature/\n")
         self.assertEqual(t.scope_paths, frozenset({"src/feature/"}))
@@ -244,6 +250,17 @@ class TestScopesDisjoint(unittest.TestCase):
     def test_glob_glob_same_dir_conservative_overlap(self):
         # glob-vs-glob 같은 디렉토리 → 보수적으로 충돌(직렬) 가정.
         self.assertFalse(scopes_disjoint({"src/*.py"}, {"src/a*"}))
+
+    def test_glob_char_class(self):
+        # 사전 감사 — _has_glob 이 `[` 를 glob 으로 인식하므로 _glob_to_regex 도 char
+        # class 를 처리해야 함 (리터럴 취급 비일관 수정). segment-aware 유지.
+        from harness.parallel_wave import _glob_match
+        self.assertTrue(_glob_match("src/a.py", "src/[ab].py"))
+        self.assertFalse(_glob_match("src/c.py", "src/[ab].py"))
+        self.assertTrue(_glob_match("src/b.py", "src/[!a].py"))  # negation
+        self.assertFalse(_glob_match("src/sub/a.py", "src/[ab].py"))  # / 안 넘음
+        # 깨진 패턴은 리터럴 fallback (예외 안 남)
+        self.assertTrue(_glob_match("src/[x.py", "src/[x.py"))
 
     def test_globstar_zero_and_deep_dirs(self):
         # codex F8 — src/**/*.py 는 중간 디렉토리 0개(src/a.py)도 매치해야 함.

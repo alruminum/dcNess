@@ -305,7 +305,8 @@ def _parse_scope(text: str) -> tuple[frozenset[str], bool]:
             # bullet 아닌 자유서술 prose → 정규화 안 됨 → 미상(직렬) (#636 codex F7)
             has_nonpath = True
             continue
-        token = s[1:].strip()
+        # inline 주석 strip — depends_on 파싱과 일관 (`- src/a.py  # 핸들러` 허용).
+        token = _strip_inline_comment(s[1:]).strip()
         if token.startswith("`") and token.endswith("`") and len(token) >= 2:
             token = token[1:-1].strip()
         parts = token.split()
@@ -369,6 +370,26 @@ def _glob_to_regex(pattern: str) -> str:
             out.append("[^/]")
             i += 1
             continue
+        if ch == "[":
+            # char class `[abc]` / `[!abc]`(negation) — _has_glob 가 `[` 를 glob 으로
+            # 인식하므로 리터럴로 두면 비일관. 닫는 `]` 까지 regex char class 로 옮긴다.
+            j = i + 1
+            if j < n and pattern[j] in "!^":
+                j += 1
+            if j < n and pattern[j] == "]":
+                j += 1  # 첫 `]` 는 class 안 리터럴
+            while j < n and pattern[j] != "]":
+                j += 1
+            if j >= n:  # 닫는 `]` 없음 → 리터럴 `[`
+                out.append(re.escape("["))
+                i += 1
+                continue
+            inner = pattern[i + 1 : j]
+            if inner[:1] == "!":
+                inner = "^" + inner[1:]
+            out.append("[" + inner + "]")
+            i = j + 1
+            continue
         out.append(re.escape(ch))
         i += 1
     return "".join(out)
@@ -379,10 +400,14 @@ def _glob_match(path: str, pattern: str) -> bool:
 
     `fnmatch` 와 달리 `*` 가 `/` 를 넘지 않는다 — `src/*.py` 는 `src/a.py` 만 매치하고
     `src/sub/a.py` 는 매치 안 함 (fan-in scope gate 우회 차단, #636 codex F4).
+    `?`(단일 비-/ 문자)·`[...]`(char class)도 segment-aware.
     """
     if not _has_glob(pattern):
         return path == pattern
-    return re.fullmatch(_glob_to_regex(pattern), path) is not None
+    try:
+        return re.fullmatch(_glob_to_regex(pattern), path) is not None
+    except re.error:
+        return path == pattern  # 깨진 패턴 → 리터럴 비교 (안전)
 
 
 def _glob_dir_prefix(p: str) -> str:
