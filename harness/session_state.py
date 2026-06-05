@@ -1676,6 +1676,25 @@ def _cli_run_status(args: Any) -> int:
     return 0
 
 
+def _cli_wave_plan(args: Any) -> int:
+    """impl task 들의 opt-in 병렬 wave 계획 계산 → JSON stdout (#636).
+
+    `/impl-loop` chain dry preview 가 호출해 병렬 wave 후보를 표에 echo 한다.
+    정책 SSOT = docs/plugin/parallel-policy.md (모델 A: worktree 격리 fan-in).
+    내부 helper (run-dir / run-status 류) — 새 public surface 아님.
+    """
+    import json as _json
+
+    from harness import parallel_wave
+
+    high_risk = parallel_wave._split_csv(getattr(args, "high_risk", ""))
+    plan = parallel_wave.wave_plan_from_paths(
+        args.paths, args.max_parallel, high_risk
+    )
+    print(_json.dumps(plan.to_dict(), ensure_ascii=False, indent=2))
+    return 0
+
+
 def _cli_ledger_event(args: Any) -> int:
     """ledger 에 *수동* checkpoint event 한 줄 기록 (pr_created/pr_merged/task_completed/blocked 등 — 이슈 #587).
 
@@ -2326,6 +2345,8 @@ def _cli_routing(args: Any) -> int:
 def _build_arg_parser() -> Any:
     import argparse
 
+    from harness import parallel_wave
+
     parser = argparse.ArgumentParser(
         prog="python3 -m harness.session_state",
         description="dcNess 세션/run 격리 helper CLI",
@@ -2415,6 +2436,26 @@ def _build_arg_parser() -> Any:
     )
     p_rs.add_argument("--run-id", default=None, dest="run_id")
     p_rs.set_defaults(func=_cli_run_status)
+
+    p_wp = sub.add_parser(
+        "wave-plan",
+        help="impl task 들의 opt-in 병렬 wave 계획 JSON (chain dry preview — #636)",
+    )
+    p_wp.add_argument("paths", nargs="+", help="impl 파일 / 디렉토리 / glob")
+    p_wp.add_argument(
+        "--max-parallel",
+        type=int,
+        default=parallel_wave.DEFAULT_MAX_PARALLEL_WORKERS,
+        dest="max_parallel",
+        help=f"동시성 상한 (default {parallel_wave.DEFAULT_MAX_PARALLEL_WORKERS})",
+    )
+    p_wp.add_argument(
+        "--high-risk",
+        default="",
+        dest="high_risk",
+        help="메인 dry-preview 고위험 판정 slug (콤마 구분) → 직렬 강제",
+    )
+    p_wp.set_defaults(func=_cli_wave_plan)
 
     p_le = sub.add_parser(
         "ledger-event",

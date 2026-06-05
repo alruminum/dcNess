@@ -496,6 +496,29 @@ _SHELL_KEYWORDS = frozenset({
 _SHELL_COMMANDS = frozenset({"bash", "sh", "zsh"})
 _MUTATION_RECURSION_LIMIT = 3
 
+# leader-owned dcness helper 서브커맨드 — 병렬 wave worker(sub-agent) 금지 (#636, 정책 §5).
+# **run-lifecycle 한정** — run 시작/종료/경계/checkpoint 는 leader(메인/훅) 전담이고
+# 어떤 sub-agent 도 호출하지 않는다(전수 grep 확인). 따라서 차단해도 회귀 0.
+#
+# ⚠️ 의도적 제외 — serial build-worker(sub-agent)가 정상적으로 호출하는 것들은 넣지 않는다:
+#   - `begin-step`/`end-step`: hybrid-A build-worker 가 phase(test/impl/validate)마다 직접
+#     호출 (loop-procedure.md). 막으면 기존 직렬 conveyor 가 깨진다.
+#   - `prev-tasks-append`: build-worker 가 phase 3 에서 자기 산출 누적 (#525). 막으면 다음
+#     task 의 [PREVIOUS_TASKS] 정합이 깨진다.
+#   이들은 agent_boundary 가 parallel-worker 와 serial-build-worker 를 구별할 신호가 없어
+#   구조 차단이 불가능 → 병렬 worker 에 대해서는 prompt 경계(정책 §5 + agent 지침)로 닫는다.
+# 단 `prev-tasks-reset` 은 **메인 전담 + 파괴적**(메인 repo 의 .prev-tasks.md FIFO 삭제)이고
+# 어떤 sub-agent 도 호출 안 하므로 차단한다 — 병렬 worker 가 leader 의 handoff 컨텍스트를
+# 지우지 못하게 (#636 F16). append(추가)는 허용, reset(삭제)은 차단으로 비대칭.
+# read-only (run-dir/run-status/is-active/status/routing/wave-plan) 도 비대상이라 통과.
+_HELPER_LEADER_SUBCOMMANDS = frozenset({
+    "begin-run", "end-run", "next-task", "post-task-begin",
+    "finalize-run", "ledger-event", "init-session", "prev-tasks-reset",
+})
+# 호출 형태 식별 — script basename / `python -m` 모듈명.
+_HELPER_SCRIPT_NAMES = frozenset({"dcness-helper"})
+_HELPER_MODULE_NAMES = frozenset({"harness.session_state"})
+
 # GitHub MCP — read-only prefix (통과) / mutation verb prefix (차단).
 _MCP_GH_READ_PREFIXES = ("get_", "list_", "search_")
 _MCP_GH_MUTATION_PREFIXES = (
@@ -621,6 +644,58 @@ def _gh_api_mutation(toks: list[str]) -> Optional[str]:
     return None
 
 
+def _helper_leader_mutation(toks: list[str]) -> Optional[str]:
+    """leader-owned dcness helper 서브커맨드 호출인지 — block reason / None (#636).
+
+    식별 형태(셋 다) — helper 가 **실제 실행 명령 위치(command position)** 일 때만:
+      - `<...>/dcness-helper <subcommand>`          (wrapper 직접 — toks[0] basename)
+      - `bash <...>/dcness-helper <subcommand>`      (shell 의 첫 positional = 스크립트)
+      - `python -m harness.session_state <subcommand>` (`-m` 모듈 직접)
+
+    그 뒤 *첫 positional* 토큰이 leader-owned 서브커맨드면 차단. read-only
+    (run-dir/run-status/.../wave-plan)는 deny 목록에 없어 통과.
+
+    data 위치 helper 토큰(`echo dcness-helper end-run`)은 명령이 아니므로 통과
+    (#636 codex F9 — false-positive 제거). `bash -c "..."` 의 payload 는 호출부
+    `_check_bash_mutation` 의 nested 재귀가 따로 처리한다.
+
+    한계(의도적): `"$HELPER" end-run` 처럼 변수 indirection 은 미탐 — 본 guard 는
+    보안 경계가 아니라 best-effort denylist (check_bash_mutation 한계와 동일).
+    """
+    if not toks:
+        return None
+    cmd0 = _command_basename(toks[0])
+    sub_start: Optional[int] = None
+    if cmd0 in _HELPER_SCRIPT_NAMES:
+        sub_start = 1  # <helper> <sub>
+    elif cmd0 in _SHELL_COMMANDS:
+        # `bash <helper> <sub>` — 첫 positional(스크립트)이 helper 인 경우만.
+        for i in range(1, len(toks)):
+            if toks[i].startswith("-"):
+                continue
+            if _command_basename(toks[i]) in _HELPER_SCRIPT_NAMES:
+                sub_start = i + 1
+            break  # 첫 positional 만 본다 (그게 스크립트)
+    elif cmd0.startswith("python"):
+        # `python -m harness.session_state <sub>`
+        for i in range(1, len(toks) - 1):
+            if toks[i] == "-m" and toks[i + 1] in _HELPER_MODULE_NAMES:
+                sub_start = i + 2
+                break
+    if sub_start is None:
+        return None
+    for t in toks[sub_start:]:
+        if t.startswith("-"):
+            continue  # 옵션/플래그 skip
+        if t in _HELPER_LEADER_SUBCOMMANDS:
+            return (
+                f"dcness-helper {t} 차단 — run 시작/종료/경계/checkpoint 는 leader "
+                f"영역 (병렬 wave 정책 권한 경계). worker 는 patch/evidence 만 반환."
+            )
+        return None  # 첫 positional 이 leader-owned 아님 (read-only 등) → 통과
+    return None
+
+
 def _check_bash_mutation(command: str, *, depth: int = 0) -> Optional[str]:
     if depth > _MUTATION_RECURSION_LIMIT:
         return None
@@ -638,6 +713,10 @@ def _check_bash_mutation(command: str, *, depth: int = 0) -> Optional[str]:
             if reason:
                 return f"{nested_source} nested command 차단 — {reason}"
             continue
+        # leader-owned dcness helper 서브커맨드 (병렬 wave worker 금지 — #636).
+        helper_reason = _helper_leader_mutation(toks)
+        if helper_reason:
+            return helper_reason
         cmd = _command_basename(toks[0])
         if cmd == "git":
             pos = _positional_args(toks[1:], _GIT_VALUE_FLAGS)
@@ -670,8 +749,13 @@ def check_bash_mutation(command: str) -> Optional[str]:
     """Bash command 안의 외부 시스템 mutation 차단 — block reason str / None=allow.
 
     차단: `git push`, `gh pr (create|merge|...)`, `gh issue (create|edit|close|comment|...)`,
-          `gh api` (mutating method / field flag).
-    통과: read-only (`gh pr view`, `gh issue list`, `gh api` GET, 그 외 모든 명령).
+          `gh api` (mutating method / field flag), leader-owned run-lifecycle `dcness-helper`
+          서브커맨드 (begin-run/end-run/next-task/post-task-begin/finalize-run/ledger-event/
+          init-session/prev-tasks-reset — 병렬 wave worker 금지, #636).
+    통과: read-only (`gh pr view`, `gh issue list`, `gh api` GET, `dcness-helper run-dir`,
+          `dcness-helper wave-plan`), `git commit`(transport), serial build-worker 가 쓰는
+          `begin-step`/`end-step`/`prev-tasks-append`(회귀 방지), 그 외 모든 명령.
+          (prev-tasks `append`(추가)=허용 / `reset`(삭제)=차단 비대칭.)
     절대 실행 경로(`/usr/bin/git`, `/opt/homebrew/bin/gh`)도 명령명으로 정규화해 식별한다.
     global flag (`git -C ...`, `gh -R ...`) 가 앞에 와도 noun/verb 를 정확히 식별 (codex P2).
     흔한 래퍼(`sudo`/`env`/subshell/쉘 키워드)도 벗겨 식별 (codex P2).

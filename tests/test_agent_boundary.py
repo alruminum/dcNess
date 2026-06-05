@@ -726,6 +726,77 @@ class BashMutationTests(unittest.TestCase):
         self.assertIsNone(check_bash_mutation("eval 'git status'"))
         self.assertIsNone(check_bash_mutation("eval 'echo git push'"))
 
+    # ── #636 — leader-owned dcness helper 서브커맨드 (병렬 wave worker 금지) ──
+
+    def test_helper_leader_subcommand_blocked_direct(self):
+        # wrapper 직접 호출 (basename = dcness-helper)
+        self.assertIsNotNone(
+            check_bash_mutation("/x/scripts/dcness-helper end-run")
+        )
+        self.assertIsNotNone(
+            check_bash_mutation("scripts/dcness-helper begin-run impl")
+        )
+        self.assertIsNotNone(check_bash_mutation("dcness-helper next-task"))
+        self.assertIsNotNone(
+            check_bash_mutation("dcness-helper ledger-event pr_merged --pr 5")
+        )
+
+    def test_helper_leader_subcommand_blocked_via_bash(self):
+        # `bash <path>/dcness-helper end-run` — bash 가 toks[0] 여도 식별
+        self.assertIsNotNone(
+            check_bash_mutation("bash scripts/dcness-helper end-run")
+        )
+        self.assertIsNotNone(
+            check_bash_mutation('bash "${CLAUDE_PLUGIN_ROOT}/scripts/dcness-helper" post-task-begin --reason x')
+        )
+
+    def test_helper_leader_subcommand_blocked_via_module(self):
+        # python -m harness.session_state <subcommand>
+        self.assertIsNotNone(
+            check_bash_mutation("python3 -m harness.session_state finalize-run")
+        )
+
+    def test_helper_buildworker_subcommands_pass(self):
+        # #636 회귀 가드 — serial build-worker(sub-agent)가 정상 호출하는 것은 통과.
+        # begin-step/end-step: hybrid-A phase 직접 구동. prev-tasks-append: phase 3 누적.
+        # (deny set 에 넣으면 기존 직렬 conveyor 가 깨진다 — codex P2 F2.)
+        self.assertIsNone(check_bash_mutation("dcness-helper begin-step build-worker"))
+        self.assertIsNone(check_bash_mutation("dcness-helper end-step build-worker"))
+        self.assertIsNone(
+            check_bash_mutation("bash scripts/dcness-helper prev-tasks-append --slug 01-x --summary y")
+        )
+
+    def test_helper_prev_tasks_reset_blocked(self):
+        # codex F16 — append(추가)는 build-worker 호출이라 허용하지만, reset(삭제)은
+        # 메인 전담 + 파괴적(handoff FIFO 삭제)이라 차단. 비대칭.
+        self.assertIsNotNone(check_bash_mutation("dcness-helper prev-tasks-reset"))
+        self.assertIsNotNone(
+            check_bash_mutation("bash scripts/dcness-helper prev-tasks-reset")
+        )
+
+    def test_helper_readonly_subcommand_passes(self):
+        # read-only 서브커맨드는 통과 (worker 가 run_dir 등 조회는 무해)
+        self.assertIsNone(check_bash_mutation("dcness-helper run-dir"))
+        self.assertIsNone(check_bash_mutation("dcness-helper run-status"))
+        self.assertIsNone(check_bash_mutation("dcness-helper is-active"))
+        self.assertIsNone(
+            check_bash_mutation("bash scripts/dcness-helper wave-plan docs/x/impl")
+        )
+
+    def test_helper_unrelated_command_passes(self):
+        # dcness-helper 아닌 명령은 무관 — end-run 같은 토큰이 있어도 false-positive 없음
+        self.assertIsNone(check_bash_mutation("echo end-run"))
+        self.assertIsNone(check_bash_mutation("ls scripts/dcness-helper"))
+
+    def test_helper_token_in_data_position_passes(self):
+        # codex F9 — helper 가 *명령 위치* 가 아니라 데이터일 땐 통과 (false-positive 제거).
+        self.assertIsNone(check_bash_mutation("echo dcness-helper end-run"))
+        self.assertIsNone(check_bash_mutation("echo 'run dcness-helper end-run later'"))
+        self.assertIsNone(check_bash_mutation("grep next-task scripts/dcness-helper"))
+        # 진짜 명령 위치는 여전히 차단 (회귀 아님 확인)
+        self.assertIsNotNone(check_bash_mutation("dcness-helper end-run"))
+        self.assertIsNotNone(check_bash_mutation("bash scripts/dcness-helper next-task"))
+
 
 class GithubMcpMutationTests(unittest.TestCase):
     """#597 커밋5 — check_github_mcp_mutation: PR/repo mutation 차단, read·issue mutation 통과."""

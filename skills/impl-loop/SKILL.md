@@ -266,6 +266,51 @@ chain = 위 공통 골격 + 엔진을 **task 한 개씩** 반복. task N 이 완
 - task **≥ 10** → 계획 표 echo + `진행할까요? (Y/n)` 1회 확인 후 진입.
 - **yolo 모드** (`yolo` / `auto` / `끝까지` / `막힘 없이` / `다 알아서`, [`loop-procedure.md`](../../docs/plugin/loop-procedure.md) yolo 키워드) → task 수 무관 자동 진입.
 
+### 병렬 wave (opt-in, chain 한정, #636)
+
+> 🔴 **기본은 직렬**. 병렬은 *독립 task 가 기계적으로 확신될 때만* opt-in 으로 켜진다. 정책 SSOT = [`parallel-policy.md`](../../docs/plugin/parallel-policy.md) (모델 A: worktree 격리 fan-in). 본 절은 그 정책의 *절차* 만 담는다.
+
+dry preview 표 echo *직후*, wave 후보를 계산한다 (판정은 harness 자동 — 사용자가 의존 사슬을 손으로 추적하지 않는다):
+
+```bash
+# dry preview 표의 risk 열에서 high-risk 로 판정한 task slug 들을 --high-risk 로 넘긴다.
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/dcness-helper" wave-plan <impl-glob-or-dir> \
+  --high-risk <high-risk-slug1,high-risk-slug2>   # 없으면 생략
+```
+
+> 🔴 **고위험 판정 전달 (MUST)**: 정책의 "migration/destructive/security/도메인 invariant → 직렬" 은 *의미* 판정이라 경로만으론 못 잡는다. dry preview 의 risk 열(`high-risk`)이 진본이며, 그 slug 들을 `--high-risk` 로 넘겨야 driver 가 직렬로 강등한다. 경로상 명백한 것(migrations/·secrets·.env)은 harness 가 backstop 으로 자동 직렬화하지만, auth 로직·도메인 invariant 처럼 의미 기반 고위험은 메인이 넘기지 않으면 병렬로 샐 수 있다.
+
+- `has_parallel=false` → **전부 직렬** — 본 절 전체 skip, 기존 직렬 chain 그대로 (아무 것도 안 바뀜). 대부분의 chain 이 이 경로다.
+- `has_parallel=true` → 각 `parallel` step 의 task 묶음을 표에 한 줄 덧붙여 echo + **opt-in 1회 확인**: `wave: [taskX, taskY] 병렬로 갈까요? (Y/n)`.
+  - **yolo 모드여도 병렬은 자동 ON 하지 않는다** — 병렬은 명시적 opt-in 한정 (직렬이 더 안전한 default). yolo 는 직렬 진입만 자동화.
+  - `n` / 무응답 / 모호 → 그 wave 직렬 fallback (각 task 를 순서대로 직렬 진행).
+  - `Y` → 아래 3단계 (build 병렬 → fan-in gate → merge 직렬) 실행.
+
+판정식·3-state `depends_on`·Scope 정규화·fallback 조건은 모두 `wave-plan` 이 [`parallel-policy.md`](../../docs/plugin/parallel-policy.md) 의 독립성 판정·병렬 금지 조건대로 계산한다. 메인은 결과 JSON 만 읽는다.
+
+**① build 병렬** — wave 의 각 task 마다 격리 worktree + worker:
+
+- task 별 별도 worktree: `git worktree add <wt_path> -b <task-branch> <base-ref>` (base = chain base; 통합 브랜치 모드면 그 integration branch).
+- 각 worktree 에서 build-worker 1명 호출. worker prompt 에 impl 경로 + task slug + **patch/evidence only 경계** 명시 ([`build-worker-agent.md` 병렬 wave 경계](../../agents/build-worker/build-worker-agent.md#권한-경계)): worker 는 코드 변경 + 테스트 결과 + evidence prose 만 반환. `git push` / PR 생성·머지 / issue close / `dcness-helper` run·ledger·checkpoint 금지. transport 용 로컬 commit 은 허용(authoritative 아님).
+- 동시성 상한 `max_parallel_workers=2` (정책 비용가드). 초과 task 는 다음 wave 또는 직렬.
+- 외부 활성 프로젝트에서는 worker(sub-agent)의 leader-owned helper/push/PR 가 [`agent_boundary.py`](../../harness/agent_boundary.py) 로 구조적 차단된다(prompt 경계 + 코드 경계 이중).
+
+**② fan-in gate (leader, 직렬 진입 허가만)** — 정책의 fan-in 검증 최소 절차:
+
+1. 각 worker worktree 의 변경 파일(`git -C <wt> diff --name-only <base>`) + evidence 수집.
+2. 별도 fan-in worktree 에 wave patch 들을 합친다 (`git -C <fanin> cherry-pick` 또는 `git apply`).
+3. **scope 준수**(각 변경 파일이 그 task `수정 허용` 안) + **cross-worker 파일 충돌**(두 worker 가 같은 파일) + **evidence 존재** 판정. 이 구조 게이트의 판정 로직 = [`parallel_wave.fan_in_check`](../../harness/parallel_wave.py) (PASS/FALLBACK).
+4. aggregate tree 전체 테스트를 1회 이상 돌린다 (이 *실행* 은 leader Bash — 구조 게이트와 별개의 절차 요건).
+5. **PASS** → ③ merge 단계 진입. **FAIL** → 충돌/실패 worker 산출물만 폐기하고 그 task 를 직렬 chain 으로 강등(나머지 wave 는 PASS 분만 진행 가능).
+
+**③ merge 직렬 (leader)** — fan-in PASS *후에도* 기존 규칙 그대로:
+
+- wave 의 task 를 **한 개씩 직렬**로 PR 생성 → pr-reviewer → merge → issue close. 병렬 worker 완료 ≠ task 완료. task 완료는 leader 의 PR merge + issue close 로만 성립.
+- `aggregate gate PASS 는 merge 단계 진입 허가일 뿐, PR 별 pr-reviewer·CI 검증을 생략하지 않는다`.
+- `1 task = 1 PR` 과 issue close semantics 유지. run-review / ROI marker 의 분석 단위는 task별 직렬 merge 기준이라 깨지지 않는다 (정책의 측정·분석 단위 보존).
+
+> wave 가 끝나면 그 build 용 worktree 들은 squash 흡수 후 정리한다 (fan-in worktree 포함). chain 의 다음 step(직렬 task 또는 다음 wave)으로 진행.
+
 ### task 경계 — next-task 통합 호출 (#471)
 
 마지막이 아닌 task 종료 시 `dcness-helper next-task --entry-point impl` 1회 호출 — helper 가 (이전 run end-run + previous review.md stdout + 새 run begin-run) 통합 처리 → 메인은 stdout 의 `[new] run_id` 만 받아 다음 task 진입. *마지막* task = `next-task` 대신 `end-run` 단독.
@@ -367,7 +412,7 @@ PR merge 직후 *반드시* 실행 (issue #396):
 ## 안티패턴 (회귀 방지)
 
 - ❌ task N 개를 한 sub-agent 호출에 묶어 한 번에 처리 — task 별 PR / 이슈 close 분리가 깨지고 `/run-review` 분석 단위 붕괴. 한 번에 한 task. (build-worker 는 1 task 통합 — 충돌 X)
-- ❌ task 동시 병렬 진행 — git 충돌 + cache_read 폭주 ([#216](https://github.com/alruminum/dcNess/issues/216) — \$1,531 / 단일 세션). 현재 chain 은 직렬만 동작. (독립 task 의 opt-in 병렬 wave 정책은 [`parallel-policy.md`](../../docs/plugin/parallel-policy.md) 에 정의 — driver 미구현이라 현 시점 동작은 직렬.)
+- ❌ **무분별한** task 동시 병렬 진행 — git 충돌 + cache_read 폭주 ([#216](https://github.com/alruminum/dcNess/issues/216) — \$1,531 / 단일 세션). 직렬이 default 이며, 병렬은 *독립 task 가 기계 판정으로 확신될 때만* opt-in 으로 켜진다 ([병렬 wave](#병렬-wave-opt-in-chain-한정-636) — worktree 격리 fan-in: build 만 병렬, merge 는 leader 직렬). 정책 = [`parallel-policy.md`](../../docs/plugin/parallel-policy.md). opt-in 없이/모호한데 병렬로 끌면 안티패턴 그대로.
 - ❌ 한 task 의 PR 머지 전 다음 task 진입 — task 간 의존 깨짐.
 - ❌ escalate 신호 무시하고 다음 task 진행 — 사용자 부재 환경 추측 진행 = 폭주.
 - ❌ chain 전체 완료 후 자율 작업 (이슈 등록 / cleanup / 분석) 진입 시 `post-task-begin` marker 누락 — task ROI 측정 왜곡 (#472).

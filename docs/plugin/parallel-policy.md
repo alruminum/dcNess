@@ -2,7 +2,7 @@
 
 > impl chain 의 **opt-in 병렬 확장** 정책 SSOT. 기본은 직렬 chain 이고, 병렬은 독립 task 가 명확히 판정될 때만 켜지는 예외다. 상위 doctrine = [`CLAUDE.md` dcness 강제 원칙](../../CLAUDE.md#dcness-강제-원칙-룰-추가설계-시-가드레일). lane/shape 판정 = [`workflow-router.md`](workflow-router.md). chain mechanics = [`loop-procedure.md`](loop-procedure.md).
 >
-> 🔴 **범위 주의** — 본 문서는 *정책*(허용/금지 조건 · 권한 경계 · 판정 입력 스키마)을 고정한다. 병렬 wave 를 실제로 오케스트레이션하는 **driver 구현은 본 문서 범위 밖**이며 후속 작업이다. 현재 [`impl-loop`](../../skills/impl-loop/SKILL.md) chain 은 **직렬로만 동작**한다.
+> 🔴 **범위** — 본 문서는 *정책*(허용/금지 조건 · 권한 경계 · 판정 입력 스키마) SSOT 다. driver 구현(#636)은 이 정책을 다음으로 하강한다: 판정 코어 [`parallel_wave.py`](../../harness/parallel_wave.py) (`compute_waves` / `fan_in_check`) + `dcness-helper wave-plan` 헬퍼 + 오케스트레이션 절차 [`impl-loop` SKILL 병렬 wave 절](../../skills/impl-loop/SKILL.md#병렬-wave-opt-in-chain-한정-636). **기본은 여전히 직렬 chain 이고, 병렬은 독립 task 가 기계 판정으로 확신될 때만 opt-in 으로 켜진다.**
 
 ## 1. doctrine — 직렬이 기본, 병렬은 조건부 예외
 
@@ -73,6 +73,8 @@ active conveyor run 안의 `Agent` 호출은 직전 `begin-step` 의 단일 `cur
 - fan-in 검증(aggregate test / scope·conflict) 실패.
 - migration / destructive / security / 도메인 invariant 변경 같은 고위험 task.
 
+> **고위험 enforce 방식** — 고위험은 *의미* 판정이라 경로만으론 못 잡는다. (1) 메인 dry-preview 의 risk 열(`high-risk`)이 진본이며 그 slug 를 `wave-plan --high-risk` 로 driver 에 넘겨 직렬 강등한다. (2) 경로상 명백한 것(`migrations/`·`alembic/`·`.env`·`secrets`·`credentials`)은 parser 가 backstop 으로 자동 직렬화한다. (3) architect 가 impl frontmatter 에 `parallel: serial` 또는 `risk: high-risk` 를 적으면 그 task 는 무조건 직렬.
+
 ## 5. 권한 경계 — leader-owned vs worker
 
 | 행위 | leader (메인) | worker |
@@ -108,19 +110,23 @@ active conveyor run 안의 `Agent` 호출은 직전 `begin-step` 의 단일 `cur
 - run-review / ROI marker 의 분석 단위는 **task 별 직렬 merge 단계** 기준으로 유지된다. build 가 병렬이어도 merge 가 직렬이라 `1 task = 1 run = 1 review` 단위가 깨지지 않는다.
 - ledger 가 wave 구조(어느 task 가 같은 wave 였는지)를 인지하도록 하는 확장은 후속이다.
 
-## 9. agent_boundary 검토 결론
+## 9. agent_boundary 강제 (driver 구현으로 확정 — #636)
 
-현재 [`agent_boundary.py`](../../harness/agent_boundary.py) 는 sub-agent 의 `git push` 와 `gh` mutation 만 차단하고, `git commit` / 내부 helper / ledger 이벤트는 통과시킨다.
+[`agent_boundary.py`](../../harness/agent_boundary.py) 의 `check_bash_mutation` 은 sub-agent 의 `git push` / `gh` mutation 에 더해, **leader-owned run-lifecycle `dcness-helper` 서브커맨드**(`begin-run` / `end-run` / `next-task` / `post-task-begin` / `finalize-run` / `ledger-event` / `init-session` / `prev-tasks-reset`)를 차단한다. 호출 형태 3가지(wrapper 직접 / `bash <path>/dcness-helper` / `python -m harness.session_state`)를 모두 식별한다.
 
-- 위 "실행모델"에서 worker 는 **격리 worktree sub-agent** 라 leader 의 ledger helper 에 구조적으로 접근하기 어렵다 → 본 정책 단계에서는 **prompt-only 권한 명시**(agent 지침 + 본 문서 "권한 경계")로 1차 충분하다.
-- 다만 fallback 경로 등에서 worker 가 leader-owned mutation 을 호출할 수 있는 통로가 생기면, `agent_boundary.py` 에 worker→leader-mutation 차단을 추가할지 검토한다. 이 결정은 driver 의 실행모델 확정값에 종속되므로 **driver 구현 이슈에서 확정**한다.
+- 차단 대상은 **run 시작/종료/경계/checkpoint + 파괴적 reset** 한정이다 — 이들은 어떤 sub-agent 도 호출하지 않아(전수 확인) 차단해도 기존 흐름 회귀가 0이다.
+- **의도적 제외** — serial build-worker(sub-agent)가 정상적으로 호출하는 것은 구조 차단하지 않는다: `begin-step`/`end-step`(hybrid-A 가 phase 마다 직접 호출 — [`loop-procedure.md`](loop-procedure.md))과 `prev-tasks-append`(phase 3 산출 누적). agent_boundary 는 parallel-worker 와 serial-build-worker 를 구별할 신호가 없으므로, 이들은 막으면 직렬 conveyor 가 깨진다. 병렬 worker 의 step/prev-tasks-append 경계는 **prompt 경계**("권한 경계" + agent 지침)로 닫는다.
+- **prev-tasks `append`(추가) 허용 / `reset`(삭제) 차단 비대칭** — append 는 build-worker 가 호출하지만, reset 은 메인 전담이고 메인 repo 의 handoff FIFO 를 *삭제*하는 파괴적 연산이라 병렬 worker 가 leader 컨텍스트를 못 지우게 차단한다.
+- 따라서 경계는 **run-lifecycle = 코드 차단**, **step/prev-tasks·기타 = prompt 경계** 의 조합이다. `git commit`(transport)·read-only helper(`run-dir` / `run-status` / `is-active` / `status` / `routing` / `wave-plan`)도 통과.
+- 한계: 변수 indirection(`"$HELPER" end-run`) 등은 미탐 — 본 guard 는 보안 경계가 아니라 best-effort denylist(기존 git/gh 차단과 동일 시맨틱).
+- dcness self repo 는 infra 라 이 guard 가 bypass 된다(기존 git-push 차단과 동일) — 강제는 *외부 활성 프로젝트* 에서 발화한다.
 
-## 10. 범위 경계 — 본 정책 vs 후속
+## 10. 범위 경계 — 정책(#589) → driver(#636) → 후속
 
-| 본 정책(고정 완료) | 후속 이슈(범위 밖) |
-|---|---|
-| 병렬 허용/금지 조건 | 병렬 wave driver 오케스트레이션 구현 |
-| leader/worker 권한 목록 | wave-level integration validator 자동화 |
-| fan-in 검증 최소 절차 | ledger 의 wave 구조 인지 |
-| 판정 입력 스키마 (`depends_on` · Scope 파일집합) | `max_parallel_workers` 상한 상향 |
-| 직렬 chain default 명시 | `agent_boundary.py` worker 차단 코드(실행모델 확정 후) |
+| 정책 고정 (#589) | driver 구현 완료 (#636) | 후속 이슈(범위 밖) |
+|---|---|---|
+| 병렬 허용/금지 조건 | wave 후보 계산(`compute_waves`) + `wave-plan` 헬퍼 + dry preview opt-in | wave-level integration validator 자동화 |
+| leader/worker 권한 목록 | `agent_boundary.py` worker→leader-mutation 코드 차단 (agent_boundary 강제) | ledger 의 wave 구조 인지 |
+| fan-in 검증 최소 절차 | `fan_in_check`(scope 준수 + 충돌 + evidence) + leader aggregate test 절차 | `max_parallel_workers` 상한 상향 (실측 후) |
+| 판정 입력 스키마 (`depends_on` · Scope) | 3-state 파싱 + Scope 경로 정규화 파서 | run-review 의 wave 단위 집계 |
+| 직렬 chain default 명시 | 직렬 default 유지 + 병렬 opt-in 절차 (SKILL §병렬 wave) | 한 세션 병렬 Agent 실행모델 |
