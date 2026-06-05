@@ -24,7 +24,7 @@
 """
 from __future__ import annotations
 
-import fnmatch
+import glob as _globmod
 import json
 import re
 import sys
@@ -335,17 +335,72 @@ def parse_impl_task(path: str | Path) -> ImplTask:
 # ── Scope 충돌 판정 ──────────────────────────────────────────
 
 
+def _has_glob(p: str) -> bool:
+    return "*" in p or "?" in p or "[" in p
+
+
+def _glob_to_regex(pattern: str) -> str:
+    """glob → regex. `*` 는 path segment 안에서만(`/` 안 넘음), `**` 는 `/` 넘음."""
+    out: list[str] = []
+    i = 0
+    n = len(pattern)
+    while i < n:
+        ch = pattern[i]
+        if ch == "*":
+            if i + 1 < n and pattern[i + 1] == "*":
+                out.append(".*")  # ** → recursive (crosses /)
+                i += 2
+                continue
+            out.append("[^/]*")  # * → segment-local (no /)
+            i += 1
+            continue
+        if ch == "?":
+            out.append("[^/]")
+            i += 1
+            continue
+        out.append(re.escape(ch))
+        i += 1
+    return "".join(out)
+
+
+def _glob_match(path: str, pattern: str) -> bool:
+    """구체 path 가 glob pattern 에 full-match (segment-aware). glob 없으면 정확 비교.
+
+    `fnmatch` 와 달리 `*` 가 `/` 를 넘지 않는다 — `src/*.py` 는 `src/a.py` 만 매치하고
+    `src/sub/a.py` 는 매치 안 함 (fan-in scope gate 우회 차단, #636 codex F4).
+    """
+    if not _has_glob(pattern):
+        return path == pattern
+    return re.fullmatch(_glob_to_regex(pattern), path) is not None
+
+
+def _glob_dir_prefix(p: str) -> str:
+    """glob pattern 의 첫 `*`/`?`/`[` 이전 정적 디렉토리 prefix (trailing `/` 포함)."""
+    idx = len(p)
+    for ch in ("*", "?", "["):
+        j = p.find(ch)
+        if j >= 0:
+            idx = min(idx, j)
+    head = p[:idx]
+    slash = head.rfind("/")
+    return head[: slash + 1] if slash >= 0 else ""
+
+
 def _paths_overlap(a: str, b: str) -> bool:
-    """두 경로가 충돌(동일/디렉토리 포함/glob 매치)하는가."""
+    """두 경로가 충돌(동일/디렉토리 포함/segment-aware glob)하는가."""
     if a == b:
         return True
-    a_dir = a.rstrip("/") + "/"
-    b_dir = b.rstrip("/") + "/"
-    if b.startswith(a_dir) or a.startswith(b_dir):
+    if b.startswith(a.rstrip("/") + "/") or a.startswith(b.rstrip("/") + "/"):
         return True
-    if "*" in a or "*" in b:
-        if fnmatch.fnmatch(b, a) or fnmatch.fnmatch(a, b):
-            return True
+    a_glob, b_glob = _has_glob(a), _has_glob(b)
+    if a_glob and not b_glob:
+        return _glob_match(b, a)
+    if b_glob and not a_glob:
+        return _glob_match(a, b)
+    if a_glob and b_glob:
+        # glob-vs-glob: 정적 디렉토리 prefix 가 nested/equal 이면 보수적으로 충돌 가정.
+        pa, pb = _glob_dir_prefix(a), _glob_dir_prefix(b)
+        return pa == pb or pa.startswith(pb) or pb.startswith(pa)
     return False
 
 
@@ -454,13 +509,17 @@ def compute_waves(
 
 
 def _path_in_scope(path: str, scope: Iterable[str]) -> bool:
-    """changed path 가 declared scope 안인가."""
+    """changed path 가 declared scope 안인가 (fan-in scope gate).
+
+    glob entry 는 segment-aware 매칭 — `src/*.py` 는 `src/sub/a.py` 를 in-scope 로
+    오인하지 않는다 (#636 codex F4: fnmatch 가 `/` 를 안 가려 scope 우회되던 구멍).
+    """
     for entry in scope:
         if path == entry:
             return True
         if path.startswith(entry.rstrip("/") + "/"):
             return True
-        if "*" in entry and fnmatch.fnmatch(path, entry):
+        if _has_glob(entry) and _glob_match(path, entry):
             return True
     return False
 
@@ -523,8 +582,9 @@ def _resolve_impl_paths(raw_paths: list[str]) -> list[Path]:
         if p.is_dir():
             candidates = sorted(p.glob("*.md"))
         elif any(ch in raw for ch in "*?["):
-            base = Path(".")
-            candidates = sorted(base.glob(raw))
+            # glob 모듈은 절대/상대 패턴을 모두 처리 (Path.glob 은 절대 패턴에
+            # NotImplementedError — #636 codex F5). recursive `**` 도 지원.
+            candidates = sorted(Path(m) for m in _globmod.glob(raw, recursive=True))
         elif p.exists():
             candidates = [p]
         else:

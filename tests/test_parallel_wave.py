@@ -225,6 +225,15 @@ class TestScopesDisjoint(unittest.TestCase):
     def test_glob_overlap(self):
         self.assertFalse(scopes_disjoint({"src/*.py"}, {"src/a.py"}))
 
+    def test_glob_segment_aware(self):
+        # codex F4 — `*` 는 `/` 를 넘지 않는다. src/*.py 는 src/sub/a.py 와 disjoint.
+        self.assertTrue(scopes_disjoint({"src/*.py"}, {"src/sub/a.py"}))
+        self.assertTrue(scopes_disjoint({"src/*.py"}, {"lib/*.js"}))
+
+    def test_glob_glob_same_dir_conservative_overlap(self):
+        # glob-vs-glob 같은 디렉토리 → 보수적으로 충돌(직렬) 가정.
+        self.assertFalse(scopes_disjoint({"src/*.py"}, {"src/a*"}))
+
 
 # ── compute_waves ───────────────────────────────────────────
 
@@ -444,6 +453,58 @@ class TestFanInCheck(unittest.TestCase):
         ]
         r = fan_in_check(results)
         self.assertTrue(r.passed)
+
+    def test_glob_scope_segment_aware_violation(self):
+        # codex F4 — glob scope `src/*.py` 선언했는데 src/sub/a.py 를 건드리면
+        # fnmatch 였다면 통과했을 것. segment-aware 라 scope 이탈로 잡아야 함.
+        violator = WorkerResult(
+            "01-a", frozenset({"src/sub/a.py"}), frozenset({"src/*.py"})
+        )
+        self.assertFalse(fan_in_check([violator]).passed)
+        # 같은 glob scope 의 직접 자식은 준수
+        ok = WorkerResult(
+            "02-b", frozenset({"src/a.py"}), frozenset({"src/*.py"})
+        )
+        self.assertTrue(fan_in_check([ok]).passed)
+
+
+class TestWavePlanFromPaths(unittest.TestCase):
+    """경로 인자 전개 — 디렉토리 / 절대 glob / 상대 glob (codex F5)."""
+
+    def _make_two(self, d):
+        _write_impl(
+            d, "01-a.md",
+            "---\ndepends_on: []\n---\n\n## Scope\n\n### 수정 허용\n\n- src/a.py\n",
+        )
+        _write_impl(
+            d, "02-b.md",
+            "---\ndepends_on: []\n---\n\n## Scope\n\n### 수정 허용\n\n- src/b.py\n",
+        )
+
+    def test_directory_arg(self):
+        from harness.parallel_wave import wave_plan_from_paths
+        with tempfile.TemporaryDirectory() as d:
+            self._make_two(d)
+            plan = wave_plan_from_paths([d])
+            self.assertTrue(plan.has_parallel)
+
+    def test_absolute_glob_does_not_crash(self):
+        # codex F5 — 절대경로 glob 은 Path('.').glob 에서 NotImplementedError 였음.
+        from harness.parallel_wave import wave_plan_from_paths
+        with tempfile.TemporaryDirectory() as d:
+            self._make_two(d)
+            plan = wave_plan_from_paths([str(Path(d) / "*.md")])
+            self.assertEqual(len(plan.steps), 1)
+            self.assertEqual(plan.steps[0].mode, "parallel")
+
+    def test_explicit_file_list(self):
+        from harness.parallel_wave import wave_plan_from_paths
+        with tempfile.TemporaryDirectory() as d:
+            self._make_two(d)
+            plan = wave_plan_from_paths(
+                [str(Path(d) / "01-a.md"), str(Path(d) / "02-b.md")]
+            )
+            self.assertTrue(plan.has_parallel)
 
 
 if __name__ == "__main__":
