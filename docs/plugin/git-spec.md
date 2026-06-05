@@ -119,10 +119,12 @@ Part of #N
 > 통합 브랜치 케이스 — stories.md 상단에 `**Base Branch:** feature/{slug}` 마커가 박혀있으면 모든 sub-PR 의 base = 그 통합 브랜치. 마지막 통합 → main 머지 PR 만 base = main + body 에 `Closes #{epic}` + `Closes #{story1...N}` 일괄 박음 ([통합 브랜치 케이스](#통합-브랜치-케이스-base-main-sub-pr-의-auto-close-한계-must)).
 
 `pr-finalize.sh` 내부:
+- peer claim guard 확인 (`merge-lock acquire`) — claim 없는 일반 PR 은 `mode=serial` 로 기존 흐름 유지. claim 이 있으면 repo-level mutex + 같은 story prior `task_index` 완료 evidence 를 확인한 뒤 merge 진입 ([`parallel-policy.md`](parallel-policy.md)).
 - `gh pr merge --auto --merge` (auto-merge 토글)
 - `gh pr checks --watch` (CI 결과 대기)
 - auto-merge 완료 대기 (GitHub 백그라운드 lag)
-- `git checkout main && git pull` (자동 sync)
+- peer claim 이 있으면 completed 기록 (`merge-lock complete`)
+- `git fetch origin main` (origin/main ref 동기화 — worktree 호환)
 - (예정) Test Plan 종합 — 하위 commit 들의 `## Test Plan` 자동 수집·중복 제거·PR body 갱신
 
 argument 없이 호출 시 current branch 의 open PR 자동 검출. 명시 시 `pr-finalize.sh <PR_NUMBER>`.
