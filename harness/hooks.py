@@ -271,7 +271,7 @@ def _strict_conveyor_gate_message(
                 and current_count > count_at_begin
             ):
                 return (
-                    "[strict-conveyor] 이전 step이 이미 .steps.jsonl 에 기록됐습니다 — "
+                    "[strict-conveyor] 이전 step이 이미 ledger.jsonl 에 기록됐습니다 — "
                     f"logged_step={current}. 다음 Agent 호출 전 "
                     f"`{_begin_step_cmd(subagent, mode)}` 로 새 step을 먼저 시작하세요."
                 )

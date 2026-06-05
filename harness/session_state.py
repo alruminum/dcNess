@@ -491,6 +491,31 @@ def start_run(
     run_dir(session_id, run_id, base_dir=base_dir, create=True)
 
 
+def _ledger_run_started(
+    session_id: str,
+    run_id: str,
+    entry_point: str,
+    *,
+    issue_num: Optional[int] = None,
+    base_dir: Optional[Path] = None,
+) -> None:
+    """start_run 직후 ledger run_started checkpoint 기록 (이슈 #587).
+
+    begin-run / next-task 등 *모든 run 시작 경로* 의 공유 path — 한 곳에서만
+    run_started 를 쓰게 해 chain task run 의 run-level audit invariant 누락을
+    막는다 (codex review). 기록 실패가 run 시작을 막지 않게 silent.
+    """
+    try:
+        from harness import ledger
+
+        extra: Dict[str, Any] = {"entry_point": entry_point}
+        if issue_num is not None:
+            extra["issue_num"] = issue_num
+        ledger.append_event(session_id, run_id, "run_started", base_dir=base_dir, **extra)
+    except Exception:
+        pass
+
+
 def update_current_step(
     session_id: str,
     run_id: str,
@@ -525,7 +550,7 @@ def update_current_step(
                 print(
                     f"[session_state] STALE STEP WARN — previous current_step={label} "
                     f"stale {int(stale_sec)}s (> {STALE_STEP_TTL_SEC}s). "
-                    f"end-step 누락 의심 — .steps.jsonl 에 직전 step 기록 안 됨.",
+                    f"end-step 누락 의심 — ledger.jsonl 에 직전 step 기록 안 됨.",
                     file=sys.stderr,
                 )
         except Exception:
@@ -1254,15 +1279,7 @@ def _cli_begin_run(args: Any) -> int:
     rid = generate_run_id()
     issue_num = args.issue_num if args.issue_num is not None else None
     start_run(sid, rid, args.entry_point, issue_num=issue_num)
-    # 이슈 #587 — ledger run_started checkpoint. 기록 실패가 begin-run 막지 않게 silent.
-    try:
-        from harness import ledger
-        _extra = {"entry_point": args.entry_point}
-        if issue_num is not None:
-            _extra["issue_num"] = issue_num
-        ledger.append_event(sid, rid, "run_started", **_extra)
-    except Exception:
-        pass
+    _ledger_run_started(sid, rid, args.entry_point, issue_num=issue_num)
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         write_pid_current_run(cc_pid, rid)
@@ -1421,6 +1438,8 @@ def _cli_next_task(args: Any) -> int:
     except Exception as exc:
         print(f"[next-task] begin-run FAIL — {exc}", file=sys.stderr)
         return 1
+    # 이슈 #587 (codex review) — chain task run 도 run_started checkpoint 남김.
+    _ledger_run_started(sid, new_rid, entry_point)
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         write_pid_current_run(cc_pid, new_rid)
@@ -1824,7 +1843,7 @@ def _cli_end_step(args: Any) -> int:
             print(
                 f"[session_state] DRIFT WARN — current_step 부재. "
                 f"end-step={args.agent}{':' + mode if mode else ''}. "
-                f"begin-step 안 호출하고 end-step 호출. .steps.jsonl 에 기록은 됨.",
+                f"begin-step 안 호출하고 end-step 호출. ledger.jsonl 에 기록은 됨.",
                 file=sys.stderr,
             )
     except Exception:
@@ -2049,11 +2068,11 @@ def _cli_finalize_run(args: Any) -> int:
     has_must_fix = any(s.get("must_fix") for s in latest_steps)
 
     # DCN-CHG-20260430-25: --expected-steps 검증 — skill 이 정상 시퀀스 step 수
-    # 명시 시 .steps.jsonl row count 미만이면 stderr WARN. /impl-loop 자기검증.
+    # 명시 시 ledger.jsonl step_completed 수 미만이면 stderr WARN. /impl-loop 자기검증.
     expected = getattr(args, "expected_steps", None)
     if expected is not None and len(steps) < expected:
         print(
-            f"[session_state] STEP COUNT WARN — .steps.jsonl row={len(steps)} < "
+            f"[session_state] STEP COUNT WARN — ledger.jsonl step_completed={len(steps)} < "
             f"expected={expected}. inner step 누락 의심 — Agent 호출 후 end-step "
             f"안 부른 케이스 (drift). /run-review 로 진단 권고.",
             file=sys.stderr,

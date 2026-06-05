@@ -923,7 +923,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
             rc = _cli_finalize_run(SimpleNamespace(expected_steps=5))
         self.assertEqual(rc, 0)
         self.assertIn("STEP COUNT WARN", err.getvalue())
-        self.assertIn("row=0", err.getvalue())
+        self.assertIn("step_completed=0", err.getvalue())
         self.assertIn("expected=5", err.getvalue())
 
     def test_finalize_run_no_warn_when_expected_none(self) -> None:
@@ -2405,6 +2405,54 @@ class PostTaskBeginMarkerTests(unittest.TestCase):
         # 오래된 5개 (reason-0 ~ reason-4) trim, reason-5 ~ reason-24 남음
         self.assertEqual(markers[0]["reason"], "reason-5")
         self.assertEqual(markers[-1]["reason"], "reason-24")
+
+
+class NextTaskLedgerTests(unittest.TestCase):
+    """이슈 #587 (codex review) — next-task 가 chain 새 run 에 run_started 를 남겨야."""
+
+    def setUp(self) -> None:
+        self._cwd = os.getcwd()
+        self._td = TemporaryDirectory()
+        os.environ.pop("DCNESS_SESSION_ID", None)
+        os.environ.pop("DCNESS_RUN_ID", None)
+
+    def tearDown(self) -> None:
+        os.chdir(self._cwd)
+        self._td.cleanup()
+        os.environ.pop("DCNESS_SESSION_ID", None)
+        os.environ.pop("DCNESS_RUN_ID", None)
+
+    def test_next_task_appends_run_started(self) -> None:
+        import contextlib
+        import io
+        import re as _re
+        from types import SimpleNamespace
+
+        from harness import ledger
+        from harness.session_state import _cli_next_task, _clear_default_base_cache
+
+        repo = Path(self._td.name) / "repo"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+        sid = "11111111-2222-4333-8444-555555555555"
+        os.environ["DCNESS_SESSION_ID"] = sid
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            rc = _cli_next_task(SimpleNamespace(entry_point="impl"))
+        self.assertEqual(rc, 0)
+        m = _re.search(r"\[new\] run_id: (run-[0-9a-f]+)", out.getvalue())
+        self.assertIsNotNone(m, out.getvalue())
+        new_rid = m.group(1)
+        events = ledger.read_events(sid, new_rid)
+        self.assertTrue(
+            any(
+                e.get("event") == "run_started" and e.get("entry_point") == "impl"
+                for e in events
+            ),
+            f"next-task 새 run 에 run_started 누락: {events}",
+        )
 
 
 if __name__ == "__main__":

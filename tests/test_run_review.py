@@ -1126,5 +1126,41 @@ class ToolHistogramTableTests(unittest.TestCase):
             self.assertIn("engineer", joined)
 
 
+class ListRunsLedgerTests(unittest.TestCase):
+    """이슈 #587 (codex review) — list_runs 가 빈 active run 을 latest 후보에서 제외."""
+
+    def test_excludes_empty_active_run(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            # empty active run — run_started/step_started 만 (step_completed 0)
+            _make_run_dir_ledger(tmp, "sidE", "ridEmpty", [
+                {"event": "run_started", "ts": "2026-05-01T10:00:00", "entry_point": "impl"},
+                {"event": "step_started", "ts": "2026-05-01T10:00:01",
+                 "agent": "engineer", "mode": "IMPL"},
+            ])
+            # 완료 run — step_completed 있음
+            _make_run_dir_ledger(tmp, "sidD", "ridDone", [
+                {"event": "step_completed", "ts": "2026-05-01T09:00:00", "agent": "engineer",
+                 "mode": None, "enum": "PROSE_LOGGED", "must_fix": False,
+                 "prose_excerpt": "x", "prose_file": "/dev/null"},
+            ])
+            sessions_root = tmp / ".claude" / "harness-state" / ".sessions"
+            names = [r.name for r in list_runs(sessions_root)]
+            self.assertIn("ridDone", names)
+            self.assertNotIn("ridEmpty", names)
+
+    def test_includes_legacy_steps_run(self) -> None:
+        """옛 .steps.jsonl 만 있는 run 도 포함 (폴백 호환)."""
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            _make_run_dir(tmp, "sidL", "ridLegacy", [
+                {"ts": "2026-05-01T08:00:00", "agent": "qa", "mode": None,
+                 "enum": "PROSE_LOGGED", "must_fix": False, "prose_excerpt": "y"},
+            ])
+            sessions_root = tmp / ".claude" / "harness-state" / ".sessions"
+            names = [r.name for r in list_runs(sessions_root)]
+            self.assertIn("ridLegacy", names)
+
+
 if __name__ == "__main__":
     unittest.main()

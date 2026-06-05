@@ -236,7 +236,16 @@ class RunReport:
 # ── Run discovery ─────────────────────────────────────────────────────
 
 def list_runs(sessions_root: Path) -> list[Path]:
-    """`.sessions/{sid}/runs/{rid}/` 디렉토리 list (mtime 내림차순)."""
+    """`.sessions/{sid}/runs/{rid}/` 디렉토리 list (mtime 내림차순).
+
+    이슈 #587 (codex review medium): step_completed event 가 1개 이상인 run 만
+    포함한다. 신규 ledger 는 begin-run/begin-step 시점에 event 를 쓰므로 ledger.jsonl
+    존재만으로 포함하면 *방금 시작한 빈 active run* 이 implicit --latest 로 선택돼
+    zero-step 리포트가 나온다. 옛 .steps.jsonl 은 첫 end-step 후 생겼으므로 이
+    필터가 옛 "파일 존재 = 최소 1 step" 동작과 동등하다.
+    """
+    from harness import ledger
+
     if not sessions_root.exists():
         return []
     runs = []
@@ -245,8 +254,7 @@ def list_runs(sessions_root: Path) -> list[Path]:
         if not runs_dir.is_dir():
             continue
         for rid_dir in runs_dir.iterdir():
-            # 이슈 #587 — ledger.jsonl (신규 단일 SSOT) 또는 옛 .steps.jsonl 둘 다 인정.
-            if (rid_dir / "ledger.jsonl").exists() or (rid_dir / ".steps.jsonl").exists():
+            if ledger.read_step_completed_at(rid_dir):
                 runs.append(rid_dir)
     return sorted(runs, key=lambda p: p.stat().st_mtime, reverse=True)
 

@@ -143,16 +143,52 @@ class ReadEventsFallbackTests(unittest.TestCase):
             self.assertEqual(events[0]["agent"], "build-test")
             self.assertEqual(events[0]["prose_file"], "/tmp/build-test.md")
 
-    def test_ledger_takes_precedence_over_legacy(self) -> None:
+    def test_mixed_merges_legacy_and_ledger(self) -> None:
+        """plugin 업데이트가 진행 중 run 에 걸침 — legacy step + 새 ledger event 둘 다 보존 (codex high).
+
+        ledger.jsonl 만 읽으면 옛 .steps.jsonl step 이 사라져 occurrence count 리셋 →
+        prose 덮어쓰기. legacy (시간상 먼저) 를 앞에 두고 merge 해야 한다.
+        """
         with TemporaryDirectory() as d:
             base = Path(d)
             _seed_run(base)
-            # 둘 다 존재 — ledger 우선
-            ledger.append_event(_SID, _RID, "run_started", base_dir=base)
+            # 옛 코드 구간 — .steps.jsonl 에 step row
             legacy = ledger.legacy_steps_path(_SID, _RID, base_dir=base)
-            legacy.write_text(json.dumps({"agent": "x", "mode": None}) + "\n", encoding="utf-8")
+            legacy.write_text(
+                json.dumps({"agent": "old-step", "mode": None, "enum": "PROSE_LOGGED",
+                            "prose_excerpt": "old", "must_fix": False,
+                            "prose_file": "/tmp/old.md"}) + "\n",
+                encoding="utf-8")
+            # plugin 업데이트 후 — 새 코드가 ledger.jsonl 에 event 생성
+            ledger.append_event(_SID, _RID, "step_started", base_dir=base, agent="new-step")
+            ledger.append_step_completed(
+                _SID, _RID, "new-step", None, "PROSE_LOGGED", "new", "/tmp/new.md", base_dir=base)
+            # legacy step 이 사라지지 않고 시간상 먼저로 merge
             events = ledger.read_events(_SID, _RID, base_dir=base)
-            self.assertEqual([e["event"] for e in events], ["run_started"])
+            self.assertEqual(events[0]["event"], "step_completed")
+            self.assertEqual(events[0]["agent"], "old-step")
+            steps = ledger.read_step_completed(_SID, _RID, base_dir=base)
+            self.assertEqual([s["agent"] for s in steps], ["old-step", "new-step"])
+            # occurrence count 가 legacy 포함 (prose 덮어쓰기 방지)
+            self.assertEqual(
+                ledger.count_step_completed(_SID, _RID, "old-step", None, base_dir=base), 1)
+
+    def test_malformed_line_warns(self) -> None:
+        """손상 레코드 가시화 — malformed 줄 skip + stderr WARN (codex medium)."""
+        import contextlib
+        import io
+        with TemporaryDirectory() as d:
+            base = Path(d)
+            _seed_run(base)
+            lp = ledger.ledger_path(_SID, _RID, base_dir=base)
+            lp.write_text(
+                '{"event": "run_started", "ts": "t"}\n{truncated broken json...\n',
+                encoding="utf-8")
+            buf = io.StringIO()
+            with contextlib.redirect_stderr(buf):
+                events = ledger.read_events(_SID, _RID, base_dir=base)
+            self.assertEqual(len(events), 1)
+            self.assertIn("malformed", buf.getvalue().lower())
 
 
 class ReadStepCompletedTests(unittest.TestCase):

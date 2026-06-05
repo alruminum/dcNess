@@ -47,6 +47,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -134,10 +135,17 @@ def legacy_steps_path(
 
 
 def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
-    """jsonl 전체 읽기 — 깨진 줄 skip, 파일 없으면 빈 리스트."""
+    """jsonl 전체 읽기 — 깨진 줄 skip, 파일 없으면 빈 리스트.
+
+    손상 가시화 (이슈 #587 codex review): truncated lifecycle event (crash /
+    partial write) 가 "없던 event" 와 구분 안 되면 resume/finalize 가 stale
+    state 로 silent 폴백한다. malformed 줄이 있으면 stderr 1회 WARN — 정상 시엔
+    0건이라 노이즈 없음.
+    """
     if not path.exists():
         return []
     out: List[Dict[str, Any]] = []
+    malformed = 0
     try:
         for line in path.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -146,11 +154,28 @@ def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
             try:
                 rec = json.loads(line)
             except json.JSONDecodeError:
+                malformed += 1
                 continue
             if isinstance(rec, dict):
                 out.append(rec)
     except OSError:
         return []
+    if malformed:
+        print(
+            f"[ledger] {malformed} malformed line(s) skipped in {path} — "
+            f"손상 가능 (truncated write?). run-status / run-review 로 상태 확인 권장.",
+            file=sys.stderr,
+        )
+    return out
+
+
+def _normalize_legacy_rows(legacy: Path) -> List[Dict[str, Any]]:
+    """옛 .steps.jsonl row 를 step_completed event 로 normalize."""
+    out: List[Dict[str, Any]] = []
+    for row in _read_jsonl(legacy):
+        if "event" not in row:
+            row = {"event": "step_completed", **row}
+        out.append(row)
     return out
 
 
@@ -188,19 +213,24 @@ def append_event(
 def _read_events_paths(
     primary: Path, legacy: Path
 ) -> List[Dict[str, Any]]:
-    """ledger.jsonl 우선, 없으면 옛 .steps.jsonl 폴백 (step_completed 로 normalize).
+    """ledger.jsonl + 옛 .steps.jsonl 통합 읽기 (마이그레이션 셔틀).
 
     저수준 — sid/rid 버전 (`read_events`) 과 run_dir Path 버전 (`read_events_at`)
     공통 본체. 마이그레이션 셔틀이 한 곳에만 살게 한다.
+
+    🔴 mixed-version merge (이슈 #587 codex review high): plugin 업데이트가 진행 중
+    run 에 걸치면 한 run 에 옛 .steps.jsonl row (업데이트 전) 와 새 ledger.jsonl
+    event (업데이트 후) 가 *둘 다* 존재할 수 있다. ledger 만 읽으면 옛 step 이
+    통째로 사라져 occurrence count 가 리셋되고 prose 파일이 덮어써지며
+    finalize/strict-gate/run_review 가 step 수를 적게 본다. 옛 코드는 .steps.jsonl
+    에만, 새 코드는 ledger.jsonl 에만 쓰므로 step 중복은 없다 — legacy (시간상
+    먼저) 를 앞에 두고 concat 해 시간순을 보존한다.
     """
-    if primary.exists():
-        return _read_jsonl(primary)
-    out: List[Dict[str, Any]] = []
-    for row in _read_jsonl(legacy):
-        if "event" not in row:
-            row = {"event": "step_completed", **row}
-        out.append(row)
-    return out
+    primary_events = _read_jsonl(primary) if primary.exists() else []
+    legacy_events = _normalize_legacy_rows(legacy) if legacy.exists() else []
+    if primary_events and legacy_events:
+        return legacy_events + primary_events
+    return primary_events or legacy_events
 
 
 def read_events(
