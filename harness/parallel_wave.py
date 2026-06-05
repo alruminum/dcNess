@@ -277,9 +277,11 @@ def _parse_risk_marker(fm_lines: list[str]) -> bool:
 _INHERENT_HIGH_RISK_RE = re.compile(
     r"(^|/)migrations?(/|$)"
     r"|(^|/)alembic(/|$)"
-    r"|(^|/)\.env(\.[^/]*)?$"
-    r"|(^|/)secrets?(/|\.[^/]+|$)"
-    r"|(^|/)credentials?(/|\.[^/]+|$)"
+    # `.env` 계열 — `.env`, `.env.local`, `.env*`(glob), `.env-prod` 등. 뒤가
+    # `. / * -` 또는 끝일 때만 → `.environment` 같은 무관 경로 오탐 방지 (#636 F15).
+    r"|(^|/)\.env([./*\-]|$)"
+    r"|(^|/)secrets?([./*\-]|$)"
+    r"|(^|/)credentials?([./*\-]|$)"
 )
 
 

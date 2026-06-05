@@ -254,11 +254,19 @@ class TestHighRisk(unittest.TestCase):
             "- migrations/0007_add.py",
             "- alembic/versions/x.py",
             "- config/.env",
+            "- config/.env*",          # codex F15 — glob 변종
+            "- config/.env.local",     # suffix 변종
             "- app/secrets/keys.json",
             "- src/credentials.py",
         ):
             t = self._parse("", scope)
             self.assertTrue(t.force_serial, f"{scope} 는 고위험이어야")
+
+    def test_inherent_high_risk_no_false_positive(self):
+        # codex F15 — `.environment`·`env_utils` 처럼 무관한 경로는 고위험 아님.
+        for scope in ("- .environment/conf.py", "- src/env_utils.py"):
+            t = self._parse("", scope)
+            self.assertFalse(t.force_serial, f"{scope} 는 고위험 아님")
 
     def test_risk_frontmatter_marker(self):
         t = self._parse("risk: high-risk\n", "- src/x.py")

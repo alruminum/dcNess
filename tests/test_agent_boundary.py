@@ -765,7 +765,14 @@ class BashMutationTests(unittest.TestCase):
         self.assertIsNone(
             check_bash_mutation("bash scripts/dcness-helper prev-tasks-append --slug 01-x --summary y")
         )
-        self.assertIsNone(check_bash_mutation("dcness-helper prev-tasks-reset"))
+
+    def test_helper_prev_tasks_reset_blocked(self):
+        # codex F16 — append(추가)는 build-worker 호출이라 허용하지만, reset(삭제)은
+        # 메인 전담 + 파괴적(handoff FIFO 삭제)이라 차단. 비대칭.
+        self.assertIsNotNone(check_bash_mutation("dcness-helper prev-tasks-reset"))
+        self.assertIsNotNone(
+            check_bash_mutation("bash scripts/dcness-helper prev-tasks-reset")
+        )
 
     def test_helper_readonly_subcommand_passes(self):
         # read-only 서브커맨드는 통과 (worker 가 run_dir 등 조회는 무해)
