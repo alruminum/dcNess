@@ -1687,7 +1687,10 @@ def _cli_wave_plan(args: Any) -> int:
 
     from harness import parallel_wave
 
-    plan = parallel_wave.wave_plan_from_paths(args.paths, args.max_parallel)
+    high_risk = parallel_wave._split_csv(getattr(args, "high_risk", ""))
+    plan = parallel_wave.wave_plan_from_paths(
+        args.paths, args.max_parallel, high_risk
+    )
     print(_json.dumps(plan.to_dict(), ensure_ascii=False, indent=2))
     return 0
 
@@ -2445,6 +2448,12 @@ def _build_arg_parser() -> Any:
         default=parallel_wave.DEFAULT_MAX_PARALLEL_WORKERS,
         dest="max_parallel",
         help=f"동시성 상한 (default {parallel_wave.DEFAULT_MAX_PARALLEL_WORKERS})",
+    )
+    p_wp.add_argument(
+        "--high-risk",
+        default="",
+        dest="high_risk",
+        help="메인 dry-preview 고위험 판정 slug (콤마 구분) → 직렬 강제",
     )
     p_wp.set_defaults(func=_cli_wave_plan)
 

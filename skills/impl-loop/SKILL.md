@@ -273,8 +273,12 @@ chain = 위 공통 골격 + 엔진을 **task 한 개씩** 반복. task N 이 완
 dry preview 표 echo *직후*, wave 후보를 계산한다 (판정은 harness 자동 — 사용자가 의존 사슬을 손으로 추적하지 않는다):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/dcness-helper" wave-plan <impl-glob-or-dir>
+# dry preview 표의 risk 열에서 high-risk 로 판정한 task slug 들을 --high-risk 로 넘긴다.
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/dcness-helper" wave-plan <impl-glob-or-dir> \
+  --high-risk <high-risk-slug1,high-risk-slug2>   # 없으면 생략
 ```
+
+> 🔴 **고위험 판정 전달 (MUST)**: 정책의 "migration/destructive/security/도메인 invariant → 직렬" 은 *의미* 판정이라 경로만으론 못 잡는다. dry preview 의 risk 열(`high-risk`)이 진본이며, 그 slug 들을 `--high-risk` 로 넘겨야 driver 가 직렬로 강등한다. 경로상 명백한 것(migrations/·secrets·.env)은 harness 가 backstop 으로 자동 직렬화하지만, auth 로직·도메인 invariant 처럼 의미 기반 고위험은 메인이 넘기지 않으면 병렬로 샐 수 있다.
 
 - `has_parallel=false` → **전부 직렬** — 본 절 전체 skip, 기존 직렬 chain 그대로 (아무 것도 안 바뀜). 대부분의 chain 이 이 경로다.
 - `has_parallel=true` → 각 `parallel` step 의 task 묶음을 표에 한 줄 덧붙여 echo + **opt-in 1회 확인**: `wave: [taskX, taskY] 병렬로 갈까요? (Y/n)`.

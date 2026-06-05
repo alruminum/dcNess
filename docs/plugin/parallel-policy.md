@@ -73,6 +73,8 @@ active conveyor run 안의 `Agent` 호출은 직전 `begin-step` 의 단일 `cur
 - fan-in 검증(aggregate test / scope·conflict) 실패.
 - migration / destructive / security / 도메인 invariant 변경 같은 고위험 task.
 
+> **고위험 enforce 방식** — 고위험은 *의미* 판정이라 경로만으론 못 잡는다. (1) 메인 dry-preview 의 risk 열(`high-risk`)이 진본이며 그 slug 를 `wave-plan --high-risk` 로 driver 에 넘겨 직렬 강등한다. (2) 경로상 명백한 것(`migrations/`·`alembic/`·`.env`·`secrets`·`credentials`)은 parser 가 backstop 으로 자동 직렬화한다. (3) architect 가 impl frontmatter 에 `parallel: serial` 또는 `risk: high-risk` 를 적으면 그 task 는 무조건 직렬.
+
 ## 5. 권한 경계 — leader-owned vs worker
 
 | 행위 | leader (메인) | worker |

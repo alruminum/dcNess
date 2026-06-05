@@ -260,6 +260,33 @@ def _parse_parallel_marker(fm_lines: list[str]) -> bool:
     return False
 
 
+def _parse_risk_marker(fm_lines: list[str]) -> bool:
+    """frontmatter `risk:` 가 high-risk 류면 강제 직렬 (architect 명시 시)."""
+    for line in fm_lines:
+        m = re.match(r"^risk\s*:\s*(.+)$", line)
+        if m:
+            val = _strip_inline_comment(m.group(1)).strip().strip("'\"").lower()
+            return val in {"high", "high-risk", "highrisk", "critical"}
+    return False
+
+
+# 정책 §4 — 경로만으로 명백히 고위험인 패턴 (DB 마이그레이션 / 비밀·자격증명).
+# 보수적·고정밀 safety net. 도메인 invariant·auth 로직 등 *의미* 기반 고위험은
+# 경로로 신뢰성 있게 못 잡으므로 메인 dry-preview 판정(compute_waves high_risk_slugs)이
+# 진본이고, 본 패턴은 메인이 놓쳐도 걸리는 backstop 이다.
+_INHERENT_HIGH_RISK_RE = re.compile(
+    r"(^|/)migrations?(/|$)"
+    r"|(^|/)alembic(/|$)"
+    r"|(^|/)\.env(\.[^/]*)?$"
+    r"|(^|/)secrets?(/|\.[^/]+|$)"
+    r"|(^|/)credentials?(/|\.[^/]+|$)"
+)
+
+
+def _scope_inherent_high_risk(scope_paths: Iterable[str]) -> bool:
+    return any(_INHERENT_HIGH_RISK_RE.search(p) for p in scope_paths)
+
+
 def _is_path_like(token: str) -> bool:
     """repo-relative 파일/디렉토리 경로처럼 보이는 단일 토큰인가."""
     if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_./*-]*", token):
@@ -327,7 +354,11 @@ def parse_impl_task(path: str | Path) -> ImplTask:
     fm_lines = _extract_frontmatter_lines(text)
     depends_on = _parse_depends_on(fm_lines)
     scope_paths, scope_ambiguous = _parse_scope(text)
-    force_serial = _parse_parallel_marker(fm_lines)
+    force_serial = (
+        _parse_parallel_marker(fm_lines)
+        or _parse_risk_marker(fm_lines)
+        or _scope_inherent_high_risk(scope_paths)
+    )
     return ImplTask(
         slug=p.stem,
         path=str(p),
@@ -467,6 +498,7 @@ def _deps_satisfied(task: ImplTask, done: set[str], in_batch: set[str]) -> bool:
 def compute_waves(
     tasks: list[ImplTask],
     max_parallel_workers: int = DEFAULT_MAX_PARALLEL_WORKERS,
+    high_risk_slugs: Iterable[str] = (),
 ) -> WavePlan:
     """impl task 목록(직렬 순서)을 병렬 wave 계획으로.
 
@@ -474,9 +506,24 @@ def compute_waves(
         같은 wave 병렬 가능 = depends_on 위상상 선후 없음 AND Scope 파일집합 disjoint
     불명확(미상 / scope 자유서술 / force_serial)은 직렬 강등 (§4).
     동시성 상한 = max_parallel_workers (§7).
+
+    `high_risk_slugs` = 메인 dry-preview 가 고위험으로 판정한 slug 집합 (정책 §4
+    "migration/destructive/security/도메인 invariant → 직렬"의 *진본 판정*). 의미 기반
+    고위험은 경로로 신뢰성 있게 못 잡으므로 메인이 판정해 전달한다. parse_impl_task 의
+    inherent 경로 패턴(migrations/secrets 등)은 메인이 놓쳐도 걸리는 backstop.
     """
     if max_parallel_workers < 1:
         max_parallel_workers = 1
+    hr = frozenset(high_risk_slugs)
+
+    def _is_serial(t: ImplTask) -> bool:
+        return t.serial_only or t.slug in hr
+
+    def _serial_reason(t: ImplTask) -> str:
+        if t.slug in hr and not t.serial_only:
+            return "고위험 task (dry-preview 판정) → 직렬"
+        return t.serial_reason or "직렬"
+
     in_batch = {t.slug for t in tasks}
     remaining = list(tasks)
     done: set[str] = set()
@@ -498,25 +545,25 @@ def compute_waves(
 
         head = frontier[0]
 
-        if head.serial_only:
+        if _is_serial(head):
             step_index += 1
             steps.append(
-                WaveStep(step_index, "serial", (head,), head.serial_reason or "직렬")
+                WaveStep(step_index, "serial", (head,), _serial_reason(head))
             )
             remaining.remove(head)
             done.add(head.slug)
             continue
 
         # head 는 병렬 후보 — frontier 순서(NN/task_index)대로 *연속* 으로만 묶는다.
-        # join 불가한 task(serial_only / Scope 겹침)를 만나면 건너뛰지 않고 **멈춘다**.
+        # join 불가한 task(serial / Scope 겹침)를 만나면 건너뛰지 않고 **멈춘다**.
         # 건너뛰어 뒤 task 를 당기면 실행/머지 순서가 뒤집혀 task_index 기반 issue close
         # semantics(3/3 PR 이 story 를 닫음)가 깨진다 (#636 codex F10).
         wave = [head]
         for cand in frontier[1:]:
             if len(wave) >= max_parallel_workers:
                 break
-            if cand.serial_only:
-                break  # 순서 barrier
+            if _is_serial(cand):
+                break  # 순서 barrier (serial_only / 고위험)
             if all(scopes_disjoint(cand.scope_paths, w.scope_paths) for w in wave):
                 wave.append(cand)
             else:
@@ -552,14 +599,18 @@ def compute_waves(
 def _path_in_scope(path: str, scope: Iterable[str]) -> bool:
     """changed path 가 declared scope 안인가 (fan-in scope gate).
 
-    glob entry 는 segment-aware 매칭 — `src/*.py` 는 `src/sub/a.py` 를 in-scope 로
-    오인하지 않는다 (#636 codex F4: fnmatch 가 `/` 를 안 가려 scope 우회되던 구멍).
+    - exact 파일 매치.
+    - **명시적 디렉토리 scope(끝이 `/`)** 만 하위 파일을 허용. 확장자 없는 파일
+      scope(`scripts/tool`)를 디렉토리로 오인해 `scripts/tool/x.py` 를 통과시키던
+      구멍 차단 (#636 codex F12). 디렉토리 의도면 `scripts/tool/` 로 적는다.
+    - glob entry 는 segment-aware 매칭 — `src/*.py` 는 `src/sub/a.py` 를 in-scope 로
+      오인하지 않는다 (#636 codex F4: fnmatch 가 `/` 를 안 가려 scope 우회되던 구멍).
     """
     for entry in scope:
         if path == entry:
             return True
-        if path.startswith(entry.rstrip("/") + "/"):
-            return True
+        if entry.endswith("/") and path.startswith(entry):
+            return True  # 명시적 디렉토리 scope 만 하위 허용
         if _has_glob(entry) and _glob_match(path, entry):
             return True
     return False
@@ -638,12 +689,20 @@ def _resolve_impl_paths(raw_paths: list[str]) -> list[Path]:
     return sorted(found, key=lambda x: x.name)
 
 
+def _split_csv(value: Optional[str]) -> list[str]:
+    if not value:
+        return []
+    return [x.strip() for x in value.split(",") if x.strip()]
+
+
 def wave_plan_from_paths(
-    raw_paths: list[str], max_parallel_workers: int = DEFAULT_MAX_PARALLEL_WORKERS
+    raw_paths: list[str],
+    max_parallel_workers: int = DEFAULT_MAX_PARALLEL_WORKERS,
+    high_risk_slugs: Iterable[str] = (),
 ) -> WavePlan:
     paths = _resolve_impl_paths(raw_paths)
     tasks = [parse_impl_task(p) for p in paths]
-    return compute_waves(tasks, max_parallel_workers)
+    return compute_waves(tasks, max_parallel_workers, high_risk_slugs)
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -661,8 +720,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         default=DEFAULT_MAX_PARALLEL_WORKERS,
         help=f"동시성 상한 (default {DEFAULT_MAX_PARALLEL_WORKERS})",
     )
+    parser.add_argument(
+        "--high-risk",
+        default="",
+        help="메인 dry-preview 가 고위험으로 판정한 task slug (콤마 구분) → 직렬 강제",
+    )
     args = parser.parse_args(argv)
-    plan = wave_plan_from_paths(args.paths, args.max_parallel)
+    plan = wave_plan_from_paths(
+        args.paths, args.max_parallel, _split_csv(args.high_risk)
+    )
     print(json.dumps(plan.to_dict(), ensure_ascii=False, indent=2))
     return 0
 

@@ -220,6 +220,56 @@ class TestParseParallelMarker(unittest.TestCase):
         self.assertTrue(t.serial_only)
 
 
+class TestHighRisk(unittest.TestCase):
+    """codex F11 — 고위험 task 직렬 강제 (정책 §4)."""
+
+    def _parse(self, fm_extra, scope):
+        body = (
+            f"---\ndepends_on: []\n{fm_extra}---\n\n"
+            f"## Scope\n\n### 수정 허용\n\n{scope}\n"
+        )
+        with tempfile.TemporaryDirectory() as d:
+            return parse_impl_task(_write_impl(d, "01-foo.md", body))
+
+    def test_inherent_high_risk_scope_paths(self):
+        # 경로 backstop — migrations/alembic/.env/secrets/credentials
+        for scope in (
+            "- migrations/0007_add.py",
+            "- alembic/versions/x.py",
+            "- config/.env",
+            "- app/secrets/keys.json",
+            "- src/credentials.py",
+        ):
+            t = self._parse("", scope)
+            self.assertTrue(t.force_serial, f"{scope} 는 고위험이어야")
+
+    def test_risk_frontmatter_marker(self):
+        t = self._parse("risk: high-risk\n", "- src/x.py")
+        self.assertTrue(t.force_serial)
+
+    def test_ordinary_scope_not_high_risk(self):
+        t = self._parse("", "- src/feature/widget.py")
+        self.assertFalse(t.force_serial)
+
+    def test_compute_waves_high_risk_slugs_forces_serial(self):
+        # 메인 dry-preview 판정 전달 → 직렬
+        tasks = [
+            _task("01-a", (), {"a.py"}),
+            _task("02-b", (), {"b.py"}),
+        ]
+        plan = compute_waves(tasks, high_risk_slugs={"02-b"})
+        self.assertFalse(plan.has_parallel)
+        # 02-b 가 고위험 → 01-a 도 짝 못 찾아 직렬, 순서 보존
+        self.assertEqual(
+            [s.tasks[0].slug for s in plan.steps], ["01-a", "02-b"]
+        )
+
+    def test_high_risk_slug_serial_reason(self):
+        tasks = [_task("01-a", (), {"a.py"})]
+        plan = compute_waves(tasks, high_risk_slugs={"01-a"})
+        self.assertIn("고위험", plan.steps[0].reason)
+
+
 # ── scopes_disjoint ─────────────────────────────────────────
 
 
@@ -520,6 +570,23 @@ class TestFanInCheck(unittest.TestCase):
         ]
         r = fan_in_check(results)
         self.assertTrue(r.passed)
+
+    def test_file_scope_no_descendant(self):
+        # codex F12 — 확장자 없는 파일 scope(scripts/tool)를 디렉토리로 오인해
+        # scripts/tool/x.py 를 통과시키면 안 됨. 디렉토리는 끝에 / 를 적어야 함.
+        violator = WorkerResult(
+            "01-a", frozenset({"scripts/tool/x.py"}), frozenset({"scripts/tool"})
+        )
+        self.assertFalse(fan_in_check([violator]).passed)
+        exact = WorkerResult(
+            "02-b", frozenset({"scripts/tool"}), frozenset({"scripts/tool"})
+        )
+        self.assertTrue(fan_in_check([exact]).passed)
+        # 명시적 디렉토리 scope(끝 /)는 하위 허용
+        dir_ok = WorkerResult(
+            "03-c", frozenset({"scripts/tool/x.py"}), frozenset({"scripts/tool/"})
+        )
+        self.assertTrue(fan_in_check([dir_ok]).passed)
 
     def test_glob_scope_segment_aware_violation(self):
         # codex F4 — glob scope `src/*.py` 선언했는데 src/sub/a.py 를 건드리면
