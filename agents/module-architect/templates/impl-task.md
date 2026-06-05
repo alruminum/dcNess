@@ -15,7 +15,8 @@ contract:
 
 - 읽을 문서:
 - 읽을 코드:
-- 선행 task:
+
+> 선행 task 는 frontmatter `depends_on` 이 단일 SSOT 다 (병렬 독립성 판정 입력). 본문에 따로 적어 drift 시키지 않는다.
 
 ## 무엇을 만드나
 
@@ -29,7 +30,7 @@ contract:
 
 ### 수정 허용
 
-> repo-relative 파일 경로 단위로 적는다 (자유 서술 금지). 이 목록의 교집합으로 병렬 wave 충돌이 판정된다 — [`parallel-policy.md`](../../../docs/plugin/parallel-policy.md) 의 독립성 판정 참조.
+> repo-relative 파일 경로 단위로 적는다 (자유 서술 금지). 이 목록의 교집합으로 병렬 wave 충돌이 판정된다 (정책: `docs/plugin/parallel-policy.md`).
 
 -
 
