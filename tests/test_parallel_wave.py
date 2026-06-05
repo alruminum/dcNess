@@ -384,6 +384,35 @@ class TestComputeWaves(unittest.TestCase):
     def test_default_cap_is_two(self):
         self.assertEqual(DEFAULT_MAX_PARALLEL_WORKERS, 2)
 
+    def test_order_barrier_serial_task_between(self):
+        # codex F10 — 사이의 serial task(02)를 건너뛰고 01,03 을 같은 wave 로 당기면
+        # task_index 순서가 뒤집혀 issue close semantics 가 깨진다. 순서 보존 필수.
+        tasks = [
+            _task("01-a", (), {"a.py"}),
+            _task("02-b", (), {"b.py"}, force_serial=True),
+            _task("03-c", (), {"c.py"}),
+        ]
+        plan = compute_waves(tasks)
+        self.assertFalse(plan.has_parallel)  # [01,03] 병렬 금지
+        self.assertEqual(
+            [s.tasks[0].slug for s in plan.steps], ["01-a", "02-b", "03-c"]
+        )
+
+    def test_order_barrier_scope_overlap_between(self):
+        # 02 가 01 과 Scope 겹침 → 01 직렬 barrier, 그 다음 02‖03 (순서 보존).
+        tasks = [
+            _task("01-a", (), {"shared.py"}),
+            _task("02-b", (), {"shared.py"}),
+            _task("03-c", (), {"c.py"}),
+        ]
+        plan = compute_waves(tasks)
+        self.assertEqual(plan.steps[0].mode, "serial")
+        self.assertEqual(plan.steps[0].tasks[0].slug, "01-a")
+        self.assertEqual(plan.steps[1].mode, "parallel")
+        self.assertEqual(
+            [t.slug for t in plan.steps[1].tasks], ["02-b", "03-c"]
+        )
+
     def test_block_depends_on_comment_does_not_parallelize_dependent(self):
         # codex P2 F1 통합 — block depends_on 의 inline 주석이 slug 에 새면 의존이
         # 끊겨 의존 task 가 선행과 같은 wave 로 올라간다. parse→compute 로 방지 검증.

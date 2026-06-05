@@ -482,15 +482,20 @@ def compute_waves(
             done.add(head.slug)
             continue
 
-        # head 는 병렬 후보 — 다른 후보와 Scope disjoint 한 wave 구성 (cap 까지).
+        # head 는 병렬 후보 — frontier 순서(NN/task_index)대로 *연속* 으로만 묶는다.
+        # join 불가한 task(serial_only / Scope 겹침)를 만나면 건너뛰지 않고 **멈춘다**.
+        # 건너뛰어 뒤 task 를 당기면 실행/머지 순서가 뒤집혀 task_index 기반 issue close
+        # semantics(3/3 PR 이 story 를 닫음)가 깨진다 (#636 codex F10).
         wave = [head]
         for cand in frontier[1:]:
             if len(wave) >= max_parallel_workers:
                 break
             if cand.serial_only:
-                continue
+                break  # 순서 barrier
             if all(scopes_disjoint(cand.scope_paths, w.scope_paths) for w in wave):
                 wave.append(cand)
+            else:
+                break  # Scope 겹침 → 순서 barrier
 
         step_index += 1
         if len(wave) >= 2:
