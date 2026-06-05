@@ -239,6 +239,42 @@ class ReadEventsFallbackTests(unittest.TestCase):
             self.assertEqual(len(steps), 1)
             self.assertEqual(steps[0]["agent"], "dup")
 
+    def test_primary_step_without_receipt_dropped(self) -> None:
+        """ledger.jsonl 의 receipt(prose_file) 없는 step_completed 는 drop+warn (codex review)."""
+        import contextlib
+        import io
+        with TemporaryDirectory() as d:
+            base = Path(d)
+            _seed_run(base)
+            lp = ledger.ledger_path(_SID, _RID, base_dir=base)
+            lp.write_text(
+                json.dumps({"event": "step_completed", "ts": "2026-05-01T10:00:00+00:00",
+                            "agent": "valid", "mode": None, "prose_file": "/tmp/v.md",
+                            "sha256": "x"}) + "\n"
+                + json.dumps({"event": "step_completed", "ts": "2026-05-01T10:01:00+00:00",
+                              "agent": "forged", "mode": None}) + "\n",
+                encoding="utf-8")
+            buf = io.StringIO()
+            with contextlib.redirect_stderr(buf):
+                steps = ledger.read_step_completed(_SID, _RID, base_dir=base)
+            self.assertEqual([s["agent"] for s in steps], ["valid"])
+            self.assertIn("prose_file", buf.getvalue())
+
+    def test_legacy_step_without_prose_file_preserved(self) -> None:
+        """옛 .steps.jsonl 의 prose_file 없는 row 는 호환 보존 (primary 검증과 분리 — codex review)."""
+        with TemporaryDirectory() as d:
+            base = Path(d)
+            _seed_run(base)
+            legacy = ledger.legacy_steps_path(_SID, _RID, base_dir=base)
+            legacy.write_text(
+                json.dumps({"ts": "2026-05-01T10:00:00+00:00", "agent": "old", "mode": None,
+                            "enum": "PROSE_LOGGED", "must_fix": False,
+                            "prose_excerpt": "o"}) + "\n",
+                encoding="utf-8")
+            steps = ledger.read_step_completed(_SID, _RID, base_dir=base)
+            self.assertEqual(len(steps), 1)
+            self.assertEqual(steps[0]["agent"], "old")
+
     def test_malformed_line_warns(self) -> None:
         """손상 레코드 가시화 — malformed 줄 skip + stderr WARN (codex medium)."""
         import contextlib

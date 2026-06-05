@@ -1163,24 +1163,31 @@ class ToolHistogramTableTests(unittest.TestCase):
 class ListRunsLedgerTests(unittest.TestCase):
     """이슈 #587 (codex review) — list_runs 가 빈 active run 을 latest 후보에서 제외."""
 
-    def test_excludes_empty_active_run(self) -> None:
+    def test_latest_requires_run_finished_for_ledger(self) -> None:
+        """ledger run 은 run_finished 있어야 implicit latest 후보 — partial/empty 제외 (codex review)."""
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
-            # empty active run — run_started/step_started 만 (step_completed 0)
-            _make_run_dir_ledger(tmp, "sidE", "ridEmpty", [
-                {"event": "run_started", "ts": "2026-05-01T10:00:00", "entry_point": "impl"},
-                {"event": "step_started", "ts": "2026-05-01T10:00:01",
-                 "agent": "engineer", "mode": "IMPL"},
-            ])
-            # 완료 run — step_completed 있음
+            # finished run — step_completed + run_finished
             _make_run_dir_ledger(tmp, "sidD", "ridDone", [
                 {"event": "step_completed", "ts": "2026-05-01T09:00:00", "agent": "engineer",
                  "mode": None, "enum": "PROSE_LOGGED", "must_fix": False,
                  "prose_excerpt": "x", "prose_file": "/dev/null"},
+                {"event": "run_finished", "ts": "2026-05-01T09:05:00"},
+            ])
+            # partial run — step 있지만 run_finished 없음 (active, end-run 전)
+            _make_run_dir_ledger(tmp, "sidP", "ridPartial", [
+                {"event": "step_completed", "ts": "2026-05-01T10:00:00", "agent": "engineer",
+                 "mode": None, "enum": "PROSE_LOGGED", "must_fix": False,
+                 "prose_excerpt": "y", "prose_file": "/dev/null"},
+            ])
+            # empty active run — run_started 만
+            _make_run_dir_ledger(tmp, "sidE", "ridEmpty", [
+                {"event": "run_started", "ts": "2026-05-01T11:00:00", "entry_point": "impl"},
             ])
             sessions_root = tmp / ".claude" / "harness-state" / ".sessions"
             names = [r.name for r in list_runs(sessions_root)]
             self.assertIn("ridDone", names)
+            self.assertNotIn("ridPartial", names)
             self.assertNotIn("ridEmpty", names)
 
     def test_includes_legacy_steps_run(self) -> None:

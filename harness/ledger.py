@@ -258,6 +258,31 @@ def append_event(
     return _append_event_raw(sid, rid, event, base_dir=base_dir, ts=ts, **fields)
 
 
+def _drop_invalid_primary_steps(
+    events: List[Dict[str, Any]], primary: Path
+) -> List[Dict[str, Any]]:
+    """primary ledger.jsonl 의 receipt 없는 step_completed 를 drop + warn (codex review).
+
+    정당한 step_completed 는 append_step_completed 가 prose_file 을 동반한다.
+    prose_file 이 없는 step_completed 는 위조(append API 우회) 또는 손상이므로
+    소비처가 진짜 step 으로 신뢰하지 않도록 제거한다. step_completed 외 event 는 보존.
+    """
+    kept: List[Dict[str, Any]] = []
+    dropped = 0
+    for e in events:
+        if e.get("event") == "step_completed" and not e.get("prose_file"):
+            dropped += 1
+            continue
+        kept.append(e)
+    if dropped:
+        print(
+            f"[ledger] {dropped} step_completed without receipt(prose_file) "
+            f"dropped from {primary} — 위조/손상 의심 (prose-as-SSOT).",
+            file=sys.stderr,
+        )
+    return kept
+
+
 def _read_events_paths(
     primary: Path, legacy: Path
 ) -> List[Dict[str, Any]]:
@@ -276,6 +301,13 @@ def _read_events_paths(
     """
     primary_events = _read_jsonl(primary) if primary.exists() else []
     legacy_events = _normalize_legacy_rows(legacy) if legacy.exists() else []
+    # primary ledger.jsonl 의 step_completed 는 receipt(prose_file) 필수 (codex review).
+    # append API 가 위조 append 를 막아도, durable ledger 에 stale/downgrade/손상으로
+    # receipt 없는 step_completed 가 남으면 reader 가 진짜 step 으로 신뢰해버린다 —
+    # invariant 가 writer path 가 아니라 *소비되는 데이터* 에 걸리도록 read 측에서도
+    # 강제한다. legacy .steps.jsonl 은 별도 호환 경로(무검증) — prose_file 없는 옛 row 보존.
+    if primary_events:
+        primary_events = _drop_invalid_primary_steps(primary_events, primary)
     if not (primary_events and legacy_events):
         return primary_events or legacy_events
     # mixed — ts 기준 안정 정렬 merge (codex review). concat 만 하면 version skew /
