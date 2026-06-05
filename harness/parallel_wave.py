@@ -288,8 +288,13 @@ def _scope_inherent_high_risk(scope_paths: Iterable[str]) -> bool:
 
 
 def _is_path_like(token: str) -> bool:
-    """repo-relative 파일/디렉토리 경로처럼 보이는 단일 토큰인가."""
-    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_./*-]*", token):
+    """repo-relative 파일/디렉토리 경로처럼 보이는 단일 토큰인가.
+
+    leading `.` 허용 — `./src/a.py`(상대), `.github/workflows/ci.yml`(dot-dir),
+    `.env`(dotfile) 같은 흔한 경로가 ambiguous 로 오판돼 직렬 강등되지 않게 (#636 F14).
+    bare `.`·`..`·`...` 는 `/` 도 확장자도 없어 아래 조건에서 걸러진다.
+    """
+    if not re.fullmatch(r"[A-Za-z0-9_.][A-Za-z0-9_./*-]*", token):
         return False
     return ("/" in token) or bool(re.search(r"\.[A-Za-z0-9]+$", token))
 
@@ -554,16 +559,22 @@ def compute_waves(
             done.add(head.slug)
             continue
 
-        # head 는 병렬 후보 — frontier 순서(NN/task_index)대로 *연속* 으로만 묶는다.
-        # join 불가한 task(serial / Scope 겹침)를 만나면 건너뛰지 않고 **멈춘다**.
-        # 건너뛰어 뒤 task 를 당기면 실행/머지 순서가 뒤집혀 task_index 기반 issue close
-        # semantics(3/3 PR 이 story 를 닫음)가 깨진다 (#636 codex F10).
+        # head 는 병렬 후보 — **remaining(NN/task_index) 순서의 *연속* prefix** 로만 묶는다.
+        # frontier(준비된 것만) 가 아니라 remaining 을 순회하는 이유: 사이에 *blocked*
+        # (아직 미준비) task 가 있으면 그것도 barrier 여야 한다. frontier 만 보면 blocked
+        # task 를 건너뛰고 뒤 독립 task 를 당겨 순서가 뒤집힌다 (#636 codex F13 — F10 의
+        # 미준비-intervening 변종). join 불가(blocked / serial·고위험 / Scope 겹침 / cap)를
+        # 만나면 멈춘다. 그래야 실행/머지 순서 = task_index 순서가 보존돼 3/3 PR 이 story 를
+        # 마지막에 닫는 invariant 가 유지된다.
+        head_idx = remaining.index(head)
         wave = [head]
-        for cand in frontier[1:]:
+        for cand in remaining[head_idx + 1:]:
             if len(wave) >= max_parallel_workers:
                 break
+            if not _deps_satisfied(cand, done, in_batch):
+                break  # blocked intervening task → 순서 barrier
             if _is_serial(cand):
-                break  # 순서 barrier (serial_only / 고위험)
+                break  # serial_only / 고위험 → 순서 barrier
             if all(scopes_disjoint(cand.scope_paths, w.scope_paths) for w in wave):
                 wave.append(cand)
             else:

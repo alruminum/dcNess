@@ -194,6 +194,23 @@ class TestParseScope(unittest.TestCase):
         self.assertEqual(t.scope_paths, frozenset({"src/feature/"}))
         self.assertFalse(t.scope_ambiguous)
 
+    def test_dot_prefixed_paths_accepted(self):
+        # codex F14 — leading dot 경로(dot-dir / 상대)가 ambiguous 로 오판되면 안 됨.
+        t = self._parse_scope(
+            "- .github/workflows/ci.yml\n- ./src/a.py\n"
+        )
+        self.assertEqual(
+            t.scope_paths,
+            frozenset({".github/workflows/ci.yml", "src/a.py"}),  # ./ 정규화
+        )
+        self.assertFalse(t.scope_ambiguous)
+
+    def test_dot_placeholder_tokens_still_ambiguous(self):
+        # bare . / .. / ... 는 경로가 아니므로 여전히 ambiguous
+        for tok in (".", "..", "..."):
+            t = self._parse_scope(f"- {tok}\n")
+            self.assertTrue(t.scope_ambiguous, f"{tok} 는 ambiguous 여야")
+
     def test_hyphenated_paths_accepted(self):
         # codex P2 F3 회귀 가드 — 하이픈 포함 경로는 흔함(parallel-policy.md / package-lock.json).
         # ambiguous 로 오판하면 독립 task 가 직렬로 강등돼 병렬 후보 과소탐지.
@@ -464,6 +481,24 @@ class TestComputeWaves(unittest.TestCase):
         self.assertEqual(
             [s.tasks[0].slug for s in plan.steps], ["01-a", "02-b", "03-c"]
         )
+
+    def test_order_barrier_blocked_intervening_task(self):
+        # codex F13 — 사이 task(02)가 *blocked*(미준비)면 frontier 에서 빠진다. 그래도
+        # 01,03 을 같은 wave 로 당기면 안 됨(03 이 02 앞서 머지 → 순서 위반). 01 단독 후
+        # 02 준비되면 진행.
+        tasks = [
+            _task("01-a", (), {"a.py"}),
+            _task("02-b", ("01-a",), {"b.py"}),  # 01-a 에 의존 → 처음엔 blocked
+            _task("03-c", (), {"c.py"}),
+        ]
+        plan = compute_waves(tasks)
+        # 첫 step 에 03-c 가 01-a 와 함께 들어가면 안 됨
+        first = {t.slug for t in plan.steps[0].tasks}
+        self.assertNotIn("03-c", first)
+        self.assertEqual(plan.steps[0].tasks[0].slug, "01-a")
+        # 03-c 는 02-b 보다 먼저/같이 머지되면 안 됨 — 03-c 의 step 이 02-b step 이후거나 동일 wave 의 뒤
+        order = [t.slug for s in plan.steps for t in s.tasks]
+        self.assertLess(order.index("02-b"), order.index("03-c"))
 
     def test_order_barrier_scope_overlap_between(self):
         # 02 가 01 과 Scope 겹침 → 01 직렬 barrier, 그 다음 02‖03 (순서 보존).
