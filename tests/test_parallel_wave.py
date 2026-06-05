@@ -1,0 +1,405 @@
+"""test_parallel_wave — 병렬 wave 계산 코어 단위 테스트 (#636).
+
+정책 SSOT = docs/plugin/parallel-policy.md. 검증 축:
+
+    parse_impl_task:
+        - depends_on 3-state (미상 None / 명시적 [] () / 목록)
+        - placeholder 잔존 → 미상
+        - inline / block 리스트 둘 다
+        - Scope 파싱: 정규화 경로 / 자유서술 ambiguous / 빈값 / 디렉토리
+
+    compute_waves (AC: wave 후보 / scope 중첩 배제 / 미상 fallback / cap):
+        - 독립 2개 disjoint → 같은 병렬 wave
+        - Scope 중첩 → 같은 wave 배제(직렬)
+        - depends_on 사슬 → 직렬 순서
+        - depends_on 미상 → 직렬 fallback
+        - 명시적 [] + disjoint → 병렬
+        - max_parallel_workers=2 cap → 독립 3개 = wave(2)+직렬(1)
+        - force_serial(parallel: serial) → 직렬
+        - 디렉토리/파일 포함 충돌 → 직렬
+
+    fan_in_check (AC: fan-in PASS / FALLBACK):
+        - 깨끗한 wave → PASS
+        - scope 이탈 → FALLBACK
+        - cross-worker 파일 충돌 → FALLBACK
+        - evidence 누락 → FALLBACK
+"""
+import tempfile
+import unittest
+from pathlib import Path
+
+from harness.parallel_wave import (
+    DEFAULT_MAX_PARALLEL_WORKERS,
+    ImplTask,
+    WorkerResult,
+    compute_waves,
+    fan_in_check,
+    parse_impl_task,
+    scopes_disjoint,
+)
+
+
+def _task(
+    slug,
+    depends_on,
+    scope,
+    *,
+    scope_ambiguous=False,
+    force_serial=False,
+):
+    """ImplTask 빌더 — depends_on/scope 를 직접 지정."""
+    return ImplTask(
+        slug=slug,
+        path=f"{slug}.md",
+        depends_on=depends_on,
+        scope_paths=frozenset(scope),
+        scope_ambiguous=scope_ambiguous,
+        force_serial=force_serial,
+    )
+
+
+def _write_impl(dirpath, name, body):
+    p = Path(dirpath) / name
+    p.write_text(body, encoding="utf-8")
+    return p
+
+
+# ── parse_impl_task ─────────────────────────────────────────
+
+
+class TestParseDependsOn(unittest.TestCase):
+    def _parse(self, fm_depends, scope_block="- src/a.py\n"):
+        body = (
+            "---\n"
+            f"{fm_depends}\n"
+            "story: 1\n"
+            "---\n\n"
+            "## Scope\n\n### 수정 허용\n\n"
+            f"{scope_block}\n"
+            "### 수정 금지\n\n-\n"
+        )
+        with tempfile.TemporaryDirectory() as d:
+            p = _write_impl(d, "01-foo.md", body)
+            return parse_impl_task(p)
+
+    def test_depends_on_absent_is_unknown(self):
+        # depends_on 키 자체가 없음 → 미상(None)
+        body = "---\nstory: 1\n---\n\n## Scope\n\n### 수정 허용\n\n- src/a.py\n"
+        with tempfile.TemporaryDirectory() as d:
+            p = _write_impl(d, "01-foo.md", body)
+            t = parse_impl_task(p)
+        self.assertIsNone(t.depends_on)
+        self.assertTrue(t.serial_only)
+
+    def test_depends_on_empty_with_comment_is_unknown(self):
+        # 템플릿 기본형 — 값 없이 주석만 → 미상
+        t = self._parse("depends_on:             # [<NN-slug>, ...] 선행 task")
+        self.assertIsNone(t.depends_on)
+
+    def test_depends_on_explicit_empty_is_independent(self):
+        t = self._parse("depends_on: []")
+        self.assertEqual(t.depends_on, ())
+        self.assertFalse(t.serial_only)  # scope 정상이므로 병렬 후보
+
+    def test_depends_on_inline_list(self):
+        t = self._parse("depends_on: [01-foo, 02-bar]")
+        self.assertEqual(t.depends_on, ("01-foo", "02-bar"))
+
+    def test_depends_on_block_list(self):
+        t = self._parse("depends_on:\n  - 01-foo\n  - 02-bar")
+        self.assertEqual(t.depends_on, ("01-foo", "02-bar"))
+
+    def test_depends_on_placeholder_unfilled_is_unknown(self):
+        # [<NN-slug>] placeholder 가 값으로 남음 → 미상으로 강등
+        t = self._parse("depends_on: [<NN-slug>]")
+        self.assertIsNone(t.depends_on)
+
+    def test_depends_on_explicit_empty_with_comment(self):
+        t = self._parse("depends_on: []   # 선행 없음")
+        self.assertEqual(t.depends_on, ())
+
+
+class TestParseScope(unittest.TestCase):
+    def _parse_scope(self, scope_block):
+        body = (
+            "---\ndepends_on: []\n---\n\n"
+            "## Scope\n\n### 수정 허용\n\n"
+            f"{scope_block}\n"
+            "### 수정 금지\n\n-\n"
+        )
+        with tempfile.TemporaryDirectory() as d:
+            p = _write_impl(d, "01-foo.md", body)
+            return parse_impl_task(p)
+
+    def test_clean_paths(self):
+        t = self._parse_scope("- src/a.py\n- harness/b.py\n")
+        self.assertEqual(t.scope_paths, frozenset({"src/a.py", "harness/b.py"}))
+        self.assertFalse(t.scope_ambiguous)
+
+    def test_backtick_paths(self):
+        t = self._parse_scope("- `src/a.py`\n")
+        self.assertEqual(t.scope_paths, frozenset({"src/a.py"}))
+        self.assertFalse(t.scope_ambiguous)
+
+    def test_blockquote_note_ignored(self):
+        t = self._parse_scope("> repo-relative 경로만 적는다\n\n- src/a.py\n")
+        self.assertEqual(t.scope_paths, frozenset({"src/a.py"}))
+        self.assertFalse(t.scope_ambiguous)
+
+    def test_empty_placeholder_is_ambiguous(self):
+        t = self._parse_scope("-\n")
+        self.assertEqual(t.scope_paths, frozenset())
+        self.assertTrue(t.scope_ambiguous)
+        self.assertTrue(t.serial_only)
+
+    def test_freeform_prose_is_ambiguous(self):
+        # 다중 토큰 산문 bullet → 정규화 안 됨 → ambiguous
+        t = self._parse_scope("- 사용자 입력 파서 전반\n")
+        self.assertTrue(t.scope_ambiguous)
+        self.assertTrue(t.serial_only)
+
+    def test_mixed_path_and_prose_is_ambiguous(self):
+        t = self._parse_scope("- src/a.py\n- 그리고 여러 곳\n")
+        self.assertTrue(t.scope_ambiguous)
+        self.assertTrue(t.serial_only)
+
+    def test_directory_scope(self):
+        t = self._parse_scope("- src/feature/\n")
+        self.assertEqual(t.scope_paths, frozenset({"src/feature/"}))
+        self.assertFalse(t.scope_ambiguous)
+
+
+class TestParseParallelMarker(unittest.TestCase):
+    def test_parallel_serial_forces_serial(self):
+        body = (
+            "---\ndepends_on: []\nparallel: serial\n---\n\n"
+            "## Scope\n\n### 수정 허용\n\n- src/a.py\n"
+        )
+        with tempfile.TemporaryDirectory() as d:
+            p = _write_impl(d, "01-foo.md", body)
+            t = parse_impl_task(p)
+        self.assertTrue(t.force_serial)
+        self.assertTrue(t.serial_only)
+
+
+# ── scopes_disjoint ─────────────────────────────────────────
+
+
+class TestScopesDisjoint(unittest.TestCase):
+    def test_disjoint_files(self):
+        self.assertTrue(scopes_disjoint({"a.py"}, {"b.py"}))
+
+    def test_same_file_overlap(self):
+        self.assertFalse(scopes_disjoint({"a.py"}, {"a.py"}))
+
+    def test_dir_contains_file_overlap(self):
+        self.assertFalse(scopes_disjoint({"src/"}, {"src/a.py"}))
+
+    def test_file_under_dir_overlap(self):
+        self.assertFalse(scopes_disjoint({"src/sub/a.py"}, {"src/"}))
+
+    def test_sibling_dirs_disjoint(self):
+        self.assertTrue(scopes_disjoint({"src/a/"}, {"src/b/"}))
+
+    def test_glob_overlap(self):
+        self.assertFalse(scopes_disjoint({"src/*.py"}, {"src/a.py"}))
+
+
+# ── compute_waves ───────────────────────────────────────────
+
+
+class TestComputeWaves(unittest.TestCase):
+    def test_two_independent_disjoint_parallel(self):
+        tasks = [
+            _task("01-a", (), {"src/a.py"}),
+            _task("02-b", (), {"src/b.py"}),
+        ]
+        plan = compute_waves(tasks)
+        self.assertTrue(plan.has_parallel)
+        self.assertEqual(len(plan.steps), 1)
+        self.assertEqual(plan.steps[0].mode, "parallel")
+        self.assertEqual(
+            {t.slug for t in plan.steps[0].tasks}, {"01-a", "02-b"}
+        )
+
+    def test_scope_overlap_serialized(self):
+        tasks = [
+            _task("01-a", (), {"src/shared.py"}),
+            _task("02-b", (), {"src/shared.py"}),
+        ]
+        plan = compute_waves(tasks)
+        self.assertFalse(plan.has_parallel)
+        self.assertEqual([s.mode for s in plan.steps], ["serial", "serial"])
+
+    def test_depends_on_chain_is_serial_order(self):
+        tasks = [
+            _task("01-a", (), {"src/a.py"}),
+            _task("02-b", ("01-a",), {"src/b.py"}),
+        ]
+        plan = compute_waves(tasks)
+        # 02-b 가 01-a 에 의존 → 같은 wave 불가 → 직렬 2단계
+        self.assertFalse(plan.has_parallel)
+        self.assertEqual(len(plan.steps), 2)
+        self.assertEqual(plan.steps[0].tasks[0].slug, "01-a")
+        self.assertEqual(plan.steps[1].tasks[0].slug, "02-b")
+
+    def test_unknown_depends_on_serial_fallback(self):
+        tasks = [
+            _task("01-a", None, {"src/a.py"}),  # 미상
+            _task("02-b", (), {"src/b.py"}),
+        ]
+        plan = compute_waves(tasks)
+        # 01-a 미상 → 직렬, 02-b 는 짝(01-a 직렬)이라 단독 → 직렬
+        self.assertFalse(plan.has_parallel)
+        self.assertEqual(plan.steps[0].mode, "serial")
+        self.assertIn("미상", plan.steps[0].reason)
+
+    def test_ambiguous_scope_serial_fallback(self):
+        tasks = [
+            _task("01-a", (), set(), scope_ambiguous=True),
+            _task("02-b", (), {"src/b.py"}),
+        ]
+        plan = compute_waves(tasks)
+        self.assertFalse(plan.has_parallel)
+
+    def test_max_parallel_cap_two(self):
+        # 독립 3개 disjoint, cap=2 → wave(2) + serial(1)
+        tasks = [
+            _task("01-a", (), {"src/a.py"}),
+            _task("02-b", (), {"src/b.py"}),
+            _task("03-c", (), {"src/c.py"}),
+        ]
+        plan = compute_waves(tasks, max_parallel_workers=2)
+        self.assertEqual(len(plan.steps), 2)
+        self.assertEqual(plan.steps[0].mode, "parallel")
+        self.assertEqual(len(plan.steps[0].tasks), 2)
+        self.assertEqual(plan.steps[1].mode, "serial")
+        self.assertEqual(plan.steps[1].tasks[0].slug, "03-c")
+
+    def test_higher_cap_three(self):
+        tasks = [
+            _task("01-a", (), {"src/a.py"}),
+            _task("02-b", (), {"src/b.py"}),
+            _task("03-c", (), {"src/c.py"}),
+        ]
+        plan = compute_waves(tasks, max_parallel_workers=3)
+        self.assertEqual(len(plan.steps), 1)
+        self.assertEqual(len(plan.steps[0].tasks), 3)
+
+    def test_force_serial_excluded_from_wave(self):
+        tasks = [
+            _task("01-a", (), {"src/a.py"}, force_serial=True),
+            _task("02-b", (), {"src/b.py"}),
+        ]
+        plan = compute_waves(tasks)
+        self.assertFalse(plan.has_parallel)
+        self.assertEqual(plan.steps[0].mode, "serial")
+
+    def test_directory_overlap_serialized(self):
+        tasks = [
+            _task("01-a", (), {"src/feature/"}),
+            _task("02-b", (), {"src/feature/x.py"}),
+        ]
+        plan = compute_waves(tasks)
+        self.assertFalse(plan.has_parallel)
+
+    def test_mixed_wave_then_dependent_serial(self):
+        # a,b 독립 병렬 → c 는 둘 다에 의존 → 다음 직렬
+        tasks = [
+            _task("01-a", (), {"src/a.py"}),
+            _task("02-b", (), {"src/b.py"}),
+            _task("03-c", ("01-a", "02-b"), {"src/c.py"}),
+        ]
+        plan = compute_waves(tasks)
+        self.assertEqual(len(plan.steps), 2)
+        self.assertEqual(plan.steps[0].mode, "parallel")
+        self.assertEqual(plan.steps[1].mode, "serial")
+        self.assertEqual(plan.steps[1].tasks[0].slug, "03-c")
+
+    def test_external_dependency_not_blocking(self):
+        # depends_on 이 batch 밖(이미 머지됨) → 차단 안 함
+        tasks = [
+            _task("02-a", ("00-merged",), {"src/a.py"}),
+            _task("03-b", ("00-merged",), {"src/b.py"}),
+        ]
+        plan = compute_waves(tasks)
+        self.assertTrue(plan.has_parallel)
+
+    def test_empty_task_list(self):
+        plan = compute_waves([])
+        self.assertEqual(plan.steps, ())
+        self.assertFalse(plan.has_parallel)
+
+    def test_default_cap_is_two(self):
+        self.assertEqual(DEFAULT_MAX_PARALLEL_WORKERS, 2)
+
+
+# ── fan_in_check ────────────────────────────────────────────
+
+
+class TestFanInCheck(unittest.TestCase):
+    def test_clean_wave_passes(self):
+        results = [
+            WorkerResult("01-a", frozenset({"src/a.py"}), frozenset({"src/a.py"})),
+            WorkerResult("02-b", frozenset({"src/b.py"}), frozenset({"src/b.py"})),
+        ]
+        r = fan_in_check(results)
+        self.assertTrue(r.passed)
+        self.assertEqual(r.verdict, "PASS")
+        self.assertEqual(r.reasons, ())
+
+    def test_scope_violation_fallback(self):
+        results = [
+            # a 가 선언 scope(src/a.py) 밖 src/other.py 를 건드림
+            WorkerResult(
+                "01-a",
+                frozenset({"src/a.py", "src/other.py"}),
+                frozenset({"src/a.py"}),
+            ),
+        ]
+        r = fan_in_check(results)
+        self.assertFalse(r.passed)
+        self.assertEqual(r.verdict, "FALLBACK")
+        self.assertIn(("01-a", "src/other.py"), r.scope_violations)
+
+    def test_cross_worker_conflict_fallback(self):
+        results = [
+            WorkerResult(
+                "01-a", frozenset({"src/shared.py"}), frozenset({"src/shared.py"})
+            ),
+            WorkerResult(
+                "02-b", frozenset({"src/shared.py"}), frozenset({"src/shared.py"})
+            ),
+        ]
+        r = fan_in_check(results)
+        self.assertFalse(r.passed)
+        self.assertEqual(len(r.conflicts), 1)
+        self.assertEqual(r.conflicts[0][0], "src/shared.py")
+        self.assertEqual(r.conflicts[0][1], ("01-a", "02-b"))
+
+    def test_missing_evidence_fallback(self):
+        results = [
+            WorkerResult(
+                "01-a",
+                frozenset({"src/a.py"}),
+                frozenset({"src/a.py"}),
+                evidence_present=False,
+            ),
+        ]
+        r = fan_in_check(results)
+        self.assertFalse(r.passed)
+        self.assertEqual(r.missing_evidence, ("01-a",))
+
+    def test_scope_dir_prefix_allowed(self):
+        # 선언 scope 가 디렉토리면 그 아래 파일 변경은 준수
+        results = [
+            WorkerResult(
+                "01-a", frozenset({"src/feature/x.py"}), frozenset({"src/feature/"})
+            ),
+        ]
+        r = fan_in_check(results)
+        self.assertTrue(r.passed)
+
+
+if __name__ == "__main__":
+    unittest.main()
