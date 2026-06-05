@@ -34,7 +34,7 @@ analyze_sessions (Python) → JSON 리포트
 
 ### Step 0 — run 시작 (선택)
 
-본 skill 은 분석 도구라 *run 등록 의무 없음*. 단 `.steps.jsonl` 추적 원하면:
+본 skill 은 분석 도구라 *run 등록 의무 없음*. 단 `ledger.jsonl` 추적 원하면:
 
 ```bash
 HELPER="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | sort -V | tail -1)/scripts/dcness-helper"

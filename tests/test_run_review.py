@@ -34,7 +34,41 @@ def _make_run_dir(tmp: Path, sid: str, rid: str, step_records: list[dict],
     return run_dir
 
 
+def _make_run_dir_ledger(tmp: Path, sid: str, rid: str, events: list[dict],
+                          prose_files: dict[str, str] | None = None) -> Path:
+    """이슈 #587 — ledger.jsonl (event stream) 기반 run_dir fixture."""
+    run_dir = tmp / ".claude" / "harness-state" / ".sessions" / sid / "runs" / rid
+    run_dir.mkdir(parents=True, exist_ok=True)
+    with open(run_dir / "ledger.jsonl", "w", encoding="utf-8") as f:
+        for e in events:
+            f.write(json.dumps(e, ensure_ascii=False) + "\n")
+    for filename, content in (prose_files or {}).items():
+        (run_dir / filename).write_text(content, encoding="utf-8")
+    return run_dir
+
+
 class ParseStepsTests(unittest.TestCase):
+    def test_parses_ledger_jsonl_step_completed_only(self):
+        """이슈 #587 — ledger.jsonl 의 step_completed event 만 StepRecord 로 (run_started/step_started/run_finished 제외)."""
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            rd = _make_run_dir_ledger(tmp, "sidL", "ridL", [
+                {"event": "run_started", "ts": "2026-04-30T10:00:00", "entry_point": "impl"},
+                {"event": "step_started", "ts": "2026-04-30T10:00:01",
+                 "agent": "engineer", "mode": "IMPL"},
+                {"event": "step_completed", "ts": "2026-04-30T10:00:05",
+                 "agent": "engineer", "mode": "IMPL", "enum": "PROSE_LOGGED",
+                 "must_fix": False, "prose_excerpt": "## 결론\nIMPL_DONE",
+                 "prose_file": "/dev/null", "sha256": "x", "evidence_paths": [],
+                 "next_action": ""},
+                {"event": "run_finished", "ts": "2026-04-30T10:01:00"},
+            ])
+            steps = parse_steps(rd)
+            self.assertEqual(len(steps), 1)
+            self.assertEqual(steps[0].agent, "engineer")
+            self.assertEqual(steps[0].mode, "IMPL")
+
+
     def test_parses_steps_jsonl(self):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)

@@ -364,6 +364,33 @@ review 리포트의 must-fix / waste finding / per-Agent metric 즉시 인지 + 
 
 ---
 
+## run-ledger + receipt (resume / audit)
+
+`begin-run` / `begin-step` / `end-step` / `end-run` 은 prose 저장과 별개로 run_dir 안 `ledger.jsonl` 에 append-only event 를 자동 기록한다. prose 파일 (`<run_dir>/<agent>[-<MODE>].md`) 이 계속 SSOT 이고, ledger 는 긴 prose 를 매번 대화 context 에 재주입하지 않고도 resume / handoff / audit 에 필요한 상태를 담는 색인 장부다. **agent 에게 JSON 출력 형식을 강제하지 않는다** — helper 가 저장된 prose + known state 에서 receipt 를 생성한다.
+
+**자동 기록 event** (코드 경로):
+- `run_started` (begin-run) — entry_point / issue_num
+- `step_started` (begin-step) — agent / mode
+- `step_completed` (end-step) — = **receipt**: agent / mode / enum / prose_excerpt / must_fix / prose_file / sha256 / evidence_paths / next_action(hint)
+- `run_finished` (end-run)
+
+**선택 기록 event** (메인/skill 이 `ledger-event` 로 — 강제 X): `pr_created` / `pr_merged` / `task_completed` / `blocked` / `validator_passed` / `validator_failed`.
+
+```bash
+"$HELPER" ledger-event pr_merged --pr 588 --url <PR_URL>
+"$HELPER" ledger-event blocked --reason "<사유>"
+```
+
+**resume 복원**: compaction/세션 재개 후 긴 prose 를 다시 읽지 말고 한 명령으로 진행 상태를 복원한다.
+```bash
+"$HELPER" run-status     # 현재 run 의 phase / task / last event / next action(hint) / evidence pointer
+```
+출력의 evidence pointer (prose 파일 경로) 로 필요한 prose 만 선택적으로 연다.
+
+**옛 `.steps.jsonl` 흡수** (이슈 #587): step 로그는 `ledger.jsonl` 의 `step_completed` event 로 단일화됐다 (옛 step row 필드의 superset). `ledger.jsonl` 부재 시 옛 `.steps.jsonl` 로 폴백 — plugin 업데이트가 진행 중 run 에 걸친 경우의 마이그레이션 셔틀이다. run-review / strict-conveyor gate / Stop hook 은 모두 `step_completed` event 를 읽는다.
+
+---
+
 ## catastrophic 정합
 
 각 loop 의 entry_point / task_list / advance / expected_steps 진본 = 해당 skill 의 `## Loop` contract. 그 시퀀스가 catastrophic 룰을 자연 충족한다 — catastrophic 시퀀스 진본 = [`hooks.md`](hooks.md#catastrophic-gatesh) (`hooks/catastrophic-gate.sh` 강제): code-validator → pr-reviewer 직전 PASS / engineer 직전 module-architect `PASS` enum / module-architect × K 진입 직전 architecture-validator 1차 PASS. (tech-review 진입 gate = PRD 변경 후 사용자 2 차 OK · `/architect-loop` 진입 후 tech-reviewer 재호출 비권장 = 코드 강제 아닌 자연어 관례.) 8 hook 전체 시점·차단·우회 = [`hooks.md`](hooks.md).

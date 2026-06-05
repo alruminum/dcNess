@@ -1,7 +1,8 @@
 """run_review.py — dcness conveyor run 사후 분석 (RWHarness review skill 의 dcness 변환).
 
 데이터 소스:
-  1. `.sessions/{sid}/runs/{rid}/.steps.jsonl` — step 시퀀스 (agent/mode/enum/must_fix/prose_excerpt/ts)
+  1. `.sessions/{sid}/runs/{rid}/ledger.jsonl` — event 장부의 step_completed
+     (agent/mode/enum/must_fix/prose_excerpt/ts; 옛 .steps.jsonl 은 legacy 폴백, 이슈 #587)
   2. `.sessions/{sid}/runs/{rid}/<agent>[-<MODE>].md` — 각 step 의 전체 prose
   3. CC session JSONL — run timeframe 내 cost/token (run-level coarse)
 
@@ -244,7 +245,8 @@ def list_runs(sessions_root: Path) -> list[Path]:
         if not runs_dir.is_dir():
             continue
         for rid_dir in runs_dir.iterdir():
-            if (rid_dir / ".steps.jsonl").exists():
+            # 이슈 #587 — ledger.jsonl (신규 단일 SSOT) 또는 옛 .steps.jsonl 둘 다 인정.
+            if (rid_dir / "ledger.jsonl").exists() or (rid_dir / ".steps.jsonl").exists():
                 runs.append(rid_dir)
     return sorted(runs, key=lambda p: p.stat().st_mtime, reverse=True)
 
@@ -357,19 +359,13 @@ def _extract_conclusion_enum(prose: str) -> str:
 
 
 def parse_steps(run_dir: Path) -> list[StepRecord]:
+    # 이슈 #587 — ledger.jsonl 의 step_completed event 읽기 (옛 .steps.jsonl 폴백 내장).
+    from harness import ledger
+
     steps: list[StepRecord] = []
-    jsonl = run_dir / ".steps.jsonl"
-    if not jsonl.exists():
+    raw = ledger.read_step_completed_at(run_dir)
+    if not raw:
         return steps
-    raw = []
-    for line in jsonl.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            raw.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
 
     for idx, rec in enumerate(raw):
         agent = rec.get("agent", "?")
@@ -998,16 +994,10 @@ def find_session_jsonls(repo_path: Path) -> list[Path]:
 
 def compute_run_cost(run_dir: Path, repo_path: Path) -> tuple[float, int, int]:
     """Run timeframe 내 assistant turn 의 cost/input/output 합산. Coarse — Agent 별 분리 X."""
-    steps_file = run_dir / ".steps.jsonl"
-    if not steps_file.exists():
-        return (0.0, 0, 0)
+    # 이슈 #587 — ledger.jsonl 의 step_completed event 로 timeframe 산출 (옛 .steps.jsonl 폴백 내장).
+    from harness import ledger
 
-    raw = []
-    for line in steps_file.read_text(encoding="utf-8").splitlines():
-        try:
-            raw.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
+    raw = ledger.read_step_completed_at(run_dir)
     if not raw:
         return (0.0, 0, 0)
 

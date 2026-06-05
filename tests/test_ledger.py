@@ -304,6 +304,40 @@ class AppendStepCompletedTests(unittest.TestCase):
             self.assertEqual(rec["sha256"], ledger.sha256_text(prose))
 
 
+class ReadAtPathTests(unittest.TestCase):
+    """run_dir Path 기반 read (run_review 사후 분석용 — sid/rid 없이 디렉토리 스캔)."""
+
+    def test_read_events_at_ledger(self) -> None:
+        with TemporaryDirectory() as d:
+            base = Path(d)
+            _seed_run(base)
+            ledger.append_event(_SID, _RID, "run_started", base_dir=base)
+            ledger.append_step_completed(
+                _SID, _RID, "engineer", None, "PROSE_LOGGED", "x", "/tmp/e.md", base_dir=base)
+            rd = run_dir(_SID, _RID, base_dir=base)
+            events = ledger.read_events_at(rd)
+            self.assertEqual([e["event"] for e in events], ["run_started", "step_completed"])
+            steps = ledger.read_step_completed_at(rd)
+            self.assertEqual(len(steps), 1)
+            self.assertEqual(steps[0]["agent"], "engineer")
+
+    def test_read_at_legacy_fallback(self) -> None:
+        with TemporaryDirectory() as d:
+            base = Path(d)
+            _seed_run(base)
+            rd = run_dir(_SID, _RID, base_dir=base)
+            (rd / ".steps.jsonl").write_text(
+                json.dumps({"agent": "qa", "mode": None, "enum": "PROSE_LOGGED",
+                            "prose_excerpt": "z", "must_fix": False, "prose_file": "/tmp/q.md"})
+                + "\n",
+                encoding="utf-8",
+            )
+            steps = ledger.read_step_completed_at(rd)
+            self.assertEqual(len(steps), 1)
+            self.assertEqual(steps[0]["agent"], "qa")
+            self.assertEqual(steps[0]["event"], "step_completed")
+
+
 class RenderStatusTests(unittest.TestCase):
     def test_status_shows_phase_and_evidence(self) -> None:
         with TemporaryDirectory() as d:

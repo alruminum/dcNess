@@ -57,7 +57,9 @@ __all__ = [
     "legacy_steps_path",
     "append_event",
     "read_events",
+    "read_events_at",
     "read_step_completed",
+    "read_step_completed_at",
     "count_step_completed",
     "sha256_text",
     "extract_evidence_paths",
@@ -183,21 +185,47 @@ def append_event(
     return record
 
 
-def read_events(
-    sid: str, rid: str, *, base_dir: Optional[Path] = None
+def _read_events_paths(
+    primary: Path, legacy: Path
 ) -> List[Dict[str, Any]]:
-    """ledger.jsonl 전체 읽기. 없으면 옛 .steps.jsonl 폴백 (step_completed 로 normalize)."""
-    primary = ledger_path(sid, rid, base_dir=base_dir)
+    """ledger.jsonl 우선, 없으면 옛 .steps.jsonl 폴백 (step_completed 로 normalize).
+
+    저수준 — sid/rid 버전 (`read_events`) 과 run_dir Path 버전 (`read_events_at`)
+    공통 본체. 마이그레이션 셔틀이 한 곳에만 살게 한다.
+    """
     if primary.exists():
         return _read_jsonl(primary)
-    # 마이그레이션 셔틀 — 옛 .steps.jsonl row 를 step_completed event 로 normalize.
-    legacy = legacy_steps_path(sid, rid, base_dir=base_dir)
     out: List[Dict[str, Any]] = []
     for row in _read_jsonl(legacy):
         if "event" not in row:
             row = {"event": "step_completed", **row}
         out.append(row)
     return out
+
+
+def read_events(
+    sid: str, rid: str, *, base_dir: Optional[Path] = None
+) -> List[Dict[str, Any]]:
+    """ledger.jsonl 전체 읽기. 없으면 옛 .steps.jsonl 폴백 (step_completed 로 normalize)."""
+    return _read_events_paths(
+        ledger_path(sid, rid, base_dir=base_dir),
+        legacy_steps_path(sid, rid, base_dir=base_dir),
+    )
+
+
+def read_events_at(run_dir_path: Any) -> List[Dict[str, Any]]:
+    """run_dir Path 로부터 직접 읽기 (run_review 사후 분석 — sid/rid 없이 디렉토리 스캔)."""
+    p = Path(run_dir_path)
+    return _read_events_paths(p / "ledger.jsonl", p / ".steps.jsonl")
+
+
+def read_step_completed_at(run_dir_path: Any) -> List[Dict[str, Any]]:
+    """run_dir Path 로부터 step_completed event 만 시간순 반환."""
+    return [
+        e
+        for e in read_events_at(run_dir_path)
+        if e.get("event") == "step_completed"
+    ]
 
 
 def read_step_completed(
