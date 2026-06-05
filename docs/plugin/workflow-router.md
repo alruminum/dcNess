@@ -6,6 +6,8 @@
 
 ## 읽는 법
 
+> 🟢 **doctrine — 기본은 light, 무거운 절차는 조건부다.** 모든 요청을 같은 full chain(product-plan → tech-review → architect-loop → impl)으로 보내지 않는다. low-risk 는 *가장 작은 lane* 으로 직행하고, product-plan / tech-review / architect / consensus 같은 무거운 절차는 **high-risk trigger 가 있을 때만** 조건부로 호출한다 (risk-triggered escalation). 상위 SSOT = [`CLAUDE.md` dcness 강제 원칙](../../CLAUDE.md#dcness-강제-원칙-룰-추가설계-시-가드레일).
+
 라우팅은 **권고**다 — 강제 hook 이 아니다. 메인 Claude 가 자유 형식 작업 요청을 받으면, 먼저 이 표로 리스크를 판정해 *요청을 만족하는 가장 작은 workflow* 를 고른다. 최종 결정은 메인/사용자. 모호하면 clarify 또는 Standard 가 기본이다. **명령명을 외우는 게 아니라 리스크로 고른다.**
 
 ## 판정 규칙 — public surface 와 lane 은 다르다
@@ -101,6 +103,20 @@ flowchart TB
 | high-risk 0개이고 concrete signal 이 충분함 | Lite: 계획 파일 없이 직접 구현 + `pr-reviewer`. `code-validator` / architecture-validator 호출 없음 |
 
 즉 architecture-validator 2-pass 는 Deep lane 의 설계 검증이다. Standard 의 architecture-lite 는 별도 새 public command 가 아니라 compact plan 1-pass 로 흡수한다.
+
+## low-risk regression scenario (full chain 빨림 방지)
+
+doctrine 의 핵심 실패 모드는 *low-risk 작업이 무거운 full chain 으로 빨려 들어가는 것*이다. 라우팅은 강제 hook 이 아니라 권고이므로(코드로 막을 수 없음), 아래 표가 판정 기준의 **회귀 가드** 역할을 한다 — 새 lane/trigger 를 손볼 때 이 시나리오들이 여전히 성립하는지 확인한다.
+
+| # | 요청 예시 | 올바른 lane | 회귀 (이러면 안 됨) |
+|---|---|---|---|
+| R1 | 파일/symbol 명시한 "이 함수 버그 고쳐줘" | Lite (`/impl` 직접) | product-plan → tech-review → architect-loop full chain |
+| R2 | 작은 docs-only 오타/문구 수정 | Lite | architect 2-pass / consensus 호출 |
+| R3 | 이미 분류·승인된 issue/PR 번호 "구현해줘" | Lite | `/product-plan` 재기획으로 우회 |
+| R4 | high-risk 0개지만 수정 범위·테스트 기준이 애매 | Standard (compact plan 1-pass) | Deep `/architect-loop` 승격 |
+| R5 | 새 외부 API/SDK/model 도입이 필요 | Deep (`/tech-review` 선행) | Lite 직행으로 검증 생략 |
+
+R5 는 **반대 방향** 가드다 — high-risk 를 light lane 으로 *내리는 것*도 회귀다. regression 은 "무거운 걸 가볍게(R5)" 와 "가벼운 걸 무겁게(R1~R4)" **양방향**을 모두 막는다. low-risk → light, high-risk → escalation 이 동시에 성립해야 doctrine 이 지켜진다. 경량화 대상은 사전 ceremony 이지 safety gate(branch / PR / test / review / CI / false-clean 방지)가 아니다 — R1~R4 도 PR·review·CI 는 그대로 탄다.
 
 ## issue-report 와의 경계
 
