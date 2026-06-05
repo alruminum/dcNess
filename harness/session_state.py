@@ -1675,10 +1675,16 @@ def _cli_run_status(args: Any) -> int:
 
 
 def _cli_ledger_event(args: Any) -> int:
-    """ledger 에 임의 event 한 줄 기록 (pr_created/pr_merged/task_completed/blocked 등 — 이슈 #587).
+    """ledger 에 *수동* checkpoint event 한 줄 기록 (pr_created/pr_merged/task_completed/blocked 등 — 이슈 #587).
 
     강제 아님 — 메인/skill 이 PR 생성·머지·차단 같은 checkpoint 를 *선택적* 으로
-    남기는 경로. event type 은 ledger.EVENT_TYPES 검증.
+    남기는 경로.
+
+    🔴 helper-owned lifecycle event (run_started/step_started/step_completed/run_finished)
+    는 거부한다 (codex review). 수동 CLI 로 receipt 필드 없는 가짜 step_completed 를
+    넣으면 read_step_completed/list_runs/finalize-run 이 진짜 step 으로 취급해
+    prose-as-SSOT invariant 가 깨진다 — lifecycle 은 begin-run/begin-step/end-step/
+    end-run 코드 경로 전용.
     """
     sid = auto_detect_session_id()
     rid = auto_detect_run_id()
@@ -1686,6 +1692,16 @@ def _cli_ledger_event(args: Any) -> int:
         print(diagnose_sid_rid_resolution(mode="both"), file=sys.stderr)
         return 1
     from harness import ledger
+
+    if args.event_type not in ledger.MANUAL_EVENT_TYPES:
+        print(
+            f"[session_state] ledger-event 는 수동 checkpoint 만 허용: "
+            f"{sorted(ledger.MANUAL_EVENT_TYPES)}. "
+            f"lifecycle event(run_started/step_started/step_completed/run_finished)는 "
+            f"begin-run/begin-step/end-step/end-run 코드 경로 전용 — 수동 위조 차단.",
+            file=sys.stderr,
+        )
+        return 1
 
     fields: Dict[str, Any] = {}
     for key in ("agent", "mode", "pr_number", "url", "issue_num", "reason"):

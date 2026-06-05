@@ -2454,6 +2454,44 @@ class NextTaskLedgerTests(unittest.TestCase):
             f"next-task 새 run 에 run_started 누락: {events}",
         )
 
+    def test_ledger_event_rejects_lifecycle(self) -> None:
+        """ledger-event CLI 가 helper-owned lifecycle event 위조를 거부 (codex review)."""
+        import contextlib
+        import io
+        from types import SimpleNamespace
+
+        from harness.session_state import _cli_ledger_event, _clear_default_base_cache
+
+        repo = Path(self._td.name) / "le-repo"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+        os.environ["DCNESS_SESSION_ID"] = "11111111-2222-4333-8444-555555555555"
+        os.environ["DCNESS_RUN_ID"] = "run-deadbeef"
+
+        def _ns(event_type: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                event_type=event_type, agent=None, mode=None,
+                pr_number=None, url=None, issue_num=None, reason=None,
+            )
+
+        # lifecycle event 위조 거부
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            rc = _cli_ledger_event(_ns("step_completed"))
+        self.assertEqual(rc, 1)
+        self.assertIn("lifecycle", err.getvalue().lower())
+
+        # 수동 event 는 허용
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            rc2 = _cli_ledger_event(
+                SimpleNamespace(event_type="pr_merged", agent=None, mode=None,
+                                pr_number=588, url=None, issue_num=None, reason=None)
+            )
+        self.assertEqual(rc2, 0)
+        self.assertIn("pr_merged", out.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

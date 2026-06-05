@@ -54,6 +54,8 @@ from typing import Any, Dict, List, Optional
 
 __all__ = [
     "EVENT_TYPES",
+    "LIFECYCLE_EVENT_TYPES",
+    "MANUAL_EVENT_TYPES",
     "ledger_path",
     "legacy_steps_path",
     "append_event",
@@ -86,6 +88,19 @@ EVENT_TYPES = frozenset(
         "run_finished",
     }
 )
+
+# helper-owned lifecycle event — begin-run/begin-step/end-step/end-run 코드 경로만
+# 기록한다. step_completed 는 receipt 필드(sha256/prose_file/...)를 동반해야 하므로
+# 반드시 append_step_completed 를 거친다.
+LIFECYCLE_EVENT_TYPES = frozenset(
+    {"run_started", "step_started", "step_completed", "run_finished"}
+)
+
+# `ledger-event` CLI 가 허용하는 *수동* checkpoint event (이슈 #587 codex review).
+# lifecycle event 를 수동 CLI 로 위조하면 receipt 필드 없는 가짜 step_completed 가
+# read_step_completed/list_runs/finalize-run 에서 진짜 step 으로 취급돼 prose-as-SSOT
+# invariant 가 깨진다 — 따라서 수동 CLI 는 manual event 만.
+MANUAL_EVENT_TYPES = EVENT_TYPES - LIFECYCLE_EVENT_TYPES
 
 # step_completed 에서 validator pass/fail 을 *파생* 할 때 쓰는 validator agent 집합.
 _VALIDATOR_AGENTS = frozenset(
@@ -228,9 +243,30 @@ def _read_events_paths(
     """
     primary_events = _read_jsonl(primary) if primary.exists() else []
     legacy_events = _normalize_legacy_rows(legacy) if legacy.exists() else []
-    if primary_events and legacy_events:
-        return legacy_events + primary_events
-    return primary_events or legacy_events
+    if not (primary_events and legacy_events):
+        return primary_events or legacy_events
+    # mixed — ts 기준 안정 정렬 merge (codex review). concat 만 하면 version skew /
+    # downgrade / retry / stale helper 시 새 legacy row 가 옛 ledger row 앞에 강제될 수
+    # 있다. ISO8601(UTC) ts 는 lexicographic = chronological. ts 동률이면 stable sort 로
+    # 입력 순서 (legacy 먼저) 보존. step_completed 는 (agent,mode,ts,prose_file) identity
+    # 로 dedup 해 stale/retry 중복을 흡수한다.
+    combined = legacy_events + primary_events
+    combined.sort(key=lambda e: e.get("ts") or "")
+    seen: set = set()
+    out: List[Dict[str, Any]] = []
+    for e in combined:
+        if e.get("event") == "step_completed":
+            ident = (
+                e.get("agent"),
+                e.get("mode"),
+                e.get("ts"),
+                e.get("prose_file"),
+            )
+            if ident in seen:
+                continue
+            seen.add(ident)
+        out.append(e)
+    return out
 
 
 def read_events(

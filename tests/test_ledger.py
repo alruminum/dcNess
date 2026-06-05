@@ -59,6 +59,17 @@ class EventTypesTests(unittest.TestCase):
         }
         self.assertTrue(expected.issubset(ledger.EVENT_TYPES))
 
+    def test_manual_excludes_lifecycle(self) -> None:
+        """수동 CLI 허용 집합은 helper-owned lifecycle 을 제외 (codex review)."""
+        self.assertEqual(
+            ledger.MANUAL_EVENT_TYPES,
+            ledger.EVENT_TYPES - ledger.LIFECYCLE_EVENT_TYPES,
+        )
+        for ev in ("run_started", "step_started", "step_completed", "run_finished"):
+            self.assertNotIn(ev, ledger.MANUAL_EVENT_TYPES)
+        for ev in ("pr_merged", "blocked", "task_completed", "validator_failed"):
+            self.assertIn(ev, ledger.MANUAL_EVENT_TYPES)
+
 
 class PathTests(unittest.TestCase):
     def test_ledger_path_under_run_dir(self) -> None:
@@ -172,6 +183,45 @@ class ReadEventsFallbackTests(unittest.TestCase):
             # occurrence count 가 legacy 포함 (prose 덮어쓰기 방지)
             self.assertEqual(
                 ledger.count_step_completed(_SID, _RID, "old-step", None, base_dir=base), 1)
+
+    def test_mixed_merge_sorts_by_ts(self) -> None:
+        """legacy ts 가 ledger event 사이에 끼면 ts 정렬로 시간순 복원 (codex review non-monotonic)."""
+        with TemporaryDirectory() as d:
+            base = Path(d)
+            _seed_run(base)
+            lp = ledger.ledger_path(_SID, _RID, base_dir=base)
+            lp.write_text(
+                json.dumps({"event": "step_completed", "ts": "2026-05-01T10:00:00+00:00",
+                            "agent": "early", "mode": None, "prose_file": "/tmp/a.md"}) + "\n"
+                + json.dumps({"event": "step_completed", "ts": "2026-05-01T12:00:00+00:00",
+                              "agent": "late", "mode": None, "prose_file": "/tmp/c.md"}) + "\n",
+                encoding="utf-8")
+            legacy = ledger.legacy_steps_path(_SID, _RID, base_dir=base)
+            legacy.write_text(
+                json.dumps({"ts": "2026-05-01T11:00:00+00:00", "agent": "middle", "mode": None,
+                            "enum": "PROSE_LOGGED", "prose_excerpt": "m", "must_fix": False,
+                            "prose_file": "/tmp/b.md"}) + "\n",
+                encoding="utf-8")
+            steps = ledger.read_step_completed(_SID, _RID, base_dir=base)
+            self.assertEqual([s["agent"] for s in steps], ["early", "middle", "late"])
+
+    def test_mixed_merge_dedupes_step_completed(self) -> None:
+        """동일 (agent,mode,ts,prose_file) step_completed 중복 제거 (codex review)."""
+        with TemporaryDirectory() as d:
+            base = Path(d)
+            _seed_run(base)
+            ident = {"ts": "2026-05-01T10:00:00+00:00", "agent": "dup",
+                     "mode": None, "prose_file": "/tmp/d.md"}
+            lp = ledger.ledger_path(_SID, _RID, base_dir=base)
+            lp.write_text(json.dumps({"event": "step_completed", **ident}) + "\n", encoding="utf-8")
+            legacy = ledger.legacy_steps_path(_SID, _RID, base_dir=base)
+            legacy.write_text(
+                json.dumps({**ident, "enum": "PROSE_LOGGED", "prose_excerpt": "d",
+                            "must_fix": False}) + "\n",
+                encoding="utf-8")
+            steps = ledger.read_step_completed(_SID, _RID, base_dir=base)
+            self.assertEqual(len(steps), 1)
+            self.assertEqual(steps[0]["agent"], "dup")
 
     def test_malformed_line_warns(self) -> None:
         """손상 레코드 가시화 — malformed 줄 skip + stderr WARN (codex medium)."""
