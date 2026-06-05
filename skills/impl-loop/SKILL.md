@@ -367,7 +367,7 @@ PR merge 직후 *반드시* 실행 (issue #396):
 ## 안티패턴 (회귀 방지)
 
 - ❌ task N 개를 한 sub-agent 호출에 묶어 한 번에 처리 — task 별 PR / 이슈 close 분리가 깨지고 `/run-review` 분석 단위 붕괴. 한 번에 한 task. (build-worker 는 1 task 통합 — 충돌 X)
-- ❌ task 동시 병렬 진행 — git 충돌 + cache_read 폭주 ([#216](https://github.com/alruminum/dcNess/issues/216) — \$1,531 / 단일 세션). 직렬 진행.
+- ❌ task 동시 병렬 진행 — git 충돌 + cache_read 폭주 ([#216](https://github.com/alruminum/dcNess/issues/216) — \$1,531 / 단일 세션). 현재 chain 은 직렬만 동작. (독립 task 의 opt-in 병렬 wave 정책은 [`parallel-policy.md`](../../docs/plugin/parallel-policy.md) 에 정의 — driver 미구현이라 현 시점 동작은 직렬.)
 - ❌ 한 task 의 PR 머지 전 다음 task 진입 — task 간 의존 깨짐.
 - ❌ escalate 신호 무시하고 다음 task 진행 — 사용자 부재 환경 추측 진행 = 폭주.
 - ❌ chain 전체 완료 후 자율 작업 (이슈 등록 / cleanup / 분석) 진입 시 `post-task-begin` marker 누락 — task ROI 측정 왜곡 (#472).
