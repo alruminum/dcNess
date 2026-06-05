@@ -271,7 +271,7 @@ def _strict_conveyor_gate_message(
                 and current_count > count_at_begin
             ):
                 return (
-                    "[strict-conveyor] 이전 step이 이미 .steps.jsonl 에 기록됐습니다 — "
+                    "[strict-conveyor] 이전 step이 이미 ledger.jsonl 에 기록됐습니다 — "
                     f"logged_step={current}. 다음 Agent 호출 전 "
                     f"`{_begin_step_cmd(subagent, mode)}` 로 새 step을 먼저 시작하세요."
                 )
@@ -1176,7 +1176,23 @@ def handle_stop(
     if not isinstance(slot, dict):
         return 0  # begin-run 미호출 — skip
     if slot.get("finalized_at"):
-        return 0  # 이미 finalize-run 호출됨 — skip
+        # 이슈 #587 — finalize-run 됐어도 end-run(run_finished) 미호출이면 run-review 의
+        # list_runs(run_finished 요구)에서 안 보인다. ledger 에 run_finished 가 이미
+        # 있으면 닫힌 것 → skip. 없으면 (finalize-only, end-run 까먹음) 아래 end-run 발사
+        # 흐름으로 내려가 run_finished 를 보장한다.
+        try:
+            from harness import ledger as _ledger
+
+            _ev = (
+                _ledger.read_events(sid, rid, base_dir=base_dir)
+                if base_dir
+                else _ledger.read_events(sid, rid)
+            )
+            if any(e.get("event") == "run_finished" for e in _ev):
+                return 0  # 이미 run_finished — 닫힘
+        except Exception:
+            return 0  # 판정 실패 시 보수적으로 skip (기존 동작 보존)
+        # run_finished 부재 → 아래 end-run 발사로 finalize-only run 복구
 
     # end-step 완료 매칭 검사 (false positive 회피)
     # _read_steps_jsonl 마지막 row.(agent, mode) vs live.current_step.(agent, mode).

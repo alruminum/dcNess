@@ -58,6 +58,10 @@ const DENY_LIST = [
     label: '옛 디자인 SSOT `docs/ui-spec*` — 현재 `docs/design.md` SSOT',
   },
   {
+    pattern: /\.steps\.jsonl/,
+    label: '옛 step 로그 `.steps.jsonl` — `ledger.jsonl` 의 step_completed event 로 흡수 (이슈 #587). legacy/폴백 맥락(옛·legacy 키워드 동반)만 허용.',
+  },
+  {
     pattern: /agent\s+1[01]\s*종/,
     label: '옛 agent 카운트 (10 또는 11 종) — 현재 12 종 (designer / build-worker 포함)',
   },

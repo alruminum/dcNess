@@ -1,7 +1,8 @@
 """run_review.py — dcness conveyor run 사후 분석 (RWHarness review skill 의 dcness 변환).
 
 데이터 소스:
-  1. `.sessions/{sid}/runs/{rid}/.steps.jsonl` — step 시퀀스 (agent/mode/enum/must_fix/prose_excerpt/ts)
+  1. `.sessions/{sid}/runs/{rid}/ledger.jsonl` — event 장부의 step_completed
+     (agent/mode/enum/must_fix/prose_excerpt/ts; 옛 .steps.jsonl 은 legacy 폴백, 이슈 #587)
   2. `.sessions/{sid}/runs/{rid}/<agent>[-<MODE>].md` — 각 step 의 전체 prose
   3. CC session JSONL — run timeframe 내 cost/token (run-level coarse)
 
@@ -235,7 +236,19 @@ class RunReport:
 # ── Run discovery ─────────────────────────────────────────────────────
 
 def list_runs(sessions_root: Path) -> list[Path]:
-    """`.sessions/{sid}/runs/{rid}/` 디렉토리 list (mtime 내림차순)."""
+    """`.sessions/{sid}/runs/{rid}/` 디렉토리 list (mtime 내림차순) — implicit --latest/--list 후보.
+
+    이슈 #587 (codex review): run-review 는 *끝난* run 분석 도구다.
+    - ledger-backed run(ledger.jsonl): `run_finished` event 와 유효 step_completed 가
+      둘 다 있어야 포함한다. 신규 ledger 는 begin-run 부터 event 를 쓰므로, 첫
+      step_completed 후 end-run 전의 partial active run 이 implicit --latest 로
+      선택돼 미완 리포트가 나오는 것을 막고, step 없는 완료 run 도 제외한다.
+      (명시 `--run-id` 는 find_run_dir 직접 탐색으로 partial 도 분석 가능.)
+    - legacy .steps.jsonl run: run_finished 개념이 없으므로 step_completed≥1 로 판정
+      (옛 '파일 존재 = 최소 1 step' 동작과 동등, 호환 경로).
+    """
+    from harness import ledger
+
     if not sessions_root.exists():
         return []
     runs = []
@@ -244,7 +257,14 @@ def list_runs(sessions_root: Path) -> list[Path]:
         if not runs_dir.is_dir():
             continue
         for rid_dir in runs_dir.iterdir():
-            if (rid_dir / ".steps.jsonl").exists():
+            events = ledger.read_events_at(rid_dir)
+            if not events:
+                continue
+            has_step = any(e.get("event") == "step_completed" for e in events)
+            if (rid_dir / "ledger.jsonl").exists():
+                if has_step and any(e.get("event") == "run_finished" for e in events):
+                    runs.append(rid_dir)
+            elif has_step:
                 runs.append(rid_dir)
     return sorted(runs, key=lambda p: p.stat().st_mtime, reverse=True)
 
@@ -357,19 +377,13 @@ def _extract_conclusion_enum(prose: str) -> str:
 
 
 def parse_steps(run_dir: Path) -> list[StepRecord]:
+    # 이슈 #587 — ledger.jsonl 의 step_completed event 읽기 (옛 .steps.jsonl 폴백 내장).
+    from harness import ledger
+
     steps: list[StepRecord] = []
-    jsonl = run_dir / ".steps.jsonl"
-    if not jsonl.exists():
+    raw = ledger.read_step_completed_at(run_dir)
+    if not raw:
         return steps
-    raw = []
-    for line in jsonl.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            raw.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
 
     for idx, rec in enumerate(raw):
         agent = rec.get("agent", "?")
@@ -998,21 +1012,25 @@ def find_session_jsonls(repo_path: Path) -> list[Path]:
 
 def compute_run_cost(run_dir: Path, repo_path: Path) -> tuple[float, int, int]:
     """Run timeframe 내 assistant turn 의 cost/input/output 합산. Coarse — Agent 별 분리 X."""
-    steps_file = run_dir / ".steps.jsonl"
-    if not steps_file.exists():
+    # 이슈 #587 (codex review) — run window = run_started ~ run_finished lifecycle event.
+    # lifecycle 이 없으면(legacy .steps.jsonl) step_completed first/last 로 폴백.
+    from harness import ledger
+
+    events = ledger.read_events_at(run_dir)
+    if not events:
+        return (0.0, 0, 0)
+    started = next((e for e in events if e.get("event") == "run_started"), None)
+    finished = next(
+        (e for e in reversed(events) if e.get("event") == "run_finished"), None
+    )
+    steps = [e for e in events if e.get("event") == "step_completed"]
+    first_src = started or (steps[0] if steps else None)
+    last_src = finished or (steps[-1] if steps else None)
+    if not first_src or not last_src:
         return (0.0, 0, 0)
 
-    raw = []
-    for line in steps_file.read_text(encoding="utf-8").splitlines():
-        try:
-            raw.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    if not raw:
-        return (0.0, 0, 0)
-
-    first_ts = _parse_iso(raw[0].get("ts", ""))
-    last_ts = _parse_iso(raw[-1].get("ts", ""))
+    first_ts = _parse_iso(first_src.get("ts", ""))
+    last_ts = _parse_iso(last_src.get("ts", ""))
     if not first_ts or not last_ts:
         return (0.0, 0, 0)
 

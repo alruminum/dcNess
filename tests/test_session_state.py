@@ -923,7 +923,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
             rc = _cli_finalize_run(SimpleNamespace(expected_steps=5))
         self.assertEqual(rc, 0)
         self.assertIn("STEP COUNT WARN", err.getvalue())
-        self.assertIn("row=0", err.getvalue())
+        self.assertIn("step_completed=0", err.getvalue())
         self.assertIn("expected=5", err.getvalue())
 
     def test_finalize_run_no_warn_when_expected_none(self) -> None:
@@ -1579,10 +1579,31 @@ class HelperAutomationTests(unittest.TestCase):
         from harness.session_state import _clear_default_base_cache
         self._orig_cwd = os.getcwd()
         self._tmp = tempfile.TemporaryDirectory()
+        self._prose_occurrences: dict = {}
         self.addCleanup(self._tmp.cleanup)
         self.addCleanup(lambda: os.chdir(self._orig_cwd))
         _clear_default_base_cache()
         self.addCleanup(_clear_default_base_cache)
+
+    def _append_step_status_with_prose(
+        self,
+        sid: str,
+        rid: str,
+        agent: str,
+        mode: str | None,
+        enum: str,
+        prose: str,
+    ) -> None:
+        from harness.session_state import _append_step_status, run_dir
+
+        key = (sid, rid, agent, mode)
+        occurrence = self._prose_occurrences.get(key, 0)
+        self._prose_occurrences[key] = occurrence + 1
+        stem = f"{agent}-{mode}" if mode else agent
+        suffix = f"-{occurrence}" if occurrence else ""
+        prose_path = run_dir(sid, rid) / f"{stem}{suffix}.md"
+        prose_path.write_text(prose, encoding="utf-8")
+        _append_step_status(sid, rid, agent, mode, enum, prose, prose_path)
 
     def test_extract_prose_summary_prefers_conclusion_section(self) -> None:
         """`## 결론` 섹션이 있으면 그 본문 우선 (DCN-CHG-30-11)."""
@@ -1655,7 +1676,6 @@ PASS — 빈 문자열 가드 추가.
 
     def test_append_step_status_creates_jsonl(self) -> None:
         from harness.session_state import (
-            _append_step_status,
             _read_steps_jsonl,
             _steps_jsonl_path,
             session_dir,
@@ -1671,11 +1691,12 @@ PASS — 빈 문자열 가드 추가.
         sid = "test-sid"
         rid = "run-deadbeef"
         run_dir(sid, rid, create=True)
-        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "qa prose body", Path("/dev/null"))
-        _append_step_status(
+        self._append_step_status_with_prose(
+            sid, rid, "qa", None, "FUNCTIONAL_BUG", "qa prose body"
+        )
+        self._append_step_status_with_prose(
             sid, rid, "module-architect", None, "PASS",
             "## 결론\nPASS\n## 변경\n무언가",
-            Path("/dev/null"),
         )
         records = _read_steps_jsonl(sid, rid)
         self.assertEqual(len(records), 2)
@@ -1686,7 +1707,7 @@ PASS — 빈 문자열 가드 추가.
 
     def test_append_step_status_detects_must_fix(self) -> None:
         from harness.session_state import (
-            _append_step_status, _read_steps_jsonl, run_dir,
+            _read_steps_jsonl, run_dir,
             _clear_default_base_cache,
         )
         repo = Path(self._tmp.name) / "repo"
@@ -1694,10 +1715,9 @@ PASS — 빈 문자열 가드 추가.
         os.chdir(repo)
         _clear_default_base_cache()
         run_dir("sid", "run-aaaa1111", create=True)
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-aaaa1111", "pr-reviewer", None, "CHANGES_REQUESTED",
             "## 결론\nCHANGES_REQUESTED\n## MUST FIX\n- src/foo.py:10 race condition\n",
-            Path("/dev/null"),
         )
         records = _read_steps_jsonl("sid", "run-aaaa1111")
         self.assertTrue(records[0]["must_fix"])
@@ -1709,7 +1729,7 @@ PASS — 빈 문자열 가드 추가.
         단순 단어경계 regex 가 매칭 → MUST_FIX_GHOST 6건 false positive.
         """
         from harness.session_state import (
-            _append_step_status, _read_steps_jsonl, run_dir,
+            _read_steps_jsonl, run_dir,
             _clear_default_base_cache,
         )
         repo = Path(self._tmp.name) / "repo"
@@ -1718,20 +1738,17 @@ PASS — 빈 문자열 가드 추가.
         _clear_default_base_cache()
         run_dir("sid", "run-bbbb2222", create=True)
         # 자장 실 케이스 그대로
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-bbbb2222", "pr-reviewer", None, "LGTM",
             "MUST FIX 0, NICE TO HAVE 6 (let tree: any / dead code).\nLGTM\n",
-            Path("/dev/null"),
         )
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-bbbb2222", "pr-reviewer", None, "LGTM",
             "MUST FIX: 0\n결론: LGTM\n",
-            Path("/dev/null"),
         )
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-bbbb2222", "pr-reviewer", None, "LGTM",
             "검토 결과: MUST FIX 없음. NICE TO HAVE 3.\nLGTM\n",
-            Path("/dev/null"),
         )
         records = _read_steps_jsonl("sid", "run-bbbb2222")
         for r in records:
@@ -1745,7 +1762,7 @@ PASS — 빈 문자열 가드 추가.
         `_has_positive_must_fix` 가 True 반환 → MUST_FIX_LEAK false positive.
         """
         from harness.session_state import (
-            _append_step_status, _read_steps_jsonl, run_dir,
+            _read_steps_jsonl, run_dir,
             _clear_default_base_cache,
         )
         repo = Path(self._tmp.name) / "repo"
@@ -1754,28 +1771,24 @@ PASS — 빈 문자열 가드 추가.
         _clear_default_base_cache()
         run_dir("sid", "run-dddd4444", create=True)
         # 자장 task2 pr-reviewer 실 prose 형태
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-dddd4444", "pr-reviewer", None, "LGTM",
             "**MUST FIX 항목**: 없음\n**NICE TO HAVE 항목**:\n- D 데드코드\n",
-            Path("/dev/null"),
         )
         # 변형 — 라벨 + 콜론 + 부정
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-dddd4444", "pr-reviewer", None, "LGTM",
             "MUST FIX 항목: 없음\nNICE TO HAVE: 3건\n",
-            Path("/dev/null"),
         )
         # 변형 — 해당 없음
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-dddd4444", "pr-reviewer", None, "LGTM",
             "MUST FIX: 해당 없음\n",
-            Path("/dev/null"),
         )
         # 변형 — bold + `:` 없이 직접 부정
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-dddd4444", "pr-reviewer", None, "LGTM",
             "**MUST FIX** 없음\n",
-            Path("/dev/null"),
         )
         records = _read_steps_jsonl("sid", "run-dddd4444")
         for r in records:
@@ -1787,7 +1800,7 @@ PASS — 빈 문자열 가드 추가.
     def test_must_fix_positive_still_detected(self) -> None:
         """negation regex 가 *진짜* MUST FIX 케이스는 정확히 검출."""
         from harness.session_state import (
-            _append_step_status, _read_steps_jsonl, run_dir,
+            _read_steps_jsonl, run_dir,
             _clear_default_base_cache,
         )
         repo = Path(self._tmp.name) / "repo"
@@ -1795,21 +1808,18 @@ PASS — 빈 문자열 가드 추가.
         os.chdir(repo)
         _clear_default_base_cache()
         run_dir("sid", "run-cccc3333", create=True)
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-cccc3333", "pr-reviewer", None, "CHANGES_REQUESTED",
             "## MUST FIX\n- audio buffer underflow on iOS\n",
-            Path("/dev/null"),
         )
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-cccc3333", "pr-reviewer", None, "CHANGES_REQUESTED",
             "MUST FIX: storage 키 충돌 가능\nLGTM 후보 X\n",
-            Path("/dev/null"),
         )
         # mixed — 부정 라인 + positive 라인 → True (positive 우선)
-        _append_step_status(
+        self._append_step_status_with_prose(
             "sid", "run-cccc3333", "pr-reviewer", None, "CHANGES_REQUESTED",
             "MUST FIX 0\nMUST FIX: 실제 이슈 발견\n",
-            Path("/dev/null"),
         )
         records = _read_steps_jsonl("sid", "run-cccc3333")
         self.assertEqual(len(records), 3)
@@ -1818,7 +1828,7 @@ PASS — 빈 문자열 가드 추가.
 
     def test_finalize_run_outputs_status_json(self) -> None:
         from harness.session_state import (
-            _cli_finalize_run, _append_step_status,
+            _cli_finalize_run,
             run_dir, _clear_default_base_cache, write_pid_session,
             write_pid_current_run, get_cc_pid_via_ppid_chain,
         )
@@ -1841,15 +1851,21 @@ PASS — 빈 문자열 가드 추가.
         run_dir(sid, rid, create=True)
         write_pid_current_run(cc_pid, rid)
 
-        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok", Path("/dev/null"))
-        _append_step_status(
-            sid, rid, "module-architect", None, "PASS", "ok", Path("/dev/null")
+        self._append_step_status_with_prose(
+            sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok"
         )
-        _append_step_status(sid, rid, "engineer", "IMPL", "IMPL_DONE", "fix done", Path("/dev/null"))
-        _append_step_status(
-            sid, rid, "validator", "BUGFIX_VALIDATION", "PASS", "verified", Path("/dev/null")
+        self._append_step_status_with_prose(
+            sid, rid, "module-architect", None, "PASS", "ok"
         )
-        _append_step_status(sid, rid, "pr-reviewer", None, "LGTM", "looks good", Path("/dev/null"))
+        self._append_step_status_with_prose(
+            sid, rid, "engineer", "IMPL", "IMPL_DONE", "fix done"
+        )
+        self._append_step_status_with_prose(
+            sid, rid, "validator", "BUGFIX_VALIDATION", "PASS", "verified"
+        )
+        self._append_step_status_with_prose(
+            sid, rid, "pr-reviewer", None, "LGTM", "looks good"
+        )
 
         out = StringIO()
         with redirect_stdout(out):
@@ -1867,7 +1883,7 @@ PASS — 빈 문자열 가드 추가.
         """#272 W4 — pr-reviewer CHANGES_REQUESTED → POLISH → pr-reviewer LGTM 시
         has_must_fix=False (sticky 미발생). latest-per-role 평가 회귀."""
         from harness.session_state import (
-            _cli_finalize_run, _append_step_status,
+            _cli_finalize_run,
             run_dir, _clear_default_base_cache, write_pid_session,
             write_pid_current_run, get_cc_pid_via_ppid_chain,
         )
@@ -1891,27 +1907,28 @@ PASS — 빈 문자열 가드 추가.
 
         # qa-triage → impl-task-loop fallback 전형 시퀀스 — pr-reviewer CHANGES_REQUESTED →
         # engineer POLISH → pr-reviewer LGTM. 첫 pr-reviewer prose 에 MUST FIX 포함.
-        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok", Path("/dev/null"))
-        _append_step_status(
-            sid, rid, "module-architect", None, "PASS", "ok", Path("/dev/null")
+        self._append_step_status_with_prose(
+            sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok"
         )
-        _append_step_status(
-            sid, rid, "engineer", "IMPL", "IMPL_DONE", "first attempt", Path("/dev/null")
+        self._append_step_status_with_prose(
+            sid, rid, "module-architect", None, "PASS", "ok"
         )
-        _append_step_status(
+        self._append_step_status_with_prose(
+            sid, rid, "engineer", "IMPL", "IMPL_DONE", "first attempt"
+        )
+        self._append_step_status_with_prose(
             sid, rid, "validator", "BUGFIX_VALIDATION", "PASS", "verified",
-            Path("/dev/null"),
         )
-        _append_step_status(
+        self._append_step_status_with_prose(
             sid, rid, "pr-reviewer", None, "CHANGES_REQUESTED",
-            "## MUST FIX\n- 1번 항목 고치자\n", Path("/dev/null"),
+            "## MUST FIX\n- 1번 항목 고치자\n",
         )
-        _append_step_status(
-            sid, rid, "engineer", "POLISH", "POLISH_DONE", "fixed", Path("/dev/null"),
+        self._append_step_status_with_prose(
+            sid, rid, "engineer", "POLISH", "POLISH_DONE", "fixed",
         )
-        _append_step_status(
+        self._append_step_status_with_prose(
             sid, rid, "pr-reviewer", None, "LGTM",
-            "## 결론\nLGTM\nMUST FIX 없음\n", Path("/dev/null"),
+            "## 결론\nLGTM\nMUST FIX 없음\n",
         )
 
         out = StringIO()
@@ -1930,7 +1947,7 @@ PASS — 빈 문자열 가드 추가.
     def test_finalize_run_must_fix_unresolved_still_sticky(self) -> None:
         """final pr-reviewer 가 여전히 CHANGES_REQUESTED 면 has_must_fix True."""
         from harness.session_state import (
-            _cli_finalize_run, _append_step_status,
+            _cli_finalize_run,
             run_dir, _clear_default_base_cache, write_pid_session,
             write_pid_current_run, get_cc_pid_via_ppid_chain,
         )
@@ -1952,13 +1969,15 @@ PASS — 빈 문자열 가드 추가.
         run_dir(sid, rid, create=True)
         write_pid_current_run(cc_pid, rid)
 
-        _append_step_status(sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok", Path("/dev/null"))
-        _append_step_status(
-            sid, rid, "engineer", "IMPL", "IMPL_DONE", "ok", Path("/dev/null")
+        self._append_step_status_with_prose(
+            sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok"
         )
-        _append_step_status(
+        self._append_step_status_with_prose(
+            sid, rid, "engineer", "IMPL", "IMPL_DONE", "ok"
+        )
+        self._append_step_status_with_prose(
             sid, rid, "pr-reviewer", None, "CHANGES_REQUESTED",
-            "## MUST FIX\n- 미해소 항목\n", Path("/dev/null"),
+            "## MUST FIX\n- 미해소 항목\n",
         )
 
         out = StringIO()
@@ -2405,6 +2424,92 @@ class PostTaskBeginMarkerTests(unittest.TestCase):
         # 오래된 5개 (reason-0 ~ reason-4) trim, reason-5 ~ reason-24 남음
         self.assertEqual(markers[0]["reason"], "reason-5")
         self.assertEqual(markers[-1]["reason"], "reason-24")
+
+
+class NextTaskLedgerTests(unittest.TestCase):
+    """이슈 #587 (codex review) — next-task 가 chain 새 run 에 run_started 를 남겨야."""
+
+    def setUp(self) -> None:
+        self._cwd = os.getcwd()
+        self._td = TemporaryDirectory()
+        os.environ.pop("DCNESS_SESSION_ID", None)
+        os.environ.pop("DCNESS_RUN_ID", None)
+
+    def tearDown(self) -> None:
+        os.chdir(self._cwd)
+        self._td.cleanup()
+        os.environ.pop("DCNESS_SESSION_ID", None)
+        os.environ.pop("DCNESS_RUN_ID", None)
+
+    def test_next_task_appends_run_started(self) -> None:
+        import contextlib
+        import io
+        import re as _re
+        from types import SimpleNamespace
+
+        from harness import ledger
+        from harness.session_state import _cli_next_task, _clear_default_base_cache
+
+        repo = Path(self._td.name) / "repo"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+        sid = "11111111-2222-4333-8444-555555555555"
+        os.environ["DCNESS_SESSION_ID"] = sid
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            rc = _cli_next_task(SimpleNamespace(entry_point="impl"))
+        self.assertEqual(rc, 0)
+        m = _re.search(r"\[new\] run_id: (run-[0-9a-f]+)", out.getvalue())
+        self.assertIsNotNone(m, out.getvalue())
+        new_rid = m.group(1)
+        events = ledger.read_events(sid, new_rid)
+        self.assertTrue(
+            any(
+                e.get("event") == "run_started" and e.get("entry_point") == "impl"
+                for e in events
+            ),
+            f"next-task 새 run 에 run_started 누락: {events}",
+        )
+
+    def test_ledger_event_rejects_lifecycle(self) -> None:
+        """ledger-event CLI 가 helper-owned lifecycle event 위조를 거부 (codex review)."""
+        import contextlib
+        import io
+        from types import SimpleNamespace
+
+        from harness.session_state import _cli_ledger_event, _clear_default_base_cache
+
+        repo = Path(self._td.name) / "le-repo"
+        repo.mkdir()
+        os.chdir(repo)
+        _clear_default_base_cache()
+        os.environ["DCNESS_SESSION_ID"] = "11111111-2222-4333-8444-555555555555"
+        os.environ["DCNESS_RUN_ID"] = "run-deadbeef"
+
+        def _ns(event_type: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                event_type=event_type, agent=None, mode=None,
+                pr_number=None, url=None, issue_num=None, reason=None,
+            )
+
+        # lifecycle event 위조 거부
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            rc = _cli_ledger_event(_ns("step_completed"))
+        self.assertEqual(rc, 1)
+        self.assertIn("lifecycle", err.getvalue().lower())
+
+        # 수동 event 는 허용
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            rc2 = _cli_ledger_event(
+                SimpleNamespace(event_type="pr_merged", agent=None, mode=None,
+                                pr_number=588, url=None, issue_num=None, reason=None)
+            )
+        self.assertEqual(rc2, 0)
+        self.assertIn("pr_merged", out.getvalue())
 
 
 if __name__ == "__main__":

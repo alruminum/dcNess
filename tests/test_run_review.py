@@ -6,10 +6,12 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from harness import ledger  # noqa: E402
 from harness.run_review import (  # noqa: E402
     RunReport, StepRecord, build_report, detect_wastes, detect_notes,
     parse_steps, render_report, list_runs, find_run_dir,
@@ -22,7 +24,7 @@ from harness.run_review import (  # noqa: E402
 
 
 def _make_run_dir(tmp: Path, sid: str, rid: str, step_records: list[dict],
-                    prose_files: dict[str, str] | None = None) -> Path:
+                    prose_files: Optional[dict[str, str]] = None) -> Path:
     run_dir = tmp / ".claude" / "harness-state" / ".sessions" / sid / "runs" / rid
     run_dir.mkdir(parents=True, exist_ok=True)
     jsonl = run_dir / ".steps.jsonl"
@@ -34,7 +36,50 @@ def _make_run_dir(tmp: Path, sid: str, rid: str, step_records: list[dict],
     return run_dir
 
 
+def _make_run_dir_ledger(tmp: Path, sid: str, rid: str, events: list[dict],
+                          prose_files: Optional[dict[str, str]] = None) -> Path:
+    """이슈 #587 — ledger.jsonl (event stream) 기반 run_dir fixture."""
+    run_dir = tmp / ".claude" / "harness-state" / ".sessions" / sid / "runs" / rid
+    run_dir.mkdir(parents=True, exist_ok=True)
+    prose_by_name: dict[str, tuple[Path, str]] = {}
+    for filename, content in (prose_files or {}).items():
+        prose_path = run_dir / filename
+        prose_path.write_text(content, encoding="utf-8")
+        prose_by_name[filename] = (prose_path, content)
+    with open(run_dir / "ledger.jsonl", "w", encoding="utf-8") as f:
+        for e in events:
+            rec = dict(e)
+            prose_file = rec.get("prose_file")
+            if isinstance(prose_file, str) and prose_file in prose_by_name:
+                prose_path, content = prose_by_name[prose_file]
+                rec["prose_file"] = str(prose_path)
+                rec.setdefault("sha256", ledger.sha256_text(content))
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    return run_dir
+
+
 class ParseStepsTests(unittest.TestCase):
+    def test_parses_ledger_jsonl_step_completed_only(self):
+        """이슈 #587 — ledger.jsonl 의 step_completed event 만 StepRecord 로 (run_started/step_started/run_finished 제외)."""
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            rd = _make_run_dir_ledger(tmp, "sidL", "ridL", [
+                {"event": "run_started", "ts": "2026-04-30T10:00:00", "entry_point": "impl"},
+                {"event": "step_started", "ts": "2026-04-30T10:00:01",
+                 "agent": "engineer", "mode": "IMPL"},
+                {"event": "step_completed", "ts": "2026-04-30T10:00:05",
+                 "agent": "engineer", "mode": "IMPL", "enum": "PROSE_LOGGED",
+                 "must_fix": False, "prose_excerpt": "## 결론\nIMPL_DONE",
+                 "prose_file": "engineer-IMPL.md", "evidence_paths": [],
+                 "next_action": ""},
+                {"event": "run_finished", "ts": "2026-04-30T10:01:00"},
+            ], prose_files={"engineer-IMPL.md": "## 결론\nIMPL_DONE"})
+            steps = parse_steps(rd)
+            self.assertEqual(len(steps), 1)
+            self.assertEqual(steps[0].agent, "engineer")
+            self.assertEqual(steps[0].mode, "IMPL")
+
+
     def test_parses_steps_jsonl(self):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
@@ -1124,6 +1169,64 @@ class ToolHistogramTableTests(unittest.TestCase):
             # 두 step 모두 표에 박힘
             self.assertIn("test-engineer", joined)
             self.assertIn("engineer", joined)
+
+
+class ListRunsLedgerTests(unittest.TestCase):
+    """이슈 #587 (codex review) — list_runs 가 빈 active run 을 latest 후보에서 제외."""
+
+    def test_latest_requires_run_finished_for_ledger(self) -> None:
+        """ledger run 은 run_finished 있어야 implicit latest 후보 — partial/empty 제외 (codex review)."""
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            # finished run — step_completed + run_finished
+            _make_run_dir_ledger(tmp, "sidD", "ridDone", [
+                {"event": "step_completed", "ts": "2026-05-01T09:00:00", "agent": "engineer",
+                 "mode": None, "enum": "PROSE_LOGGED", "must_fix": False,
+                 "prose_excerpt": "x", "prose_file": "done.md"},
+                {"event": "run_finished", "ts": "2026-05-01T09:05:00"},
+            ], prose_files={"done.md": "done"})
+            # partial run — step 있지만 run_finished 없음 (active, end-run 전)
+            _make_run_dir_ledger(tmp, "sidP", "ridPartial", [
+                {"event": "step_completed", "ts": "2026-05-01T10:00:00", "agent": "engineer",
+                 "mode": None, "enum": "PROSE_LOGGED", "must_fix": False,
+                 "prose_excerpt": "y", "prose_file": "partial.md"},
+            ], prose_files={"partial.md": "partial"})
+            # empty active run — run_started 만
+            _make_run_dir_ledger(tmp, "sidE", "ridEmpty", [
+                {"event": "run_started", "ts": "2026-05-01T11:00:00", "entry_point": "impl"},
+            ])
+            # finished but step 0 — run-review latest 후보 제외
+            _make_run_dir_ledger(tmp, "sidF", "ridFinishedEmpty", [
+                {"event": "run_started", "ts": "2026-05-01T11:30:00", "entry_point": "impl"},
+                {"event": "run_finished", "ts": "2026-05-01T11:35:00"},
+            ])
+            # finished but invalid receipt — strict reader 가 step drop → 후보 제외
+            _make_run_dir_ledger(tmp, "sidI", "ridInvalidReceipt", [
+                {"event": "step_completed", "ts": "2026-05-01T12:00:00", "agent": "engineer",
+                 "mode": None, "enum": "PROSE_LOGGED", "must_fix": False,
+                 "prose_excerpt": "z", "prose_file": str(tmp / "missing-dcness-prose.md"),
+                 "sha256": ledger.sha256_text("z")},
+                {"event": "run_finished", "ts": "2026-05-01T12:05:00"},
+            ])
+            sessions_root = tmp / ".claude" / "harness-state" / ".sessions"
+            names = [r.name for r in list_runs(sessions_root)]
+            self.assertIn("ridDone", names)
+            self.assertNotIn("ridPartial", names)
+            self.assertNotIn("ridEmpty", names)
+            self.assertNotIn("ridFinishedEmpty", names)
+            self.assertNotIn("ridInvalidReceipt", names)
+
+    def test_includes_legacy_steps_run(self) -> None:
+        """옛 .steps.jsonl 만 있는 run 도 포함 (폴백 호환)."""
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            _make_run_dir(tmp, "sidL", "ridLegacy", [
+                {"ts": "2026-05-01T08:00:00", "agent": "qa", "mode": None,
+                 "enum": "PROSE_LOGGED", "must_fix": False, "prose_excerpt": "y"},
+            ])
+            sessions_root = tmp / ".claude" / "harness-state" / ".sessions"
+            names = [r.name for r in list_runs(sessions_root)]
+            self.assertIn("ridLegacy", names)
 
 
 if __name__ == "__main__":

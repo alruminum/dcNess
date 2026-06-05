@@ -491,6 +491,31 @@ def start_run(
     run_dir(session_id, run_id, base_dir=base_dir, create=True)
 
 
+def _ledger_run_started(
+    session_id: str,
+    run_id: str,
+    entry_point: str,
+    *,
+    issue_num: Optional[int] = None,
+    base_dir: Optional[Path] = None,
+) -> None:
+    """start_run 직후 ledger run_started checkpoint 기록 (이슈 #587).
+
+    begin-run / next-task 등 *모든 run 시작 경로* 의 공유 path — 한 곳에서만
+    run_started 를 쓰게 해 chain task run 의 run-level audit invariant 누락을
+    막는다 (codex review). 기록 실패가 run 시작을 막지 않게 silent.
+    """
+    try:
+        from harness import ledger
+
+        extra: Dict[str, Any] = {"entry_point": entry_point}
+        if issue_num is not None:
+            extra["issue_num"] = issue_num
+        ledger.append_event(session_id, run_id, "run_started", base_dir=base_dir, **extra)
+    except Exception:
+        pass
+
+
 def update_current_step(
     session_id: str,
     run_id: str,
@@ -525,7 +550,7 @@ def update_current_step(
                 print(
                     f"[session_state] STALE STEP WARN — previous current_step={label} "
                     f"stale {int(stale_sec)}s (> {STALE_STEP_TTL_SEC}s). "
-                    f"end-step 누락 의심 — .steps.jsonl 에 직전 step 기록 안 됨.",
+                    f"end-step 누락 의심 — ledger.jsonl 에 직전 step 기록 안 됨.",
                     file=sys.stderr,
                 )
         except Exception:
@@ -1256,6 +1281,7 @@ def _cli_begin_run(args: Any) -> int:
     rid = generate_run_id()
     issue_num = args.issue_num if args.issue_num is not None else None
     start_run(sid, rid, args.entry_point, issue_num=issue_num)
+    _ledger_run_started(sid, rid, args.entry_point, issue_num=issue_num)
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         write_pid_current_run(cc_pid, rid)
@@ -1291,6 +1317,12 @@ def _cli_end_run(args: Any) -> int:
         print(f"[session_state] end-run finalize guard FAIL — {exc}", file=sys.stderr)
 
     complete_run(sid, rid)
+    # 이슈 #587 — ledger run_finished checkpoint (complete_run 후 = run 종료 기록).
+    try:
+        from harness import ledger
+        ledger.append_event(sid, rid, "run_finished")
+    except Exception:
+        pass
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         clear_pid_current_run(cc_pid)
@@ -1408,6 +1440,8 @@ def _cli_next_task(args: Any) -> int:
     except Exception as exc:
         print(f"[next-task] begin-run FAIL — {exc}", file=sys.stderr)
         return 1
+    # 이슈 #587 (codex review) — chain task run 도 run_started checkpoint 남김.
+    _ledger_run_started(sid, new_rid, entry_point)
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         write_pid_current_run(cc_pid, new_rid)
@@ -1561,6 +1595,12 @@ def _cli_begin_step(args: Any) -> int:
         return 1
     mode = args.mode if args.mode else None
     update_current_step(sid, rid, args.agent, mode)
+    # 이슈 #587 — ledger step_started checkpoint. 기록 실패가 begin-step 막지 않게 silent.
+    try:
+        from harness import ledger
+        ledger.append_event(sid, rid, "step_started", agent=args.agent, mode=mode)
+    except Exception:
+        pass
 
     # DCN-CHG-20260430-36: agent="engineer" 시 직전 engineer invocation 의
     # tool_use_count stderr hint. LLM self-monitor 불가 영역 정보 보강.
@@ -1616,6 +1656,66 @@ def _cli_run_dir(args: Any) -> int:
         return 1
     rd = run_dir(sid, rid)
     print(str(rd))
+    return 0
+
+
+def _cli_run_status(args: Any) -> int:
+    """현재 (또는 --run-id) run 의 ledger 기반 진행 상태 요약 (이슈 #587).
+
+    compaction/resume 후 메인 Claude 가 긴 prose 재주입 없이 ledger 만 보고
+    task / phase / last event / next action / evidence pointer 를 복원한다.
+    """
+    sid = auto_detect_session_id()
+    rid = getattr(args, "run_id", None) or auto_detect_run_id()
+    if not sid or not rid:
+        print(diagnose_sid_rid_resolution(mode="both"), file=sys.stderr)
+        return 1
+    from harness import ledger
+
+    print(ledger.render_status(sid, rid))
+    return 0
+
+
+def _cli_ledger_event(args: Any) -> int:
+    """ledger 에 *수동* checkpoint event 한 줄 기록 (pr_created/pr_merged/task_completed/blocked 등 — 이슈 #587).
+
+    강제 아님 — 메인/skill 이 PR 생성·머지·차단 같은 checkpoint 를 *선택적* 으로
+    남기는 경로.
+
+    🔴 helper-owned lifecycle event (run_started/step_started/step_completed/run_finished)
+    는 거부한다 (codex review). 수동 CLI 로 receipt 필드 없는 가짜 step_completed 를
+    넣으면 read_step_completed/list_runs/finalize-run 이 진짜 step 으로 취급해
+    prose-as-SSOT invariant 가 깨진다 — lifecycle 은 begin-run/begin-step/end-step/
+    end-run 코드 경로 전용.
+    """
+    sid = auto_detect_session_id()
+    rid = auto_detect_run_id()
+    if not sid or not rid:
+        print(diagnose_sid_rid_resolution(mode="both"), file=sys.stderr)
+        return 1
+    from harness import ledger
+
+    if args.event_type not in ledger.MANUAL_EVENT_TYPES:
+        print(
+            f"[session_state] ledger-event 는 수동 checkpoint 만 허용: "
+            f"{sorted(ledger.MANUAL_EVENT_TYPES)}. "
+            f"lifecycle event(run_started/step_started/step_completed/run_finished)는 "
+            f"begin-run/begin-step/end-step/end-run 코드 경로 전용 — 수동 위조 차단.",
+            file=sys.stderr,
+        )
+        return 1
+
+    fields: Dict[str, Any] = {}
+    for key in ("agent", "mode", "pr_number", "url", "issue_num", "reason"):
+        val = getattr(args, key, None)
+        if val is not None:
+            fields[key] = val
+    try:
+        rec = ledger.append_event(sid, rid, args.event_type, **fields)
+    except ValueError as exc:
+        print(f"[session_state] {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(rec, ensure_ascii=False))
     return 0
 
 
@@ -1761,7 +1861,7 @@ def _cli_end_step(args: Any) -> int:
             print(
                 f"[session_state] DRIFT WARN — current_step 부재. "
                 f"end-step={args.agent}{':' + mode if mode else ''}. "
-                f"begin-step 안 호출하고 end-step 호출. .steps.jsonl 에 기록은 됨.",
+                f"begin-step 안 호출하고 end-step 호출. ledger.jsonl 에 기록은 됨.",
                 file=sys.stderr,
             )
     except Exception:
@@ -1875,7 +1975,14 @@ def _has_positive_must_fix(prose: str) -> bool:
 
 
 def _steps_jsonl_path(sid: str, rid: str, *, base_dir: Optional[Path] = None) -> Path:
-    return run_dir(sid, rid, base_dir=base_dir) / ".steps.jsonl"
+    """[deprecated] 옛 `.steps.jsonl` 경로 — ledger.jsonl 로 흡수됨 (이슈 #587).
+
+    `ledger.legacy_steps_path` 위임 (마이그레이션 폴백 참조 전용). 새 코드는
+    `harness.ledger` 모듈을 직접 쓴다.
+    """
+    from harness import ledger
+
+    return ledger.legacy_steps_path(sid, rid, base_dir=base_dir)
 
 
 def _count_step_occurrences(
@@ -1886,19 +1993,13 @@ def _count_step_occurrences(
     *,
     base_dir: Optional[Path] = None,
 ) -> int:
-    """`.steps.jsonl` 에 기록된 (agent, mode) 쌍의 수 반환 (write_prose occurrence 계산용)."""
-    target = _steps_jsonl_path(sid, rid, base_dir=base_dir)
-    if not target.exists():
-        return 0
-    count = 0
-    for line in target.read_text(encoding="utf-8").splitlines():
-        try:
-            r = json.loads(line)
-            if r.get("agent") == agent and r.get("mode") == mode:
-                count += 1
-        except json.JSONDecodeError:
-            pass
-    return count
+    """(agent, mode) step_completed 수 반환 (write_prose occurrence 계산용 — 이슈 #587).
+
+    `ledger.count_step_completed` 위임 (ledger.jsonl 우선, 옛 .steps.jsonl 폴백).
+    """
+    from harness import ledger
+
+    return ledger.count_step_completed(sid, rid, agent, mode, base_dir=base_dir)
 
 
 def _append_step_status(
@@ -1910,21 +2011,15 @@ def _append_step_status(
     prose: str,
     prose_path: "Path",
 ) -> None:
-    """end-step 호출마다 jsonl 에 한 줄 append. atomic 보장 X (append-only)."""
-    record = {
-        "ts": _now_iso(),
-        "agent": agent,
-        "mode": mode,
-        "enum": enum,
-        "prose_excerpt": _extract_prose_summary(prose, max_lines=12),
-        "must_fix": _has_positive_must_fix(prose),
-        "prose_file": str(prose_path),
-    }
-    target = _steps_jsonl_path(sid, rid)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    line = json.dumps(record, ensure_ascii=False) + "\n"
-    with open(target, "a", encoding="utf-8") as f:
-        f.write(line)
+    """end-step 호출마다 ledger.jsonl 에 step_completed event append (이슈 #587).
+
+    옛 단일 .steps.jsonl row → `ledger.append_step_completed` 위임. receipt
+    (sha256 / evidence_paths / next_action) 가 옛 필드 (prose_excerpt / must_fix /
+    prose_file) 의 superset 으로 기록된다. prose 가 SSOT, ledger 는 색인 장부.
+    """
+    from harness import ledger
+
+    ledger.append_step_completed(sid, rid, agent, mode, enum, prose, prose_path)
 
 
 def _latest_step_per_role(steps: list) -> list:
@@ -1951,23 +2046,15 @@ def _read_steps_jsonl(
     *,
     base_dir: Optional[Path] = None,
 ) -> list:
-    """`.steps.jsonl` 전체 읽기. 파일 없으면 빈 리스트."""
-    target = _steps_jsonl_path(sid, rid, base_dir=base_dir)
-    if not target.exists():
-        return []
-    out = []
-    try:
-        for line in target.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                out.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
-    except OSError:
-        return []
-    return out
+    """run 의 step_completed event 를 시간순 반환 (옛 `.steps.jsonl` 호환 — 이슈 #587).
+
+    `ledger.read_step_completed` 위임. ledger.jsonl 우선, 없으면 옛 .steps.jsonl
+    폴백 (마이그레이션 셔틀). 반환 레코드는 옛 row 필드명 호환 — 소비처
+    (finalize-run / strict-conveyor / Stop hook) 는 그대로 읽는다.
+    """
+    from harness import ledger
+
+    return ledger.read_step_completed(sid, rid, base_dir=base_dir)
 
 
 def _cli_finalize_run(args: Any) -> int:
@@ -1999,11 +2086,11 @@ def _cli_finalize_run(args: Any) -> int:
     has_must_fix = any(s.get("must_fix") for s in latest_steps)
 
     # DCN-CHG-20260430-25: --expected-steps 검증 — skill 이 정상 시퀀스 step 수
-    # 명시 시 .steps.jsonl row count 미만이면 stderr WARN. /impl-loop 자기검증.
+    # 명시 시 ledger.jsonl step_completed 수 미만이면 stderr WARN. /impl-loop 자기검증.
     expected = getattr(args, "expected_steps", None)
     if expected is not None and len(steps) < expected:
         print(
-            f"[session_state] STEP COUNT WARN — .steps.jsonl row={len(steps)} < "
+            f"[session_state] STEP COUNT WARN — ledger.jsonl step_completed={len(steps)} < "
             f"expected={expected}. inner step 누락 의심 — Agent 호출 후 end-step "
             f"안 부른 케이스 (drift). /run-review 로 진단 권고.",
             file=sys.stderr,
@@ -2321,6 +2408,26 @@ def _build_arg_parser() -> Any:
 
     p_rd = sub.add_parser("run-dir", help="현재 active run 의 run_dir 절대 경로 (DCN-30-21)")
     p_rd.set_defaults(func=_cli_run_dir)
+
+    p_rs = sub.add_parser(
+        "run-status",
+        help="현재 run 의 phase/task/last event/next action/evidence 요약 (resume 복원 — 이슈 #587)",
+    )
+    p_rs.add_argument("--run-id", default=None, dest="run_id")
+    p_rs.set_defaults(func=_cli_run_status)
+
+    p_le = sub.add_parser(
+        "ledger-event",
+        help="ledger 에 임의 event 기록 (pr_created/pr_merged/task_completed/blocked 등 — 이슈 #587)",
+    )
+    p_le.add_argument("event_type")
+    p_le.add_argument("--agent", default=None)
+    p_le.add_argument("--mode", default=None)
+    p_le.add_argument("--pr", type=int, default=None, dest="pr_number")
+    p_le.add_argument("--url", default=None)
+    p_le.add_argument("--issue", type=int, default=None, dest="issue_num")
+    p_le.add_argument("--reason", default=None)
+    p_le.set_defaults(func=_cli_ledger_event)
 
     p_en = sub.add_parser("enable", help="현재 cwd 의 main repo 활성화 (whitelist 추가)")
     p_en.set_defaults(func=_cli_enable)
