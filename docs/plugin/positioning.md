@@ -49,3 +49,13 @@ agent 는 사용자가 외워야 하는 command 가 아니다. `architecture-val
 ## Contract Gate
 
 기본/고급/유틸리티/내부 agent 목록과 skill/command/agent 의 frontmatter name 대 path 정합은 [`scripts/check_public_surface.mjs`](../../scripts/check_public_surface.mjs) 가 검사한다. 새 기본 workflow 를 추가하려면 이 문서와 gate 기대값을 함께 수정해야 한다.
+
+### 신규 surface justification (왜 작게 유지하나)
+
+doctrine 상 사용자-facing surface 는 작게 유지가 기본이다 (내부 정책은 정교해도 외부 UX 는 단순). 따라서 새 skill/command/agent/gate 를 추가하려면 PR 에서 **왜 기존 표면으로 부족한지**를 먼저 설명한다 — 구체적으로:
+
+- risk router 의 기존 lane([`workflow-router.md`](workflow-router.md))로 흡수 안 되는가?
+- 기존 validator/reviewer(`code-validator` / `architecture-validator` / `pr-reviewer`)로 검증이 안 되는가?
+- 기존 utility/agent 의 내부 단계로 둘 수 없고 *새 public 발화*가 꼭 필요한가?
+
+세 질문에 모두 "그렇다(기존으론 부족)"가 서지 않으면 새 surface 대신 기존 lane/agent 내부 단계로 흡수한다. 이 justification 은 [`CLAUDE.md` 안티패턴 5](../../CLAUDE.md#dcness-강제-원칙-룰-추가설계-시-가드레일) 의 self 가드레일이자 PR 템플릿 체크 항목이다.

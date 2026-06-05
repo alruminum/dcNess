@@ -36,6 +36,13 @@ Part of #N
      해당 없음 시 "N/A — dcness self 운영 작업" -->
 -
 
+## 신규 surface justification (새 public skill/command/agent/gate 추가 시만)
+
+<!-- doctrine: 사용자-facing surface 는 작게 유지가 기본 (positioning.md 신규 surface justification + CLAUDE.md 안티패턴 5).
+     새 public 발화를 늘리는 PR 에서만 작성. surface 변화 없으면 "N/A".
+     세 질문에 답: (1) 기존 risk router lane 으로 흡수 안 되나? (2) 기존 validator/reviewer 로 검증 안 되나? (3) 기존 agent 내부 단계로 못 두고 새 public 발화가 꼭 필요한가? -->
+-
+
 ## Test Plan
 
 <!-- 하위 commit Test Plan 종합. 머지 직전 메인이 종합 갱신 -->
