@@ -147,7 +147,7 @@ escalate) 가 진본이다 — 예: [`skills/impl/impl-routing.md`](skills/impl/
 | 유틸리티 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
 | 유틸리티 | `/efficiency` | 세션 토큰/캐시/비용 분석 + HTML 대시보드 |
 
-12개 sub-agent(`agents/`) — architect / validator / engineer / reviewer 계열 — 는 사용자-facing
+13개 sub-agent(`agents/`) — architect / validator / engineer / reviewer / acceptance 계열 — 는 사용자-facing
 entrypoint 가 아니라 workflow 내부 gate/worker/reviewer 로 호출된다.
 
 ## 거버넌스 (dcNess 자체 저장소 작업 기준)

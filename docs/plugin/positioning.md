@@ -42,7 +42,7 @@ dcNess 의 기본 공개 workflow 는 세 개만 전면에 둔다.
 
 ## Internal Agents
 
-agent 는 사용자가 외워야 하는 command 가 아니다. `architecture-validator`, `build-worker`, `code-validator`, `designer`, `engineer`, `module-architect`, `pr-reviewer`, `qa`, `system-architect`, `tech-reviewer`, `test-engineer`, `ux-architect` 는 workflow 내부에서 호출되는 gate/worker/reviewer 로 분류한다.
+agent 는 사용자가 외워야 하는 command 가 아니다. `architecture-validator`, `build-worker`, `code-validator`, `designer`, `engineer`, `module-architect`, `pr-reviewer`, `product-acceptance`, `qa`, `system-architect`, `tech-reviewer`, `test-engineer`, `ux-architect` 는 workflow 내부에서 호출되는 gate/worker/reviewer 로 분류한다.
 
 특히 `code-validator`, `architecture-validator`, `pr-reviewer` 는 read-only validation provider routing 대상이다. provider 가 Claude 든 Codex 든 사용자-facing 단계 이름은 `pr-reviewer` 같은 agent 이름으로 유지한다.
 
