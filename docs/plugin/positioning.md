@@ -2,11 +2,12 @@
 
 > dcNess 사용자가 기본으로 외울 진입점과, 내부 gate/agent 를 구분하는 제품 표면 계약.
 
-dcNess 의 기본 공개 workflow 는 세 개만 전면에 둔다.
+dcNess 의 기본 공개 workflow 는 #646 단계에서 세 역할을 유지하되, 기획 역할은 `/spec` alias 를 함께 노출한다. full lifecycle surface flip(`/spec -> /design -> /impl -> /acceptance`)은 후속 단계에서 정리한다.
 
 | 기본 진입점 | 언제 쓰나 | 내부 처리 |
 |---|---|---|
 | `/impl` | 구현, 수정, 버그픽스, 작은 리팩터링을 실제 PR 로 끝낼 때 | Lite / Standard / Deep lane 을 내부 판정 |
+| `/spec` | 새 제품 기능, 큰 기획, PRD 변경처럼 의도 합의가 먼저 필요할 때 | `/product-plan` 호환 alias. PRD / stories / 기술 검토 스켈레톤 작성 + `SPEC_ACCEPTANCE` |
 | `/product-plan` | 새 제품 기능, 큰 기획, PRD 변경처럼 의도 합의가 먼저 필요할 때 | PRD / stories / 기술 검토 스켈레톤 작성 |
 | `/issue-report` | 아직 분류되지 않은 버그나 이상 동작을 접수할 때 | qa 분류 뒤 `/impl` 또는 planning lane 추천 |
 

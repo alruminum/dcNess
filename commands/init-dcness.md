@@ -694,7 +694,8 @@ Codex validator routing (Step 2.10 — local opt-in):
 
 기본 workflow:
 - /impl — 구현 진입 통합 (Lite / Standard / Deep lane 내부 판정)
-- /product-plan — 새 기능 spec/design
+- /spec — 새 기능 spec/design (`/product-plan` 호환 alias)
+- /product-plan — 새 기능 spec/design (호환 유지)
 - /issue-report — 이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE)
 
 고급 workflow:

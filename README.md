@@ -68,13 +68,14 @@ dcness-helper routing disable-codex-validation
 
 ## 작업 흐름
 
-**기본 공개 workflow 는 작게 유지한다.** 사용자가 기본으로 외울 진입점은 세 개다.
+**기본 공개 workflow 는 작게 유지한다.** 현재 기본 역할은 구현 / 기획 / 이슈 접수이고, 기획 역할은 `/spec` alias 를 함께 제공한다.
 상세 표면 계약은 [`docs/plugin/positioning.md`](docs/plugin/positioning.md), lane 판정은
 [`docs/plugin/workflow-router.md`](docs/plugin/workflow-router.md).
 
 | 기본 진입점 | 언제 쓰나 |
 |---|---|
 | `/impl` | 구현, 수정, 버그픽스, 작은 리팩터링을 실제 PR 로 끝낼 때 |
+| `/spec` | 새 기능, 큰 기획, PRD 변경처럼 의도 합의가 먼저 필요할 때 (`/product-plan` 호환 alias) |
 | `/product-plan` | 새 기능, 큰 기획, PRD 변경처럼 의도 합의가 먼저 필요할 때 |
 | `/issue-report` | 아직 분류되지 않은 버그나 이상 동작을 접수할 때 |
 
@@ -89,7 +90,7 @@ dcness-helper routing disable-codex-validation
 **새 기능**
 
 ```
-/product-plan       # PRD + stories + tech-review 스켈레톤
+/spec               # PRD + stories + tech-review 스켈레톤 (/product-plan 호환)
 /architect-loop     # 필요 시 deep 설계 — ux/system/module architect + validator
 /impl               # 생성된 deep task 파일이 있으면 내부적으로 /impl-loop 위임
 ```
@@ -136,6 +137,7 @@ escalate) 가 진본이다 — 예: [`skills/impl/impl-routing.md`](skills/impl/
 | 분류 | 발화 | 역할 |
 |---|---|---|
 | 기본 workflow | `/impl` | 구현 진입 통합 — Lite / Standard / Deep lane 내부 판정 |
+| 기본 workflow | `/spec` | 새 기능 spec — `/product-plan` 호환 alias + SPEC_ACCEPTANCE 체크포인트 |
 | 기본 workflow | `/product-plan` | 새 기능 spec/design — 그릴미 대화로 PRD + stories + tech-review 스켈레톤 작성 |
 | 기본 workflow | `/issue-report` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
 | 고급 workflow | `/tech-review` | Deep lane 선행 기술 검증 |
