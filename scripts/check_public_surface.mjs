@@ -11,7 +11,7 @@ import { basename, dirname, join } from 'node:path';
 const POSITIONING = 'docs/plugin/positioning.md';
 
 const EXPECTED = {
-  defaultSkills: ['impl', 'issue-report', 'product-plan'],
+  defaultSkills: ['impl', 'issue-report', 'product-plan', 'spec'],
   advancedSkills: ['architect-loop', 'impl-loop', 'tech-review', 'ux'],
   utilityCommands: ['efficiency', 'init-dcness', 'run-review', 'smart-compact'],
   internalAgents: [

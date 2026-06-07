@@ -1,7 +1,7 @@
 # product-plan 라우팅 SSOT
 
 > **Status**: ACTIVE
-> **Scope**: `/product-plan` skill **단일 전용** 라우팅 진본. 본 skill 은 **메인 Claude 직접 작업** (product-planner sub-agent 폐기) 이라 *agent 결론 → 다음 호출* 매핑이 없다. 대신 **skill 간 시퀀스** (PRD → `/tech-review` → `/architect-loop` → `/impl`) + 체크포인트 분기 + 재진입 + escalate + 단방향 관례 + 비대상 추천이 라우팅의 전부다. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
+> **Scope**: `/product-plan` 및 호환 alias `/spec` skill 라우팅 진본. 본 skill 은 **메인 Claude 직접 작업** (product-planner sub-agent 폐기) 이라 내부 구현 agent 매핑은 거의 없다. 단 `/spec` 이행 기준 검수로 `product-acceptance:SPEC_ACCEPTANCE` 를 호출한다. skill 간 시퀀스 (PRD → SPEC_ACCEPTANCE → `/tech-review` → `/architect-loop` → `/impl`) + 체크포인트 분기 + 재진입 + escalate + 단방향 관례 + 비대상 추천이 라우팅의 전부다. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
 > **Cross-ref**: catastrophic 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) · 강제 영역 = [`../../CLAUDE.md`](../../CLAUDE.md).
 
 ## 읽는 법
@@ -12,9 +12,12 @@
 
 ```mermaid
 flowchart TB
-  PP[/product-plan · 메인 직접/] --> CP1{1차 OK?}
+  PP[/spec 또는 /product-plan · 메인 직접/] --> CP1{1차 OK?}
   CP1 -->|patch| PP
-  CP1 -->|OK| MERGE[PR 머지 + 이슈 등록]
+  CP1 -->|OK| SA[product-acceptance:SPEC_ACCEPTANCE]
+  SA -->|FAIL| PP
+  SA -->|ESCALATE| U((사용자 위임))
+  SA -->|PASS| MERGE[PR 머지 + 이슈 등록]
   MERGE --> DEP{외부 의존 ≥1?}
   DEP -->|0개| AL[/architect-loop/]
   DEP -->|≥1| TR[/tech-review/]
@@ -28,7 +31,7 @@ flowchart TB
   classDef main fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
   classDef next fill:#e8f5e9,stroke:#388e3c,color:#1b5e20
   classDef user fill:#eeeeee,stroke:#757575,color:#212121
-  class PP main
+  class PP,SA main
   class TR,AL,SH next
   class U user
 ```
@@ -41,13 +44,15 @@ flowchart TB
 
 | 체크포인트 (SKILL.md Step) | 응답 → 다음 |
 |---|---|
-| **1차 OK** (Step 5) | `OK` → Step 6 (통합 브랜치 그릴) → Step 7 머지 · `patch` → 해당 섹션 Edit 후 Step 5 재진입 |
+| **1차 OK** (Step 5) | `OK` → Step 5.5 `product-acceptance:SPEC_ACCEPTANCE` · `patch` → 해당 섹션 Edit 후 Step 5 재진입 |
+| **SPEC_ACCEPTANCE** (Step 5.5) | `PASS` → Step 6 (통합 브랜치 그릴) → Step 7 머지 · `FAIL` → gap patch 후 Step 5 재진입 · `ESCALATE` → 사용자 위임 |
 | **이슈 등록** (Step 8) | `Y` → `create_epic_story_issues.sh` 실행 → Step 9 · `n` → 이슈 등록 보류 (사용자 자율) |
 | **`/tech-review` 권고** (Step 9) | 외부 의존 0 개 → skip + 바로 `/architect-loop` 권고 echo · `Y` → `/tech-review` 진입 · `/tech-review` 종료 + 2차 OK → `/architect-loop` 권고 echo |
 
 표만으로 안 풀리는 맥락:
 
-- **`/product-plan` 종료 시점** = PRD/stories.md/tech-review 스켈레톤 머지 + (선택) 이슈 등록 완료. 다음 명시 호출은 사용자 trigger (`/tech-review` 또는 `/architect-loop`) — 자동 진입 X.
+- **`/spec` / `/product-plan` 종료 시점** = PRD/stories.md/tech-review 스켈레톤이 `SPEC_ACCEPTANCE` 를 통과한 뒤 머지 + (선택) 이슈 등록 완료. 다음 명시 호출은 사용자 trigger (`/tech-review` 또는 `/architect-loop`) — 자동 진입 X.
+- **`SPEC_ACCEPTANCE` 의미** = 좋은 아이디어인지 평가하는 단계가 아니라, 이후 구현과 검수가 가능한 spec 인지 확인하는 단계다. full E2E 검증은 MVP `/spec` 이행 범위 밖이다.
 - **외부 의존 0 개 분기** = tech-review.md 스켈레톤이 "외부 의존 없음 — `/tech-review` skip" 상태면 `/tech-review` 단계 전체 skip.
 
 ## escalate · 재진입 · 단방향 관례
