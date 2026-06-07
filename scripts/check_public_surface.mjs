@@ -11,8 +11,10 @@ import { basename, dirname, join } from 'node:path';
 const POSITIONING = 'docs/plugin/positioning.md';
 
 const EXPECTED = {
-  defaultSkills: ['impl', 'issue-report', 'product-plan', 'spec'],
-  advancedSkills: ['acceptance', 'architect-loop', 'design', 'impl-loop', 'tech-review', 'ux'],
+  defaultSkills: ['spec', 'design', 'impl', 'acceptance'],
+  compatSkills: ['architect-loop', 'product-plan'],
+  supportSkills: ['issue-report'],
+  advancedSkills: ['impl-loop', 'tech-review', 'ux'],
   utilityCommands: ['efficiency', 'init-dcness', 'run-review', 'smart-compact'],
   internalAgents: [
     'architecture-validator',
@@ -122,12 +124,19 @@ const skills = listSkills();
 const commands = listCommands();
 const agents = listAgents();
 
-const expectedSkills = [...EXPECTED.defaultSkills, ...EXPECTED.advancedSkills];
+const expectedSkills = [
+  ...EXPECTED.defaultSkills,
+  ...EXPECTED.compatSkills,
+  ...EXPECTED.supportSkills,
+  ...EXPECTED.advancedSkills,
+];
 assertSet('skills', skills.map((item) => item.name), expectedSkills);
 assertSet('commands', commands.map((item) => item.name), EXPECTED.utilityCommands);
 assertSet('agents', agents.map((item) => item.name), EXPECTED.internalAgents);
 
 assertDocsMention('default skill', EXPECTED.defaultSkills, '/');
+assertDocsMention('compat skill', EXPECTED.compatSkills, '/');
+assertDocsMention('support skill', EXPECTED.supportSkills, '/');
 assertDocsMention('advanced skill', EXPECTED.advancedSkills, '/');
 assertDocsMention('utility command', EXPECTED.utilityCommands, '/');
 assertDocsMention('internal agent', EXPECTED.internalAgents);

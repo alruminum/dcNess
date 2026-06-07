@@ -52,35 +52,21 @@ class AcceptanceSkillContractTests(unittest.TestCase):
         self.assertIn("Lite `/impl`", text)
         self.assertIn("강제하지 않는다", text)
 
-    def test_public_surface_tracks_acceptance_as_advanced_until_flip(self) -> None:
+    def test_public_surface_tracks_acceptance_as_lifecycle_default(self) -> None:
         script = (ROOT / "scripts" / "check_public_surface.mjs").read_text(
             encoding="utf-8"
         )
         positioning = (ROOT / "docs" / "plugin" / "positioning.md").read_text(
             encoding="utf-8"
         )
+        default_match = re.search(r"defaultSkills:\s*\[([^\]]+)\]", script)
         advanced_match = re.search(r"advancedSkills:\s*\[([^\]]+)\]", script)
+        self.assertIsNotNone(default_match)
         self.assertIsNotNone(advanced_match)
-        self.assertIn("'acceptance'", advanced_match.group(1))
+        self.assertIn("'acceptance'", default_match.group(1))
+        self.assertNotIn("'acceptance'", advanced_match.group(1))
         self.assertIn("`/acceptance`", positioning)
-
-        init_doc = (ROOT / "commands" / "init-dcness.md").read_text(
-            encoding="utf-8"
-        )
-        default_block = re.search(
-            r"기본 workflow:\n(?P<body>.*?)\n\n고급 workflow:",
-            init_doc,
-            re.DOTALL,
-        )
-        advanced_block = re.search(
-            r"고급 workflow:\n(?P<body>.*?)\n\n유틸리티:",
-            init_doc,
-            re.DOTALL,
-        )
-        self.assertIsNotNone(default_block)
-        self.assertIsNotNone(advanced_block)
-        self.assertNotIn("/acceptance", default_block.group("body"))
-        self.assertIn("/acceptance", advanced_block.group("body"))
+        self.assertIn("제품 검수", positioning)
 
 
 if __name__ == "__main__":

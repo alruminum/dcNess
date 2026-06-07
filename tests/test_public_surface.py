@@ -4,6 +4,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import unittest
+import re
 from pathlib import Path
 
 
@@ -26,6 +27,35 @@ class PublicSurfaceGateTests(unittest.TestCase):
             0,
             f"public surface gate failed\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}",
         )
+
+    def test_surface_contract_uses_lifecycle_defaults(self) -> None:
+        script = SCRIPT.read_text(encoding="utf-8")
+        positioning = (ROOT / "docs" / "plugin" / "positioning.md").read_text(
+            encoding="utf-8"
+        )
+
+        defaults = self._array(script, "defaultSkills")
+        advanced = self._array(script, "advancedSkills")
+        compat = self._array(script, "compatSkills")
+        support = self._array(script, "supportSkills")
+
+        self.assertEqual(["spec", "design", "impl", "acceptance"], defaults)
+        self.assertEqual(["impl-loop", "tech-review", "ux"], advanced)
+        self.assertEqual(["architect-loop", "product-plan"], compat)
+        self.assertEqual(["issue-report"], support)
+
+        for name in defaults:
+            self.assertIn(f"`/{name}`", positioning)
+        self.assertIn("계획 / 설계 / 구현 / 검수", positioning)
+        self.assertIn("/spec -> /design -> /impl -> /acceptance", positioning)
+        self.assertIn("Compatibility Entrypoints", positioning)
+        self.assertIn("Support/Triage Entrypoints", positioning)
+        self.assertIn("기본/호환/support/triage/고급/유틸리티/내부 agent", positioning)
+
+    def _array(self, text: str, key: str) -> list[str]:
+        match = re.search(rf"{key}:\s*\[([^\]]*)\]", text)
+        self.assertIsNotNone(match)
+        return re.findall(r"'([^']+)'", match.group(1))
 
 
 if __name__ == "__main__":

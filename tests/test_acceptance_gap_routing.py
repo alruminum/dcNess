@@ -22,7 +22,7 @@ class AcceptanceGapRoutingContractTests(unittest.TestCase):
         text = self.acceptance_routing.read_text(encoding="utf-8")
         expected_rows = {
             "PRD / AC 미충족": "issue 등록 후보 + `/impl`",
-            "설계 결함 / 범위 재정의 필요": "`/architect-loop` 또는 `/spec`",
+            "설계 결함 / 범위 재정의 필요": "`/design` 또는 `/spec`",
             "검수 증거 부족 / 스모크 실패": "gap 또는 bug issue 후보 + `/impl`",
             "UX 미완성": "`/ux`",
             "성능 병목 / 리팩토링 필요": "performance improvement loop",
@@ -59,13 +59,12 @@ class AcceptanceGapRoutingContractTests(unittest.TestCase):
         self.assertIn("/issue-report", acceptance)
         self.assertIn("사용자 승인 없이 `/issue-report` 로 되돌리지 않는다", acceptance)
 
-    def test_gap_routing_does_not_expose_design_before_surface_flip(self) -> None:
+    def test_gap_routing_uses_design_after_surface_flip(self) -> None:
         text = self.acceptance_routing.read_text(encoding="utf-8")
-        self.assertIn("/architect-loop", text)
-        self.assertIn("#645", text)
-        self.assertIn("`/design` alias", text)
+        self.assertIn("`/design` 또는 `/spec`", text)
+        self.assertNotIn("#649 시점", text)
+        self.assertNotIn("surface flip 이후", text)
         self.assertNotIn("[/design", text)
-        self.assertNotIn("`/design` 또는 `/spec`", text)
 
 
 if __name__ == "__main__":

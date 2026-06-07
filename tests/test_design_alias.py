@@ -39,7 +39,7 @@ class DesignAliasContractTests(unittest.TestCase):
         self.assertIn("entry_point = `architect-loop`", design)
         self.assertIn("`design` 으로 시작하지 않는다", design)
 
-    def test_public_surface_tracks_design_as_advanced_until_flip(self) -> None:
+    def test_public_surface_tracks_design_as_lifecycle_default(self) -> None:
         script = (ROOT / "scripts" / "check_public_surface.mjs").read_text(
             encoding="utf-8"
         )
@@ -52,24 +52,16 @@ class DesignAliasContractTests(unittest.TestCase):
         advanced_match = re.search(r"advancedSkills:\s*\[([^\]]+)\]", script)
         self.assertIsNotNone(default_match)
         self.assertIsNotNone(advanced_match)
-        self.assertNotIn("'design'", default_match.group(1))
-        self.assertIn("'design'", advanced_match.group(1))
+        self.assertIn("'design'", default_match.group(1))
+        self.assertNotIn("'design'", advanced_match.group(1))
 
         default_table = re.search(
             r"\| 기본 진입점 \|.*?\n(?P<body>.*?)\n\n사용자는 lane",
             positioning,
             flags=re.S,
         )
-        advanced_table = re.search(
-            r"## Advanced Entrypoints\n\n.*?\n\n(?P<body>\| 고급 진입점 .*?)\n\n## Utility Surface",
-            positioning,
-            flags=re.S,
-        )
         self.assertIsNotNone(default_table)
-        self.assertIsNotNone(advanced_table)
-        self.assertNotIn("/design", default_table.group("body"))
-        self.assertIn("/design", advanced_table.group("body"))
-        self.assertIn("고급 workflow | `/design`", readme)
+        self.assertIn("/design", default_table.group("body"))
         self.assertIn("product/technical design", positioning)
         self.assertIn("visual design", positioning)
         self.assertIn("product/technical design", readme)
