@@ -30,6 +30,12 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.design_skill = (ROOT / "skills" / "design" / "SKILL.md").read_text(
             encoding="utf-8"
         )
+        self.architect_loop_skill = (
+            ROOT / "skills" / "architect-loop" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        self.architect_loop_routing = (
+            ROOT / "skills" / "architect-loop" / "architect-loop-routing.md"
+        ).read_text(encoding="utf-8")
         self.impl_skill = (ROOT / "skills" / "impl" / "SKILL.md").read_text(
             encoding="utf-8"
         )
@@ -48,6 +54,15 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.product_plan_skill = (
             ROOT / "skills" / "product-plan" / "SKILL.md"
         ).read_text(encoding="utf-8")
+        self.tech_review_skill = (
+            ROOT / "skills" / "tech-review" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        self.tech_review_routing = (
+            ROOT / "skills" / "tech-review" / "tech-review-routing.md"
+        ).read_text(encoding="utf-8")
+        self.ux_routing = (ROOT / "skills" / "ux" / "ux-routing.md").read_text(
+            encoding="utf-8"
+        )
         self.loop_procedure = (
             ROOT / "docs" / "plugin" / "loop-procedure.md"
         ).read_text(encoding="utf-8")
@@ -162,6 +177,11 @@ class SurfaceDocsSyncTests(unittest.TestCase):
             "사용자 trigger (`/tech-review` 또는 `/design`; `/architect-loop` 호환)",
             self.product_plan_routing,
         )
+        self.assertIn(
+            "작업 중단 + `/spec` 재진입 권고 (`/product-plan` 호환)",
+            self.product_plan_routing,
+        )
+        self.assertNotIn("작업 중단 + `/product-plan` 재진입 권고", self.product_plan_routing)
         self.assertNotIn(
             "`/tech-review` → `/architect-loop` → `/impl`",
             self.product_plan_routing,
@@ -187,6 +207,58 @@ class SurfaceDocsSyncTests(unittest.TestCase):
             "`/design` (`/architect-loop` 호환) 진입 후 tech-reviewer 재호출 비권장",
             self.loop_procedure,
         )
+
+        self.assertIn("`/spec` (`/product-plan` 호환) 의 후속", self.architect_loop_skill)
+        self.assertIn("`/spec` (`/product-plan` 호환) 종료 후", self.architect_loop_skill)
+        self.assertIn("`/spec` Step 7", self.architect_loop_skill)
+        self.assertIn("미충족 시 → `/spec` 재진입 권고", self.architect_loop_skill)
+        self.assertIn("PRD 신규 / 변경 → `/spec` (`/product-plan` 호환)", self.architect_loop_skill)
+        self.assertNotIn("`/product-plan` 의 후속", self.architect_loop_skill)
+        self.assertNotIn("본 스킬 = `/product-plan` 종료 후", self.architect_loop_skill)
+        self.assertNotIn("미충족 시 → `/product-plan` 재진입 권고", self.architect_loop_skill)
+
+        self.assertIn("사용자(`/spec` 재진입, `/product-plan` 호환)", self.architect_loop_routing)
+        self.assertIn("`ESCALATE` → `/spec` 재진입", self.architect_loop_routing)
+        self.assertIn("`/design` (`/architect-loop` 호환) 중단 + `/spec` (`/product-plan` 호환) 재진입", self.architect_loop_routing)
+        self.assertIn("`/spec` 재진입 권고 (`/product-plan` 호환)", self.architect_loop_routing)
+        self.assertNotIn("사용자(`/product-plan` 재진입)", self.architect_loop_routing)
+        self.assertNotIn("`/architect-loop` 중단 + `/product-plan` 재진입", self.architect_loop_routing)
+        self.assertNotIn("`/product-plan` 재진입 권고", self.architect_loop_routing)
+
+        self.assertIn("`/spec` (`/product-plan` 호환) 종료 후", self.tech_review_skill)
+        self.assertIn("`/design` (`/architect-loop` 호환) 진입 후", self.tech_review_skill)
+        self.assertIn("설계 단계 진입 (`/design` 권고, `/architect-loop` 호환)", self.tech_review_skill)
+        self.assertIn("Step 5 (종료 + `/design` 권고, `/architect-loop` 호환)", self.tech_review_skill)
+        self.assertIn("### Step 5 — `/design` 권고 (`/architect-loop` 호환, 사용자 OK 종료)", self.tech_review_skill)
+        self.assertIn("→ `/design <epic-path>` 호출 시", self.tech_review_skill)
+        self.assertIn("사용자 Y → `/design` 진입 (`/architect-loop` 호환)", self.tech_review_skill)
+        self.assertIn("`/spec` Step 3", self.tech_review_skill)
+        self.assertIn("미충족 시 → `/spec` 권고 (`/product-plan` 호환)", self.tech_review_skill)
+        self.assertNotIn("본 스킬 = `/product-plan` 종료 후", self.tech_review_skill)
+        self.assertNotIn("→ /product-plan 진행 후 재진입하세요.", self.tech_review_skill)
+        self.assertNotIn("(/architect-loop 권고)", self.tech_review_skill)
+        self.assertNotIn("Step 5 (종료 + `/architect-loop` 권고)", self.tech_review_skill)
+        self.assertNotIn("### Step 5 — `/architect-loop` 권고", self.tech_review_skill)
+        self.assertNotIn("→ `/architect-loop <epic-path>`", self.tech_review_skill)
+        self.assertNotIn("사용자 Y → `/architect-loop` 진입", self.tech_review_skill)
+        self.assertNotIn("`/architect-loop` 진입 *후* 본 스킬 재호출", self.tech_review_skill)
+
+        self.assertIn("OK → `/design` (`/architect-loop` 호환)", self.tech_review_routing)
+        self.assertIn("`/design` (`/architect-loop` 호환) 진입 *후*", self.tech_review_routing)
+        self.assertIn("`/design` (`/architect-loop` 호환) 중단 + `/spec` (`/product-plan` 호환) 재진입", self.tech_review_routing)
+        self.assertIn("PRD 미작성 / 스켈레톤 부재 → `/spec` (`/product-plan` 호환) 먼저", self.tech_review_routing)
+        self.assertIn("tech-review 통과 + 사용자 OK → `/design` (`/architect-loop` 호환", self.tech_review_routing)
+        self.assertIn("기술 자체 폐기", self.tech_review_routing)
+        self.assertIn("`/spec` 재진입 (`/product-plan` 호환", self.tech_review_routing)
+        self.assertNotIn("`/architect-loop` 중단 + `/product-plan` 재진입", self.tech_review_routing)
+        self.assertNotIn("PRD 미작성 / 스켈레톤 부재 → `/product-plan` 먼저", self.tech_review_routing)
+        self.assertNotIn("tech-review 통과 + 사용자 OK → `/architect-loop`", self.tech_review_routing)
+
+        self.assertIn(
+            "PRD 범위 문제면 메인 `/spec` 재진입 권고 (`/product-plan` 호환)",
+            self.ux_routing,
+        )
+        self.assertNotIn("PRD 범위 문제면 메인 `/product-plan` 재진입 권고", self.ux_routing)
 
     def _section(self, text: str, start: str, end: str) -> str:
         match = re.search(start + r"(?P<body>.*?)" + end, text, flags=re.S)
