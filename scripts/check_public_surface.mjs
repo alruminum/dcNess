@@ -22,6 +22,7 @@ const EXPECTED = {
     'engineer',
     'module-architect',
     'pr-reviewer',
+    'product-acceptance',
     'qa',
     'system-architect',
     'tech-reviewer',
