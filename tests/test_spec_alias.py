@@ -36,7 +36,7 @@ class SpecAliasContractTests(unittest.TestCase):
             self.assertIn("full E2E", text)
             self.assertIn("범위 밖", text)
 
-    def test_public_surface_includes_spec_as_compat_default(self) -> None:
+    def test_public_surface_keeps_spec_default_and_product_plan_compat(self) -> None:
         script = (ROOT / "scripts" / "check_public_surface.mjs").read_text(
             encoding="utf-8"
         )
@@ -44,11 +44,17 @@ class SpecAliasContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         default_match = re.search(r"defaultSkills:\s*\[([^\]]+)\]", script)
+        compat_match = re.search(r"compatSkills:\s*\[([^\]]+)\]", script)
         self.assertIsNotNone(default_match)
+        self.assertIsNotNone(compat_match)
         defaults = default_match.group(1)
-        for name in ("impl", "issue-report", "product-plan", "spec"):
-            self.assertIn(f"'{name}'", defaults)
-            self.assertIn(f"`/{name}`", positioning)
+        compat = compat_match.group(1)
+        self.assertIn("'spec'", defaults)
+        self.assertNotIn("'product-plan'", defaults)
+        self.assertIn("'product-plan'", compat)
+        self.assertIn("`/spec`", positioning)
+        self.assertIn("`/product-plan`", positioning)
+        self.assertIn("호환", positioning)
 
     def test_workflow_router_prefers_spec_with_product_plan_compat(self) -> None:
         router = (ROOT / "docs" / "plugin" / "workflow-router.md").read_text(
