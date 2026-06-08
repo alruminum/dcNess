@@ -546,6 +546,75 @@ class GithubProjectLifecycleScriptTests(unittest.TestCase):
             result["sets"],
         )
 
+    def test_plan_registration_preserve_existing_keeps_triaged_state(self) -> None:
+        # 백필 회귀 가드 (#669): preserveExisting 이면 사용자가 옮긴 In progress /
+        # 바뀐 priority 를 Todo/major 로 되돌리지 않는다 (이미 값 있으면 보존).
+        item = {"status": "In progress", "issueType": "story", "priority": "minor"}
+
+        result = run_node(
+            "lifecycle.planRegistration({"
+            f"item: {json.dumps(item)},"
+            f"fields: {json.dumps(STANDARD_FIELDS)},"
+            "issueType: 'story',"
+            "preserveExisting: true"
+            "})"
+        )
+
+        self.assertFalse(result["needsAdd"])
+        self.assertEqual([], result["sets"])
+
+    def test_plan_registration_preserve_existing_fills_only_empty_field(self) -> None:
+        # preserveExisting 이라도 비어있는 필드(부분 등록 실패 잔여)는 채운다.
+        item = {"issueType": "story", "priority": "major"}  # status 미설정
+
+        result = run_node(
+            "lifecycle.planRegistration({"
+            f"item: {json.dumps(item)},"
+            f"fields: {json.dumps(STANDARD_FIELDS)},"
+            "issueType: 'story',"
+            "preserveExisting: true"
+            "})"
+        )
+
+        self.assertFalse(result["needsAdd"])
+        set_map = {entry["fieldName"]: entry["optionName"] for entry in result["sets"]}
+        self.assertEqual({"Status": "Todo"}, set_map)
+
+    def test_plan_registration_preserve_existing_new_item_sets_all(self) -> None:
+        # 보드에 없던 item 은 preserveExisting 여도 풀 등록 (Todo/story/major).
+        result = run_node(
+            "lifecycle.planRegistration({"
+            "item: null,"
+            f"fields: {json.dumps(STANDARD_FIELDS)},"
+            "issueType: 'story',"
+            "preserveExisting: true"
+            "})"
+        )
+
+        self.assertTrue(result["needsAdd"])
+        set_map = {entry["fieldName"]: entry["optionName"] for entry in result["sets"]}
+        self.assertEqual(
+            {"Status": "Todo", "IssueType": "story", "Priority": "major"},
+            set_map,
+        )
+
+    def test_plan_registration_preserve_existing_still_corrects_issue_type(self) -> None:
+        # IssueType 은 정체성이라 preserve 모드여도 drift 교정 (Status/Priority 만 보존).
+        item = {"status": "In progress", "issueType": "epic", "priority": "minor"}
+
+        result = run_node(
+            "lifecycle.planRegistration({"
+            f"item: {json.dumps(item)},"
+            f"fields: {json.dumps(STANDARD_FIELDS)},"
+            "issueType: 'story',"
+            "preserveExisting: true"
+            "})"
+        )
+
+        self.assertFalse(result["needsAdd"])
+        set_map = {entry["fieldName"]: entry["optionName"] for entry in result["sets"]}
+        self.assertEqual({"IssueType": "story"}, set_map)
+
     def test_plan_registration_rejects_unknown_issue_type(self) -> None:
         with self.assertRaises(subprocess.CalledProcessError):
             run_node(

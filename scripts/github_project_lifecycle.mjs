@@ -275,7 +275,7 @@ function parseArgs(argv) {
       continue;
     }
     const key = token.slice(2);
-    if (key === 'apply' || key === 'help') {
+    if (key === 'apply' || key === 'help' || key === 'preserve-existing') {
       args[key] = true;
       continue;
     }
@@ -426,6 +426,7 @@ export function planRegistration({
   issueType,
   expectedStatus = 'Todo',
   expectedPriority = 'major',
+  preserveExisting = false,
 }) {
   if (!issueType) {
     throw new Error('issueType is required for Project registration.');
@@ -434,21 +435,27 @@ export function planRegistration({
   validateExpectedValue({ fieldName: 'Status', expected: expectedStatus });
   validateExpectedValue({ fieldName: 'Priority', expected: expectedPriority });
 
+  // preservable: Status/Priority 는 사용자가 triage 하는 lifecycle 이라 백필 시 보존 대상.
+  // IssueType 은 이슈의 정체성(epic/story)이라 preserve 모드여도 항상 drift 교정.
   const desired = [
-    { fieldName: 'Status', optionName: expectedStatus },
-    { fieldName: 'IssueType', optionName: issueType },
-    { fieldName: 'Priority', optionName: expectedPriority },
+    { fieldName: 'Status', optionName: expectedStatus, preservable: true },
+    { fieldName: 'IssueType', optionName: issueType, preservable: false },
+    { fieldName: 'Priority', optionName: expectedPriority, preservable: true },
   ];
 
   const sets = [];
-  for (const { fieldName, optionName } of desired) {
+  for (const { fieldName, optionName, preservable } of desired) {
     const field = fieldByName(fields, fieldName);
     const option = field ? optionByName(field, optionName) : null;
     if (!field?.id || !option?.id) {
       throw new Error(`Project ${fieldName}=${optionName} option id not found.`);
     }
     const current = item ? projectItemFieldValue(item, fieldName) : null;
-    if (current !== optionName) {
+    const currentEmpty = current === null || current === undefined || current === '';
+    // preserveExisting (백필): 사용자가 triage 한 기존 값(In progress/Done/priority)은
+    // 덮지 않고, 비어있는 필드(부분 등록 실패 잔여)만 채운다. 기본(초기 등록)은 drift 교정.
+    const needsSet = (preserveExisting && preservable) ? currentEmpty : current !== optionName;
+    if (needsSet) {
       sets.push({
         fieldName,
         optionName,
@@ -620,11 +627,18 @@ function commandRegisterIssue(args) {
   const issueType = args['issue-type'];
   const expectedStatus = args.status ?? 'Todo';
   const expectedPriority = args.priority ?? 'major';
+  // --preserve-existing (백필): 보드에 이미 있는 item 의 triage 상태를 보존한다 (#669 회귀 가드).
+  const preserveExisting = Boolean(args['preserve-existing']);
   const issue = getIssue(repo, args.issue);
 
   let item = getProjectItem({ owner, projectNumber: args.project, repo, issueNumber: issue.number });
   // plan throws early if the board lacks a required field/option (incomplete board signal).
-  const plan = planRegistration({ item, fields, issueType, expectedStatus, expectedPriority });
+  const plan = planRegistration({ item, fields, issueType, expectedStatus, expectedPriority, preserveExisting });
+  // 기존 item 보존 모드면 Status/Priority 사후검증을 완화('any') — 보존한 값을 drift 로 오판하지 않는다.
+  // 새로 add 한 item 은 풀 등록되므로 strict 유지. IssueType(정체성)은 항상 검증.
+  const relaxLifecycle = preserveExisting && !plan.needsAdd;
+  const validateStatus = relaxLifecycle ? 'any' : expectedStatus;
+  const validatePriority = relaxLifecycle ? 'any' : expectedPriority;
 
   if (!args.apply) {
     if (!item) {
@@ -635,9 +649,9 @@ function commandRegisterIssue(args) {
       issueNumber: issue.number,
       item: item ?? {},
       labels: issue.labels,
-      expectedStatus,
+      expectedStatus: validateStatus,
       expectedIssueType: issueType,
-      expectedPriority,
+      expectedPriority: validatePriority,
     });
     for (const message of validation.messages) console.log(message);
     console.log('Run again with --apply to register the issue and set Project fields.');
@@ -669,14 +683,17 @@ function commandRegisterIssue(args) {
     issueNumber: issue.number,
     item: verifyItem,
     labels: issue.labels,
-    expectedStatus,
+    expectedStatus: validateStatus,
     expectedIssueType: issueType,
-    expectedPriority,
+    expectedPriority: validatePriority,
   });
   for (const message of validation.messages) console.log(message);
   if (validation.ok) {
+    // preserve 모드에서 기존 값을 보존했을 수 있으므로 실제 보드 값을 보고한다.
+    const finalStatus = projectItemFieldValue(verifyItem, 'Status') ?? expectedStatus;
+    const finalPriority = projectItemFieldValue(verifyItem, 'Priority') ?? expectedPriority;
     console.log(
-      `issue #${issue.number}: Project registered (Status=${expectedStatus}, IssueType=${issueType}, Priority=${expectedPriority})`,
+      `issue #${issue.number}: Project registered (Status=${finalStatus}, IssueType=${issueType}, Priority=${finalPriority})`,
     );
   }
   return validation.ok ? 0 : 1;
@@ -757,7 +774,7 @@ function help() {
   node scripts/github_project_lifecycle.mjs bootstrap --repo OWNER/REPO --owner OWNER --project N [--apply]
   node scripts/github_project_lifecycle.mjs validate-issue --repo OWNER/REPO --owner OWNER --project N --issue N [--expected-status Todo|In progress|Done|any] [--expected-issue-type TYPE] [--expected-priority PRIORITY]
   node scripts/github_project_lifecycle.mjs start-work --repo OWNER/REPO --owner OWNER --project N --issue N [--apply]
-  node scripts/github_project_lifecycle.mjs register-issue --repo OWNER/REPO --owner OWNER --project N --issue N --issue-type epic|story|... [--status Todo] [--priority major] [--apply]
+  node scripts/github_project_lifecycle.mjs register-issue --repo OWNER/REPO --owner OWNER --project N --issue N --issue-type epic|story|... [--status Todo] [--priority major] [--preserve-existing] [--apply]
   node scripts/github_project_lifecycle.mjs pr-merged --repo OWNER/REPO --owner OWNER --project N (--pr N | --body-file FILE | --body-env ENV) [--apply]
 `);
 }
