@@ -24,6 +24,12 @@ description: 자연어 문제, 작업 후보, 계획 조각을 GitHub issue 로 
 - 큰 계획을 여러 issue 로 나누는 경우 horizontal layer 가 아니라 end-to-end vertical slice 로 나눈다. 완료된 slice 는 독립적으로 demo 또는 검증 가능해야 한다.
 - parent issue 가 있더라도 `/to-issue` 는 parent issue 를 닫거나 임의 수정하지 않는다.
 
+## 기준 파일
+
+- IssueType, Priority, repo label 매핑은 [`issue-fields.md`](issue-fields.md)를 SSOT 로 사용한다.
+- Issue Brief 본문 구조는 [`templates/issue-brief.md`](templates/issue-brief.md)를 템플릿으로 사용한다.
+- `SKILL.md` 에 필드 선택지 목록이나 Issue Brief 본문 템플릿을 다시 쓰지 않는다. 선택지나 템플릿을 바꿔야 하면 기준 파일을 먼저 바꾼다.
+
 ## 입력 확인
 
 이미 대화에 있는 정보를 우선 사용한다. 부족한 항목만 짧게 질문한다.
@@ -33,8 +39,8 @@ description: 자연어 문제, 작업 후보, 계획 조각을 GitHub issue 로 
 - 원하는 동작 또는 만들 결과
 - 사용자가 보게 되는 command, API, 문서 surface, config shape, type/field 이름 같은 안정적인 계약
 - 독립적으로 검증 가능한 acceptance criteria
-- IssueType: `epic`, `feature`, `story`, `task`, `subTask`, `bug`
-- Priority: `blocker`, `critical`, `major`, `minor`, `trivial`
+- IssueType: [`issue-fields.md`](issue-fields.md)의 `IssueType` 값
+- Priority: [`issue-fields.md`](issue-fields.md)의 `Priority` 값
 - Blocked by: 없음 또는 blocking issue 링크
 - Out of scope
 - parent issue 여부
@@ -68,45 +74,9 @@ gh issue list --state open --search "<핵심 키워드>" --json number,title,lab
 
 ### Step 3 — Issue Brief 초안 작성
 
-issue 생성 전 아래 템플릿으로 초안을 보여준다.
+issue 생성 전 [`templates/issue-brief.md`](templates/issue-brief.md)를 읽고, [`issue-fields.md`](issue-fields.md)의 선택값으로 `{{IssueType}}`, `{{Priority}}` 를 채운 초안을 보여준다.
 
-```markdown
-## Issue Brief
-
-**IssueType:** epic / feature / story / task / subTask / bug
-**Priority:** blocker / critical / major / minor / trivial
-**Summary:**
-한 줄로 이 이슈가 달성해야 하는 결과를 쓴다.
-
-**Current behavior / Context:**
-지금 어떤 일이 벌어지는지 또는 어떤 배경 위에서 이 작업이 필요한지 쓴다.
-버그라면 깨진 동작과 관측 조건을 쓴다.
-기능/작업이라면 현재 없는 능력이나 현재 운영상의 gap 을 쓴다.
-
-**Desired behavior / What to build:**
-작업 완료 후 시스템, 사용자 경험, 문서, 하네스가 어떤 상태여야 하는지 쓴다.
-end-to-end behavior 를 설명하고 layer-by-layer 구현 계획을 쓰지 않는다.
-파일 경로, line number, 코드 조각, 특정 함수 수정 지시는 기본적으로 쓰지 않는다.
-예외적으로 prototype 의 state machine, schema, type shape 가 prose 보다 결정을 정확히 담는 경우만 짧게 포함하고 prototype 출처를 명시한다.
-
-**Key interfaces / Contracts:**
-- 사용자가 보게 되는 command, API, 문서 surface, config shape, type/field 이름 같은 안정적인 계약을 쓴다.
-- 현재 파일 위치가 아니라 바뀌어야 하는 인터페이스나 행동 계약을 쓴다.
-- 모르면 추측하지 말고 비워두거나 명확화 질문으로 남긴다.
-
-**Acceptance criteria:**
-- [ ] 독립적으로 검증 가능한 완료 조건 1
-- [ ] 독립적으로 검증 가능한 완료 조건 2
-- [ ] 독립적으로 검증 가능한 완료 조건 3
-
-**Blocked by:**
-None - can start immediately
-또는 blocking issue 링크 목록.
-
-**Out of scope:**
-- 이 이슈에서 하지 않을 것
-- 관련 있어 보이지만 별도 이슈로 둘 것
-```
+템플릿의 섹션 구조를 임의로 축약하지 않는다. 안정적인 계약을 모르면 추측하지 말고 비워두거나 명확화 질문으로 남긴다.
 
 ### Step 4 — 승인
 
