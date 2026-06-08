@@ -6,7 +6,7 @@ dcNess 의 기본 공개 workflow 는 제품 생명주기 기준으로 계획 / 
 
 | 기본 진입점 | 언제 쓰나 | 내부 처리 |
 |---|---|---|
-| `/spec` | 새 제품 기능, 큰 기획, PRD 변경처럼 의도 합의가 먼저 필요할 때 | PRD / stories / 기술 검토 스켈레톤 작성 + `SPEC_ACCEPTANCE` |
+| `/spec` | 새 제품 기능, 큰 기획, PRD 변경처럼 의도 합의가 먼저 필요할 때 | PRD 초안/최종화 / stories / 필요한 tech-review preflight + `SPEC_ACCEPTANCE` |
 | `/design` | PRD 이후 구현 전 product/technical design, 즉 설계 전체가 필요할 때 | UX / 시스템 / 모듈 / 기술 선택 설계. visual design 단독 요청은 `/ux` |
 | `/impl` | 구현, 수정, 버그픽스, 작은 리팩터링을 실제 PR 로 끝낼 때 | Lite / Standard / Deep lane 을 내부 판정 |
 | `/acceptance` | PRD / Epic / Story 기준 제품 검수와 gap 후속 연결이 필요할 때 | story/epic acceptance. full E2E 는 MVP 범위 밖 |
@@ -17,7 +17,7 @@ dcNess 의 기본 공개 workflow 는 제품 생명주기 기준으로 계획 / 
 |---|---|---|
 | Lite | high-risk 가 없고 파일, symbol, 승인된 issue, 테스트 명령처럼 구현 경계가 이미 concrete | 메인 직접 `test -> impl -> test pass -> pr-reviewer -> PR` |
 | Standard | high-risk 는 없지만 수정 범위, 테스트 기준, 작은 내부 contract 가 애매함 | `module-architect` compact plan 1-pass 후 plan-aware 구현 |
-| Deep | high-risk trigger 가 있거나 새 epic/product feature 처럼 사전 설계 합의가 필요함 | `/spec` / `/tech-review` 필요 시 / `/design` / `/impl` / `/acceptance` 흐름 |
+| Deep | high-risk trigger 가 있거나 새 epic/product feature 처럼 사전 설계 합의가 필요함 | `/spec` 내부 tech-review preflight 필요 시 / `/design` / `/impl` / `/acceptance` 흐름 |
 
 ## Support/Triage Entrypoints
 
@@ -33,7 +33,7 @@ dcNess 의 기본 공개 workflow 는 제품 생명주기 기준으로 계획 / 
 
 | 고급 진입점 | 위치 |
 |---|---|
-| `/tech-review` | Deep lane 의 선행 기술 검증 |
+| `/tech-review` | Deep lane 에서 `/spec` 내부 preflight 로 쓰는 선행 기술 검증 |
 | `/impl-loop` | deep impl task 파일용 legacy/advanced runner |
 | `/ux` | 화면 UX / 디자인 핸드오프 전문 흐름 |
 

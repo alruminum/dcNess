@@ -20,7 +20,7 @@ skill 트리거 또는 직접 발화 → 메인 Claude 가 **해당 skill 의 `#
 
 ### worktree 분기 (action 루프 한정)
 
-**worktree 격리로 산출물을 커밋하는 action 루프 (`/impl` · `/impl-loop` · `/design` (`/architect-loop` 호환)) 진입 시 Step 0 에서 EnterWorktree 자동 호출** — 동시 다중 세션 충돌 회피 + 메인 working tree 보호. `/spec` (`/product-plan` 호환) / `/tech-review` / `/ux` (commit 없음) / qa-triage 는 commit 격리 목적 부재라 워크트리 X (메인 working tree 에서 직접 또는 별 branch). loop 별 적용 여부는 각 skill 본문 (예: [`impl/SKILL.md`](../../skills/impl/SKILL.md) · [`architect-loop/SKILL.md`](../../skills/architect-loop/SKILL.md) 워크트리 절 · [`impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)).
+**worktree 격리로 산출물을 커밋하는 action 루프 (`/impl` · `/impl-loop` · `/design` (`/architect-loop` 호환)) 진입 시 Step 0 에서 EnterWorktree 자동 호출** — 동시 다중 세션 충돌 회피 + 메인 working tree 보호. `/spec` / `/tech-review` / `/ux` (commit 없음) / qa-triage 는 commit 격리 목적 부재라 워크트리 X (메인 working tree 에서 직접 또는 별 branch). loop 별 적용 여부는 각 skill 본문 (예: [`impl/SKILL.md`](../../skills/impl/SKILL.md) · [`architect-loop/SKILL.md`](../../skills/architect-loop/SKILL.md) 워크트리 절 · [`impl-loop/SKILL.md`](../../skills/impl-loop/SKILL.md)).
 
 ```
 EnterWorktree(name="<skill>-{ts_short}")   # action 루프 (impl / impl-loop / design(architect-loop))
