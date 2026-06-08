@@ -85,12 +85,12 @@ dcness-helper routing disable-codex-validation
 |---|---|---|
 | Lite | high-risk 없음 + 파일/symbol/승인된 issue 같은 concrete signal + 테스트 기준 명확 | 메인 직접 `test -> impl -> test pass -> pr-reviewer -> PR` |
 | Standard | high-risk 는 없지만 구현 경계나 테스트 기준이 애매함 | `module-architect` compact plan 1-pass 후 구현 |
-| Deep | high-risk trigger 또는 새 epic/product feature | `/spec` / `/tech-review` 필요 시 / `/design` / `/impl` / `/acceptance` 사용 |
+| Deep | high-risk trigger 또는 새 epic/product feature | `/spec` 내부 tech-review preflight 필요 시 / `/design` / `/impl` / `/acceptance` 사용 |
 
 **새 기능**
 
 ```
-/spec               # PRD + stories + tech-review 스켈레톤
+/spec               # PRD 초안/최종화 + 필요 시 tech-review preflight + stories
 /design             # 필요 시 deep 설계 — ux/system/module architect + validator
 /impl               # 생성된 deep task 파일이 있으면 내부적으로 /impl-loop 위임
 /acceptance         # story/epic 제품 검수와 gap 후속 라우팅
@@ -106,7 +106,7 @@ dcness-helper routing disable-codex-validation
 support/advanced entrypoint 는 기본 생명주기 표면 밖의 보조 흐름이다.
 
 - `/issue-report` — 미분류 버그/이슈 support/triage
-- `/tech-review` — Deep lane 의 선행 기술 검증
+- `/tech-review` — Deep lane 에서 `/spec` 내부 preflight 로 쓰는 선행 기술 검증
 - `/impl-loop` — deep impl task 파일용 legacy/advanced runner
 - `/ux` — 화면 UX / 디자인 핸드오프 전문 흐름
 
@@ -142,7 +142,7 @@ escalate) 가 진본이다 — 예: [`skills/impl/impl-routing.md`](skills/impl/
 | 기본 workflow | `/impl` | 구현 진입 통합 — Lite / Standard / Deep lane 내부 판정 |
 | 기본 workflow | `/acceptance` | story/epic 제품 검수 MVP |
 | support/triage | `/issue-report` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
-| 고급 workflow | `/tech-review` | Deep lane 선행 기술 검증 |
+| 고급 workflow | `/tech-review` | Deep lane 의 `/spec` 내부 선행 기술 검증 |
 | 고급 workflow | `/impl-loop` | deep impl task 파일용 legacy/advanced runner |
 | 고급 workflow | `/ux` | 화면 UX 플로우 + 디자인 시안 핸드오프 |
 | 유틸리티 | `/init-dcness` | 현 프로젝트를 plugin 활성 whitelist 에 등록 |

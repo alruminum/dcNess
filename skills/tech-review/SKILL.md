@@ -1,7 +1,7 @@
 ---
 name: tech-review
 description: >
-  PRD + `docs/tech-review.md` 스켈레톤 작성 완료 + 사용자 1차 OK 후 *기술 검토* 단계를
+  PRD 초안 작성 + 사용자 초안 OK 후, PRD의 기술 검토 필요 영역을 바탕으로 *기술 검토* 단계를
   진행하는 스킬. tech-reviewer 서브에이전트 호출 + return 결과 사용자에 echo + 사용자
   2차 OK 체크포인트 + 재호출 cycle 관리. `/design` (`/architect-loop` 호환) 진입 후 본 스킬 재호출은 비권장
   (단방향 관례 — 코드 강제 아님). 사용자가 "tech-review", "기술 검토 가자", "이거 진짜 되는지
@@ -10,7 +10,7 @@ description: >
 
 # Tech Review Skill — 선행 기술 검증 + 사용자 2 차 OK 게이트
 
-> 본 스킬 = `/spec` (`/product-plan` 호환) 종료 후 *명시 호출* 되는 기술 검증 게이트. tech-reviewer 가 stateless 본문 채움 + 메인이 cycle 관리 + 사용자가 최종 OK.
+> 본 스킬 = `/spec` 도중 PRD 최종화 전에 호출되는 기술 검증 게이트. tech-reviewer 가 PRD의 기술 검토 필요 영역을 읽고 `docs/tech-review.md` 본문 + 증거물 + HTML 리포트를 생성/갱신한다. 메인이 cycle 을 관리하고 사용자가 최종 OK 한다.
 
 > 🔴 **라우팅 SSOT** — tech-reviewer 결론 (PASS / FAIL / ESCALATE) → 다음 호출 / 사용자 2차 OK 분기 / cycle 재진입 / 단방향 관례 / 비대상 / 후속은 [`tech-review-routing.md`](tech-review-routing.md) 가 본 skill 의 단일 진본. 본 파일은 *진행 절차(Step)* 만 담는다. 분기 판단이 필요하면 그 파일을 읽는다.
 
@@ -18,39 +18,42 @@ description: >
 
 본 스킬 진입 *전* 충족 의무:
 
-1. `docs/prd.md` 존재 + 기능 명세 완료 (`/spec` Step 3 결과, `/product-plan` 호환)
-2. `docs/tech-review.md` 스켈레톤 존재 (`/spec` Step 4.5 결과 — 필요 검토 사항 + PRD 항목 ref + 기술 이름 만 채움, `/product-plan` 호환)
-3. 사용자 1차 OK 완료 (`/spec` Step 5 — PRD + 스켈레톤 검토 후 진행 결정, `/product-plan` 호환)
+1. `docs/prd.md` 존재 + PRD 초안 작성 완료 (`/spec` Step 2 결과)
+2. `docs/prd.md` 에 **기술 검토 필요 영역** 존재 + 검토 질문 / PRD 근거 / 성공·실패 시 PRD 영향이 명시됨
+3. 사용자 PRD 초안 OK 완료 (`/spec` Step 3 — PRD 초안 검토 후 진행 결정)
 
-미충족 시 → `/spec` 권고 (`/product-plan` 호환) 후 종료.
+미충족 시 → `/spec` 권고 후 종료.
 
 ## 작성 절차 (메인 직접)
 
 ### Step 0 — 전제 확인
 
 ```bash
-ls docs/prd.md docs/tech-review.md
+ls docs/prd.md
 ```
 
 부재 파일 발견 시:
 ```
-docs/prd.md 또는 docs/tech-review.md 스켈레톤 부재.
-→ /spec 진행 후 재진입하세요. (`/product-plan` 호환)
+docs/prd.md 부재.
+→ /spec 진행 후 재진입하세요.
 ```
+
+`docs/prd.md` 안에 기술 검토 필요 영역이 없거나 "해당 없음"이면 `/tech-review` 를 진행하지 않고 `/spec` Step 5 PRD 최종화로 되돌린다.
 
 ### Step 1 — tech-reviewer 호출
 
 ```
 Agent(subagent_type="tech-reviewer", prompt="""
 PRD: docs/prd.md
-스켈레톤: docs/tech-review.md
+검토 입력: docs/prd.md 의 "기술 검토 필요 영역"
 
 [이전 cycle 있으면 추가]
 이전 cycle 컨텍스트:
 - 이전 cycle 에서 PRD 항목 X 가 Y 로 patch 됨 (이유: ...)
-- 이전 cycle 에서 격리 후보 Z 가 정식 항목으로 격상됨
+- 이전 cycle 에서 검토 질문 Z 가 추가됨
 
-본문 채워주세요 — 정식 항목 4 항목 충족 + 증거물 + report.html 생성.
+docs/tech-review.md + docs/tech-review/evidence/** + docs/tech-review/report.html 을 생성/갱신하세요.
+각 정식 항목은 사용 가능성 / 비용 / 라이선스 / 대안 필요 여부 / 목적 적합성 / evidence 를 포함해야 합니다.
 """)
 ```
 
@@ -86,57 +89,48 @@ tech-review 본문 + HTML 리포트 + 증거물 산출 완료.
 사용자에게 다음 옵션 제시 (메인이 prose 로):
 
 ```
-HTML 리포트 (`docs/tech-review/report.html`) 확인 후 결정:
+PRD 초안(`docs/prd.md`), tech-review 본문(`docs/tech-review.md`), HTML 리포트(`docs/tech-review/report.html`) 확인 후 결정:
 
-1. **OK** → 설계 단계 진입 (`/design` 권고, `/architect-loop` 호환)
+1. **OK** → `/spec` Step 5 로 복귀해 PRD 최종화
 2. **PRD 재기술 필요** → 어떤 항목 어떻게 patch 할지 알려주세요
-3. **격리 후보 격상** → 어떤 후보 추가 검토할지 알려주세요
+3. **검토 범위 추가** → 어떤 질문을 PRD의 기술 검토 필요 영역에 추가할지 알려주세요
 4. **항목 polish** → 어떤 항목 더 깊이 검증할지 알려주세요
 ```
 
 ### Step 4 — 분기 (라우팅 진본 = [`tech-review-routing.md`](tech-review-routing.md))
 
-**4-1. 사용자 OK** → Step 5 (종료 + `/design` 권고, `/architect-loop` 호환).
+**4-1. 사용자 OK** → 종료 + `/spec` Step 5 (PRD 최종화) 로 복귀.
 
 **4-2. PRD 재기술 필요** →
 - 메인이 사용자와 patch 항목 토론 (그릴미 — 어디를 / 어떻게)
 - 메인이 `docs/prd.md` Edit (섹션 단위 patch)
-- (필요 시) 스켈레톤 (`docs/tech-review.md`) 도 갱신 — 새 의존 추가 / 항목 제거
+- 기술 검토 필요 영역이 바뀌면 cycle 컨텍스트에 명시
 - **Step 1 재진입** (cycle 컨텍스트 prompt 명시 — "이전 cycle 에서 X 가 Y 로 patch 됨")
 
-**4-3. 격리 후보 격상** →
-- 메인이 사용자와 격상 후보 결정
-- 메인이 `docs/tech-review.md` 스켈레톤 갱신 — 격리 후보 → 정식 항목으로 이동
-- **Step 1 재진입** (cycle 컨텍스트 명시 — "격리 후보 Z 가 정식 항목으로 격상됨")
+**4-3. 검토 범위 추가** →
+- 메인이 사용자와 추가 검토 질문 결정
+- 메인이 `docs/prd.md` 의 기술 검토 필요 영역을 갱신
+- **Step 1 재진입** (cycle 컨텍스트 명시 — "검토 질문 Z 가 추가됨")
 
 **4-4. 항목 polish** →
 - 메인이 사용자와 polish 요구 정리 (어떤 항목 / 어떤 검증 방법 추가)
-- 메인이 스켈레톤에 polish 메모 추가 (예: "이 항목은 Bash 실측 1 회 추가 의무")
+- 메인이 재호출 prompt 에 polish 요구 명시 (예: "이 항목은 Bash 실측 1 회 추가 의무")
 - **Step 1 재진입**
 
-### Step 5 — `/design` 권고 (`/architect-loop` 호환, 사용자 OK 종료)
+### Step 5 — `/spec` 복귀 (사용자 OK 종료)
 
 사용자 2 차 OK 후 메인이 echo:
 
 ```
-tech-review 통과 완료. 다음 단계 — 설계 루프:
-
-→ `/design <epic-path>` 호출 시 ux-architect / system-architect /
-  architecture-validator / module-architect × K 순차 진행 + 1 PR 머지.
-
-⚠️ 단방향 관례 — `/design` (`/architect-loop` 호환) 진입 후 tech-reviewer 재호출은 비권장 (코드 강제 아님).
-   설계 도중 tech-review 미검증 새 외부 의존 발견 시 → NEW_DEP_ESCALATE 3안
-   (채택+수동검증 / 대안 기술 우회 / 전체 원점 회귀). 어느 옵션이든
-   tech-reviewer 재호출은 없음 (architect-loop 안엔 tech-reviewer 부재). 전체 회귀는 3안 중 하나일 뿐.
-
-진행할까요? (Y/n)
+tech-review 통과 완료.
+→ `/spec` Step 5 로 돌아가 `docs/prd.md` 를 최종 PRD 로 업데이트합니다.
 ```
 
-사용자 Y → `/design` 진입 (`/architect-loop` 호환). N → 사용자가 나중에 직접 호출.
+이후 stories.md 작성, `SPEC_ACCEPTANCE`, PR 머지, 이슈 등록, `/design` 권고는 `/spec` 이 계속 진행한다.
 
 ## 단방향 관례 (재진입 비권장)
 
-`/design` (`/architect-loop` 호환) 진입 *후* 본 스킬 재호출은 **관례상 비권장** (코드 강제 아닌 자연어 관례 — 메인/사용자 자율 판단). 정합 룰 SSOT = [`docs/plugin/hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) 의 tech-review 자연어 관례. tech-reviewer 단계 = *마지막 기술 검증 기회* — 그래서 증거물 / HTML 리포트 룰의 가치가 가중된다. design/architect-loop 도중 미검증 새 외부 의존 발견 시 처리 (NEW_DEP_ESCALATE 3안) = [`tech-review-routing.md`](tech-review-routing.md) — 어느 옵션이든 tech-reviewer 재호출 0.
+`/design` (`/architect-loop` 호환) 진입 *후* 본 스킬 재호출은 **관례상 비권장** (코드 강제 아닌 자연어 관례 — 메인/사용자 자율 판단). 정합 룰 SSOT = [`docs/plugin/hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) 의 tech-review 자연어 관례. tech-reviewer 단계 = PRD 최종화 전 기술 검증 기회 — 그래서 증거물 / HTML 리포트 룰의 가치가 가중된다. design/architect-loop 도중 미검증 새 외부 의존 발견 시 처리 (NEW_DEP_ESCALATE 3안) = [`tech-review-routing.md`](tech-review-routing.md) — 어느 옵션이든 tech-reviewer 재호출 0.
 
 ## 워크트리 (X)
 

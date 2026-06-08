@@ -41,6 +41,12 @@ task 는 GitHub 이슈 X — [`git-spec.md`](git-spec.md#pr-트레일러-part-of
 **GitHub Epic Issue:** 미등록 (사유: <spike / 잡탕 / …>)
 ```
 
+story 이슈도 보류하면 각 Story 헤더 직하에 같은 방식으로 명시한다.
+
+```
+**GitHub Issue:** 미등록 (사유: <spike / 잡탕 / …>)
+```
+
 명시 없는 미등록 = 위반. 발견 시 backfill 의무 — 메인이 [`git-spec.md`](git-spec.md#이슈-등록-양식) 따라 `mcp__github__create_issue` 1회 호출 + stories.md 번호 patch.
 
 ## 멱등성 (등록 전 매치 체크)
@@ -77,7 +83,10 @@ gh api repos/{owner}/{repo}/milestones --jq '.[] | {number, title}'
 
 매치 0건 → 즉시 STOP + 사용자 보고. silent skip ("이슈 번호 없음 — 생략하고 진행") 금지.
 
-story 이슈 부재 시 동일 패턴 (Story N 헤더 직하 `**GitHub Issue:** [#\d+]` 매치).
+story 이슈 부재 시 동일 패턴:
+
+- Story N 헤더 직하 `**GitHub Issue:** [#\d+]` (정식 등록), 또는
+- Story N 헤더 직하 `**GitHub Issue:** 미등록 (사유: …)` 매치
 
 ## 참조
 

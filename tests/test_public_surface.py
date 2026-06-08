@@ -36,17 +36,17 @@ class PublicSurfaceGateTests(unittest.TestCase):
 
         defaults = self._array(script, "defaultSkills")
         advanced = self._array(script, "advancedSkills")
-        compat = self._array(script, "compatSkills")
+        internal_workflow = self._array(script, "internalWorkflowSkills")
         support = self._array(script, "supportSkills")
 
         self.assertEqual(["spec", "design", "impl", "acceptance"], defaults)
         self.assertEqual(["impl-loop", "tech-review", "ux"], advanced)
-        self.assertEqual(["architect-loop", "product-plan"], compat)
+        self.assertEqual(["architect-loop", "product-plan"], internal_workflow)
         self.assertEqual(["issue-report"], support)
 
         for name in defaults:
             self.assertIn(f"`/{name}`", positioning)
-        for name in compat:
+        for name in internal_workflow:
             self.assertNotIn(f"`/{name}`", positioning)
         self.assertIn("계획 / 설계 / 구현 / 검수", positioning)
         self.assertIn("/spec -> /design -> /impl -> /acceptance", positioning)

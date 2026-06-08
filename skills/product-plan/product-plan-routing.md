@@ -1,29 +1,38 @@
 # product-plan 라우팅 SSOT
 
 > **Status**: ACTIVE
-> **Scope**: `/product-plan` 및 호환 alias `/spec` skill 라우팅 진본. 본 skill 은 **메인 Claude 직접 작업** (product-planner sub-agent 폐기) 이라 내부 구현 agent 매핑은 거의 없다. 단 `/spec` 이행 기준 검수로 `product-acceptance:SPEC_ACCEPTANCE` 를 호출한다. skill 간 시퀀스 (PRD → SPEC_ACCEPTANCE → `/tech-review` → `/design` (`/architect-loop` 호환) → `/impl` → `/acceptance`) + 체크포인트 분기 + 재진입 + escalate + 단방향 관례 + 비대상 추천이 라우팅의 전부다. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
+> **Scope**: `/spec` public entrypoint 의 internal product-plan 절차 라우팅 진본. 본 skill 은 **메인 Claude 직접 작업** (product-planner sub-agent 폐기) 이라 내부 구현 agent 매핑은 거의 없다. 단 `/spec` 이행 기준 검수로 `product-acceptance:SPEC_ACCEPTANCE` 를 호출한다. skill 간 시퀀스 (PRD 초안 → 사용자 초안 확인 → 기술 검토 필요 영역에 항목이 있으면 `/tech-review` preflight → PRD 최종화 → stories.md → SPEC_ACCEPTANCE → PR 머지 → 이슈 등록 여부 확인 → `/design` (`/architect-loop` 호환) → `/impl` → `/acceptance`) + 체크포인트 분기 + 재진입 + escalate + 단방향 관례 + 비대상 추천이 라우팅의 전부다. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
 > **Cross-ref**: catastrophic 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) · 강제 영역 = [`../../CLAUDE.md`](../../CLAUDE.md).
 
 ## 읽는 법
 
-본 skill 은 메인이 사용자와 직접 그릴미 대화하며 산출물을 만든다. 각 Step 끝 *사용자 체크포인트* 의 응답(OK / patch / Y / n) 에 따라 다음 단계가 갈린다. 이 문서는 그 분기와 skill 간 이동을 정한다. 형식 강제가 아니라 *판단 보조* — 의미만 맞으면 된다. 모호하면 사용자에게 위임한다.
+본 skill 은 메인이 사용자와 직접 그릴미 대화하며 산출물을 만든다. PRD 초안 확인과 최종 확인은 별도 체크포인트다. 각 Step 끝 *사용자 체크포인트* 의 응답(OK / patch / Y / n) 에 따라 다음 단계가 갈린다. 이 문서는 그 분기와 skill 간 이동을 정한다. 형식 강제가 아니라 *판단 보조* — 의미만 맞으면 된다. 모호하면 사용자에게 위임한다.
 
 ## skill 시퀀스 그래프
 
 ```mermaid
 flowchart TB
-  PP[/spec 또는 /product-plan · 메인 직접/] --> CP1{1차 OK?}
+  PP[/spec public entrypoint · internal product-plan procedure/] --> CP1{1차 OK?}
   CP1 -->|patch| PP
-  CP1 -->|OK| SA[product-acceptance:SPEC_ACCEPTANCE]
-  SA -->|FAIL| PP
-  SA -->|ESCALATE| U((사용자 위임))
-  SA -->|PASS| MERGE[PR 머지 + 이슈 등록]
-  MERGE --> DEP{외부 의존 ≥1?}
-  DEP -->|0개| AL[/design/]
-  DEP -->|≥1| TR[/tech-review/]
+  CP1 -->|OK| REVIEW{기술 검토 필요 영역?}
+  REVIEW -->|항목 없음| FINAL[PRD 최종화]
+  REVIEW -->|항목 있음| TR[/tech-review preflight/]
   TR --> CP2{2차 OK?}
   CP2 -->|NO_GO / 보류| U((사용자 위임))
-  CP2 -->|OK| AL
+  CP2 -->|PRD patch| PP
+  CP2 -->|OK| FINAL
+  FINAL --> STORIES[stories.md 작성]
+  STORIES --> CP3{최종 OK?}
+  CP3 -->|patch| PP
+  CP3 -->|OK| SA[product-acceptance:SPEC_ACCEPTANCE]
+  SA -->|FAIL| PP
+  SA -->|ESCALATE| U
+  SA -->|PASS| MERGE[PR 머지]
+  MERGE --> ISSUE{이슈 등록?}
+  ISSUE -->|Y| ISSUE_DONE[이슈 등록 완료]
+  ISSUE -->|n| ISSUE_SKIP[이슈 등록 보류]
+  ISSUE_DONE --> AL[/design/]
+  ISSUE_SKIP --> AL
   AL --> SH[/impl/]
   SH --> PA[/acceptance/]
   PP -.->|PRD 변경| PP
@@ -39,44 +48,46 @@ flowchart TB
 
 > 파랑 = 본 skill (메인 직접) · 초록 = 후속 skill · 회색 = 사용자 위임. 점선 = 재진입 / escalate.
 >
-> `/tech-review` 는 본 skill *종료 후* 단계다. 외부 의존 0 개 PRD 면 skip 하고 바로 `/design` (`/architect-loop` 호환). **`/design` 진입 후 `/tech-review` 재호출은 비권장** (단방향 관례 — 코드 강제 아님, [escalate · 재진입 · 단방향 관례](#escalate-재진입-단방향-관례)).
+> `/tech-review` 는 PRD 최종화 / stories 작성 / PR 머지 / 이슈 등록 전에 실행되는 preflight 다. PRD 초안의 기술 검토 필요 영역에 검토 항목이 없으면 skip 하고 PRD 최종화로 간다. **`/design` 진입 후 `/tech-review` 재호출은 비권장** (단방향 관례 — 코드 강제 아님, [escalate · 재진입 · 단방향 관례](#escalate-재진입-단방향-관례)).
 
 ## 체크포인트 → 다음 단계 매핑
 
 | 체크포인트 (SKILL.md Step) | 응답 → 다음 |
 |---|---|
-| **1차 OK** (Step 5) | `OK` → Step 5.5 `product-acceptance:SPEC_ACCEPTANCE` · `patch` → 해당 섹션 Edit 후 Step 5 재진입 |
-| **SPEC_ACCEPTANCE** (Step 5.5) | `PASS` → Step 6 (통합 브랜치 그릴) → Step 7 머지 · `FAIL` → gap patch 후 Step 5 재진입 · `ESCALATE` → 사용자 위임 |
-| **이슈 등록** (Step 8) | `Y` → `create_epic_story_issues.sh` 실행 → Step 9 · `n` → 이슈 등록 보류 (사용자 자율) |
-| **`/tech-review` 권고** (Step 9) | 외부 의존 0 개 → skip + 바로 `/design` 권고 echo · `Y` → `/tech-review` 진입 · `/tech-review` 종료 + 2차 OK → `/design` 권고 echo (`/architect-loop` 호환) |
+| **PRD 초안 확인** (Step 3) | `OK` → Step 4 기술 검토 필요 영역 확인 · `patch` → PRD 초안 patch 후 Step 3 재진입 |
+| **tech-review preflight** (Step 4) | 기술 검토 필요 영역에 검토 항목 없음 → Step 5 PRD 최종화 · 검토 항목 있음 → `/tech-review` 진입 · `/tech-review` PASS + 사용자 2차 OK → Step 5 · FAIL / NO_GO / PRD patch → PRD patch 후 필요 시 재검토 · ESCALATE / 보류 → 사용자 위임 |
+| **최종 OK** (Step 7) | `OK` → Step 8 `product-acceptance:SPEC_ACCEPTANCE` · `patch` → 해당 섹션 Edit 후 기술 검토 필요 영역 영향에 따라 Step 4 또는 Step 7 재진입 |
+| **SPEC_ACCEPTANCE** (Step 8) | `PASS` → Step 9 (통합 브랜치 그릴) → Step 10 PR 머지 · `FAIL` → gap patch 후 Step 7 재진입 · `ESCALATE` → 사용자 위임 |
+| **이슈 등록** (Step 11) | `Y` → `create_epic_story_issues.sh` 실행 → Step 12 · `n` → 이슈 등록 보류 marker 기록/머지 후 Step 12 |
+| **`/design` 권고** (Step 12) | 사용자 `Y` → `/design` 진입 (`/architect-loop` 호환) · `n` → 사용자가 나중에 직접 호출 |
 
 표만으로 안 풀리는 맥락:
 
-- **`/spec` / `/product-plan` 종료 시점** = PRD/stories.md/tech-review 스켈레톤이 `SPEC_ACCEPTANCE` 를 통과한 뒤 머지 + (선택) 이슈 등록 완료. 다음 명시 호출은 사용자 trigger (`/tech-review` 또는 `/design`; `/architect-loop` 호환) — 자동 진입 X.
+- **`/spec` 종료 시점** = PRD 최종본 + stories.md + 필요한 tech-review 산출물이 `SPEC_ACCEPTANCE` 를 통과한 뒤 머지하고, 이슈 등록 여부를 확인한 뒤 `/design` 을 권고한 시점. 이슈 등록은 선택이며 보류 시 stories.md 에 `미등록 (사유: …)` marker 를 남겨 `/design` pre-flight 와 정합시킨 뒤 Step 12 로 간다. 다음 명시 호출은 사용자 trigger (`/design`; `/architect-loop` 호환) — 자동 진입 X.
 - **`SPEC_ACCEPTANCE` 의미** = 좋은 아이디어인지 평가하는 단계가 아니라, 이후 구현과 검수가 가능한 spec 인지 확인하는 단계다. full E2E 검증은 MVP `/spec` 이행 범위 밖이다.
-- **외부 의존 0 개 분기** = tech-review.md 스켈레톤이 "외부 의존 없음 — `/tech-review` skip" 상태면 `/tech-review` 단계 전체 skip.
+- **tech-review skip 의미** = PRD 초안의 기술 검토 필요 영역이 "해당 없음" 이라서 preflight 를 생략하는 것이다. "뒤에 둬도 됨" 예외표는 없다.
 
 ## escalate · 재진입 · 단방향 관례
 
 escalate 계열 수신 시 **메인이 즉시 사용자 보고 후 대기** (자동 복구 / 우회 / 재시도 금지 — [`../../CLAUDE.md`](../../CLAUDE.md) 강제 영역).
 
 - **기존 PRD 변경** → 본 skill 재진입. `Edit` 도구 *섹션 단위 patch* 의무 (Write 통째 X — 기존 PRD 의 모르는 부분 silent 변경 위험).
-- **PRD 위반 / 범위 escalate** → 설계·구현 단계의 agent (system-architect / module-architect / ux-architect / engineer) 가 PRD 불일치·범위 모호를 발견하면 작업 중단 + `/spec` 재진입 권고 (`/product-plan` 호환) 로 본 skill 로 되돌아온다 (해당 agent 가 직접 PRD 수정 X).
+- **PRD 위반 / 범위 escalate** → 설계·구현 단계의 agent (system-architect / module-architect / ux-architect / engineer) 가 PRD 불일치·범위 모호를 발견하면 작업 중단 + `/spec` 재진입 권고로 본 skill 로 되돌아온다 (해당 agent 가 직접 PRD 수정 X).
 - **`UX_REFINE_READY` 후속** — ux-architect 가 REFINE 분기로 끝나면 designer 호출 (그 라우팅은 [`../architect-loop/architect-loop-routing.md`](../architect-loop/architect-loop-routing.md) 영역 — 본 skill 은 PRD 단계라 여기서 끝).
 
 ### 단방향 관례 — `/design` 진입 후 `/tech-review` 재호출 비권장
 
-기술 NO_GO (사용 불가 / 비용 초과 / 라이선스 결격) 발견은 **`/tech-review` 단계에서 확정** 하는 게 좋다. `/design` (`/architect-loop` 호환) 진입 후엔 tech-reviewer 재호출이 관례상 비권장 — 코드 강제 아닌 자연어 관례 ([`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) 의 tech-review 자연어 관례). design/architect-loop 도중 미검증 외부 의존이 발견되면 그쪽 `NEW_DEP_ESCALATE` 3안으로 처리 ([`../architect-loop/architect-loop-routing.md`](../architect-loop/architect-loop-routing.md#escalate-처리)) — 어느 옵션이든 tech-reviewer 재호출 없음.
+기술 NO_GO (사용 불가 / 비용 초과 / 라이선스 결격) 발견은 PRD 최종화 전에 **`/tech-review` preflight** 로 확정한다. `/design` (`/architect-loop` 호환) 진입 후엔 tech-reviewer 재호출이 관례상 비권장 — 코드 강제 아닌 자연어 관례 ([`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) 의 tech-review 자연어 관례). design/architect-loop 도중 미검증 외부 의존이 발견되면 그쪽 `NEW_DEP_ESCALATE` 3안으로 처리 ([`../architect-loop/architect-loop-routing.md`](../architect-loop/architect-loop-routing.md#escalate-처리)) — 어느 옵션이든 tech-reviewer 재호출 없음.
 
 ## 비대상 (다른 skill 추천)
 
 - 버그 → `/issue-report` (qa 분류)
 - 한 줄 수정 / 버그픽스 → `/impl` 또는 새 미분류 버그면 `/issue-report`
 - 디자인만 → designer 직접 (Pencil 또는 `design-variants/*.html`)
-- 이미 PRD/stories.md 머지 완료 → **먼저 외부 의존 검증 상태 확인**. 외부 의존 0개 (tech-review.md 스켈레톤이 "외부 의존 없음" 명시) *또는* `/tech-review` 통과 상태면 → 설계 `/design` (`/architect-loop` 호환) · 구현 `/impl` · 제품 검수 `/acceptance` (deep task 파일이 있으면 내부적으로 `/impl-loop` 위임). 미검증 외부 의존이 남았으면 → **먼저 `/tech-review`** (design 진입 후엔 tech-reviewer 재호출이 관례상 비권장이므로, [단방향 관례](#단방향-관례-design-진입-후-tech-review-재호출-비권장))
+- 이미 PRD/stories.md 머지 완료 → PRD 의 **기술 검토 필요 영역**과 `docs/tech-review.md` 존재 여부를 먼저 확인. 미검증 검토 항목이 남았으면 `/design` 으로 가지 말고 `/spec` 재진입 또는 `/tech-review` preflight 로 회수한다.
 
 ## 후속 (skill 종료 후)
 
-- PRD/stories/tech-review 스켈레톤 완성 + 머지 + 이슈 등록 → `/tech-review` (선행 기술 검증) → 사용자 2차 OK → `/design` (`/architect-loop` 호환) → `/impl` → `/acceptance`
-- 외부 의존 0 개 PRD → `/tech-review` skip + 바로 `/design` (`/architect-loop` 호환)
+- PRD 최종본 + stories.md + 필요한 tech-review 산출물 완성 + PR 머지 → 이슈 등록 여부 확인 → `/design` (`/architect-loop` 호환) → `/impl` → `/acceptance`
+- 기술 검토 필요 영역이 "해당 없음" 인 PRD → `/tech-review` skip + PRD 최종화 + stories.md 작성
 - 기존 PRD 변경 → 본 skill 재진입 (`Edit` 섹션 단위 patch 의무)
