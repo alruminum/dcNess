@@ -49,7 +49,23 @@ gh issue create --title "<title>" --body-file <brief.md> --label "<IssueType>"
 
 ## GitHub Project Status lifecycle
 
-Project 축 정의의 SSOT 는 [`github-project.md`](github-project.md) 이다. 본 절은 `/spec`, `/design`, `/impl`, `/ux`, PR merge 후처리가 그 축을 어떻게 갱신하는지만 다룬다.
+Project 축 정의의 SSOT 는 [`github-project.md`](github-project.md) 이다. 본 절은 issue 등록, `/spec`, `/design`, `/impl`, `/ux`, PR merge 후처리가 그 축을 어떻게 갱신하는지만 다룬다.
+
+### 이슈 등록 — Status=Todo
+
+issue 등록 직후 Project item 으로 추가하고 `Status=Todo` + `IssueType` + `Priority` 를 설정한다. 단발 등록 (`/to-issue`) 과 epic/story 일괄 생성 ([`scripts/create_epic_story_issues.sh`](../../scripts/create_epic_story_issues.sh)) 이 같은 경로 `register-issue` 를 쓴다. epic → `IssueType=epic`, story → `IssueType=story`, 둘 다 `Priority=major` (일괄 기본).
+
+```bash
+node scripts/github_project_lifecycle.mjs register-issue \
+  --repo OWNER/REPO --owner OWNER --project PROJECT_NUMBER \
+  --issue ISSUE_NUMBER --issue-type epic|story [--priority major] --apply
+```
+
+`register-issue` 는 item 이 없으면 추가하고 (멱등), Status/IssueType/Priority 를 설정한 뒤 drift 를 사후검증한다.
+
+보드 (Project) 나 field/option 이 없거나 불완전해도 **issue 생성은 막지 않는다.** 메인은 사용자에게 보드를 만들거나 채울지 물어보고, 동의하면 `bootstrap --apply` (보드 자체가 없으면 `gh project create` + `gh project link` 먼저) 로 셋업한 뒤 등록한다. 거부하면 보드 없이 issue 만 생성한다. 일괄 생성 스크립트는 비대화형이라 좌표가 없으면 보드 등록만 skip 하고 (이슈는 생성됨) 경고하며, 멱등 재실행 시 이슈 생성은 skip 하고 보드 등록만 backfill 한다.
+
+보드 좌표 (owner/number) 는 repo 변수 `DCNESS_PROJECT_NUMBER` / `DCNESS_PROJECT_OWNER` 에 저장한다 — GitHub Actions `vars.*` 와 동일 저장소라 CI lifecycle workflow 와 단일 SSOT 다. `/init-dcness` bootstrap 이 `gh variable set` 으로 저장하고, 등록 경로는 `gh variable get` 으로 읽는다. 조회 우선순위: `--project`/`--owner` 플래그 → `DCNESS_PROJECT_*` env → `gh variable get` → owner 는 repo owner fallback.
 
 ### 작업 시작 — Status=In progress
 
