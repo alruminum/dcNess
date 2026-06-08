@@ -19,13 +19,13 @@ dcNess 의 기본 공개 workflow 는 제품 생명주기 기준으로 계획 / 
 | Standard | high-risk 는 없지만 수정 범위, 테스트 기준, 작은 내부 contract 가 애매함 | `module-architect` compact plan 1-pass 후 plan-aware 구현 |
 | Deep | high-risk trigger 가 있거나 새 epic/product feature 처럼 사전 설계 합의가 필요함 | `/spec` 내부 tech-review preflight 필요 시 / `/design` / `/impl` / `/acceptance` 흐름 |
 
-## Support/Triage Entrypoints
+## Support Entrypoints
 
-아래 skill 은 기본 생명주기 밖의 접수/분류 흐름이다. acceptance gap 처럼 이미 근거가 생긴 후속과, 아직 분류되지 않은 새 버그 신고를 구분한다.
+아래 skill 은 기본 생명주기 밖의 issue 초안/등록 흐름이다. 수정 실행은 `/impl`, 제품 검수 후속은 `/acceptance`, GitHub issue 로 추적할 작업 후보는 `/to-issue` 로 구분한다.
 
-| support/triage 진입점 | 역할 |
+| support 진입점 | 역할 |
 |---|---|
-| `/issue-report` | 아직 분류되지 않은 버그나 이상 동작을 qa 가 분류한 뒤 `/impl`, `/ux`, `/spec` 등 후속을 추천 |
+| `/to-issue` | 문제/작업 후보를 메인이 질문해 dcNess 표준 Issue Brief 초안으로 만들고, 사용자 승인 후 GitHub issue 와 Project item 으로 등록 |
 
 ## Advanced Entrypoints
 
@@ -50,13 +50,13 @@ dcNess 의 기본 공개 workflow 는 제품 생명주기 기준으로 계획 / 
 
 ## Internal Agents
 
-agent 는 사용자가 외워야 하는 command 가 아니다. `architecture-validator`, `build-worker`, `code-validator`, `designer`, `engineer`, `module-architect`, `pr-reviewer`, `product-acceptance`, `qa`, `system-architect`, `tech-reviewer`, `test-engineer`, `ux-architect` 는 workflow 내부에서 호출되는 gate/worker/reviewer 로 분류한다.
+agent 는 사용자가 외워야 하는 command 가 아니다. `architecture-validator`, `build-worker`, `code-validator`, `designer`, `engineer`, `module-architect`, `pr-reviewer`, `product-acceptance`, `system-architect`, `tech-reviewer`, `test-engineer`, `ux-architect` 는 workflow 내부에서 호출되는 gate/worker/reviewer 로 분류한다.
 
 특히 `code-validator`, `architecture-validator`, `pr-reviewer` 는 read-only validation provider routing 대상이다. provider 가 Claude 든 Codex 든 사용자-facing 단계 이름은 `pr-reviewer` 같은 agent 이름으로 유지한다.
 
 ## Contract Gate
 
-기본/support/triage/고급/유틸리티/내부 agent 목록과 skill/command/agent 의 frontmatter name 대 path 정합은 [`scripts/check_public_surface.mjs`](../../scripts/check_public_surface.mjs) 가 검사한다. 새 기본 workflow 를 추가하려면 이 문서와 gate 기대값을 함께 수정해야 한다.
+기본/support/고급/유틸리티/내부 agent 목록과 skill/command/agent 의 frontmatter name 대 path 정합은 [`scripts/check_public_surface.mjs`](../../scripts/check_public_surface.mjs) 가 검사한다. 새 기본 workflow 를 추가하려면 이 문서와 gate 기대값을 함께 수정해야 한다.
 
 ### 신규 surface justification (왜 작게 유지하나)
 

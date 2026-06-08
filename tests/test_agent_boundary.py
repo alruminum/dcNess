@@ -830,7 +830,7 @@ class GithubMcpMutationTests(unittest.TestCase):
             self.assertIsNotNone(check_github_mcp_mutation(t), f"{t} 는 차단되어야 함")
 
     def test_issue_mutation_exempt(self):
-        # codex P1 (round4) — issue mutation 은 qa/designer 설계 권한 → 통과.
+        # codex P1 (round4) — issue mutation 은 per-agent tools gate 예외 → 통과.
         for t in (
             "mcp__github__create_issue",
             "mcp__github__update_issue",
@@ -838,7 +838,7 @@ class GithubMcpMutationTests(unittest.TestCase):
         ):
             self.assertIsNone(
                 check_github_mcp_mutation(t),
-                f"{t} 는 qa/designer 설계 권한 — 통과해야 함",
+                f"{t} 는 per-agent issue tool 예외 — 통과해야 함",
             )
 
     def test_read_tools_pass(self):

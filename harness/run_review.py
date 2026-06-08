@@ -57,7 +57,6 @@ EXPECTED_FINAL_ENUMS = {
     "architecture-validator": {None: "PASS"},
     "pr-reviewer": {None: "PASS"},
     "product-acceptance": {None: "PASS"},
-    "qa": {None: None},  # qa 다양 (FUNCTIONAL_BUG / CLEANUP / etc.)
     "plan-reviewer": {None: "PASS"},
     "designer": {None: "PASS"},
     "ux-architect": {None: "UX_FLOW_READY"},  # 통일 부적합 — variant 3개
@@ -77,7 +76,7 @@ INFRA_PATH_PATTERNS = [
     "harness-memory.md", "harness.config.json", "/.claude/harness/",
 ]
 
-READONLY_AGENTS = {"qa", "code-validator", "architecture-validator", "pr-reviewer",
+READONLY_AGENTS = {"code-validator", "architecture-validator", "pr-reviewer",
                     "plan-reviewer", "product-acceptance"}
 
 # DCN-CHG-20260430-20: Phase 2 — per-Agent budget for THINKING_LOOP detection.
@@ -93,7 +92,6 @@ EXPECTED_AGENT_BUDGETS: dict[str, dict[str, int]] = {
     "architecture-validator": {"elapsed_s": 300, "min_output_tokens": 800},
     "pr-reviewer":     {"elapsed_s": 180, "min_output_tokens": 600},
     "product-acceptance": {"elapsed_s": 300, "min_output_tokens": 800},
-    "qa":              {"elapsed_s": 300, "min_output_tokens": 600},
     "plan-reviewer":   {"elapsed_s": 300, "min_output_tokens": 1000},
     "designer":        {"elapsed_s": 600, "min_output_tokens": 1000},
     "ux-architect":    {"elapsed_s": 600, "min_output_tokens": 1000},

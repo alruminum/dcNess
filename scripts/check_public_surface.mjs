@@ -15,7 +15,7 @@ const EXPECTED = {
   // Internal implementation skill dirs stay installed, but positioning.md must
   // not list them as public workflow surface.
   internalWorkflowSkills: ['architect-loop', 'product-plan'],
-  supportSkills: ['issue-report'],
+  supportSkills: ['to-issue'],
   advancedSkills: ['impl-loop', 'tech-review', 'ux'],
   utilityCommands: ['efficiency', 'init-dcness', 'run-review', 'smart-compact'],
   internalAgents: [
@@ -27,7 +27,6 @@ const EXPECTED = {
     'module-architect',
     'pr-reviewer',
     'product-acceptance',
-    'qa',
     'system-architect',
     'tech-reviewer',
     'test-engineer',

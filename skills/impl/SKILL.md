@@ -42,13 +42,13 @@ concrete signal: 파일 path, 함수/클래스/symbol, 이미 분류·승인된 
 - 선행 조건/의존 PR 이 있으면 merge 여부를 확인한다.
 - 이 repo 의 실제 lint/build/test 명령과 PR helper 존재 여부를 확인한다.
 
-아직 분류되지 않은 새 버그 신고라면 `/issue-report` 로 먼저 보낸다.
+GitHub issue 등록이 목표인 요청이면 `/to-issue` 로 보내고, 수정/구현이 목표인 버그 신고는 아래 lane 판정으로 처리한다.
 
 ## Step 1 — lane 판정
 
 판정 순서:
 
-1. 새 미분류 버그/이슈 신고인가? → `/issue-report`
+1. GitHub issue 초안/등록 요청인가? → `/to-issue`
 2. high-risk trigger 가 하나라도 있는가? → Deep
 3. 목표/범위/성공 기준이 모호한가? → 사용자에게 명확화 또는 `/spec`
 4. concrete signal 이 있고 즉시 구현 경계가 명확한가? → Lite

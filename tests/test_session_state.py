@@ -1138,22 +1138,22 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         err = StringIO()
         with redirect_stdout(out), redirect_stderr(err):
             rc = _cli_end_step(SimpleNamespace(
-                agent="qa",
+                agent="code-validator",
                 mode="",
                 prose_file=str(prose_path),
             ))
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "PROSE_LOGGED")
         # prose 자체는 저장됨 (메인이 직접 읽고 routing)
-        prose_md = session_dir(self.sid) / "runs" / self.rid / "qa.md"
+        prose_md = session_dir(self.sid) / "runs" / self.rid / "code-validator.md"
         self.assertTrue(prose_md.exists())
         self.assertIn("자연어", prose_md.read_text(encoding="utf-8"))
-        # stderr 에 [qa = PROSE_LOGGED] 헤더 (모든 skill 자동 요약 수혜)
-        self.assertIn("[qa = PROSE_LOGGED]", err.getvalue())
+        # stderr 에 [code-validator = PROSE_LOGGED] 헤더 (모든 skill 자동 요약 수혜)
+        self.assertIn("[code-validator = PROSE_LOGGED]", err.getvalue())
         # .steps.jsonl 에 PROSE_LOGGED row append (finalize-run / run-review 입력)
         steps = _read_steps_jsonl(self.sid, self.rid)
         self.assertTrue(steps)
-        self.assertEqual(steps[-1]["agent"], "qa")
+        self.assertEqual(steps[-1]["agent"], "code-validator")
         self.assertEqual(steps[-1]["enum"], "PROSE_LOGGED")
 
     def test_end_step_prose_only_does_not_extract_enum_word(self) -> None:
@@ -1206,11 +1206,11 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         from contextlib import redirect_stdout, redirect_stderr
 
         # begin-step 으로 current_step 설정
-        _cli_begin_step(SimpleNamespace(agent="qa", mode=""))
+        _cli_begin_step(SimpleNamespace(agent="code-validator", mode=""))
 
         # hook 이 staged 한 것처럼 prose_file 을 live.json.current_step 에 삽입
-        prose_text = "## 결론\nFUNCTIONAL_BUG\n"
-        staged_path = session_dir(self.sid) / "runs" / self.rid / "qa.md"
+        prose_text = "## 결론\nPASS\n"
+        staged_path = session_dir(self.sid) / "runs" / self.rid / "code-validator.md"
         staged_path.parent.mkdir(parents=True, exist_ok=True)
         staged_path.write_text(prose_text, encoding="utf-8")
 
@@ -1227,7 +1227,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         err = StringIO()
         with redirect_stdout(out), redirect_stderr(err):
             rc = _cli_end_step(SimpleNamespace(
-                agent="qa",
+                agent="code-validator",
                 mode="",
                 prose_file=None,
             ))
@@ -1244,12 +1244,12 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         from io import StringIO
         from contextlib import redirect_stdout, redirect_stderr
 
-        _cli_begin_step(SimpleNamespace(agent="qa", mode=""))
+        _cli_begin_step(SimpleNamespace(agent="code-validator", mode=""))
         out = StringIO()
         err = StringIO()
         with redirect_stdout(out), redirect_stderr(err):
             rc = _cli_end_step(SimpleNamespace(
-                agent="qa",
+                agent="code-validator",
                 mode="",
                 prose_file=None,
             ))
@@ -1261,10 +1261,10 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         from harness.session_state import _build_arg_parser
         parser = _build_arg_parser()
         ns = parser.parse_args(
-            ["end-step", "qa", "--prose-file", "/tmp/x.md"]
+            ["end-step", "code-validator", "--prose-file", "/tmp/x.md"]
         )
         self.assertEqual(ns.cmd, "end-step")
-        self.assertEqual(ns.agent, "qa")
+        self.assertEqual(ns.agent, "code-validator")
         self.assertEqual(ns.prose_file, "/tmp/x.md")
         self.assertFalse(hasattr(ns, "allowed_enums"))
 
@@ -1277,7 +1277,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         err = StringIO()
         with redirect_stderr(err), self.assertRaises(SystemExit):
             parser.parse_args(
-                ["end-step", "qa", "--allowed-enums", "PASS,FAIL"]
+                ["end-step", "code-validator", "--allowed-enums", "PASS,FAIL"]
             )
 
 
@@ -1692,7 +1692,7 @@ PASS — 빈 문자열 가드 추가.
         rid = "run-deadbeef"
         run_dir(sid, rid, create=True)
         self._append_step_status_with_prose(
-            sid, rid, "qa", None, "FUNCTIONAL_BUG", "qa prose body"
+            sid, rid, "code-validator", None, "PASS", "code-validator prose body"
         )
         self._append_step_status_with_prose(
             sid, rid, "module-architect", None, "PASS",
@@ -1700,8 +1700,8 @@ PASS — 빈 문자열 가드 추가.
         )
         records = _read_steps_jsonl(sid, rid)
         self.assertEqual(len(records), 2)
-        self.assertEqual(records[0]["agent"], "qa")
-        self.assertEqual(records[0]["enum"], "FUNCTIONAL_BUG")
+        self.assertEqual(records[0]["agent"], "code-validator")
+        self.assertEqual(records[0]["enum"], "PASS")
         self.assertIsNone(records[1]["mode"])
         self.assertFalse(records[0]["must_fix"])
 
@@ -1852,7 +1852,7 @@ PASS — 빈 문자열 가드 추가.
         write_pid_current_run(cc_pid, rid)
 
         self._append_step_status_with_prose(
-            sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok"
+            sid, rid, "code-validator", None, "PASS", "ok"
         )
         self._append_step_status_with_prose(
             sid, rid, "module-architect", None, "PASS", "ok"
@@ -1905,10 +1905,10 @@ PASS — 빈 문자열 가드 추가.
         run_dir(sid, rid, create=True)
         write_pid_current_run(cc_pid, rid)
 
-        # qa-triage → impl-task-loop fallback 전형 시퀀스 — pr-reviewer CHANGES_REQUESTED →
+        # impl-task-loop fallback 전형 시퀀스 — pr-reviewer CHANGES_REQUESTED →
         # engineer POLISH → pr-reviewer LGTM. 첫 pr-reviewer prose 에 MUST FIX 포함.
         self._append_step_status_with_prose(
-            sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok"
+            sid, rid, "code-validator", None, "PASS", "ok"
         )
         self._append_step_status_with_prose(
             sid, rid, "module-architect", None, "PASS", "ok"
@@ -1970,7 +1970,7 @@ PASS — 빈 문자열 가드 추가.
         write_pid_current_run(cc_pid, rid)
 
         self._append_step_status_with_prose(
-            sid, rid, "qa", None, "FUNCTIONAL_BUG", "ok"
+            sid, rid, "code-validator", None, "PASS", "ok"
         )
         self._append_step_status_with_prose(
             sid, rid, "engineer", "IMPL", "IMPL_DONE", "ok"

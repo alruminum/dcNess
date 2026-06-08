@@ -122,7 +122,6 @@ _PHASE_BY_AGENT = {
     "architecture-validator": "design-review",
     "ux-architect": "ux",
     "designer": "ux",
-    "qa": "triage",
     "product-acceptance": "acceptance",
     "product-planner": "plan",
     "tech-reviewer": "tech-review",
@@ -475,7 +474,7 @@ def infer_next_action(
     if agent not in _VALIDATOR_AGENTS:
         return ""
     if agent == "product-acceptance" and enum == "FAIL":
-        return "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`) 예상"
+        return "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상"
     if not must_fix:
         return ""
     if agent == "code-validator":

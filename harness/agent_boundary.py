@@ -127,8 +127,7 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'(^|/)docs/tech-review\.md$',
         r'(^|/)docs/tech-review/',
     ),
-    # 판정 전용 agent — Write 0.
-    "qa": (),
+    # 판정/검증 전용 agent — Write 0.
     "code-validator": (),
     "architecture-validator": (),
     "pr-reviewer": (),
@@ -813,9 +812,9 @@ def check_github_mcp_mutation(tool_name: str) -> Optional[str]:
     보수적 — 알려진 mutation prefix 만 차단, 그 외 unknown 은 통과 (false positive 회피).
 
     🔴 GitHub *issue* mutation (`create_issue`/`update_issue`/`add_issue_comment` 등 op 에
-    'issue' 포함) 은 **예외 — 통과** (codex review P1). qa / designer 는 frontmatter `tools:` 로
-    이 도구를 *부여받아* 이슈 등록·추적 코멘트를 수행하도록 설계됐고 (`agents/qa.md`,
-    `agents/designer.md`), CC 가 MCP 도구를 per-agent `tools:` 로 이미 gate 한다 (미부여 agent 는
+    'issue' 포함) 은 **예외 — 통과** (codex review P1). designer 등 issue 도구를 가진 agent 는
+    frontmatter `tools:` 로 이슈 등록·추적 코멘트를 수행하도록 설계됐고 (`agents/designer.md`),
+    CC 가 MCP 도구를 per-agent `tools:` 로 이미 gate 한다 (미부여 agent 는
     호출 자체 불가). 따라서 본 hook 이 issue mutation 을 막으면 *설계된 흐름만* 깨고
     실질 방어 이득은 없다. PR/repo mutation (`merge_pull_request`/`push_files`/
     `create_pull_request`/`create_or_update_file` 등) 은 어떤 agent 도 부여받지 않으므로 계속 차단.
@@ -827,7 +826,7 @@ def check_github_mcp_mutation(tool_name: str) -> Optional[str]:
     if op.startswith(_MCP_GH_READ_PREFIXES):
         return None
     if "issue" in op:
-        return None  # issue mutation = qa/designer 설계 권한 (CC per-agent gate) — 예외
+        return None  # issue mutation = per-agent tools gate 설계 권한 — 예외
     if op.startswith(_MCP_GH_MUTATION_PREFIXES):
         return (
             f"GitHub MCP mutation 차단: {tool_name} — 외부 시스템 mutation 은 메인 영역 "

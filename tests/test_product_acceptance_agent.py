@@ -109,7 +109,7 @@ class ProductAcceptanceAgentContractTests(unittest.TestCase):
                 must_fix=True,
                 enum="FAIL",
             ),
-            "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`) 예상",
+            "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상",
         )
         self.assertEqual(
             infer_next_action(
@@ -118,17 +118,17 @@ class ProductAcceptanceAgentContractTests(unittest.TestCase):
                 must_fix=False,
                 enum="FAIL",
             ),
-            "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`) 예상",
+            "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상",
         )
 
     def test_prompt_uses_acceptance_routing_surface_names(self) -> None:
         prompt = self.prompt.read_text(encoding="utf-8")
         routing = self.acceptance_routing.read_text(encoding="utf-8")
 
-        self.assertIn("issue 등록 후보 + `/impl` 또는 `/design`", prompt)
-        self.assertIn("issue 등록 후보 + `/design` 또는 사용자 위임", prompt)
-        self.assertIn("issue 등록 후보 + `/impl` 또는 `/design`", routing)
-        self.assertIn("issue 등록 후보 + `/design` 또는 사용자 위임", routing)
+        self.assertIn("`/to-issue` 후보 + `/impl` 또는 `/design`", prompt)
+        self.assertIn("`/to-issue` 후보 + `/design` 또는 사용자 위임", prompt)
+        self.assertIn("`/to-issue` 후보 + `/impl` 또는 `/design`", routing)
+        self.assertIn("`/to-issue` 후보 + `/design` 또는 사용자 위임", routing)
         self.assertNotIn("performance improvement", prompt)
         self.assertNotIn("security deep-dive", prompt)
 

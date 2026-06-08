@@ -1221,7 +1221,7 @@ class ListRunsLedgerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
             _make_run_dir(tmp, "sidL", "ridLegacy", [
-                {"ts": "2026-05-01T08:00:00", "agent": "qa", "mode": None,
+                {"ts": "2026-05-01T08:00:00", "agent": "code-validator", "mode": None,
                  "enum": "PROSE_LOGGED", "must_fix": False, "prose_excerpt": "y"},
             ])
             sessions_root = tmp / ".claude" / "harness-state" / ".sessions"
