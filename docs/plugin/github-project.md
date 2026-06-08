@@ -76,3 +76,17 @@ gh project create --owner OWNER --title "dcNess" --format json
 gh project link PROJECT_NUMBER --owner OWNER --repo REPO
 node scripts/github_project_lifecycle.mjs bootstrap --repo OWNER/REPO --owner OWNER --project PROJECT_NUMBER --apply
 ```
+
+## Issue 등록 (register-issue) + 좌표 저장
+
+issue 를 Project item 으로 추가하고 `Status=Todo` + `IssueType` + `Priority` 를 설정하는 경로는 `register-issue` 다. 단발 (`/to-issue`) 과 epic/story 일괄 생성이 같이 쓴다.
+
+```bash
+node scripts/github_project_lifecycle.mjs register-issue \
+  --repo OWNER/REPO --owner OWNER --project PROJECT_NUMBER \
+  --issue ISSUE_NUMBER --issue-type epic|story [--priority major] --apply
+```
+
+item 이 없으면 추가 (멱등), 있으면 field 만 set 후 drift 검증. 보드/field 가 없거나 불완전해도 issue 생성은 막지 않는다 — 메인이 셋업을 물어보고 거부 시 보드 없이 진행하며, 일괄 스크립트는 좌표가 없으면 등록만 skip 한다.
+
+보드 좌표 (owner/number) 는 repo 변수 `DCNESS_PROJECT_NUMBER` / `DCNESS_PROJECT_OWNER` 에 저장한다 (GitHub Actions `vars.*` 와 동일 저장소 = 단일 SSOT). `/init-dcness` 가 `gh variable set` 으로 저장하고, 등록 경로는 `gh variable get` 으로 읽는다. 조회 우선순위: `--project`/`--owner` 플래그 → `DCNESS_PROJECT_*` env → `gh variable get` → owner 는 repo owner fallback.

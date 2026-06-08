@@ -7,9 +7,14 @@
 #   3. epic 이슈 1 생성 → stories.md 에 번호 씀
 #   4. story 이슈 N 순차 생성 → stories.md 에 번호 + 하단 표 씀
 #   5. sub-issue API 호출 (epic ↔ story N 연결, GitHub native sub-issue API)
-#   6. 결과 prose 출력
+#   6. GitHub Project 보드 등록 (Status=Todo, IssueType=epic/story, Priority=major) — 좌표 있을 때
+#   7. 결과 prose 출력
 #
-# SSOT: docs/plugin/issue-lifecycle.md 의 이슈 계층
+# 보드 등록은 비대화형 best-effort: 좌표(--project/--owner, DCNESS_PROJECT_* env,
+# gh variable) 를 못 구하면 보드 등록만 skip 하고 이슈는 항상 생성한다. 대화형 보드
+# 셋업(없으면 만들지 물어보기)은 메인 Claude 가 이 스크립트 호출 전에 담당한다.
+#
+# SSOT: docs/plugin/issue-lifecycle.md 의 이슈 계층 + GitHub Project lifecycle
 #
 # 사용:
 #   create_epic_story_issues.sh docs/milestones/vNN/epics/epic-NN-<slug>/stories.md   # epic 단위 (표준)
@@ -22,7 +27,17 @@
 
 set -e
 
-STORIES="${1:-docs/stories.md}"
+# 인자 파싱 — positional stories.md + 선택 --project/--owner (보드 좌표 명시).
+STORIES="docs/stories.md"
+PROJECT_NUMBER=""
+PROJECT_OWNER=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --project) PROJECT_NUMBER="$2"; shift 2 ;;
+    --owner) PROJECT_OWNER="$2"; shift 2 ;;
+    *) STORIES="$1"; shift ;;
+  esac
+done
 
 if [ ! -f "$STORIES" ]; then
   echo "[issue-create] ERROR: $STORIES 부재. PRD/stories.md 먼저 작성 후 호출하세요." >&2
@@ -35,10 +50,62 @@ if [ -z "$REPO" ]; then
   exit 1
 fi
 
-# 멱등성 — 이미 epic 번호 적혀있으면 skip
+# 보드 좌표 조회 — 플래그 → env → gh variable (= CI vars 와 단일 SSOT) → owner fallback = repo owner.
+# 전부 non-fatal: 좌표를 못 구해도 이슈 생성은 막지 않는다 (보드 등록만 skip).
+if [ -z "$PROJECT_NUMBER" ]; then PROJECT_NUMBER="${DCNESS_PROJECT_NUMBER:-}"; fi
+if [ -z "$PROJECT_NUMBER" ]; then PROJECT_NUMBER="$(gh variable get DCNESS_PROJECT_NUMBER 2>/dev/null || true)"; fi
+if [ -z "$PROJECT_OWNER" ]; then PROJECT_OWNER="${DCNESS_PROJECT_OWNER:-}"; fi
+if [ -z "$PROJECT_OWNER" ]; then PROJECT_OWNER="$(gh variable get DCNESS_PROJECT_OWNER 2>/dev/null || true)"; fi
+if [ -z "$PROJECT_OWNER" ]; then PROJECT_OWNER="${REPO%%/*}"; fi
+
+LIFECYCLE_MJS="$(dirname "$0")/github_project_lifecycle.mjs"
+
+# register_board — 생성/backfill 한 epic+story 이슈를 GitHub Project 보드에 등록.
+# epic → Status=Todo, IssueType=epic, Priority=major / story → Status=Todo, IssueType=story, Priority=major.
+# 좌표 없으면 skip (이슈는 이미 생성됨). register-issue 실패는 흡수 + partial 보고 (이슈를 막지 않는다).
+register_board() {
+  if [ -z "$PROJECT_NUMBER" ]; then
+    echo "[issue-create] Project 보드 미연결 (번호 없음) — 보드 등록 skip. 이슈는 생성됨."
+    echo "  보드 연결 후 backfill: --project <N> --owner <O> 로 재실행 또는 'gh variable set DCNESS_PROJECT_NUMBER --body <N>'."
+    return 0
+  fi
+  local reg_ok=0 reg_total out failed=""
+  reg_total=$((1 + ${#STORY_NUMS[@]}))
+  echo "[issue-create] 보드 등록 — Project #$PROJECT_NUMBER (owner=$PROJECT_OWNER), 대상 ${reg_total}건"
+  if out=$(node "$LIFECYCLE_MJS" register-issue --repo "$REPO" --owner "$PROJECT_OWNER" --project "$PROJECT_NUMBER" --issue "$EPIC_NUM" --issue-type epic --apply 2>&1); then
+    reg_ok=$((reg_ok+1))
+  else
+    failed="$failed epic#$EPIC_NUM"
+    echo "  WARN: epic #$EPIC_NUM 보드 등록 실패 — $(echo "$out" | tail -1)"
+  fi
+  for sn in "${STORY_NUMS[@]}"; do
+    if out=$(node "$LIFECYCLE_MJS" register-issue --repo "$REPO" --owner "$PROJECT_OWNER" --project "$PROJECT_NUMBER" --issue "$sn" --issue-type story --apply 2>&1); then
+      reg_ok=$((reg_ok+1))
+    else
+      failed="$failed story#$sn"
+      echo "  WARN: story #$sn 보드 등록 실패 — $(echo "$out" | tail -1)"
+    fi
+  done
+  echo "[issue-create] 보드 등록 완료 — ${reg_ok}/${reg_total} 성공 (Status=Todo, Priority=major)"
+  if [ "$reg_ok" -lt "$reg_total" ]; then
+    echo "[issue-create] WARN: partial state — 등록 실패:$failed. 이슈는 생성됨, 보드는 미반영."
+    echo "  보드/field 셋업 확인 후 재실행으로 backfill (이슈 생성은 멱등 skip, 보드만 재시도)."
+  fi
+  return 0
+}
+
+# 멱등성 — 이미 epic 번호 있으면 이슈 생성은 skip 하되, 보드 등록은 재시도 (backfill).
+# 이슈 생성과 보드 등록을 분리: 첫 실행에서 보드 미연결로 등록을 못 했어도, 나중에
+# 보드 연결 후 재실행하면 보드만 채울 수 있다 (getProjectItem 멱등이라 중복 없음).
 if grep -qE '^\*\*GitHub Epic Issue:\*\* \[#[0-9]+\]' "$STORIES"; then
-  echo "[issue-create] $STORIES 이미 epic 번호 있음 — skip"
-  echo "  멱등성 재실행 필요 시 stories.md 상단 'GitHub Epic Issue' 라인 제거 후 재호출"
+  echo "[issue-create] $STORIES 이미 epic 번호 있음 — 이슈 생성 skip, 보드 등록만 재시도 (backfill)"
+  EPIC_NUM=$(grep -m1 -E '^\*\*GitHub Epic Issue:\*\* \[#[0-9]+\]' "$STORIES" | grep -oE '#[0-9]+' | head -1 | tr -d '#')
+  STORY_NUMS=()
+  while IFS= read -r _ln; do
+    _n=$(echo "$_ln" | grep -oE '#[0-9]+' | head -1 | tr -d '#')
+    [ -n "$_n" ] && STORY_NUMS+=("$_n")
+  done < <(grep -E '^\*\*GitHub Issue:\*\* \[#[0-9]+\]' "$STORIES")
+  register_board
   exit 0
 fi
 
@@ -236,6 +303,9 @@ for SID in "${STORY_IDS[@]}"; do
   fi
 done
 echo "[issue-create] sub-issue 연결 완료 — $LINKED / ${#STORY_IDS[@]}"
+
+# 보드 등록 — 생성한 epic+story 이슈를 GitHub Project 보드에 등록 (좌표 있을 때)
+register_board
 
 # 결과 prose
 echo ""

@@ -154,7 +154,7 @@ PR 머지 완료 후 사용자에게 확인한다.
 PRD + stories.md 머지 완료. 이제 GitHub epic + story 이슈를 등록할까요? (Y/n)
 ```
 
-- 사용자 Y → [`product-plan-delivery-reference.md`](product-plan-delivery-reference.md#이슈-등록)의 `scripts/create_epic_story_issues.sh` 흐름 실행
+- 사용자 Y → [`product-plan-delivery-reference.md`](product-plan-delivery-reference.md#이슈-등록)의 `scripts/create_epic_story_issues.sh` 흐름 실행. 실행 전 보드(Project) 좌표·field 를 점검해 없거나 불완전하면 사용자에게 보드 셋업을 물어보고(거부 시 보드 없이 이슈만 생성), 스크립트가 생성된 epic/story 를 보드에 `Status=Todo`·`IssueType`·`Priority=major` 로 등록한다
 - 사용자 n → 이슈 등록 보류. `/design` pre-flight 가 통과하도록 stories.md 의 epic/story issue marker 를 `**GitHub Epic Issue:** 미등록 (사유: …)` / `**GitHub Issue:** 미등록 (사유: …)` 형태로 남긴다. 기존 marker 가 없으면 별도 doc patch PR 로 marker 를 머지한 뒤 Step 12 로 간다.
 
 이슈 등록 또는 미등록 marker 변경분은 별도 commit + PR 또는 사용자 자율이다.
