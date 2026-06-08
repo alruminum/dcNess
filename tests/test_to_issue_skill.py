@@ -12,6 +12,10 @@ ROOT = Path(__file__).resolve().parents[1]
 class ToIssueSkillTests(unittest.TestCase):
     def setUp(self) -> None:
         self.skill_path = ROOT / "skills" / "to-issue" / "SKILL.md"
+        self.field_ssot_path = ROOT / "skills" / "to-issue" / "issue-fields.md"
+        self.template_path = (
+            ROOT / "skills" / "to-issue" / "templates" / "issue-brief.md"
+        )
         self.workflow_router = (
             ROOT / "docs" / "plugin" / "workflow-router.md"
         ).read_text(encoding="utf-8")
@@ -27,7 +31,11 @@ class ToIssueSkillTests(unittest.TestCase):
         self.assertIn("승인 전에는 GitHub issue 를 만들지 않는다", text)
 
     def test_issue_brief_template_has_required_contract_sections(self) -> None:
-        text = self.skill_path.read_text(encoding="utf-8")
+        skill = self.skill_path.read_text(encoding="utf-8")
+        text = self.template_path.read_text(encoding="utf-8")
+
+        self.assertIn("[`templates/issue-brief.md`](templates/issue-brief.md)", skill)
+        self.assertNotIn("```markdown\n## Issue Brief", skill)
 
         required = (
             "IssueType",
@@ -47,6 +55,32 @@ class ToIssueSkillTests(unittest.TestCase):
         self.assertIn("구현 파일 경로", text)
         self.assertIn("line number", text)
         self.assertIn("layer-by-layer", text)
+        self.assertIn("{{IssueType}}", text)
+        self.assertIn("{{Priority}}", text)
+
+    def test_issue_field_options_are_defined_in_ssot_not_skill(self) -> None:
+        skill = self.skill_path.read_text(encoding="utf-8")
+        text = self.field_ssot_path.read_text(encoding="utf-8")
+
+        self.assertIn("[`issue-fields.md`](issue-fields.md)", skill)
+
+        for field in ("IssueType", "Priority"):
+            self.assertRegex(text, rf"(?m)^## {field}$")
+
+        for value in ("epic", "feature", "story", "task", "subTask", "bug"):
+            self.assertRegex(text, rf"(?m)^\|\s*`{re.escape(value)}`\s*\|")
+
+        for value in ("blocker", "critical", "major", "minor", "trivial"):
+            self.assertRegex(text, rf"(?m)^\|\s*`{re.escape(value)}`\s*\|")
+
+        forbidden_inline_lists = (
+            "IssueType: `epic`, `feature`, `story`, `task`, `subTask`, `bug`",
+            "Priority: `blocker`, `critical`, `major`, `minor`, `trivial`",
+            "**IssueType:** epic / feature / story / task / subTask / bug",
+            "**Priority:** blocker / critical / major / minor / trivial",
+        )
+        for inline_list in forbidden_inline_lists:
+            self.assertNotIn(inline_list, skill)
 
     def test_issue_creation_requires_user_confirmation_and_project_fields(self) -> None:
         text = self.skill_path.read_text(encoding="utf-8")
