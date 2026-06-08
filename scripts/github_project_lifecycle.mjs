@@ -654,8 +654,13 @@ function commandRegisterIssue(args) {
       expectedPriority: validatePriority,
     });
     for (const message of validation.messages) console.log(message);
+    // preserve 완화로 검증은 'any' 라도, 채울 빈 필드(또는 drift)가 남아있으면 apply 가 item 을
+    // 바꾸므로 dry-run 은 pending 으로 보고한다 (완화가 "백필 불필요" 오보고를 내지 않게).
+    for (const entry of plan.sets) {
+      console.log(`issue #${issue.number}: Project ${entry.fieldName} needs set to ${entry.optionName} (run --apply).`);
+    }
     console.log('Run again with --apply to register the issue and set Project fields.');
-    return item && validation.ok ? 0 : 1;
+    return item && validation.ok && plan.sets.length === 0 ? 0 : 1;
   }
 
   if (plan.needsAdd) {
