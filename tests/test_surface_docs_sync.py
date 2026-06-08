@@ -9,7 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LIFECYCLE = ("/spec", "/design", "/impl", "/acceptance")
 HIDDEN_WORKFLOW = ("/product-plan", "/architect-loop")
-SUPPORT = ("/issue-report",)
+SUPPORT = ("/to-issue",)
+REMOVED = ("/issue-report",)
 
 
 class SurfaceDocsSyncTests(unittest.TestCase):
@@ -54,9 +55,6 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.impl_loop_skill = (
             ROOT / "skills" / "impl-loop" / "SKILL.md"
         ).read_text(encoding="utf-8")
-        self.issue_report_routing = (
-            ROOT / "skills" / "issue-report" / "issue-report-routing.md"
-        ).read_text(encoding="utf-8")
         self.product_plan_routing = (
             ROOT / "skills" / "product-plan" / "product-plan-routing.md"
         ).read_text(encoding="utf-8")
@@ -98,16 +96,18 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         for name in HIDDEN_WORKFLOW + SUPPORT:
             self.assertNotIn(f"| `{name}` |", basic_table)
 
-        public_surface = self._section(self.readme, r"## Public Surface", r"\n13개 sub-agent")
+        public_surface = self._section(self.readme, r"## Public Surface", r"\n12개 sub-agent")
         for name in LIFECYCLE:
             self.assertIn(f"| 기본 workflow | `{name}` |", public_surface)
         for name in HIDDEN_WORKFLOW:
             self.assertNotIn(f"| 호환 workflow | `{name}` |", public_surface)
         for name in SUPPORT:
-            self.assertIn(f"| support/triage | `{name}` |", public_surface)
+            self.assertIn(f"| support | `{name}` |", public_surface)
+        for name in REMOVED:
+            self.assertNotIn(f"`{name}`", public_surface)
         self.assertIn("`/spec -> /design -> /impl -> /acceptance`", self.readme)
         self.assertIn("`/spec -> /design -> /impl -> /acceptance`", self.positioning)
-        self.assertIn("기본/support/triage/고급/유틸리티/내부 agent 분류", self.readme)
+        self.assertIn("기본/support/고급/유틸리티/내부 agent 분류", self.readme)
         self.assertNotIn("호환 workflow", self.readme)
         self.assertNotIn("호환 alias", self.readme)
         self.assertIn("Lite", self.readme)
@@ -130,26 +130,29 @@ class SurfaceDocsSyncTests(unittest.TestCase):
             self.assertNotIn("/product-plan", text)
 
     def test_cross_ref_gate_agent_count_label_matches_public_surface(self) -> None:
-        self.assertIn("현재 13 종", self.cross_ref_script)
-        self.assertIn(r"agent\s+1[0-2]\s*종", self.cross_ref_script)
-        self.assertNotIn(r"agent\s+1[01]\s*종", self.cross_ref_script)
-        self.assertNotIn("현재 12 종", self.cross_ref_script)
+        self.assertIn("현재 12 종", self.cross_ref_script)
+        self.assertIn(r"agent\s+1[013]\s*종", self.cross_ref_script)
+        self.assertIn(r"1[013]\s*개\s+(?:sub-)?agent", self.cross_ref_script)
+        self.assertIn(r"1[013]\s+agents?", self.cross_ref_script)
+        self.assertIn("13개 agent/sub-agent", self.cross_ref_script)
+        self.assertNotIn(r"agent\s+1[0-2]\s*종", self.cross_ref_script)
+        self.assertNotIn("현재 13 종", self.cross_ref_script)
 
     def test_strict_conveyor_docs_include_design_alias_guard(self) -> None:
-        expected = "entry_point=architect-loop|design|impl|issue-report|ux"
+        expected = "entry_point=architect-loop|design|impl|ux"
         self.assertIn(expected, self.hooks_doc)
         self.assertIn(expected, self.loop_procedure)
         self.assertIn("정상 `/design` 은 `begin-run architect-loop`", self.hooks_doc)
         self.assertIn("실수로 `begin-run design`", self.hooks_doc)
-        self.assertNotIn("entry_point=architect-loop|impl|issue-report|ux", self.hooks_doc)
-        self.assertNotIn("entry_point=architect-loop|impl|issue-report|ux", self.loop_procedure)
+        self.assertNotIn("entry_point=architect-loop|design|impl|issue-report|ux", self.hooks_doc)
+        self.assertNotIn("entry_point=architect-loop|design|impl|issue-report|ux", self.loop_procedure)
 
     def test_init_summary_uses_same_lifecycle_surface(self) -> None:
         default_block = self._section(
-            self.init_doc, r"기본 workflow:\n", r"\n\nsupport/triage:"
+            self.init_doc, r"기본 workflow:\n", r"\n\nsupport:"
         )
         support_block = self._section(
-            self.init_doc, r"support/triage:\n", r"\n\n고급 workflow:"
+            self.init_doc, r"support:\n", r"\n\n고급 workflow:"
         )
         advanced_block = self._section(
             self.init_doc, r"고급 workflow:\n", r"\n\n유틸리티:"
@@ -163,6 +166,8 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.assertNotIn("- /spec — 새 기능 spec/design", default_block)
 
         for name in HIDDEN_WORKFLOW:
+            self.assertNotIn(f"- {name} ", self.init_doc)
+        for name in REMOVED:
             self.assertNotIn(f"- {name} ", self.init_doc)
         self.assertNotIn("호환 workflow", self.init_doc)
         self.assertNotIn("호환 alias", self.init_doc)
@@ -225,9 +230,6 @@ class SurfaceDocsSyncTests(unittest.TestCase):
             "spec / design 단계 → `/product-plan` (PRD) 또는 `/architect-loop` (설계)",
             self.impl_loop_skill,
         )
-
-        self.assertIn("`/spec` 또는 `/design` 재진입 후보", self.issue_report_routing)
-        self.assertNotIn("`/product-plan` 또는 `/architect-loop` 재진입 후보", self.issue_report_routing)
 
         self.assertIn(
             "기술 검토 필요 영역에 항목이 있으면 `/tech-review` preflight → PRD 최종화 → stories.md → SPEC_ACCEPTANCE → PR 머지 → 이슈 등록 여부 확인 → `/design`",

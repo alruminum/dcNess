@@ -38,11 +38,13 @@ class PublicSurfaceGateTests(unittest.TestCase):
         advanced = self._array(script, "advancedSkills")
         internal_workflow = self._array(script, "internalWorkflowSkills")
         support = self._array(script, "supportSkills")
+        internal_agents = self._array(script, "internalAgents")
 
         self.assertEqual(["spec", "design", "impl", "acceptance"], defaults)
         self.assertEqual(["impl-loop", "tech-review", "ux"], advanced)
         self.assertEqual(["architect-loop", "product-plan"], internal_workflow)
-        self.assertEqual(["issue-report"], support)
+        self.assertEqual(["to-issue"], support)
+        self.assertNotIn("qa", internal_agents)
 
         for name in defaults:
             self.assertIn(f"`/{name}`", positioning)
@@ -51,8 +53,8 @@ class PublicSurfaceGateTests(unittest.TestCase):
         self.assertIn("계획 / 설계 / 구현 / 검수", positioning)
         self.assertIn("/spec -> /design -> /impl -> /acceptance", positioning)
         self.assertNotIn("Compatibility Entrypoints", positioning)
-        self.assertIn("Support/Triage Entrypoints", positioning)
-        self.assertIn("기본/support/triage/고급/유틸리티/내부 agent", positioning)
+        self.assertIn("Support Entrypoints", positioning)
+        self.assertIn("기본/support/고급/유틸리티/내부 agent", positioning)
 
     def _array(self, text: str, key: str) -> list[str]:
         match = re.search(rf"{key}:\s*\[([^\]]*)\]", text)

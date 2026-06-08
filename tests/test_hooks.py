@@ -16,7 +16,7 @@ Coverage matrix:
         - engineer 게이트 — module-architect.md 안 PASS 있으면 통과
         - engineer 게이트 — module-architect-N.md (occurrence) 안 PASS 도 인정
         - engineer 게이트 — engineer POLISH 모드는 plan 검사 skip
-        - 그 외 agent (architect MODULE_PLAN, qa 등) — run 외부에서도 통과
+        - 그 외 agent (architect MODULE_PLAN, code-validator 등) — run 외부에서도 통과
         - sid 없음 → silent allow
         - tool_input 비정상 → silent allow
 
@@ -734,15 +734,15 @@ class FileOpAgentRecordTests(_PreToolBase):
     """PreToolUse Agent 통과 시 live.json.active_agent 기록 확인."""
 
     def test_active_agent_recorded_on_pass(self) -> None:
-        # qa = HARNESS_ONLY 외 + run 컨텍스트 있음 → 통과
+        # code-validator = HARNESS_ONLY 외 + run 컨텍스트 있음 → 통과
         rc = handle_pretooluse_agent(
-            stdin_data=self._payload("qa"),
+            stdin_data=self._payload("code-validator"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
         live = read_live(self.sid, base_dir=self.base)
-        self.assertEqual(live.get("active_agent"), "qa")
+        self.assertEqual(live.get("active_agent"), "code-validator")
 
     def test_active_agent_with_mode(self) -> None:
         # validator + DESIGN_VALIDATION = HARNESS_ONLY 아님 (DESIGN_VALIDATION 미포함)
@@ -890,8 +890,8 @@ class FileOpHookTests(_PreToolBase):
         self.assertEqual(rc, 1)
 
     def test_mcp_github_issue_mutation_exempt(self) -> None:
-        # codex P1 (round4) — issue mutation 은 qa/designer 설계 권한 → 통과.
-        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        # codex P1 (round4) — issue mutation 은 per-agent tools gate 예외 → 통과.
+        update_live(self.sid, base_dir=self.base, active_agent="code-validator")
         rc = handle_pretooluse_file_op(
             stdin_data={
                 "sessionId": self.sid,
@@ -968,7 +968,7 @@ class FileOpHookTests(_PreToolBase):
 
     def test_mcp_tool_passes_boundary_and_records_trace(self) -> None:
         # #255 W5 — mcp__* 도구는 boundary 검사 skip + trace pre append.
-        # designer / qa false positive (prose-only 의심) 차단 의도.
+        # designer / code-validator false positive (prose-only 의심) 차단 의도.
         from harness.session_state import (
             start_run, generate_run_id, write_pid_current_run, write_pid_session,
         )
@@ -1204,9 +1204,9 @@ class FileOpSelfAttributionTests(FileOpHookTests):
         return d
 
     def test_payload_agent_type_overrides_active_agent_allow(self):
-        # active_agent 가 다른 sub(qa: write 전면 불가)로 덮어써져 있어도
+        # active_agent 가 다른 sub(code-validator: write 전면 불가)로 덮어써져 있어도
         # payload agent_type=engineer → engineer 매트릭스로 판정 → src 허용.
-        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        update_live(self.sid, base_dir=self.base, active_agent="code-validator")
         rc = handle_pretooluse_file_op(
             stdin_data=self._payload_with_agent(
                 "Edit", "engineer", file_path="src/foo.ts"
@@ -1214,14 +1214,14 @@ class FileOpSelfAttributionTests(FileOpHookTests):
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
-        self.assertEqual(rc, 0)  # qa 로 판정됐다면 차단(rc 1)됐을 것
+        self.assertEqual(rc, 0)  # code-validator 로 판정됐다면 차단(rc 1)됐을 것
 
     def test_payload_agent_type_overrides_active_agent_block(self):
-        # active_agent=engineer(src 허용) 인데 payload agent_type=qa → qa 로 판정 → src 차단.
+        # active_agent=engineer(src 허용) 인데 payload agent_type=code-validator → code-validator 로 판정 → src 차단.
         update_live(self.sid, base_dir=self.base, active_agent="engineer")
         rc = handle_pretooluse_file_op(
             stdin_data=self._payload_with_agent(
-                "Edit", "qa", file_path="src/foo.ts"
+                "Edit", "code-validator", file_path="src/foo.ts"
             ),
             cc_pid=self.cc_pid,
             base_dir=self.base,
@@ -1261,7 +1261,7 @@ class FileOpSelfAttributionTests(FileOpHookTests):
 
     def test_pre_trace_uses_payload_agent_type(self):
         # 통과한 file-op 의 pre-trace agent 도 payload agent_type 로 귀속.
-        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        update_live(self.sid, base_dir=self.base, active_agent="code-validator")
         rc = handle_pretooluse_file_op(
             stdin_data=self._payload_with_agent(
                 "Read", "engineer", file_path="src/foo.ts"
@@ -1276,16 +1276,16 @@ class FileOpSelfAttributionTests(FileOpHookTests):
         self.assertEqual(pre[-1]["agent"], "engineer")
 
     def test_namespaced_payload_agent_type_enforced(self):
-        # issue #598 codex P1 — namespaced agent_type(dcness:qa)도 정규화되어 경계 강제.
-        # 정규화 없으면 ALLOW_MATRIX 미정의 → pass-through bypass (qa 가 src write).
+        # issue #598 codex P1 — namespaced agent_type(dcness:code-validator)도 정규화되어 경계 강제.
+        # 정규화 없으면 ALLOW_MATRIX 미정의 → pass-through bypass (code-validator 가 src write).
         rc = handle_pretooluse_file_op(
             stdin_data=self._payload_with_agent(
-                "Edit", "dcness:qa", file_path="src/foo.ts"
+                "Edit", "dcness:code-validator", file_path="src/foo.ts"
             ),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
-        self.assertEqual(rc, 1)  # dcness:qa → qa → src write 불가
+        self.assertEqual(rc, 1)  # dcness:code-validator → code-validator → src write 불가
 
     def test_namespaced_payload_agent_type_allow(self):
         rc = handle_pretooluse_file_op(
@@ -1317,7 +1317,7 @@ class PostFileOpSelfAttributionTests(PostToolUseFileOpTests):
     """post trace 의 agent 귀속도 payload agent_type 우선 (issue #598)."""
 
     def test_post_trace_uses_payload_agent_type(self):
-        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        update_live(self.sid, base_dir=self.base, active_agent="code-validator")
         d = self._post_payload(
             "Bash", {"exit_code": 0, "stdout": "x"}, command="echo x"
         )
@@ -1328,7 +1328,7 @@ class PostFileOpSelfAttributionTests(PostToolUseFileOpTests):
         )
         self.assertEqual(rc, 0)
         entries = read_trace(self.sid, self.rid, base_dir=self.base)
-        self.assertEqual(entries[-1]["agent"], "engineer")  # active_agent(qa) 아님
+        self.assertEqual(entries[-1]["agent"], "engineer")  # active_agent(code-validator) 아님
 
     def test_post_trace_records_with_payload_only(self):
         # active_agent 미설정이라도 payload agent_type 있으면 trace 기록.
@@ -1448,7 +1448,7 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         self.assertNotIn("pending_agents", slot)
 
     def test_histogram_filters_by_matched_agent(self):
-        # issue #598 finding1 — 동시 sub 환경: since_ts 이후 다른 agent(qa)의 trace 가
+        # issue #598 finding1 — 동시 sub 환경: since_ts 이후 다른 agent(code-validator)의 trace 가
         # 끝난 agent(engineer)의 histogram 에 섞이지 않음 (시각 범위 + agent 필터).
         import io
         import contextlib
@@ -1462,7 +1462,7 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         for tool in ["Bash", "Bash", "Grep"]:
             trace_append(
                 self.sid, self.rid,
-                {"phase": "pre", "agent": "qa", "tool": tool},
+                {"phase": "pre", "agent": "code-validator", "tool": tool},
                 base_dir=self.base,
             )
         out = io.StringIO()
@@ -1475,7 +1475,7 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         ctx = out.getvalue()
         self.assertIn("Read:1", ctx)
         self.assertIn("Edit:1", ctx)
-        # 동시 qa 행동(Bash/Grep)은 engineer histogram 에 누설 안 됨.
+        # 동시 code-validator 행동(Bash/Grep)은 engineer histogram 에 누설 안 됨.
         self.assertNotIn("Grep", ctx)
         self.assertNotIn("Bash", ctx)
 
@@ -1541,14 +1541,14 @@ class PendingAgentsMultiSlotTests(_PreToolBase):
             base_dir=self.base,
         )
         set_pending_agent(
-            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            self.sid, self.rid, tool_use_id="t2", sub_type="code-validator",
             base_dir=self.base,
         )
         slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.rid]
         self.assertIn("pending_agents", slot)
         self.assertEqual(set(slot["pending_agents"]), {"t1", "t2"})
         self.assertEqual(slot["pending_agents"]["t1"]["sub_type"], "engineer")
-        self.assertEqual(slot["pending_agents"]["t2"]["sub_type"], "qa")
+        self.assertEqual(slot["pending_agents"]["t2"]["sub_type"], "code-validator")
 
     def test_clear_by_tool_use_id_pops_only_match(self):
         from harness.session_state import set_pending_agent, clear_pending_agent
@@ -1557,7 +1557,7 @@ class PendingAgentsMultiSlotTests(_PreToolBase):
             base_dir=self.base,
         )
         set_pending_agent(
-            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            self.sid, self.rid, tool_use_id="t2", sub_type="code-validator",
             base_dir=self.base,
         )
         popped = clear_pending_agent(
@@ -1598,7 +1598,7 @@ class PendingAgentsMultiSlotTests(_PreToolBase):
             base_dir=self.base,
         )
         set_pending_agent(
-            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            self.sid, self.rid, tool_use_id="t2", sub_type="code-validator",
             base_dir=self.base,
         )
         popped = clear_pending_agent(self.sid, self.rid, base_dir=self.base)
@@ -1614,7 +1614,7 @@ class PendingAgentsMultiSlotTests(_PreToolBase):
             base_dir=self.base,
         )
         set_pending_agent(
-            self.sid, self.rid, tool_use_id="t2", sub_type="qa",
+            self.sid, self.rid, tool_use_id="t2", sub_type="code-validator",
             base_dir=self.base,
         )
         popped = clear_pending_agent(
@@ -1658,7 +1658,7 @@ class PreAgentConcurrencyWarnTests(_PreToolBase):
         buf1 = io.StringIO()
         with contextlib.redirect_stderr(buf1):
             rc1 = handle_pretooluse_agent(
-                stdin_data=self._agent_payload("qa", "toolu_a"),
+                stdin_data=self._agent_payload("code-validator", "toolu_a"),
                 cc_pid=self.cc_pid, base_dir=self.base,
             )
         self.assertEqual(rc1, 0)
@@ -1667,7 +1667,7 @@ class PreAgentConcurrencyWarnTests(_PreToolBase):
         buf2 = io.StringIO()
         with contextlib.redirect_stderr(buf2):
             rc2 = handle_pretooluse_agent(
-                stdin_data=self._agent_payload("qa", "toolu_b"),
+                stdin_data=self._agent_payload("code-validator", "toolu_b"),
                 cc_pid=self.cc_pid, base_dir=self.base,
             )
         self.assertEqual(rc2, 0)
@@ -1681,21 +1681,21 @@ class PreAgentConcurrencyWarnTests(_PreToolBase):
         import io
         import contextlib
         handle_pretooluse_agent(
-            stdin_data=self._agent_payload("qa", "toolu_a"),
+            stdin_data=self._agent_payload("code-validator", "toolu_a"),
             cc_pid=self.cc_pid, base_dir=self.base,
         )
         handle_posttooluse_agent(
             stdin_data={
                 "sessionId": self.sid, "tool_use_id": "toolu_a",
                 "tool_name": "Agent",
-                "tool_input": {"subagent_type": "qa"},
+                "tool_input": {"subagent_type": "code-validator"},
             },
             cc_pid=self.cc_pid, base_dir=self.base,
         )
         buf = io.StringIO()
         with contextlib.redirect_stderr(buf):
             handle_pretooluse_agent(
-                stdin_data=self._agent_payload("qa", "toolu_b"),
+                stdin_data=self._agent_payload("code-validator", "toolu_b"),
                 cc_pid=self.cc_pid, base_dir=self.base,
             )
         self.assertNotIn("동시 sub-agent", buf.getvalue())
@@ -1746,15 +1746,15 @@ class SubagentStopClearTests(_PreToolBase):
         self.assertNotIn("active_agent", live)
 
     def test_no_clobber_on_mismatch(self):
-        # 동시 sub: active_agent=qa 인데 engineer 의 SubagentStop → qa 슬롯 보존.
+        # 동시 sub: active_agent=code-validator 인데 engineer 의 SubagentStop → code-validator 슬롯 보존.
         from harness.hooks import handle_subagent_stop
-        update_live(self.sid, base_dir=self.base, active_agent="qa")
+        update_live(self.sid, base_dir=self.base, active_agent="code-validator")
         rc = handle_subagent_stop(
             self._payload(agent_type="engineer"), base_dir=self.base
         )
         self.assertEqual(rc, 0)
         live = read_live(self.sid, base_dir=self.base)
-        self.assertEqual(live.get("active_agent"), "qa")
+        self.assertEqual(live.get("active_agent"), "code-validator")
 
     def test_noop_when_no_active_agent(self):
         from harness.hooks import handle_subagent_stop
@@ -1812,15 +1812,15 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         update_current_step(self.sid, self.rid, agent, mode, base_dir=self.base)
 
     def test_prose_staged_to_run_dir(self) -> None:
-        self._set_current_step("qa", None)
-        prose = "## 결과\nFUNCTIONAL_BUG\n"
+        self._set_current_step("code-validator", None)
+        prose = "## 결과\nPASS\n"
         rc = handle_posttooluse_agent(
-            stdin_data=self._payload_with_prose("qa", "qa", None, prose),
+            stdin_data=self._payload_with_prose("code-validator", "code-validator", None, prose),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertTrue(expected.exists())
         self.assertEqual(expected.read_text(encoding="utf-8"), prose)
 
@@ -1854,90 +1854,90 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self.assertTrue(cur_step["prose_file"].endswith("module-architect.md"))
 
     def test_empty_prose_no_staging(self) -> None:
-        self._set_current_step("qa", None)
+        self._set_current_step("code-validator", None)
         rc = handle_posttooluse_agent(
-            stdin_data=self._payload_with_prose("qa", "qa", None, "   "),
+            stdin_data=self._payload_with_prose("code-validator", "code-validator", None, "   "),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertFalse(expected.exists())
 
     def test_tool_response_dict_format_fallback(self) -> None:
         """dict 포맷 ({\"text\": ...}) 하위호환 — CC 포맷 변경 전 방어."""
-        self._set_current_step("qa", None)
+        self._set_current_step("code-validator", None)
         prose = "## 결론\nPASS\n"
         rc = handle_posttooluse_agent(
             stdin_data={
                 "sessionId": self.sid,
                 "tool_name": "Agent",
-                "tool_input": {"subagent_type": "qa"},
+                "tool_input": {"subagent_type": "code-validator"},
                 "tool_response": {"type": "text", "text": prose},
             },
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertTrue(expected.exists())
         self.assertEqual(expected.read_text(encoding="utf-8"), prose)
 
     def test_tool_response_string_format_fallback(self) -> None:
         """string 포맷 하위호환."""
-        self._set_current_step("qa", None)
+        self._set_current_step("code-validator", None)
         prose = "## 결론\nPASS\n"
         rc = handle_posttooluse_agent(
             stdin_data={
                 "sessionId": self.sid,
                 "tool_name": "Agent",
-                "tool_input": {"subagent_type": "qa"},
+                "tool_input": {"subagent_type": "code-validator"},
                 "tool_response": prose,
             },
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertTrue(expected.exists())
 
     def test_tool_response_empty_list_no_staging(self) -> None:
         """빈 list → prose 없음."""
-        self._set_current_step("qa", None)
+        self._set_current_step("code-validator", None)
         rc = handle_posttooluse_agent(
             stdin_data={
                 "sessionId": self.sid,
                 "tool_name": "Agent",
-                "tool_input": {"subagent_type": "qa"},
+                "tool_input": {"subagent_type": "code-validator"},
                 "tool_response": [],
             },
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertFalse(expected.exists())
 
     def test_no_tool_response_no_staging(self) -> None:
-        self._set_current_step("qa", None)
+        self._set_current_step("code-validator", None)
         rc = handle_posttooluse_agent(
             stdin_data={"sessionId": self.sid, "tool_name": "Agent"},
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertFalse(expected.exists())
 
     def test_no_current_step_no_staging(self) -> None:
         prose = "## 결론\nPASS\n"
         rc = handle_posttooluse_agent(
-            stdin_data=self._payload_with_prose("qa", "qa", None, prose),
+            stdin_data=self._payload_with_prose("code-validator", "code-validator", None, prose),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertFalse(expected.exists())
 
     def test_no_current_step_emits_diagnostic_stderr(self) -> None:
@@ -1953,7 +1953,7 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         buf = io.StringIO()
         with contextlib.redirect_stderr(buf):
             rc = handle_posttooluse_agent(
-                stdin_data=self._payload_with_prose("qa", "qa", None, prose),
+                stdin_data=self._payload_with_prose("code-validator", "code-validator", None, prose),
                 cc_pid=self.cc_pid,
                 base_dir=self.base,
             )
@@ -1966,58 +1966,58 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         """#272 W2 진짜 fix — list of dict 인데 type 이 'text' 아닌 'tool_result'
         같은 변형도 robust 추출. issue-232 1차 fix 가 type=='text' 한 형식만 본
         한계 회복."""
-        self._set_current_step("qa", None)
+        self._set_current_step("code-validator", None)
         prose = "## 결론\nPASS\n"
         rc = handle_posttooluse_agent(
             stdin_data={
                 "sessionId": self.sid,
                 "tool_name": "Agent",
-                "tool_input": {"subagent_type": "qa"},
+                "tool_input": {"subagent_type": "code-validator"},
                 "tool_response": [{"type": "tool_result", "content": prose}],
             },
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertTrue(expected.exists(), msg="content 키 변형도 추출돼야 함")
         self.assertEqual(expected.read_text(encoding="utf-8"), prose)
 
     def test_robust_extraction_nested_dict(self) -> None:
         """nested dict 구조 — `{"result": {"text": prose}}` 같은 wrapping 도 cover."""
-        self._set_current_step("qa", None)
-        prose = "## 결론\nFUNCTIONAL_BUG\n"
+        self._set_current_step("code-validator", None)
+        prose = "## 결론\nPASS\n"
         rc = handle_posttooluse_agent(
             stdin_data={
                 "sessionId": self.sid,
                 "tool_name": "Agent",
-                "tool_input": {"subagent_type": "qa"},
+                "tool_input": {"subagent_type": "code-validator"},
                 "tool_response": {"result": {"text": prose}, "meta": {"n": 1}},
             },
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertTrue(expected.exists(), msg="nested dict 도 추출돼야 함")
         self.assertEqual(expected.read_text(encoding="utf-8"), prose)
 
     def test_robust_extraction_value_key(self) -> None:
         """`value` 키 변형 — 일부 SDK 가 사용."""
-        self._set_current_step("qa", None)
+        self._set_current_step("code-validator", None)
         prose = "## 결론\nPASS\n"
         rc = handle_posttooluse_agent(
             stdin_data={
                 "sessionId": self.sid,
                 "tool_name": "Agent",
-                "tool_input": {"subagent_type": "qa"},
+                "tool_input": {"subagent_type": "code-validator"},
                 "tool_response": {"value": prose},
             },
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "qa.md"
+        expected = session_dir(self.sid, base_dir=self.base) / "runs" / self.rid / "code-validator.md"
         self.assertTrue(expected.exists())
 
     def test_unextractable_emits_diagnostic_stderr(self) -> None:
@@ -2025,14 +2025,14 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         import io
         import contextlib
 
-        self._set_current_step("qa", None)
+        self._set_current_step("code-validator", None)
         buf = io.StringIO()
         with contextlib.redirect_stderr(buf):
             rc = handle_posttooluse_agent(
                 stdin_data={
                     "sessionId": self.sid,
                     "tool_name": "Agent",
-                    "tool_input": {"subagent_type": "qa"},
+                    "tool_input": {"subagent_type": "code-validator"},
                     # text-like 키 (text/content/value/output) 전무 + 모든 값이 비-문자열
                     "tool_response": [{"type": "tool_result", "exit_code": 0}],
                 },
@@ -2507,7 +2507,7 @@ class PostToolUseStagingDiagnosticsTests(_PreToolBase):
     def test_no_output_when_staging_ok_and_no_histogram(self) -> None:
         # current_step 정상 + staging 성공 + histogram 없음 → additionalContext 미출력.
         from harness.session_state import update_current_step
-        update_current_step(self.sid, self.rid, "qa", None, base_dir=self.base)
+        update_current_step(self.sid, self.rid, "code-validator", None, base_dir=self.base)
         stdin = {
             "sessionId": self.sid,
             "tool_name": "Agent",

@@ -11,9 +11,9 @@
 
 ```mermaid
 flowchart TB
-  REQ["/impl 요청"] --> BUG{"새 미분류 버그/이슈 신고?"}
-  BUG -->|예| IR["/issue-report"]
-  BUG -->|아니오| HR{"high-risk trigger?"}
+  REQ["/impl 요청"] --> MAKE{"GitHub issue 초안/등록 요청?"}
+  MAKE -->|예| TI["/to-issue"]
+  MAKE -->|아니오| HR{"high-risk trigger?"}
   HR -->|예| DP["Deep"]
   HR -->|아니오| AM{"목표/범위/성공 기준 모호?"}
   AM -->|예| CL["명확화 또는 /spec"]

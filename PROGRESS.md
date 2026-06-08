@@ -40,7 +40,7 @@
 
 - **🗑️ /impl-loop·/impl 헤드리스 폐기 — in-session 오케스트레이터 복귀 (#438)**: Anthropic 이 2026-06-15 부터 구독 플랜의 `claude -p` / Agent SDK 사용량을 별도 "Agent SDK 크레딧" 풀로 분리 + full API rate 과금. dcness `/impl-loop`·`/impl`(헤드리스 옵션) 의 `claude -p` 자식 세션 spawn 이 정확히 그 풀에 진입 → 헤드리스 경로 완전 폐기. `/impl-loop` 을 메인 Claude in-session flat 오케스트레이터로 복귀 (`orchestration.md §4.8` 의 `impl-task-loop × N` 모델 — 헤드리스는 그 위 얇은 override 층이었음). **변경**: `scripts/impl_loop_headless.py` (563줄) + `tests/test_impl_loop_headless.py` (478줄) 삭제. `commands/impl-loop.md` 재작성 — 헤드리스 spawn 제거 + in-session per-task 절차 복원 (보존: 워크트리 1회 + base-ref #424 / Pre-flight gate / 진입 직전 1회 확인 #346 / 1 task = 1 PR / 4-step 모두 호출 MUST #431, 신규: false-clean 차단 메인 직접 확인 + compaction 복구 절, 스테일 `§4.9 → §4.8` 수정). `commands/impl.md` — `## 헤드리스 실행 옵션 (#422)` 섹션 삭제 + #431 false-clean 검출 서술(헤드리스 parser 의존)을 메인 직접 확인으로 재작성 + #375 헤드리스 framing 정리. `orchestration.md §4.8` / `loop-procedure.md` = 메커니즘 중립이라 무변경. in-session = 구독 interactive 한도 — Agent SDK 크레딧 풀 미진입. 후속 (별 PR): agent 정의 terse-return 규율 (잔여분 최소화 lever A).
 
-- **🗑️ /quick 스킬 폐기 — TDD Guard 강제로 light path 무력화**: `hooks/tdd-guard.sh` PreToolUse hook (release 0.2.16 / PR #339·#340) 이 src 편집 시 매칭 test 파일 존재 검사 + deny 강제. `quick-bugfix-loop` 는 test-engineer 단계 부재 → engineer:IMPL 가 *test 없는* src 편집 시도 시 catastrophic deny → loop stuck. quick 본질 (light path = test-engineer 없음) 이 TDD Guard 와 충돌. quick-bugfix-loop bugfix-specific 기능 (`fix/`/`chore/` branch prefix / code-validator bugfix scope 자동 분기 / module-architect 버그픽스 케이스) 은 이미 `impl-task-loop` / `code-validator` / `module-architect` 본문에 흡수되어 추가 작업 불필요. **변경**: `commands/quick.md` 삭제. `agents/qa.md` 라우팅 가이드 `impl-task-loop fallback path` 로 통일. `commands/qa.md` 후속 라우팅 `FUNCTIONAL_BUG`/`CLEANUP` → `impl-task-loop (/impl) fallback path`. `commands/impl.md` / `commands/impl-loop.md` / `commands/product-plan.md` / `commands/run-review.md` / `commands/efficiency.md` / `commands/init-dcness.md` 비대상·후속·skill 목록 정리. `docs/plugin/orchestration.md` §3.5 quick-bugfix-loop mini-graph + §4.5 풀스펙 삭제 + §3.6 qa-triage → §3.5 / §4.6 → §4.5 재번호 + §4.7~§4.10 → §4.6~§4.9 재번호 + qa-triage CLEANUP 라우팅 `engineer 직접` 폐기 (HARNESS_ONLY_AGENTS 위반). `loop-procedure.md` / `handoff-matrix.md` / `dcness-rules.md` quick 언급 정리. `harness/hooks.py` / `session_state.py` / `scripts/dcness-helper` docstring. `tests/eval_*.py` quick_bugfix_loop reference 폐기. `tests/test_*.py` entry_point fixture `quick` → `impl`/`qa`. `CLAUDE.md` / `README.md` skill 목록 10 → 9.
+- **🗑️ /quick 스킬 폐기 — TDD Guard 강제로 light path 무력화**: `hooks/tdd-guard.sh` PreToolUse hook (release 0.2.16 / PR #339·#340) 이 src 편집 시 매칭 test 파일 존재 검사 + deny 강제. `quick-bugfix-loop` 는 test-engineer 단계 부재 → engineer:IMPL 가 *test 없는* src 편집 시도 시 catastrophic deny → loop stuck. quick 본질 (light path = test-engineer 없음) 이 TDD Guard 와 충돌. quick-bugfix-loop bugfix-specific 기능 (`fix/`/`chore/` branch prefix / code-validator bugfix scope 자동 분기 / module-architect 버그픽스 케이스) 은 이미 `impl-task-loop` / `code-validator` / `module-architect` 본문에 흡수되어 추가 작업 불필요. **변경**: `commands/quick.md` 삭제. legacy triage 라우팅 가이드 `impl-task-loop fallback path` 로 통일. legacy triage 후속 라우팅의 bug/cleanup 결과 → `impl-task-loop (/impl) fallback path`. `commands/impl.md` / `commands/impl-loop.md` / `commands/product-plan.md` / `commands/run-review.md` / `commands/efficiency.md` / `commands/init-dcness.md` 비대상·후속·skill 목록 정리. `docs/plugin/orchestration.md` §3.5 quick-bugfix-loop mini-graph + §4.5 풀스펙 삭제 + legacy triage 섹션 재번호 + legacy triage cleanup 라우팅 `engineer 직접` 폐기 (HARNESS_ONLY_AGENTS 위반). `loop-procedure.md` / `handoff-matrix.md` / `dcness-rules.md` quick 언급 정리. `harness/hooks.py` / `session_state.py` / `scripts/dcness-helper` docstring. `tests/eval_*.py` quick_bugfix_loop reference 폐기. `tests/test_*.py` entry_point fixture `quick` → `impl`/legacy triage. `CLAUDE.md` / `README.md` skill 목록 10 → 9.
 
 - **🔄 plan-reviewer 그릴미 개편 — enum 3 통일 + ESCALATE 트리거 + opus 승격 4 + Spike Pre-Check**: `agents/plan-reviewer.md` 본문 전면 갱신 — 결론 enum 2개 (`PLAN_REVIEW_PASS` / `PLAN_REVIEW_CHANGES_REQUESTED`) → 3개 (`PLAN_REVIEW_PASS` / `PLAN_REVIEW_FAIL` / `PLAN_REVIEW_ESCALATE`) 통일. ESCALATE 트리거 4 케이스 명시 (외부 검증 실행 불가 / 권한 경계 밖 정보 / cycle 한도 직전 동일 finding 반복 / `EXTERNAL_VERIFIED` URL 부재 PASS 시도). 호출 모드 2개 (`FULL` default / `PRE_CHECK` Spike Pre-Check) 명시. opus 승격 4 (plan-reviewer / security-reviewer / system-architect / product-planner) — 손실 비용 + 판단 깊이 + 호출 빈도 ROI. `commands/product-plan.md` Pre-Check Trigger 섹션 추가 — 사용자 입력에 spike 키워드 (외부 모델/API/SDK / 조건부 약속 패턴 / 의문문) 발견 시 product-planner 호출 *전* plan-reviewer `PRE_CHECK` 모드 1회 호출. `PRODUCT_PLAN_UPDATED` plan-reviewer skip 분기 폐기 — 변경의 성격 무관 항상 호출. `docs/plugin/orchestration.md` mermaid + mode-step 표 + 분기표 일괄 갱신. `loop-procedure.md` enum 분기 갱신. `handoff-matrix.md` plan-reviewer 섹션 3 결과로 갱신. `scripts/research/enum_roi_baseline.mjs` classify CHANGES_REQUESTED → FAIL. `tests/eval_*.py` allowed enums ESCALATE 추가.
 
@@ -105,7 +105,7 @@
   - **이슈 레이블 체계**: 정적(BugFix/UI/Docs, `scripts/setup_labels.sh`) + 동적(V0N/EPIC0N/Story0N, agent 자동 생성).
   - **docs/epic-index.md** 신규 — EPIC번호 ↔ GitHub이슈번호 매핑 SSOT.
   - **PR merge**: squash → regular merge (3 commit 히스토리 보존). `§5.4` 주석 추가.
-  - **agent 갱신**: product-planner(epic 이슈 의무), task-decompose(story 이슈 의무), qa(BugFix 레이블), designer(UI 레이블).
+  - **agent 갱신**: product-planner(epic 이슈 의무), task-decompose(story 이슈 의무), legacy triage(BugFix 레이블), designer(UI 레이블).
   - **374 tests OK** (신규 10 case: StageCommit*GateTests 3클래스).
 
 - **📚 loop-insights 누적·주입** (`DCN-CHG-20260502-02`):
@@ -132,7 +132,7 @@
   - session-start inject: 5 docs 즉시 read → `dcness-guidelines.md` 1개만 즉시, 나머지 4개 lazy.
   - `dcness-guidelines.md` §0: "매 세션 의무 read" → "loop 시작 전 read" 변경.
   - `dcness-guidelines.md` §13 신규: 감시자 Hat 전문 이전 (inject에서 제거).
-  - skill 파일 5개(`impl`/`quick`/`product-plan`/`impl-loop`/`qa`): `## 사전 read` 섹션 추가.
+  - skill 파일 5개(`impl`/`quick`/`product-plan`/`impl-loop`/legacy triage): `## 사전 read` 섹션 추가.
   - 예상 절감: skill 미호출 세션 ~13K 토큰, skill 호출 세션 ~5-8K 토큰.
 
 - **🪄 PostToolUse prose auto-staging** (`DCN-CHG-20260501-15`):
@@ -298,11 +298,11 @@
   - **`docs/process/dcness-guidelines.md` §0 갱신** — 2 SSOT 분담 (procedure + catalog) 명시. §0.1 신설 — **행동지침 md 300줄 cap 룰** (대상 / 대상 외 / Why / How to apply / 현재 알려진 위반).
   - **`docs/orchestration.md` §3 헤더** — loop-catalog.md cross-ref 추가.
   - **알려진 위반**: orchestration.md (540줄). split 후속 별도 Task-ID 예정.
-- **🔌 helper finalize-run --auto-review + qa.md slim pilot** (`DCN-CHG-20260430-29`):
+- **🔌 helper finalize-run --auto-review + legacy triage slim pilot** (`DCN-CHG-20260430-29`):
   - 4 PR migration (skill 슬림화 + procedure SSOT) 의 PR3.
   - `harness/session_state.py:_cli_finalize_run` 에 `--auto-review` flag 추가. STATUS JSON 출력 직후 in-process 로 `harness.run_review.main(["--run-id", rid, "--repo", cwd])` 호출. 메인 Claude 가 finalize-run 부르면 review 자동 piggy-back — 의도적 skip 불가.
   - 실패 케이스 (review_main 예외) 안전망 — `AUTO_REVIEW_FAIL` stderr WARN + STATUS JSON 자체는 정상 출력 + exit 0.
-  - `commands/qa.md` slim pilot — 127줄 → 28줄 (78% 절감). `qa-triage` loop / Inputs / 후속 라우팅 추천만. 절차는 [`docs/plugin/loop-procedure.md`](docs/plugin/loop-procedure.md) §1~§6 + §7.5 cross-ref (작성 시점엔 `docs/loop-procedure.md` 였으나 Story 2.3 로 `docs/plugin/` 이동).
+  - legacy triage slim pilot — 127줄 → 28줄 (78% 절감). legacy triage loop / Inputs / 후속 라우팅 추천만. 절차는 [`docs/plugin/loop-procedure.md`](docs/plugin/loop-procedure.md) §1~§6 + §7.5 cross-ref (작성 시점엔 `docs/loop-procedure.md` 였으나 Story 2.3 로 `docs/plugin/` 이동).
   - `tests/test_session_state.py` 3 신규 (`auto_review_chains_report` / `skip_on_failure` / `off_no_chain`) PASS. 219 ran / 217 PASS / 2 pre-existing flaky 무관.
   - PR4 후속 — 4 skill (quick / impl / impl-loop / product-plan) bulk slim.
 - **📐 loop-procedure.md §7 매트릭스 행별 풀스펙 보강** (`DCN-CHG-20260430-28`):
@@ -314,7 +314,7 @@
 - **📑 loop-procedure.md SSOT 신설 + cross-ref** (`DCN-CHG-20260430-27`):
   - skill 5종 Step 0~7 *실행 절차* 중복 (100~215줄/skill) 풀어내는 4 PR migration 의 1단계.
   - `docs/loop-procedure.md` (252줄) — 8 loop 공통 실행 절차 SSOT (Step 0 worktree+begin-run / Step 1 TaskCreate / Step 2~N agent 호출 / Step 4.5 stories sync / Step 7 finalize-run+clean+commit-PR / Step 8 review).
-  - 8 loop name 확정: `feature-build-loop` / `impl-batch-loop` / `impl-ui-design-loop` / `quick-bugfix-loop` / `qa-triage` / `ux-design-stage` / `ux-refine-stage` / `direct-impl-loop`.
+  - 8 loop name 확정: `feature-build-loop` / `impl-batch-loop` / `impl-ui-design-loop` / `quick-bugfix-loop` / legacy triage loop / `ux-design-stage` / `ux-refine-stage` / `direct-impl-loop`.
   - `docs/process/dcness-guidelines.md` §0 cross-ref + 의무 read 명시. `docs/orchestration.md` §3 헤더 8 loop name 매핑.
 - **📜 dcness-guidelines.md SSOT + SessionStart 훅 inject** (`DCN-CHG-20260430-26`):
   - 사용자 지적 — quick.md (light path 전용) 에 범용 룰 다 박혀 책임 혼재. + 미래 추가 룰 (Epic/Story 분할, 커스텀 루프) SSOT 필요.
@@ -333,7 +333,7 @@
 - **🩹 /run-review 매칭 fix + skill prompt 의 prose-file 격리** (`DCN-CHG-20260430-23`):
   - jajang 실측 (run-657d86fc, 9 step) 발견 2 결함 동시 fix.
   - **(1) 매칭 cascade 결함**: step 0 invocation 부재 시 후속 step 모두 어긋남 (9 중 2 매칭). timestamp-proximity 기반 매칭 (inv.ts < step.ts AND step.ts - inv.ts ≤ 600s, closest before) 으로 해결 → 9 중 8 매칭 (step 0 정당 미매칭).
-  - **(2) prose-file 세션 격리 X**: skill prompt 가 `/tmp/dcness-*.md` 고정 path 사용 → 멀티세션 race / stale prose 잔여로 helper 가 옛 enum 추출. `dcness-helper run-dir` subcommand 신규 + skill prompt 4개 (`quick` / `product-plan` / `impl` / `qa`) 가 `<run_dir>/.prose-staging/<step>.md` 사용. multisession 자동 격리.
+  - **(2) prose-file 세션 격리 X**: skill prompt 가 `/tmp/dcness-*.md` 고정 path 사용 → 멀티세션 race / stale prose 잔여로 helper 가 옛 enum 추출. `dcness-helper run-dir` subcommand 신규 + skill prompt 4개 (`quick` / `product-plan` / `impl` / legacy triage) 가 `<run_dir>/.prose-staging/<step>.md` 사용. multisession 자동 격리.
   - 신규 5 테스트 (AssignInvocationsTests timestamp / missing-first / unmatched-after-step + run-dir CLI). 209/211 PASS (2 pre-existing flaky 무관).
 - **🌀 /run-review Phase 2 — THINKING_LOOP 검출 + per-Agent metrics** (`DCN-CHG-20260430-20`):
   - 사용자 jajang 실측 사례 (product-planner 6분 elapsed + ↓624 tokens stall) 자동 검출.
@@ -364,7 +364,7 @@
   - 사용자 가시성 기대 형식 (◼ b1.architect: MODULE_PLAN 등) 그대로 default 화.
 - **👀 가시성 보강 — 결론 섹션 우선 + 메인 text echo** (`DCN-CHG-20260430-11`):
   - `_extract_prose_summary` 가 `## 결론` / `## Summary` / `## 변경 요약` 섹션 우선 추출. cap 12줄/1200char.
-  - 5 skill (qa / quick / product-plan / impl / impl-loop) 에 "가시성 룰" 신규 — 매 Agent 후 메인 text reply 로 prose 핵심 5~12줄 echo (CC collapsed 회피).
+  - 5 skill (legacy triage / quick / product-plan / impl / impl-loop) 에 "가시성 룰" 신규 — 매 Agent 후 메인 text reply 로 prose 핵심 5~12줄 echo (CC collapsed 회피).
   - 사용자 manual smoke 피드백 (ctrl+o 의존) 에 두 채널 동시 보강. 신규 5 테스트. 185/185 PASS.
   - PR split (#51 PROGRESS fragment + #52 본체) — commit 분할 사고. 두 PR 합쳐 -11 완성.
 - **💰 /efficiency skill — jha0313/skills_repo 흡수** (`DCN-CHG-20260430-08`):
@@ -372,12 +372,12 @@
   - dcness fix 2건: encode_repo_path 의 `.` → `-` (CC 실 인코딩 룰 정합), price_for prefix 매칭 (dated suffix / variant tag 흡수).
   - 4 지표 점수화 (Cache utilization 40% + Output density 20% + Read redundancy 20% + Tool economy 20%) + Pareto + 6 절감 휴리스틱.
   - 신규 10 테스트 (`test_efficiency.py`). 181/181 PASS.
-  - dcness skill 8 개: /init-dcness /qa /quick /product-plan /impl /impl-loop /smart-compact /efficiency.
+  - dcness skill 8 개: /init-dcness / legacy triage /quick /product-plan /impl /impl-loop /smart-compact /efficiency.
 - **🔁 /impl + /impl-loop skill 신규** (`DCN-CHG-20260430-06`):
   - `/impl` — per-batch 정식 impl 루프 (architect MODULE_PLAN → test-engineer → engineer IMPL → validator CODE_VALIDATION → pr-reviewer + clean 자동 commit/PR + yolo + worktree).
   - `/impl-loop` — multi-batch sequential auto chain (각 batch 마다 /impl 호출 + clean 자동 진행 + caveat 멈춤).
   - /product-plan TASK_DECOMPOSE 산출 batch list 의 후속 진입점. 5 sub-task per batch 가시화 — 사용자 manual smoke 지적 정합.
-  - dcNess plugin skill 7개 됨: /qa /quick /product-plan /smart-compact /init-dcness /impl /impl-loop.
+  - dcNess plugin skill 7개 됨: legacy triage /quick /product-plan /smart-compact /init-dcness /impl /impl-loop.
 - **🔍 DESIGN_VALIDATION step 추가** (`DCN-CHG-20260430-05`):
   - orchestration §3.1 mermaid + §2.3.5 catastrophic 룰 + §4.9 결정표 갱신.
   - /product-plan Step 6.5 신규 (validator DESIGN_VALIDATION) + cycle 한도 2.
@@ -402,8 +402,8 @@
   - PR2 후속: validator DESIGN_VALIDATION 추가 + `/impl` `/impl-loop` skill.
 - **🔧 Skill bash PYTHONPATH wrapper** (`DCN-CHG-20260429-41`):
   - `scripts/dcness-helper` 신규 — BASH_SOURCE 기반 자기위치 추출 → PYTHONPATH 자동 설정. CLAUDE_PLUGIN_ROOT 의존 0.
-  - 4 skill (`qa` / `quick` / `product-plan` / `init-dcness`) 의 helper 호출 일괄 wrapper 경유로 변경.
-  - Manual smoke (`/qa`) 첫 helper 호출 ModuleNotFoundError 해결.
+  - 4 skill (legacy triage / `quick` / `product-plan` / `init-dcness`) 의 helper 호출 일괄 wrapper 경유로 변경.
+  - Manual smoke (legacy triage command) 첫 helper 호출 ModuleNotFoundError 해결.
 - **🚪 Plugin 활성화 게이트 + cross-project PYTHONPATH** (`DCN-CHG-20260429-40`):
   - `harness/session_state.py` — `is_project_active` / `enable_project` / `disable_project` + 4 CLI subcommand. plugin-scoped whitelist (`~/.claude/plugins/data/dcness-dcness/projects.json`) — CC `data/` 컨벤션 정합 + 글로벌 `~/.claude/` 오염 0.
   - hook 양쪽 (`hooks/session-start.sh` `hooks/catastrophic-gate.sh`) — PYTHONPATH=$CLAUDE_PLUGIN_ROOT prepend + `is-active` 게이트 (inactive 프로젝트 즉시 exit 0). hook 자체는 모든 프로젝트에서 호출되지만 dcness 미활성 프로젝트는 import 비용도 0.
@@ -456,7 +456,7 @@
 - **🎉 Phase 2 iter 5 (FINAL) — ux-architect + product-planner prose-only** (`DCN-CHG-20260429-19`):
   - `agents/ux-architect.md` (UX_FLOW_READY / UX_FLOW_PATCHED / UX_REFINE_READY / UX_FLOW_ESCALATE) — UX_FLOW + UX_SYNC + UX_SYNC_INCREMENTAL + UX_REFINE 4 모드 inline + Anti-AI-Smell + 카테고리 클리셰 회피 + 라이트/다크 두 모드 의무 + Outline-First
   - `agents/product-planner.md` (PRODUCT_PLAN_READY / CLARITY_INSUFFICIENT / PRODUCT_PLAN_CHANGE_DIFF / PRODUCT_PLAN_UPDATED / ISSUES_SYNCED) — Phase 1 (요구사항) + Phase 2 (기능 스펙) + Phase 3 (4 옵션 스코프) + Diff-First 변경 처리 + ISSUE_SYNC
-  - **Phase 2 종결**: 13 agent docs 모두 prose-only 변환 완료 (validator iter 0 + 4 read-only iter 1 + 8 architect iter 2 + 2 engineer/test-engineer iter 3 + 2 designer/critic iter 4 + 2 ux/planner iter 5)
+  - **Phase 2 종결**: legacy full agent docs prose-only 변환 완료 (validator iter 0 + 4 read-only iter 1 + 8 architect iter 2 + 2 engineer/test-engineer iter 3 + 2 designer/critic iter 4 + 2 ux/planner iter 5)
 - **🚀 Phase 2 iter 4 — designer + design-critic prose-only** (`DCN-CHG-20260429-18`):
   - `agents/designer.md` (DESIGN_READY_FOR_REVIEW / DESIGN_LOOP_ESCALATE) — 2×2 매트릭스 (SCREEN/COMPONENT × ONE_WAY/THREE_WAY) 4 모드 + Phase 0 (이슈 생성, Pencil 캔버스) + Phase 1 (variant 생성) + Phase 4 (DESIGN_HANDOFF, outline-first) + 차별화 의무 + View 전용 원칙
   - `agents/design-critic.md` (VARIANTS_APPROVED / VARIANTS_ALL_REJECTED / UX_REDESIGN_SHORTLIST) — 4 기준 (UX 명료성·미적 독창성·컨텍스트 적합성·구현 실현성) 각 10점, 총 40점, PASS 28+ 기준
@@ -476,7 +476,7 @@
 - **🚀 Phase 2 iter 1 — 4 read-only agents prose-only** (`DCN-CHG-20260429-15`):
   - `agents/pr-reviewer.md` (LGTM / CHANGES_REQUESTED) — validator 와 역할 분리, 스코프 매트릭스, 레거시 처리
   - `agents/plan-reviewer.md` (PLAN_REVIEW_PASS / PLAN_REVIEW_CHANGES_REQUESTED) — 8 차원 (현실성·MVP·제약·UX·숨은가정·경쟁·BM·기술실현)
-  - `agents/qa.md` (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) — 역질문 루프, MCP+tracker CLI 폴백
+  - legacy triage agent (old five-way bug/design/known/scope enum set) — 역질문 루프, MCP+tracker CLI 폴백
   - `agents/security-reviewer.md` (SECURE / VULNERABILITIES_FOUND) — OWASP Top 10 + WebView 특화
   - 모두 prose writing guide 형식. `---MARKER:X---` 텍스트 마커 + `@OUTPUT_*` JSON schema + preamble 자동주입 / agent-config 별 layer 의존 모두 폐기.
 - **🧹 stale 참조 sweep** (`DCN-CHG-20260429-14`): CLAUDE.md test 명령어 + python-tests.yml 헤더 + marketplace.json description/tags + .gitignore 코멘트 + migration-decisions framework 표현을 prose-only 로 정정. history record 항목은 governance §2.4 스코핑 정합으로 미수정.
@@ -500,11 +500,11 @@
 - [x] **Anthropic SDK 통합** — Phase 3 iter 3 (`DCN-CHG-20260429-22`) 에서 `harness/llm_interpreter.py` 통합 완료 (haiku, telemetry, mock DI). 본 항목은 사실상 그 작업에 흡수.
 - [x] **ambiguous prose 카탈로그** — Phase 3 iter 4 (`DCN-CHG-20260429-23`) 에서 `harness/interpret_strategy.py` outcome 5종 telemetry + `scripts/analyze_metrics.mjs` 의 ambiguous 샘플 5개 누적으로 흡수.
 - [ ] 다른 agent docs 를 prose writing guide 로 변환:
-  - [x] **iter 1 완료** (DCN-CHG-20260429-15): `agents/pr-reviewer.md`, `agents/plan-reviewer.md`, `agents/qa.md`, `agents/security-reviewer.md`
+  - [x] **iter 1 완료** (DCN-CHG-20260429-15): `agents/pr-reviewer.md`, `agents/plan-reviewer.md`, legacy triage agent, `agents/security-reviewer.md`
   - [x] **iter 2 완료** (DCN-CHG-20260429-16): `agents/architect.md` + 7 mode sub-doc
   - [x] **iter 3 완료** (DCN-CHG-20260429-17): `agents/engineer.md` + `agents/test-engineer.md`
   - [x] **iter 4 완료** (DCN-CHG-20260429-18): `agents/designer.md` (4 모드 inline) + `agents/design-critic.md`
-  - [x] **iter 5 완료** (DCN-CHG-20260429-19): `agents/ux-architect.md` + `agents/product-planner.md` — Phase 2 13 agents 종결 🎉
+  - [x] **iter 5 완료** (DCN-CHG-20260429-19): `agents/ux-architect.md` + `agents/product-planner.md` — Phase 2 legacy full set 종결 🎉
 
 ### Phase 3 — GitHub 외부화 + Sweep ✅ (종결, 5/5 iter)
 

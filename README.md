@@ -99,13 +99,18 @@ dcness-helper routing disable-codex-validation
 **버그 수정**
 
 ```
-/issue-report       # 미분류 버그면 먼저 분류
 /impl               # 구현 lane 자동 판정 + PR/review/CI
+```
+
+**이슈 등록**
+
+```
+/to-issue           # 문제/작업 후보를 Issue Brief 초안으로 만들고 승인 후 등록
 ```
 
 support/advanced entrypoint 는 기본 생명주기 표면 밖의 보조 흐름이다.
 
-- `/issue-report` — 미분류 버그/이슈 support/triage
+- `/to-issue` — 메인 주도 Issue Brief 초안 + 승인 후 GitHub issue/Project 등록
 - `/tech-review` — Deep lane 에서 `/spec` 내부 preflight 로 쓰는 선행 기술 검증
 - `/impl-loop` — deep impl task 파일용 legacy/advanced runner
 - `/ux` — 화면 UX / 디자인 핸드오프 전문 흐름
@@ -141,7 +146,7 @@ escalate) 가 진본이다 — 예: [`skills/impl/impl-routing.md`](skills/impl/
 | 기본 workflow | `/design` | product/technical design |
 | 기본 workflow | `/impl` | 구현 진입 통합 — Lite / Standard / Deep lane 내부 판정 |
 | 기본 workflow | `/acceptance` | story/epic 제품 검수 MVP |
-| support/triage | `/issue-report` | 버그/이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE) |
+| support | `/to-issue` | Issue Brief 초안 작성 + 승인 후 GitHub issue/Project 등록 |
 | 고급 workflow | `/tech-review` | Deep lane 의 `/spec` 내부 선행 기술 검증 |
 | 고급 workflow | `/impl-loop` | deep impl task 파일용 legacy/advanced runner |
 | 고급 workflow | `/ux` | 화면 UX 플로우 + 디자인 시안 핸드오프 |
@@ -150,7 +155,7 @@ escalate) 가 진본이다 — 예: [`skills/impl/impl-routing.md`](skills/impl/
 | 유틸리티 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
 | 유틸리티 | `/efficiency` | 세션 토큰/캐시/비용 분석 + HTML 대시보드 |
 
-13개 sub-agent(`agents/`) — architect / validator / engineer / reviewer / acceptance 계열 — 는 사용자-facing
+12개 sub-agent(`agents/`) — architect / validator / engineer / reviewer / acceptance 계열 — 는 사용자-facing
 entrypoint 가 아니라 workflow 내부 gate/worker/reviewer 로 호출된다.
 
 ## 거버넌스 (dcNess 자체 저장소 작업 기준)
@@ -186,7 +191,7 @@ bash scripts/dcness-codex-validator --help # Codex validator wrapper smoke
 | 문서 | 역할 |
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md#dcness-강제-원칙-룰-추가설계-시-가드레일) | 정체성 SSOT (강제 영역 2 + 안티패턴 4) |
-| [`docs/plugin/positioning.md`](docs/plugin/positioning.md) | public workflow surface 계약 — 기본/support/triage/고급/유틸리티/내부 agent 분류 |
+| [`docs/plugin/positioning.md`](docs/plugin/positioning.md) | public workflow surface 계약 — 기본/support/고급/유틸리티/내부 agent 분류 |
 | 각 skill 의 `<skill>-routing.md` ([`impl`](skills/impl/impl-routing.md) / [`architect-loop`](skills/architect-loop/architect-loop-routing.md) / [`impl-loop`](skills/impl-loop/impl-loop-routing.md) 등) | 라우팅 진본 (mermaid + enum 표 + retry + escalate) |
 | [`docs/plugin/loop-procedure.md`](docs/plugin/loop-procedure.md#진입-모델) | 컨베이어 운전법 — Step 0~8 mechanics (각 loop spec = 해당 skill `## Loop`) |
 | [`docs/plugin/hooks.md`](docs/plugin/hooks.md#catastrophic-gatesh) | catastrophic 시퀀스 + 8 hook SSOT |

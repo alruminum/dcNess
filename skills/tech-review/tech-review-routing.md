@@ -68,7 +68,7 @@ flowchart TB
 - 기술 검토 필요 영역이 "해당 없음" → `/tech-review` skip 후 `/spec` Step 5 PRD 최종화
 - 설계 단계 진입 → `/design` (`/architect-loop` 호환)
 - 구현 단계 진입 → `/impl`
-- 버그 / 이슈 → `/issue-report`
+- GitHub issue 초안/등록 → `/to-issue`
 
 ## 후속 (skill 종료 후)
 

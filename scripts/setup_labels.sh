@@ -28,7 +28,7 @@ _upsert_label() {
   fi
 }
 
-_upsert_label "BugFix" "d73a4a" "버그 수정 — qa 분류 FUNCTIONAL_BUG"
+_upsert_label "BugFix" "d73a4a" "버그 수정"
 _upsert_label "UI"     "0075ca" "UI/Design 이슈 — designer 생성"
 _upsert_label "Docs"   "cfd3d7" "문서 변경"
 

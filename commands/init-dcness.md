@@ -698,8 +698,8 @@ Codex validator routing (Step 2.10 — local opt-in):
 - /impl — 구현 진입 통합 (Lite / Standard / Deep lane 내부 판정)
 - /acceptance — story/epic 제품 검수 MVP
 
-support/triage:
-- /issue-report — 이슈 분류 (FUNCTIONAL_BUG / CLEANUP / DESIGN_ISSUE / KNOWN_ISSUE / SCOPE_ESCALATE)
+support:
+- /to-issue — Issue Brief 초안 작성 + 승인 후 GitHub issue/Project 등록
 
 고급 workflow:
 - /tech-review — Deep lane 선행 기술 검증

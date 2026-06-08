@@ -503,7 +503,7 @@ class AppendStepCompletedTests(unittest.TestCase):
                 _SID, _RID, "product-acceptance", "STORY_ACCEPTANCE",
                 "PROSE_LOGGED", prose, prose_path, base_dir=base,
             )
-            expected = "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`) 예상"
+            expected = "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상"
             self.assertEqual(rec["enum"], "PROSE_LOGGED")
             self.assertEqual(rec["next_action"], expected)
             self.assertEqual(
@@ -536,14 +536,14 @@ class ReadAtPathTests(unittest.TestCase):
             _seed_run(base)
             rd = run_dir(_SID, _RID, base_dir=base)
             (rd / ".steps.jsonl").write_text(
-                json.dumps({"agent": "qa", "mode": None, "enum": "PROSE_LOGGED",
+                json.dumps({"agent": "code-validator", "mode": None, "enum": "PROSE_LOGGED",
                             "prose_excerpt": "z", "must_fix": False, "prose_file": "/tmp/q.md"})
                 + "\n",
                 encoding="utf-8",
             )
             steps = ledger.read_step_completed_at(rd)
             self.assertEqual(len(steps), 1)
-            self.assertEqual(steps[0]["agent"], "qa")
+            self.assertEqual(steps[0]["agent"], "code-validator")
             self.assertEqual(steps[0]["event"], "step_completed")
 
 

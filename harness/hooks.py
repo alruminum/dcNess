@@ -59,7 +59,6 @@ _STRICT_CONVEYOR_ENTRY_POINTS = frozenset({
     "architect-loop",
     "design",
     "impl",
-    "issue-report",
     "ux",
 })
 
@@ -320,7 +319,7 @@ def _resolve_acting_agent(
     단일 슬롯 폴백 (구버전 CC / payload 미탑재 케이스). 둘 다 없으면 "" = 메인 Claude.
 
     issue #598 (codex P1) — 반환 전 `normalize_agent_type` 으로 정규화. namespaced
-    payload(`dcness:qa`) 가 ALLOW_MATRIX 미정의 → check_*_allowed pass-through 로
+    payload(`dcness:code-validator`) 가 ALLOW_MATRIX 미정의 → check_*_allowed pass-through 로
     경계를 우회하던 결함 차단. 정규화 후 boundary + trace 가 canonical 이름 사용.
     """
     payload_agent = stdin_data.get("agent_type")
