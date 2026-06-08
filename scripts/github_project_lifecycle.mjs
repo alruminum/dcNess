@@ -420,6 +420,47 @@ function setProjectSingleSelect({ projectId, itemId, fields, fieldName, optionNa
   ]);
 }
 
+export function planRegistration({
+  item = null,
+  fields,
+  issueType,
+  expectedStatus = 'Todo',
+  expectedPriority = 'major',
+}) {
+  if (!issueType) {
+    throw new Error('issueType is required for Project registration.');
+  }
+  validateExpectedValue({ fieldName: 'IssueType', expected: issueType });
+  validateExpectedValue({ fieldName: 'Status', expected: expectedStatus });
+  validateExpectedValue({ fieldName: 'Priority', expected: expectedPriority });
+
+  const desired = [
+    { fieldName: 'Status', optionName: expectedStatus },
+    { fieldName: 'IssueType', optionName: issueType },
+    { fieldName: 'Priority', optionName: expectedPriority },
+  ];
+
+  const sets = [];
+  for (const { fieldName, optionName } of desired) {
+    const field = fieldByName(fields, fieldName);
+    const option = field ? optionByName(field, optionName) : null;
+    if (!field?.id || !option?.id) {
+      throw new Error(`Project ${fieldName}=${optionName} option id not found.`);
+    }
+    const current = item ? projectItemFieldValue(item, fieldName) : null;
+    if (current !== optionName) {
+      sets.push({
+        fieldName,
+        optionName,
+        fieldId: field.id,
+        optionId: option.id,
+      });
+    }
+  }
+
+  return { needsAdd: !item, sets };
+}
+
 function printBootstrapRecovery({ repo, owner, project }) {
   console.error('[dcness-project] recovery commands:');
   console.error(`  gh project create --owner ${owner} --title "dcNess" --format json`);
@@ -572,6 +613,75 @@ function commandStartWork(args) {
   return 0;
 }
 
+function commandRegisterIssue(args) {
+  if (!args.issue) throw new Error('--issue <number> is required.');
+  if (!args['issue-type']) throw new Error('--issue-type <epic|story|...> is required.');
+  const { repo, owner, project, fields } = projectContext(args);
+  const issueType = args['issue-type'];
+  const expectedStatus = args.status ?? 'Todo';
+  const expectedPriority = args.priority ?? 'major';
+  const issue = getIssue(repo, args.issue);
+
+  let item = getProjectItem({ owner, projectNumber: args.project, repo, issueNumber: issue.number });
+  // plan throws early if the board lacks a required field/option (incomplete board signal).
+  const plan = planRegistration({ item, fields, issueType, expectedStatus, expectedPriority });
+
+  if (!args.apply) {
+    if (!item) {
+      console.log(`issue #${issue.number}: missing in Project ${args.project} (needs item-add).`);
+    }
+    const validation = validateIssueProjectRegistration({
+      repo,
+      issueNumber: issue.number,
+      item: item ?? {},
+      labels: issue.labels,
+      expectedStatus,
+      expectedIssueType: issueType,
+      expectedPriority,
+    });
+    for (const message of validation.messages) console.log(message);
+    console.log('Run again with --apply to register the issue and set Project fields.');
+    return item && validation.ok ? 0 : 1;
+  }
+
+  if (plan.needsAdd) {
+    item = gh(
+      ['project', 'item-add', String(args.project), '--owner', owner, '--url', issue.url, '--format', 'json'],
+      { json: true },
+    );
+  }
+  if (!item?.id) {
+    throw new Error(`issue #${issue.number}: could not resolve Project item id after add.`);
+  }
+  for (const entry of plan.sets) {
+    setProjectSingleSelect({
+      projectId: project.id,
+      itemId: item.id,
+      fields,
+      fieldName: entry.fieldName,
+      optionName: entry.optionName,
+    });
+  }
+
+  const verifyItem = getProjectItem({ owner, projectNumber: args.project, repo, issueNumber: issue.number }) ?? item;
+  const validation = validateIssueProjectRegistration({
+    repo,
+    issueNumber: issue.number,
+    item: verifyItem,
+    labels: issue.labels,
+    expectedStatus,
+    expectedIssueType: issueType,
+    expectedPriority,
+  });
+  for (const message of validation.messages) console.log(message);
+  if (validation.ok) {
+    console.log(
+      `issue #${issue.number}: Project registered (Status=${expectedStatus}, IssueType=${issueType}, Priority=${expectedPriority})`,
+    );
+  }
+  return validation.ok ? 0 : 1;
+}
+
 function bodyFromArgs(args) {
   if (args['body-file']) return readFileSync(args['body-file'], 'utf8');
   if (args['body-env']) return process.env[args['body-env']] ?? '';
@@ -647,6 +757,7 @@ function help() {
   node scripts/github_project_lifecycle.mjs bootstrap --repo OWNER/REPO --owner OWNER --project N [--apply]
   node scripts/github_project_lifecycle.mjs validate-issue --repo OWNER/REPO --owner OWNER --project N --issue N [--expected-status Todo|In progress|Done|any] [--expected-issue-type TYPE] [--expected-priority PRIORITY]
   node scripts/github_project_lifecycle.mjs start-work --repo OWNER/REPO --owner OWNER --project N --issue N [--apply]
+  node scripts/github_project_lifecycle.mjs register-issue --repo OWNER/REPO --owner OWNER --project N --issue N --issue-type epic|story|... [--status Todo] [--priority major] [--apply]
   node scripts/github_project_lifecycle.mjs pr-merged --repo OWNER/REPO --owner OWNER --project N (--pr N | --body-file FILE | --body-env ENV) [--apply]
 `);
 }
@@ -665,6 +776,8 @@ function main() {
       return commandValidateIssue(args);
     case 'start-work':
       return commandStartWork(args);
+    case 'register-issue':
+      return commandRegisterIssue(args);
     case 'pr-merged':
       return commandPrMerged(args);
     default:

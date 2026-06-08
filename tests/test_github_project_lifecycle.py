@@ -12,6 +12,45 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "github_project_lifecycle.mjs"
 
 
+STANDARD_FIELDS = [
+    {
+        "name": "Status",
+        "id": "fld-status",
+        "dataType": "SINGLE_SELECT",
+        "options": [
+            {"name": "Todo", "id": "opt-todo"},
+            {"name": "In progress", "id": "opt-inprog"},
+            {"name": "Done", "id": "opt-done"},
+        ],
+    },
+    {
+        "name": "IssueType",
+        "id": "fld-type",
+        "dataType": "SINGLE_SELECT",
+        "options": [
+            {"name": "epic", "id": "opt-epic"},
+            {"name": "feature", "id": "opt-feature"},
+            {"name": "story", "id": "opt-story"},
+            {"name": "task", "id": "opt-task"},
+            {"name": "subTask", "id": "opt-subtask"},
+            {"name": "bug", "id": "opt-bug"},
+        ],
+    },
+    {
+        "name": "Priority",
+        "id": "fld-prio",
+        "dataType": "SINGLE_SELECT",
+        "options": [
+            {"name": "blocker", "id": "opt-blocker"},
+            {"name": "critical", "id": "opt-critical"},
+            {"name": "major", "id": "opt-major"},
+            {"name": "minor", "id": "opt-minor"},
+            {"name": "trivial", "id": "opt-trivial"},
+        ],
+    },
+]
+
+
 def run_node(expression: str) -> dict:
     code = textwrap.dedent(
         f"""
@@ -438,6 +477,124 @@ class GithubProjectLifecycleScriptTests(unittest.TestCase):
         )
 
         self.assertTrue(result["ok"])
+
+    def test_plan_registration_for_new_item_adds_and_sets_all_three(self) -> None:
+        result = run_node(
+            "lifecycle.planRegistration({"
+            "item: null,"
+            f"fields: {json.dumps(STANDARD_FIELDS)},"
+            "issueType: 'epic'"
+            "})"
+        )
+
+        self.assertTrue(result["needsAdd"])
+        set_map = {entry["fieldName"]: entry["optionName"] for entry in result["sets"]}
+        self.assertEqual(
+            {"Status": "Todo", "IssueType": "epic", "Priority": "major"},
+            set_map,
+        )
+
+    def test_plan_registration_for_story_uses_story_issue_type(self) -> None:
+        result = run_node(
+            "lifecycle.planRegistration({"
+            "item: null,"
+            f"fields: {json.dumps(STANDARD_FIELDS)},"
+            "issueType: 'story'"
+            "})"
+        )
+
+        set_map = {entry["fieldName"]: entry["optionName"] for entry in result["sets"]}
+        self.assertEqual("story", set_map["IssueType"])
+        self.assertEqual("Todo", set_map["Status"])
+        self.assertEqual("major", set_map["Priority"])
+
+    def test_plan_registration_skips_fields_already_correct(self) -> None:
+        item = {"status": "Todo", "issueType": "epic", "priority": "major"}
+
+        result = run_node(
+            "lifecycle.planRegistration({"
+            f"item: {json.dumps(item)},"
+            f"fields: {json.dumps(STANDARD_FIELDS)},"
+            "issueType: 'epic'"
+            "})"
+        )
+
+        self.assertFalse(result["needsAdd"])
+        self.assertEqual([], result["sets"])
+
+    def test_plan_registration_sets_only_drifted_field(self) -> None:
+        item = {"status": "In progress", "issueType": "epic", "priority": "major"}
+
+        result = run_node(
+            "lifecycle.planRegistration({"
+            f"item: {json.dumps(item)},"
+            f"fields: {json.dumps(STANDARD_FIELDS)},"
+            "issueType: 'epic'"
+            "})"
+        )
+
+        self.assertFalse(result["needsAdd"])
+        self.assertEqual(
+            [
+                {
+                    "fieldName": "Status",
+                    "optionName": "Todo",
+                    "fieldId": "fld-status",
+                    "optionId": "opt-todo",
+                }
+            ],
+            result["sets"],
+        )
+
+    def test_plan_registration_rejects_unknown_issue_type(self) -> None:
+        with self.assertRaises(subprocess.CalledProcessError):
+            run_node(
+                "lifecycle.planRegistration({"
+                "item: null,"
+                f"fields: {json.dumps(STANDARD_FIELDS)},"
+                "issueType: 'nope'"
+                "})"
+            )
+
+    def test_plan_registration_requires_issue_type(self) -> None:
+        with self.assertRaises(subprocess.CalledProcessError):
+            run_node(
+                "lifecycle.planRegistration({"
+                "item: null,"
+                f"fields: {json.dumps(STANDARD_FIELDS)}"
+                "})"
+            )
+
+    def test_plan_registration_throws_when_board_option_missing(self) -> None:
+        broken_fields = [
+            {
+                "name": "Status",
+                "id": "fld-status",
+                "dataType": "SINGLE_SELECT",
+                "options": [{"name": "Done", "id": "opt-done"}],
+            },
+            {
+                "name": "IssueType",
+                "id": "fld-type",
+                "dataType": "SINGLE_SELECT",
+                "options": [{"name": "epic", "id": "opt-epic"}],
+            },
+            {
+                "name": "Priority",
+                "id": "fld-prio",
+                "dataType": "SINGLE_SELECT",
+                "options": [{"name": "major", "id": "opt-major"}],
+            },
+        ]
+
+        with self.assertRaises(subprocess.CalledProcessError):
+            run_node(
+                "lifecycle.planRegistration({"
+                "item: null,"
+                f"fields: {json.dumps(broken_fields)},"
+                "issueType: 'epic'"
+                "})"
+            )
 
 
 if __name__ == "__main__":
