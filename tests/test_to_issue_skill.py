@@ -137,6 +137,36 @@ class ToIssueSkillTests(unittest.TestCase):
         )
         self.assertIn("버그를 바로 고칠 요청은 `/impl`", text)
 
+    def test_field_ssot_documents_priority_inference_heuristic(self) -> None:
+        """issue-fields.md must guide priority inference, not just list 5 values (#676)."""
+        text = self.field_ssot_path.read_text(encoding="utf-8")
+
+        # 값 의미 나열을 넘어 '언제 어떤 값' 추론 신호를 제공한다.
+        self.assertIn("추론 신호", text)
+        self.assertIn("맥락에서 추론", text)
+        # 단발 to-issue 는 기본값 없이 추론 — major 로 조용히 자동 수렴 금지.
+        self.assertIn("기본값", text)
+        self.assertIn("자동 수렴", text)
+        # 매번 되묻지 않고 추론 근거를 초안에 제시 (사용자는 교정만).
+        self.assertIn("되묻지 않는다", text)
+        self.assertIn("근거", text)
+        # epic/story 일괄 생성의 major 고정 정책과 구분 (범위 밖).
+        self.assertIn("`major` 고정", text)
+
+    def test_skill_infers_priority_with_rationale_not_silent_default(self) -> None:
+        """SKILL.md must make Priority a context-inferred value with rationale (#676)."""
+        text = self.skill_path.read_text(encoding="utf-8")
+
+        # Priority 를 맥락에서 추론한다 (Status=Todo 고정과 대칭으로 케이스별 추론값).
+        self.assertIn("맥락에서 추론", text)
+        # 매번 사용자에게 되묻지 않는다 (반복 확인은 마찰).
+        self.assertIn("되묻지 않는다", text)
+        # 추론 근거를 Issue Brief 초안과 함께 제시한다.
+        self.assertIn("추론 근거", text)
+        # register-issue 호출 시 추론값을 명시 — 생략해 스크립트 기본값(major)로 fallback 금지.
+        self.assertIn("fallback", text)
+        self.assertIn("기본값(major)", text)
+
 
 if __name__ == "__main__":
     unittest.main()

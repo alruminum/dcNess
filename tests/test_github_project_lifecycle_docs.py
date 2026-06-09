@@ -90,6 +90,17 @@ class GithubProjectLifecycleDocsTests(unittest.TestCase):
         self.assertRegex(text, r"(?s)status drift.+어떤 issue.+어떤 field")
         self.assertRegex(text, r"(?s)IssueType.+repo label.+어떤 issue.+어떤 값")
 
+    def test_priority_inference_policy_differs_single_vs_bulk(self) -> None:
+        """Project SSOT must distinguish single /to-issue inference from bulk major-pin (#676)."""
+        text = self.project_doc.read_text(encoding="utf-8")
+
+        # 단발 /to-issue 는 Priority 를 맥락에서 추론해 명시한다.
+        self.assertIn("맥락에서 추론", text)
+        # epic/story 일괄 생성은 전부 major 고정이다.
+        self.assertIn("`major` 고정", text)
+        # register-issue --priority 생략 시 major fallback 은 일괄 경로를 위한 동작임을 명시.
+        self.assertIn("fallback", text)
+
 
 if __name__ == "__main__":
     unittest.main()
