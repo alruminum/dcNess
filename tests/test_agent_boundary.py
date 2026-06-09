@@ -464,6 +464,41 @@ class LanguageNeutralAllowMatrixTests(unittest.TestCase):
                 reason = check_write_allowed(agent, p, cwd=cwd)
                 self.assertIsNotNone(reason, f"{agent} cwd 밖 {p} 차단")
 
+    def test_nested_dotdot_escape_blocked(self):
+        # #694 codex P1 — 초기 허용 세그먼트 뒤 중첩 .. 로 cwd 밖 탈출(lib/../../lib/x·
+        # tests/../../tests/y)도 resolve 후 절대경로화되어 cwd-밖 가드로 차단.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, p in [
+                ("engineer", "lib/../../lib/payload.rb"),
+                ("test-engineer", "tests/../../tests/test_x.py"),
+            ]:
+                reason = check_write_allowed(agent, p, cwd=cwd)
+                self.assertIsNotNone(reason, f"{agent} 중첩 .. 탈출 {p} 차단")
+
+    def test_code_agents_cannot_write_dependency_trees(self):
+        # #694 codex P2 — 의존성/vendored 트리는 test 패턴(tests?/·spec/)·src 패턴이 중첩
+        # 매칭해도 코드 agent write 금지 (node_modules·vendor·third_party·venv).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            cases = [
+                # 의존성/vendored — 안의 src/tests 가 중첩 매칭돼도 차단
+                ("test-engineer", "node_modules/pkg/tests/x.py"),
+                ("test-engineer", "vendor/foo/spec/bar_spec.rb"),
+                ("build-worker", "third_party/lib/foo_test.go"),
+                ("engineer", "node_modules/pkg/src/index.ts"),
+                ("engineer", ".venv/lib/python3.11/site.py"),
+                # 빌드 산출물 — 안의 src/tests 가 중첩 매칭돼도 차단
+                ("engineer", "dist/bundle/src/app.js"),
+                ("engineer", "build/gen/src/Main.java"),
+                ("engineer", "target/debug/build/foo/src/lib.rs"),
+                ("test-engineer", "out/tests/e2e.test.ts"),
+                ("engineer", "src/__pycache__/mod.cpython-311.pyc"),
+            ]
+            for agent, p in cases:
+                reason = check_write_allowed(agent, p, cwd=cwd)
+                self.assertIsNotNone(reason, f"{agent} 가 의존성/산출물 트리 {p} 를 쓰면 안 됨")
+
     def test_dotdot_escape_blocked(self):
         # #694 codex P1 — 상대 path 의 .. 세그먼트로 경계 밖(루트 문서·구현 코드)으로 탈출하는
         # 우회 차단. _normalize 가 cwd 기준 resolve 로 실제 write 위치를 매칭 대상으로 삼는다.
@@ -490,17 +525,16 @@ class LanguageNeutralAllowMatrixTests(unittest.TestCase):
                 "src/sub/../foo.ts → src/foo.ts 허용",
             )
 
-    def test_engineer_nested_common_names_not_matched(self):
-        # #694 codex P2 (라운드2) — 루트 소스 레이아웃 패턴은 루트(^) 앵커. 중첩 동명
-        # 디렉토리(node_modules/*/lib·.github/*/lib·vendor/*/pkg)는 소스 루트가 아니므로
-        # engineer/build-worker 가 쓰면 안 된다.
+    def test_engineer_nested_layout_names_not_matched(self):
+        # #694 codex P2 — 루트 소스 레이아웃(^lib/·^cmd/ 등)은 루트 앵커라, 의존성도 docs 도
+        # 아닌 일반 중첩 동명 디렉토리(.github/*/lib·services/*/lib·a/b/cmd)는 소스 루트가
+        # 아니므로 ALLOW 미매칭으로 차단된다 (의존성 트리는 별도 deny — 아래 테스트).
         with tempfile.TemporaryDirectory() as td:
             cwd = Path(td)
             for p in (
-                "node_modules/some-lib/lib/index.js",
                 ".github/actions/foo/lib/action.yml",
-                "vendor/pkg/x.go",
-                "third_party/internal/y.go",
+                "services/foo/lib/util.rb",
+                "a/b/cmd/run.go",
             ):
                 reason = check_write_allowed("engineer", p, cwd=cwd)
                 self.assertIsNotNone(reason, f"engineer 가 중첩 {p} 를 쓰면 안 됨")

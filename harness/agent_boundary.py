@@ -177,8 +177,23 @@ _CODE_AGENTS: frozenset = frozenset({"engineer", "test-engineer", "build-worker"
 # 오인해 정상 소스를 막지 않도록 루트 docs 트리만 deny (#694 codex P2). _normalize 가
 # ./·.. 를 해소하므로 ^ 앵커가 안전(우회 prefix 없음).
 _CODE_AGENT_EXCLUSIVE_DENY: tuple[str, ...] = (
-    r'^docs/',            # architect / ux-architect / tech-reviewer 전용 (루트 docs 트리)
+    # 다른 역할 전용 산출 영역 — 루트(^) 앵커 (monorepo 동명 패키지 apps/docs/src 는 소스라 허용).
+    r'^docs/',            # architect / ux-architect / tech-reviewer 전용
     r'^design-variants/', # designer 전용
+    # 의존성 / 빌드 산출 트리 — 누구도 직접 write 하지 않는다. engineer 의 (^|/)src/ 와
+    # test-engineer 의 (^|/)tests?/·spec/ 가 이 트리 안 src/tests 를 *중첩* 매칭하던 우회를
+    # 차단 (codex P1/P2). monorepo 패키지별 중첩도 막도록 (^|/). 언어 전반의 보편 집합 —
+    # 프로젝트 고유 추가는 #696 override.
+    r'(^|/)node_modules/',   # JS/TS 의존성
+    r'(^|/)vendor/',          # Go·PHP·Ruby vendored
+    r'(^|/)third_party/',     # 일반 vendored
+    r'(^|/)\.venv/',          # Python 가상환경
+    r'(^|/)venv/',
+    r'(^|/)__pycache__/',     # Python 캐시
+    r'(^|/)dist/',            # 번들/패키지 산출물
+    r'(^|/)build/',           # 빌드 산출물
+    r'(^|/)target/',          # Rust·Java(Maven) 산출물
+    r'(^|/)out/',             # 일반 빌드 산출물
 )
 
 
@@ -261,25 +276,24 @@ def is_opt_out(cwd: Optional[Path] = None) -> bool:
 
 
 def _normalize(file_path: str, cwd: Optional[Path] = None) -> str:
-    """절대 path → cwd 상대 path. 외부 path 는 그대로 반환."""
+    """path 를 cwd 기준으로 resolve(`.`/`..`/심볼릭 해소) 후 cwd 상대로 환원.
+
+    절대/상대 동일 정규화. cwd 밖(상위 탈출·외부 절대)이면 *절대경로* 를 반환한다 —
+    호출부(check_write/read_allowed)의 cwd-밖 가드(`/` 시작)가 차단하게 (#694 codex P1).
+    원본 문자열을 돌려주면 `lib/../../lib/x` 같은 중첩 .. 탈출이 ALLOW 패턴에 매칭되는
+    우회가 생긴다.
+    """
     if cwd is None:
         cwd = Path.cwd()
     try:
         p = Path(file_path)
-        if p.is_absolute():
-            try:
-                return str(p.resolve().relative_to(cwd.resolve()))
-            except ValueError:
-                # cwd 밖 — 그대로 반환 (외부 path 는 패턴 매칭에서 잡거나 통과)
-                return str(p)
-        # 상대 path — cwd 기준으로 결합·resolve 해 `.`/`..` 를 해소한 뒤 cwd 상대로 환원
-        # (#694 codex P1/P2). `./lib/x` 의 ./ 제거 + `lib/../README.md`·`tests/../src/x.py`
-        # 같은 .. 우회(매칭 위치 ≠ 실제 write 위치)를 차단한다. 절대 path 분기와 동일 정규화.
+        base = p if p.is_absolute() else (cwd / p)
+        resolved = base.resolve()
         try:
-            return str((cwd / p).resolve().relative_to(cwd.resolve()))
+            return str(resolved.relative_to(cwd.resolve()))
         except ValueError:
-            # ../ 로 cwd 상위 탈출 — 패턴 미매칭(ALLOW 미등재)으로 차단되도록 그대로 반환.
-            return str(p)
+            # cwd 밖 — 절대경로 반환 (가드의 `/` 시작 체크가 차단).
+            return str(resolved)
     except (OSError, ValueError):
         return file_path
 
