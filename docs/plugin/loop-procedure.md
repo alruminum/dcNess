@@ -98,7 +98,9 @@ fi
 
 Codex wrapper 는 설치된 `dcness-<agent>/SKILL.md` 내용을 prompt 에 직접 포함한 뒤 `codex exec -C "$PROJECT_ROOT" -s read-only` 로 실행한다. 마지막 응답은 `/tmp` prose 파일에 받은 뒤 `dcness-helper end-step <agent> --prose-file ...` 로 저장한다. 따라서 Codex route 에서는 메인이 별도 `end-step` 을 한 번 더 부르지 않는다. 라우팅 config 는 repo 파일이 아니라 `~/.claude/plugins/data/dcness-dcness/routing.json` 이며, 비활성/미설정 기본값은 Claude 다.
 
-**호출 prompt 작성 — MUST (슬림 포인터 규약)**: 호출 직전 해당 `agent.md` 의 "입력" / "호출자가 prompt 로 전달하는 정보" 항목 read 후 prompt 작성 (형식 자유, 정보 명시 의무). prompt 에는 **(1) 읽을 SSOT 문서 포인터 (agent 가 자체 read 할 경로) (2) 대상 단위 (어떤 task / Story / 모듈) (3) 그 호출에 특유한 제약·주의 (4) 산출 경로·번호 규약·write 경계** 만 담는다.
+#### 호출 prompt 슬림 포인터 규약
+
+**MUST.** 호출 직전 해당 `agent.md` 의 "입력" / "호출자가 prompt 로 전달하는 정보" 항목 read 후 prompt 작성 (형식 자유, 정보 명시 의무). prompt 에는 **(1) 읽을 SSOT 문서 포인터 (agent 가 자체 read 할 경로) (2) 대상 단위 (어떤 task / Story / 모듈) (3) 그 호출에 특유한 제약·주의 (4) 산출 경로·번호 규약·write 경계** 만 담는다.
 
 - ❌ **이미 SSOT 문서에 기록된 결정의 사본을 prompt 에 재기입 금지** — 합의 스택·계약·설계 결정은 agent 가 자기 "먼저 읽을 문서" 규약대로 SSOT 문서를 직접 읽어 획득한다. 같은 결정이 prompt 와 문서 두 곳에 살면 진본이 둘이 되어, 한쪽만 갱신될 때 어느 쪽이 맞는지 모르는 drift 가 생긴다 (dcNess 가 본래 막으려는 사본 drift 를 절차 자신이 유발).
 - ❌ **agent 본업을 "뭐뭐 해라"로 절차 재지시 금지** — 판단 축·작업 흐름·완료 기준은 각 `agent.md` 가 소유한다. 메인은 컨텍스트·제약·사실관계만 넘기고 *어떻게 할지* 는 agent 가 정한다 (아래 [finding 수용 원칙](#finding-수용-원칙-점-패치-금지-근본-수정) 의 relay 와 동형 — "해법 메커니즘은 메인이 처방하지 말 것").
