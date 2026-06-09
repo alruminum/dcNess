@@ -63,7 +63,12 @@ PY
 case "$(basename "$FILE_PATH")" in
   *.test.*|*.spec.*) allow ;;
 esac
-case "$FILE_PATH" in
+# 디렉터리 마디 매치는 절대/상대 경로 모두 대응 — 선두 슬래시를 1개로 정규화해
+# top-level 상대 경로 (`tests/helper.ts`, `__tests__/setup.ts`) 도 `*/tests/*` 로 잡는다.
+# 정규화 없이는 leading-slash 요구 패턴이 상대 top-level test 디렉터리를 놓쳐
+# 문서가 약속한 skip 과 어긋난다 (codex P2).
+_tdd_norm="/${FILE_PATH#/}"
+case "$_tdd_norm" in
   */__tests__/*|*/__test__/*|*/__mocks__/*) allow ;;
   */test/*|*/tests/*|*/spec/*|*/specs/*|*/e2e/*) allow ;;
 esac

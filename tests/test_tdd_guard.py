@@ -273,6 +273,22 @@ class TestBasenameSubstringFalseNegative(unittest.TestCase):
         path = self._touch("src/contest/board.ts", "export const b = 1;\n")
         self.assertEqual(decision(run_hook(path, self._tmp)), "deny")
 
+    def test_relative_top_level_tests_dir_skipped(self):
+        """상대 경로 top-level `tests/` 디렉터리 파일도 skip — codex P2 (선두 슬래시 정규화)."""
+        self._touch("tests/helper.ts", "export const h = 1;\n")
+        # 절대 경로가 아니라 cwd(tmp) 기준 상대 경로를 직접 전달.
+        self.assertEqual(decision(run_hook("tests/helper.ts", self._tmp)), "allow")
+
+    def test_relative_top_level_tests_underscore_dir_skipped(self):
+        """상대 경로 top-level `__tests__/` 디렉터리 파일도 skip — codex P2."""
+        self._touch("__tests__/setup.ts", "export const s = 1;\n")
+        self.assertEqual(decision(run_hook("__tests__/setup.ts", self._tmp)), "allow")
+
+    def test_relative_top_level_impl_still_denied(self):
+        """상대 경로라도 top-level 구현 파일(test 디렉터리 아님)은 여전히 deny — 정규화 오버매치 방지."""
+        self._touch("contest.ts", "export const c = 1;\n")
+        self.assertEqual(decision(run_hook("contest.ts", self._tmp)), "deny")
+
 
 class TestPathMatcherTier4_Grandparent(unittest.TestCase):
     """issue #469 결함 C — Tier 4: <grandparent>/__tests__/<name>.{test,spec}.<ext>.
