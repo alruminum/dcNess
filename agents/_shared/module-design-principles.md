@@ -1,6 +1,6 @@
-# 모듈 설계 원칙 SSOT
+# Agent 공통 모듈 설계 원칙
 
-> 모듈 설계 시 모든 agent (system-architect / module-architect / engineer / test-engineer) 가 따라야 하는 공통 원칙. 호출 시 본 문서 read 의무.
+> 모듈 설계 시 system-architect / module-architect / engineer / test-engineer / build-worker / architecture-validator 가 공유하는 agent 내부 기준. 호출 시 본 문서 read 의무.
 
 본 문서는 세 가지 영역의 원칙을 한 곳에 모은 SSOT 다. 각 agent 본문에서 같은 룰을 반복해 박지 않고, 본 문서를 참조한다.
 
@@ -152,17 +152,17 @@ system-architect 가 architecture.md 의 *기술 스택* 영역에 DI 패턴 명
 
 | Agent | evidence |
 |---|---|
-| [`system-architect`](../../agents/system-architect.md) | architecture 템플릿의 `Module Design Check`, 의존성 차단 도구, DI 패턴, Contract Ledger |
-| [`module-architect`](../../agents/module-architect.md) | impl 템플릿의 `Module Design Check`, 작은 공개 표면, contract/interface, 검증 가능한 수용 기준 |
-| [`engineer`](../../agents/engineer.md) | 구현 보고의 계약 준수, 의존 주입 또는 wrapper 사용, 검증 결과 |
-| [`test-engineer`](../../agents/test-engineer.md) | 테스트 보고의 REQ 연결, 의존 mock 경계, 구현 독립성 |
-| [`build-worker`](../../agents/build-worker.md) | phase 보고의 RED/GREEN/self-validate 증거 |
-| [`architecture-validator`](../../agents/architecture-validator.md) | 설계 표준, 계약과 인터페이스, 구현 가능성 축의 finding 또는 PASS 근거 |
-| [`code-validator`](../../agents/code-validator.md) | 의존 계약, 도메인/디자인 정합, 구현 위험 축의 finding 또는 PASS 근거 |
+| [`system-architect`](../system-architect.md) | architecture 템플릿의 `Module Design Check`, 의존성 차단 도구, DI 패턴, Contract Ledger |
+| [`module-architect`](../module-architect.md) | impl 템플릿의 `Module Design Check`, 작은 공개 표면, contract/interface, 검증 가능한 수용 기준 |
+| [`engineer`](../engineer.md) | 구현 보고의 계약 준수, 의존 주입 또는 wrapper 사용, 검증 결과 |
+| [`test-engineer`](../test-engineer.md) | 테스트 보고의 REQ 연결, 의존 mock 경계, 구현 독립성 |
+| [`build-worker`](../build-worker.md) | phase 보고의 RED/GREEN/self-validate 증거 |
+| [`architecture-validator`](../architecture-validator.md) | 설계 표준, 계약과 인터페이스, 구현 가능성 축의 finding 또는 PASS 근거 |
+| [`code-validator`](../code-validator.md) | 의존 계약, 도메인/디자인 정합, 구현 위험 축의 finding 또는 PASS 근거 |
 
 ## validator 의 검증 연결
 
-[`architecture-validator`](../../agents/architecture-validator.md) 는 본 SSOT 를 고정 checklist 로 세지 않는다. 다음 축에서 evidence 를 확인한다.
+[`architecture-validator`](../architecture-validator.md) 는 본 SSOT 를 고정 checklist 로 세지 않는다. 다음 축에서 evidence 를 확인한다.
 
 - **설계 표준**: 모듈 공개 표면, 의존 방향, DI 판단, 차단 도구가 산출물에 남았는가.
 - **계약과 인터페이스**: Contract Ledger 가 signature 뿐 아니라 invariant, ordering, error mode, config, consumer, forbidden alternative 를 담는가.

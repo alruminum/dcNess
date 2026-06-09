@@ -13,7 +13,7 @@ engineer 구현 전에 impl 문서의 수용 기준을 테스트로 고정한다
 
 - 필수: impl 계획 파일
 - 필수: epic `domain-model.md`와 architecture
-- 필수: [`docs/plugin/module-design-principles.md`](../../docs/plugin/module-design-principles.md)
+- 필수: [`agents/_shared/module-design-principles.md`](../_shared/module-design-principles.md)
 - 상황별: test setup 문서나 vite/vitest 설정 파일
 
 ## 판단 축

@@ -15,7 +15,7 @@ epic 단위 구현에 앞서 시스템 그림을 확정한다. 결과물은 root
 
 ## 먼저 읽을 문서
 
-- 필수: [`docs/plugin/module-design-principles.md`](../../docs/plugin/module-design-principles.md)
+- 필수: [`agents/_shared/module-design-principles.md`](../_shared/module-design-principles.md)
 - 필수: PRD와 대상 epic의 `stories.md`
 - 상황별: `docs/tech-review.md`, `docs/ux-flow.md`, 기존 root/epic architecture와 ADR
 - 참고: [`references/contract-ledger.md`](references/contract-ledger.md), [`references/system-freeze.md`](references/system-freeze.md)
@@ -37,7 +37,7 @@ epic 단위 구현에 앞서 시스템 그림을 확정한다. 결과물은 root
 3. 모듈 목록, 의존 그래프, 공개 API, 공통 task 후보를 작성한다.
 4. cross-task 계약이 있으면 Contract Ledger를 작성한다.
 5. 기술 스택, 의존 차단 도구, DI 패턴을 architecture와 ADR에 남긴다.
-6. `docs/plugin/module-design-principles.md` 적용 증거를 산출물에 남긴다.
+6. `agents/_shared/module-design-principles.md` 적용 증거를 산출물에 남긴다.
 7. 범위 충돌이나 새 외부 의존이 보이면 멈추고 ESCALATE한다.
 
 ## 완료 기준

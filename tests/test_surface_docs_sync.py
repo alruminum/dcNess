@@ -89,6 +89,40 @@ class SurfaceDocsSyncTests(unittest.TestCase):
             encoding="utf-8"
         )
 
+    def test_module_design_principles_are_agent_shared_not_plugin_surface(self) -> None:
+        plugin_path = ROOT / "docs" / "plugin" / "module-design-principles.md"
+        shared_path = ROOT / "agents" / "_shared" / "module-design-principles.md"
+
+        self.assertFalse(plugin_path.exists())
+        self.assertTrue(shared_path.exists())
+
+        for rel_path in (
+            "agents/system-architect/system-architect-agent.md",
+            "agents/module-architect/module-architect-agent.md",
+            "agents/engineer/engineer-agent.md",
+            "agents/test-engineer/test-engineer-agent.md",
+            "agents/build-worker/build-worker-agent.md",
+            "agents/architecture-validator/architecture-validator-agent.md",
+        ):
+            text = (ROOT / rel_path).read_text(encoding="utf-8")
+            self.assertIn("../_shared/module-design-principles.md", text)
+            self.assertNotIn("../../docs/plugin/module-design-principles.md", text)
+
+    def test_user_facing_docs_use_korean_operating_principle_wording(self) -> None:
+        docs = (
+            ROOT / "CLAUDE.md",
+            ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md",
+            ROOT / "docs" / "plugin" / "workflow-router.md",
+            ROOT / "docs" / "plugin" / "positioning.md",
+            ROOT / "docs" / "plugin" / "parallel-policy.md",
+        )
+        for path in docs:
+            text = path.read_text(encoding="utf-8")
+            self.assertNotRegex(text, r"\b[Dd]octrine\b|독트린")
+
+        self.assertIn("운영 원칙", self.router)
+        self.assertIn("운영 원칙", self.positioning)
+
     def test_readme_uses_lifecycle_defaults_without_exposing_compat_aliases(self) -> None:
         basic_table = self._section(self.readme, r"\| 기본 진입점 \|", r"\n`/impl`")
         for name in LIFECYCLE:

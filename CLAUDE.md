@@ -56,9 +56,9 @@
 
 ### dcness 강제 원칙 (룰 추가·설계 시 가드레일)
 
-> 🟢 **설계 doctrine (왜 강제를 최소화하나)** — dcNess 는 *모델 불신(model-distrust)* 하네스가 아니라 **working-style 보존(working-style preservation)** 하네스다. 모델이 좋아질수록 절차를 *없애는* 게 아니라, 절차의 *목적*을 이해하고 더 적은 마찰로 지키게 한다. harness 의 일은 모델의 사고를 대신하는 게 아니라, 모델이 놓치기 쉬운 **되돌릴 수 없는 경계(irreversible boundary)** 만 붙잡는 것. 그래서 기본 경로는 가볍고, 무거운 절차(product-plan / tech-review / architect-loop / consensus)는 항상-on 이 아니라 **risk-triggered escalation** 이다 (lane 판정 SSOT = [`docs/plugin/workflow-router.md`](docs/plugin/workflow-router.md)). doctrine 출처: [#591](https://github.com/alruminum/dcNess/issues/591).
+> 🟢 **설계 원칙 (왜 강제를 최소화하나)** — dcNess 는 모델을 불신해 가두는 하네스가 아니라, 사용자의 작업 방식을 보존하는 하네스다. 모델이 좋아질수록 절차를 *없애는* 게 아니라, 절차의 *목적*을 이해하고 더 적은 마찰로 지키게 한다. harness 의 일은 모델의 사고를 대신하는 게 아니라, 모델이 놓치기 쉬운 **되돌릴 수 없는 경계(irreversible boundary)** 만 붙잡는 것. 그래서 기본 경로는 가볍고, 무거운 절차(product-plan / tech-review / architect-loop / consensus)는 항상 켜두지 않고 **위험할 때만 올린다** (lane 판정 SSOT = [`docs/plugin/workflow-router.md`](docs/plugin/workflow-router.md)). 설계 원칙 출처: [#591](https://github.com/alruminum/dcNess/issues/591).
 
-> 🔴 **대 원칙** (외부 활성 프로젝트엔 hook 이 그 자리에서 강제 — SessionStart 는 슬림 활성 안내만 inject, doctrine 전문은 본 SSOT):
+> 🔴 **대 원칙** (외부 활성 프로젝트엔 hook 이 그 자리에서 강제 — SessionStart 는 슬림 활성 안내만 inject, 설계 원칙 전문은 본 SSOT):
 > **harness 가 강제하는 것은 단 2가지 — (1) 작업 순서, (2) 접근 영역. 그 외 모두 agent 자율.**
 > - **작업 순서** = 시퀀스 (code-validator → engineer → pr-reviewer 등) + retry 정책
 > - **접근 영역** = file path 경계 (agent-boundary ALLOW/READ_DENY) + 외부 시스템 mutation 차단 (push, gh issue, plugin 디렉토리)
@@ -74,7 +74,7 @@
 2. **강제 vs 권고 혼동** — 강제(block) = catastrophic 만. 권고(warn) = 형식 위반/비용 폭증 등은 측정+경고+사용자 개입. 권고 → 강제 자동 승격 금지.
 3. **에이전트 자율성 침해** — agent prompt 안 강제 형식 박기 금지. 결론+이유 명확히 쓰도록 가이드만 (형식이 아니라 의미).
 4. **불필요한 흐름 강제** — 시퀀스 보존은 catastrophic 만. 시퀀스 내부 행동 = 에이전트 자율.
-5. **신규 surface 무근거 추가** — 새 skill/command/agent/gate 를 추가하기 *전*, 왜 기존 risk router([`workflow-router.md`](docs/plugin/workflow-router.md)) lane + validator/reviewer + public surface 계약([`positioning.md`](docs/plugin/positioning.md))으로 부족한지 먼저 설명한다. 사용자-facing surface 는 작게 유지가 기본 — 추가는 justification 동반 (안티패턴 1 reactive cycle 과 한 쌍, doctrine 의 "외부 UX 는 단순" 정신).
+5. **신규 surface 무근거 추가** — 새 skill/command/agent/gate 를 추가하기 *전*, 왜 기존 risk router([`workflow-router.md`](docs/plugin/workflow-router.md)) lane + validator/reviewer + public surface 계약([`positioning.md`](docs/plugin/positioning.md))으로 부족한지 먼저 설명한다. 사용자-facing surface 는 작게 유지가 기본 — 추가는 justification 동반 (안티패턴 1 reactive cycle 과 한 쌍, 설계 원칙의 "외부 UX 는 단순하게" 취지).
 
 ## 작업 절차 (모든 변경 공통)
 

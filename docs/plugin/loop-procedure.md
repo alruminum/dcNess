@@ -410,4 +410,4 @@ review 리포트의 must-fix / waste finding / per-Agent metric 즉시 인지 + 
 - 본 문서 [표준 1 step 시퀀스](#표준-1-step-시퀀스-per-agent-의무) + [Step 8 — review 결과 인지](#step-8-review-결과-인지) — echo / 자가점검 / REDO 분류 / 개선점 코멘트 (옛 dcness-rules §3/§4 흡수)
 - `harness/session_state.py` — helper CLI (`begin-run` / `end-run` / `begin-step` / `end-step` / `finalize-run` / `run-dir` / `auto-resolve`)
 - `harness/run_review.py` — review 엔진 (`--auto-review` 호출 대상)
-- skill 진입점 (input 정형화 + Loop 추천) — `skills/<skill>/SKILL.md` (예: impl-loop / architect-loop) 또는 `commands/<skill>.md` (미전환 skill)
+- workflow skill 진입점 (input 정형화 + Loop 추천) — `skills/<skill>/SKILL.md` (예: impl-loop / architect-loop). 운영 보조 command 는 `commands/<command>.md`.

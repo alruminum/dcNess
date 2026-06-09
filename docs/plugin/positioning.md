@@ -60,7 +60,7 @@ agent 는 사용자가 외워야 하는 command 가 아니다. `architecture-val
 
 ### 신규 surface justification (왜 작게 유지하나)
 
-doctrine 상 사용자-facing surface 는 작게 유지가 기본이다 (내부 정책은 정교해도 외부 UX 는 단순). 따라서 새 skill/command/agent/gate 를 추가하려면 PR 에서 **왜 기존 표면으로 부족한지**를 먼저 설명한다 — 구체적으로:
+운영 원칙상 사용자-facing surface 는 작게 유지가 기본이다 (내부 정책은 정교해도 외부 UX 는 단순하게). 따라서 새 skill/command/agent/gate 를 추가하려면 PR 에서 **왜 기존 표면으로 부족한지**를 먼저 설명한다 — 구체적으로:
 
 - risk router 의 기존 lane([`workflow-router.md`](workflow-router.md))로 흡수 안 되는가?
 - 기존 validator/reviewer(`code-validator` / `architecture-validator` / `pr-reviewer`)로 검증이 안 되는가?

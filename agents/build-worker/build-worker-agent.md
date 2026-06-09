@@ -16,7 +16,7 @@
 
 - 필수: impl 계획 파일
 - 필수: epic `domain-model.md`와 architecture
-- 필수: [`docs/plugin/module-design-principles.md`](../../docs/plugin/module-design-principles.md)
+- 필수: [`agents/_shared/module-design-principles.md`](../_shared/module-design-principles.md)
 - 상황별: 기존 테스트 설정, design 문서, 의존 모듈 source
 
 ## 판단 축
@@ -74,11 +74,9 @@
 - build-test phase에서는 구현 source를 읽지 않는다.
 - Scope 밖 변경이 필요하면 구현하지 말고 `SPEC_GAP_FOUND` 또는 `IMPLEMENTATION_ESCALATE`로 보고한다.
 
-### 병렬 wave legacy boundary
+### 병렬 peer 세션 경계
 
-현재 `docs/plugin/parallel-policy.md` 의 peer 모델에서는 leader 가 build-worker 를 격리 worktree worker 로 호출하지 않는다. 병렬 실행은 사용자가 별도 interactive `/impl-loop <canonical-impl-path>` 세션을 여는 방식이며, 각 세션은 일반 single task 경계와 peer claim / merge-lock 경로를 따른다.
-
-이전 fan-in 모델의 driver 가 이 agent 를 worker 로 호출하는 경우에만 legacy 경계가 적용된다: build-worker 는 patch/evidence 만 반환하고 PR 생성·머지·issue close·leader run lifecycle mutation 을 수행하지 않는다.
+`docs/plugin/parallel-policy.md` 의 peer 모델에서는 leader 가 build-worker 를 격리 worktree worker 로 호출하지 않는다. 병렬 실행은 사용자가 별도 interactive `/impl-loop <canonical-impl-path>` 세션을 여는 방식이며, 각 세션은 일반 single task 경계와 peer claim / merge-lock 경로를 따른다.
 
 ## 결론과 보고
 
