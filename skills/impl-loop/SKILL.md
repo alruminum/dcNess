@@ -181,7 +181,7 @@ worktree branch 안 commit / push / PR 생성·머지 = **메인 Claude 전담**
 | 의존 모듈 (수정 X 영역) | **grep + 시그니처만** read. 예: `grep "^export" path/to/file.ts | head -10` + 매치 줄 ±2 line. 통째 read 금지 — 본 task 가 수정하지 않는 영역의 구현 디테일 불요 |
 | 의존 모듈 (수정 영역) | 통째 read OK |
 
-→ agent prompt 에 impl 파일 경로 쓰면 agent 가 위 룰 따라 자체 read. *메인 Claude 가 사전 inject* 불필요.
+→ agent prompt 에 impl 파일 경로 쓰면 agent 가 위 룰 따라 자체 read. *메인 Claude 가 사전 inject* 불필요. 호출 prompt 는 **슬림 포인터 규약** ([`loop-procedure.md`](../../docs/plugin/loop-procedure.md#step-2n-agent-호출-골격)) 을 따른다 — SSOT 포인터·대상·호출별 제약·write 경계만 담고, agent 본업(test/impl/self-validate 절차)을 "뭐뭐 해라"로 재지시하지 않는다 (어떻게 할지는 agent 가 결정).
 
 **추가 — 메인 직접 read 의무 (강조 + cost-aware, #436)**: 메인 Claude 는 *진입 분기 판단* 에 필요한 **최소** 만 read. agent prompt 경로 박는 것 외에 메인이 통째 read 하지 말 것 — agent 가 자체 read 함.
 
