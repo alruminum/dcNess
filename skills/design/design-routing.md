@@ -63,7 +63,7 @@ flowchart TB
 | finding 분류 | 뜻 | 재진입 대상 | 비고 |
 |---|---|---|---|
 | `SYSTEM_BOUNDARY` | 큰 그림(상위 경계)이 틀림 — 도메인 invariant / port 소비자 / usecase ownership / root ADR / storage policy 잘못 | **system-architect** 재진입 | 비싼 재설계. **system 재진입의 유일한 기본 사유.** |
-| `CONTRACT_PROPAGATION` | 결정은 맞는데 stale 사본이 문서마다 남음 (전파 누락) | **module-architect `mode=contract_sweep`** | 동기화 sweep. **system 재설계 아님.** canonical 값 + sweep 키워드를 prompt 에 박아 전달 |
+| `CONTRACT_PROPAGATION` | 결정은 맞는데 stale 사본이 문서마다 남음 (전파 누락) | **module-architect `mode=contract_sweep`** | 동기화 sweep. **system 재설계 아님.** canonical 값(진본 = Contract Ledger) + sweep 키워드를 prompt 로 전달 (전파 대상 식별용 — prompt 가 진본이 아니라 Ledger 가 진본) |
 | `TASK_LOCAL` | 특정 impl task 문서만 틀림 — 예시 / depends_on / 수용기준 / requirements / Implementation Detail Leak | **module-architect** 보강 (해당 task) | 그 task 만 |
 
 - **"system-architect 재진입은 `SYSTEM_BOUNDARY` 일 때만 기본값"** — stale 문구 전파 누락은 `CONTRACT_PROPAGATION` 으로 처리(sweep), system 재설계로 끌어올리지 않는다. system 문서는 1차 PASS 후 freeze ([`SKILL.md`](SKILL.md) system freeze).
