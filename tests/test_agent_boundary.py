@@ -439,6 +439,32 @@ class LanguageNeutralAllowMatrixTests(unittest.TestCase):
             self.assertIsNotNone(reason, "./docs/ 우회가 차단돼야 함")
             self.assertIn("docs", reason)
 
+    def test_dotdot_escape_blocked(self):
+        # #694 codex P1 — 상대 path 의 .. 세그먼트로 경계 밖(루트 문서·구현 코드)으로 탈출하는
+        # 우회 차단. _normalize 가 cwd 기준 resolve 로 실제 write 위치를 매칭 대상으로 삼는다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # lib/../README.md → 실제 README.md(루트 문서) → engineer 차단
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "lib/../README.md", cwd=cwd),
+                "lib/../README.md (.. 우회) 차단",
+            )
+            # tests/../src/main.py → 실제 src/main.py(구현) → test-engineer 차단
+            self.assertIsNotNone(
+                check_write_allowed("test-engineer", "tests/../src/main.py", cwd=cwd),
+                "tests/../src/main.py (.. 우회) 차단",
+            )
+            # ../ 상위 탈출 → 차단
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "../outside/x.ts", cwd=cwd),
+                "../ 상위 탈출 차단",
+            )
+            # 정상 .. 해소 후 유효 소스는 허용 (src/sub/../foo.ts → src/foo.ts)
+            self.assertIsNone(
+                check_write_allowed("engineer", "src/sub/../foo.ts", cwd=cwd),
+                "src/sub/../foo.ts → src/foo.ts 허용",
+            )
+
     def test_engineer_nested_common_names_not_matched(self):
         # #694 codex P2 (라운드2) — 루트 소스 레이아웃 패턴은 루트(^) 앵커. 중첩 동명
         # 디렉토리(node_modules/*/lib·.github/*/lib·vendor/*/pkg)는 소스 루트가 아니므로
