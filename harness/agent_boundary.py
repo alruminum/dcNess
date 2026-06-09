@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -354,7 +355,8 @@ def check_write_allowed(
     # 사라져(→ `tests/x`) 셸가드를 우회하지만, 런타임엔 셸이 `$PWD` 를 확장해 프로젝트 밖에
     # write 한다 (#694 codex P2 r10). 원본 file_path 에 `$`/backtick 이 있으면 위치 미확정으로
     # 즉시 차단. Edit/Write 의 literal `$` 파일명(users.$id.tsx)은 shell_context=False 라 통과.
-    # (Bash 에서 literal `$` 파일은 따옴표로 써야 하고, 따옴표 토큰은 extract_bash_paths 가 제외.)
+    # Bash 는 shlex tokenization 뒤 quote 원형을 보존하지 않으므로, write target 에 `$`/backtick 이
+    # 남아 있으면 보수적으로 expansion risk 로 본다.
     if shell_context and ("$" in file_path or "`" in file_path):
         return (
             f"{agent} 셸 확장 경로 차단: `{file_path}` — Bash 의 $VAR/$()/backtick 은 hook 후 "
@@ -447,8 +449,9 @@ def check_read_allowed(
 
 # ── Bash heuristic ────────────────────────────────────────────────────
 
-# v1: 명시적 위반 패턴 (sed -i / awk -i / cp / mv / rm / 리다이렉션) 만 잡는다.
-# 정밀 path 추출 X — false negative 우선 (false positive 회피).
+# v1: 명시적 write 구문(sed/perl -i / cp / mv / rm / tee / 리다이렉션) 만 잡는다.
+# Bash 전체를 보안 파서처럼 해석하지 않는다. 단, 후보를 잡을 때는 "path처럼 보이는 모든
+# 토큰" 이 아니라 실제 write 대상만 추출해 read operand 오차단을 줄인다.
 _BASH_WRITE_INDICATORS: tuple[str, ...] = (
     r'\bsed\b\s+(?:[-]\w*i\w*|--in-place)',
     r'\bawk\b\s+(?:[-]\w*i\w*|--in-place)',
@@ -458,55 +461,272 @@ _BASH_WRITE_INDICATORS: tuple[str, ...] = (
     r'>>\s*\S',    # append redirect
     r'\btee\b',
 )
+_WRITE_REDIRECT_OPS = frozenset({">", ">>", ">|", "&>", ">&", "<>"})
+_READ_REDIRECT_OPS = frozenset({"<", "<<", "<<-"})
+_SHELL_SEPARATORS = frozenset({"&&", "||", ";", "|", "&"})
+_CP_VALUE_FLAGS = frozenset({"-t", "--target-directory"})
+_SED_EXPR_FLAGS = frozenset({"-e", "--expression", "-f", "--file"})
+
+
+def _shell_tokens_for_paths(command: str) -> list[str]:
+    """Path 추출용 shell tokenization.
+
+    `shlex` 로 quote 를 해석하고 punctuation 을 분리한다. unmatched quote 등으로 실패하면
+    빈 list 를 반환한다. 이 hook 은 보안 경계가 아니라 실수 방지용 denylist 이므로
+    parse 불능 command 에서 억지 추출로 false positive 를 만들지 않는다.
+    """
+    try:
+        lexer = shlex.shlex(_strip_heredocs(command), posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        return list(lexer)
+    except ValueError:
+        return []
+
+
+def _split_shell_segments(tokens: list[str]) -> list[list[str]]:
+    segments: list[list[str]] = []
+    cur: list[str] = []
+    for tok in tokens:
+        if tok in _SHELL_SEPARATORS:
+            if cur:
+                segments.append(cur)
+                cur = []
+        else:
+            cur.append(tok)
+    if cur:
+        segments.append(cur)
+    return segments
+
+
+def _strip_redirections_for_paths(tokens: list[str]) -> tuple[list[str], list[str]]:
+    """segment 에서 redirection write target 을 수집하고 command argv 만 반환."""
+    argv: list[str] = []
+    paths: list[str] = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        # `2>err.log` 는 shlex 가 `2`, `>`, `err.log` 로 분리한다. fd 번호는 argv 에 넣지 않는다.
+        if tok.isdigit() and i + 1 < len(tokens) and tokens[i + 1] in (
+            _WRITE_REDIRECT_OPS | _READ_REDIRECT_OPS
+        ):
+            op = tokens[i + 1]
+            if i + 2 < len(tokens) and op in _WRITE_REDIRECT_OPS:
+                paths.append(tokens[i + 2])
+            i += 3 if i + 2 < len(tokens) else 2
+            continue
+        if tok in (_WRITE_REDIRECT_OPS | _READ_REDIRECT_OPS):
+            if i + 1 < len(tokens) and tok in _WRITE_REDIRECT_OPS:
+                paths.append(tokens[i + 1])
+            i += 2 if i + 1 < len(tokens) else 1
+            continue
+        argv.append(tok)
+        i += 1
+    return argv, paths
+
+
+def _command_positionals(args: list[str], value_flags: frozenset = frozenset()) -> list[str]:
+    out: list[str] = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--":
+            out.extend(args[i + 1:])
+            break
+        if arg.startswith("-") and arg != "-":
+            base = arg.split("=", 1)[0]
+            if base in value_flags and "=" not in arg:
+                i += 2
+            else:
+                i += 1
+            continue
+        out.append(arg)
+        i += 1
+    return out
+
+
+def _target_directory_flag(args: list[str]) -> Optional[str]:
+    for i, arg in enumerate(args):
+        if arg.startswith("--target-directory="):
+            return arg.split("=", 1)[1]
+        if arg == "-t" and i + 1 < len(args):
+            return args[i + 1]
+        if arg == "--target-directory" and i + 1 < len(args):
+            return args[i + 1]
+    return None
+
+
+def _sed_in_place_targets(args: list[str]) -> list[str]:
+    in_place = False
+    expression_supplied = False
+    script_consumed = False
+    targets: list[str] = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--":
+            targets.extend(p for p in args[i + 1:] if p and "://" not in p)
+            break
+        if arg in ("-i", "--in-place"):
+            in_place = True
+            # BSD sed: `sed -i '' 's/x/y/' file`
+            if i + 1 < len(args) and args[i + 1] == "":
+                i += 2
+            else:
+                i += 1
+            continue
+        if arg.startswith("-i") and arg != "-":
+            in_place = True
+            i += 1
+            continue
+        if arg.startswith("--in-place"):
+            in_place = True
+            i += 1
+            continue
+        if arg in _SED_EXPR_FLAGS:
+            expression_supplied = True
+            i += 2
+            continue
+        if (
+            arg.startswith("-e")
+            or arg.startswith("--expression=")
+            or arg.startswith("-f")
+            or arg.startswith("--file=")
+        ):
+            expression_supplied = True
+            i += 1
+            continue
+        if arg.startswith("-") and arg != "-":
+            i += 1
+            continue
+        if not expression_supplied and not script_consumed:
+            script_consumed = True
+            i += 1
+            continue
+        if arg and "://" not in arg:
+            targets.append(arg)
+        i += 1
+    return targets if in_place else []
+
+
+def _perl_in_place_targets(args: list[str]) -> list[str]:
+    in_place = False
+    targets: list[str] = []
+    skip_next_expr = False
+    for arg in args:
+        if skip_next_expr:
+            skip_next_expr = False
+            continue
+        if arg == "--":
+            continue
+        if arg.startswith("-") and arg != "-":
+            if "i" in arg.lstrip("-"):
+                in_place = True
+            # `-e 'script'`, `-pe 'script'`, `-E 'script'` 등은 다음 토큰이 program text.
+            opt = arg.lstrip("-")
+            if ("e" in opt or "E" in opt) and opt.lower().endswith(("e", "pe", "ne")):
+                skip_next_expr = True
+            continue
+        if arg and "://" not in arg:
+            targets.append(arg)
+    return targets if in_place else []
+
+
+def _awk_in_place_targets(args: list[str]) -> list[str]:
+    in_place = False
+    program_supplied = False
+    program_consumed = False
+    targets: list[str] = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--":
+            targets.extend(p for p in args[i + 1:] if p and "://" not in p)
+            break
+        if arg == "-i":
+            if i + 1 < len(args) and args[i + 1] == "inplace":
+                in_place = True
+            i += 2
+            continue
+        if arg in ("-iinplace", "--include=inplace"):
+            in_place = True
+            i += 1
+            continue
+        if arg in ("-f", "--file"):
+            program_supplied = True
+            i += 2
+            continue
+        if arg.startswith("-f") or arg.startswith("--file="):
+            program_supplied = True
+            i += 1
+            continue
+        if arg in ("-v", "-F") and i + 1 < len(args):
+            i += 2
+            continue
+        if arg.startswith("-") and arg != "-":
+            i += 1
+            continue
+        if not program_supplied and not program_consumed:
+            program_consumed = True
+            i += 1
+            continue
+        # awk variable assignment arguments are not file operands.
+        if arg and "://" not in arg and not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", arg):
+            targets.append(arg)
+        i += 1
+    return targets if in_place else []
+
+
+def _command_write_targets(argv: list[str]) -> list[str]:
+    toks = _peel_wrappers(argv)
+    if not toks:
+        return []
+    cmd = _command_basename(toks[0])
+    args = toks[1:]
+    if cmd == "cp":
+        target_dir = _target_directory_flag(args)
+        if target_dir is not None:
+            return [target_dir]
+        pos = _command_positionals(args, _CP_VALUE_FLAGS)
+        return [pos[-1]] if len(pos) >= 2 else []
+    if cmd == "mv":
+        target_dir = _target_directory_flag(args)
+        pos = _command_positionals(args, _CP_VALUE_FLAGS)
+        return ([target_dir] if target_dir is not None else []) + pos
+    if cmd == "rm":
+        return _command_positionals(args)
+    if cmd == "tee":
+        return _command_positionals(args)
+    if cmd == "sed":
+        return _sed_in_place_targets(args)
+    if cmd == "perl":
+        return _perl_in_place_targets(args)
+    if cmd in ("awk", "gawk"):
+        return _awk_in_place_targets(args)
+    return []
 
 
 def extract_bash_paths(command: str) -> list[str]:
-    """Bash command 안의 의심 path 토큰 추출 (v1: 보수적).
+    """Bash command 안의 write target path 추출 (best-effort).
 
-    write 지표 (sed -i / cp / mv / rm / >) 가 보일 때만 토큰 분해 후
-    `/` 또는 `.md`/`.py`/`.json`/`.sh` 확장자 포함 토큰을 path 후보로 반환.
-    indicator 없으면 빈 list — false positive 회피.
+    이 함수는 file boundary 용이다. 따라서 `cat README.md > src/generated.ts` 에서
+    `README.md` 같은 read operand 는 후보가 아니고, 실제 write target 인
+    `src/generated.ts` 만 반환한다.
     """
     if not any(re.search(ind, command) for ind in _BASH_WRITE_INDICATORS):
         return []
-    # 토큰화 — quote 보존 (따옴표 친 토큰을 식별해 통째로 제외하기 위함).
-    tokens = re.findall(r"[\"'][^\"']*[\"']|\S+", command)
     paths: list[str] = []
-    for t in tokens:
-        # 따옴표로 감싼 토큰 처리 (codex P2 round10):
-        #   - 작은따옴표('…') = 셸 확장 없음 → 통째로 제외. sed/awk/perl 스크립트(`'s/foo/bar/'`)가
-        #     `/` 를 포함한다는 이유로 write path 로 오인돼 정상 편집(`sed -i 's/foo/bar/' src/main.ts`)이
-        #     차단되던 false positive 방지.
-        #   - 확장 토큰 없는 큰따옴표("…") = 동일하게 제외 (확장 없는 literal 인용).
-        #   - $/backtick 든 큰따옴표("$HOME/…", "`cmd`/…") = 셸이 hook 후 확장 → inner 를 *살려*
-        #     아래 path 후보 검사를 거쳐 반환한다. 그러면 check_write_allowed 의 셸확장 가드
-        #     (shell_context)가 위치 미확정으로 차단. 따옴표째 버리면 `echo x > "$HOME/tests/x"`
-        #     가 검사 미도달로 프로젝트 밖 write 우회가 된다 (codex P2 round10).
-        #     ($ 든 큰따옴표 안의 sed 치환 `"s/$old/$new/"` 은 inner 가 아래 sed 스크립트 제외
-        #      로직에 걸려 자연히 후보에서 빠진다 — false positive 안 생김.)
-        if len(t) >= 2 and t[0] in "\"'" and t[-1] == t[0]:
-            inner = t[1:-1]
-            if t[0] == '"' and ("$" in inner or "`" in inner):
-                t = inner   # 따옴표 벗긴 내용으로 후속 path/sed 검사 진행
-            else:
-                continue
-        if not t or t.startswith("-"):
-            continue
-        # URL/원격 스킴 토큰(`https://…`, `ssh://…`, `git://…`)은 로컬 write 대상이 아님 → 제외
-        # (codex P2 round9). `curl https://… > docs/…/x.json` 의 URL 이 `/` 를 포함한다는 이유로
-        # write path 후보로 오인돼 tech-reviewer 의 정상 evidence 수집이 차단되던 false positive 방지.
-        # shell `>` 리다이렉트 대상은 항상 로컬 path 이므로 URL 제외가 write 누락을 만들지 않는다.
-        if "://" in t:
-            continue
-        # 따옴표 없이 쓴 sed/awk 치환 스크립트(`s/foo/bar/`, `y/abc/def/`)도 명령 syntax → 제외
-        # (codex P2 round10). delimiter 가 2번 이상 등장하는 `[sy]<delim>…<delim>` 형태만 매칭해
-        # `src/main.ts` 같은 정상 path(`s` 다음이 delimiter 아님)는 보존.
-        if re.match(r"^[sy]([/|#@,!~]).+\1", t):
-            continue
-        # path 후보 — `/` 포함 또는 알려진 확장자.
-        if "/" in t or re.search(r"\.(md|py|json|sh|mjs|ts|tsx|js|jsx)$", t):
-            paths.append(t)
-    return paths
+    for segment in _split_shell_segments(_shell_tokens_for_paths(command)):
+        argv, redirect_paths = _strip_redirections_for_paths(segment)
+        paths.extend(redirect_paths)
+        paths.extend(_command_write_targets(argv))
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for path in paths:
+        if path not in seen:
+            seen.add(path)
+            deduped.append(path)
+    return deduped
 
 
 # ── 외부 시스템 mutation 차단 (#597 커밋5) ─────────────────────────────

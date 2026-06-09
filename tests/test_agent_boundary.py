@@ -972,8 +972,28 @@ class BashHeuristicTests(unittest.TestCase):
         paths = extract_bash_paths("cp src/a.ts hooks/b.sh")
         self.assertIn("hooks/b.sh", paths)
 
+    def test_read_operands_not_extracted_as_write_paths(self):
+        # write boundary 는 실제 write target 만 검사한다. read operand 를 섞으면
+        # `cat README.md > src/generated.ts` 같은 정상 생성이 README.md write 로 오차단된다.
+        self.assertEqual(
+            extract_bash_paths("cat README.md > src/generated.ts"),
+            ["src/generated.ts"],
+        )
+        self.assertEqual(
+            extract_bash_paths("cp README.md src/generated.ts"),
+            ["src/generated.ts"],
+        )
+        self.assertEqual(
+            extract_bash_paths("cat docs/prd.md | tee docs/tech-review/evidence/x.json"),
+            ["docs/tech-review/evidence/x.json"],
+        )
+
     def test_perl_in_place(self):
         paths = extract_bash_paths("perl -i -pe 's/a/b/' docs/x.md")
+        self.assertIn("docs/x.md", paths)
+
+    def test_awk_in_place(self):
+        paths = extract_bash_paths("awk -i inplace '{ print }' docs/x.md")
         self.assertIn("docs/x.md", paths)
 
     def test_url_not_extracted_as_write_path(self):
@@ -995,6 +1015,8 @@ class BashHeuristicTests(unittest.TestCase):
         paths2 = extract_bash_paths("sed -i s/foo/bar/ src/main.ts")
         self.assertNotIn("s/foo/bar/", paths2)
         self.assertIn("src/main.ts", paths2)
+        # 파일 operand 위치가 확정된 뒤에는 확장자 없는 파일도 write target 으로 본다.
+        self.assertIn("Makefile", extract_bash_paths("sed -i 's/a/b/' Makefile"))
 
     def test_quoted_shell_expansion_token_extracted(self):
         # codex P2 (round10) — 큰따옴표 안에 $/backtick 이 있는 토큰은 셸이 확장하므로 inner 를
@@ -1006,15 +1028,17 @@ class BashHeuristicTests(unittest.TestCase):
         paths_bt = extract_bash_paths('echo x > "`pwd`/lib/y.rb"')
         self.assertIn("`pwd`/lib/y.rb", paths_bt)
 
-    def test_quoted_literal_path_still_excluded(self):
-        # 확장 토큰 없는 따옴표(작은따옴표 전체 / $·backtick 없는 큰따옴표)는 제외 유지 —
-        # sed 스크립트 false positive 방지 원칙 보존.
+    def test_quoted_literal_write_target_extracted(self):
+        # sed script 는 quote 여부와 무관하게 command syntax 라 제외한다.
         self.assertNotIn(
             "s/foo/bar/", extract_bash_paths("sed -i 's/foo/bar/' src/main.ts")
         )
-        # $·backtick 없는 큰따옴표 literal 경로도 제외(false negative 우선 원칙).
-        self.assertNotIn(
+        # 하지만 실제 write target 이면 quote 된 literal path 도 검사 대상이다.
+        self.assertIn(
             "docs/x.md", extract_bash_paths('sed -i "s/a/b/" "docs/x.md"')
+        )
+        self.assertIn(
+            "hooks/evil.sh", extract_bash_paths('echo hi > "hooks/evil.sh"')
         )
 
     def test_quoted_sed_script_with_var_excluded(self):
