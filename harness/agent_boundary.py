@@ -94,13 +94,15 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'(^|/)packages/[^/]+/src/',
         r'(^|/)apps/[^/]+/[^/]+\.toml$',
         r'(^|/)apps/[^/]+/[^/]+\.cfg$',
-        # 언어 중립 소스 루트 레이아웃
-        r'(^|/)lib/',          # 다수 언어 라이브러리 소스
-        r'(^|/)app/',          # Rails/Phoenix 등 루트 app/
-        r'(^|/)cmd/',          # Go 엔트리포인트
-        r'(^|/)internal/',     # Go 내부 패키지
-        r'(^|/)pkg/',          # Go 공개 패키지
-        r'(^|/)remotion/',     # Remotion 비디오 소스 (youTubeGenerator 등) — #696 override 이관 후보
+        # 언어 중립 소스 루트 레이아웃 — 프로젝트 루트(^) 앵커. 위 src/ 는 monorepo 중첩
+        # (services/x/src 등)도 소스라 (^|/) 유지하지만, lib/cmd/pkg/internal 등은 모듈 루트
+        # 성격이라 중첩(node_modules/*/lib·.github/*/lib·vendor/*/pkg)을 소스로 오인하면 안 된다 (codex P2).
+        r'^lib/',          # 다수 언어 라이브러리 소스
+        r'^app/',          # Rails/Phoenix 등 루트 app/
+        r'^cmd/',          # Go 엔트리포인트
+        r'^internal/',     # Go 내부 패키지
+        r'^pkg/',          # Go 공개 패키지
+        r'^remotion/',     # Remotion 비디오 소스 (youTubeGenerator 등) — #696 override 이관 후보
     ),
     "architect": (
         r'(^|/)docs/',
