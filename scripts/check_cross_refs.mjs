@@ -47,11 +47,11 @@ const DENY_LIST = [
   },
   {
     pattern: /prose-only-principle\.md/,
-    label: '폐기 SSOT `prose-only-principle.md` — `orchestration.md §0` 로 흡수',
+    label: '폐기 SSOT `prose-only-principle.md` — prose-only 원칙은 `CLAUDE.md` / `docs/plugin/loop-procedure.md` 로 흡수',
   },
   {
     pattern: /dcness-rules\.md/,
-    label: '폐기 SSOT `dcness-rules.md` — `orchestration.md §0` 안티패턴 1+3 로 흡수',
+    label: '폐기 SSOT `dcness-rules.md` — 강제 원칙은 `CLAUDE.md`, 실행 mechanics 는 `docs/plugin/loop-procedure.md` 로 흡수',
   },
   {
     pattern: /docs\/ui-spec\b/,
@@ -79,7 +79,7 @@ const DENY_LIST = [
   },
   {
     pattern: /\b8\s+loop\s+(행별|풀스펙)/,
-    label: '옛 loop 카운트 — 현재 7 loop (orchestration.md §4 sub-section 정합)',
+    label: '옛 loop 카운트 — 현재 loop 진본은 각 `skills/<skill>/SKILL.md` 의 `## Loop` contract',
   },
   {
     // `architect-loop-routing.md` 등 skill 라우팅 파일은 앞에 `-`/단어문자가 붙어 제외.

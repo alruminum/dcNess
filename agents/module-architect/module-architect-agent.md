@@ -14,7 +14,7 @@
 
 ## 먼저 읽을 문서
 
-- 필수: [`docs/plugin/module-design-principles.md`](../../docs/plugin/module-design-principles.md)
+- 필수: [`agents/_shared/module-design-principles.md`](../_shared/module-design-principles.md)
 - 필수: 대상 epic의 `architecture.md`, `adr.md`, `domain-model.md`
 - 상황별: `docs/design.md`, `docs/db-schema.md`, 관련 기존 impl 문서
 - 참고: [`references/implementation-boundary.md`](references/implementation-boundary.md), [`references/contract-amendment.md`](references/contract-amendment.md)

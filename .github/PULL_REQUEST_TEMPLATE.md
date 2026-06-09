@@ -38,7 +38,7 @@ Part of #N
 
 ## 신규 surface justification (새 public skill/command/agent/gate 추가 시만)
 
-<!-- doctrine: 사용자-facing surface 는 작게 유지가 기본 (positioning.md 신규 surface justification + CLAUDE.md 안티패턴 5).
+<!-- 운영 원칙: 사용자-facing surface 는 작게 유지가 기본 (positioning.md 신규 surface justification + CLAUDE.md 안티패턴 5).
      새 public 발화를 늘리는 PR 에서만 작성. surface 변화 없으면 "N/A".
      세 질문에 답: (1) 기존 risk router lane 으로 흡수 안 되나? (2) 기존 validator/reviewer 로 검증 안 되나? (3) 기존 agent 내부 단계로 못 두고 새 public 발화가 꼭 필요한가? -->
 -

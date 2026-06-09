@@ -145,8 +145,8 @@ EOF
 ~/project/dcNess (main branch, plugin 개발 중)
 
 # 최근 진행
-- PR #36 (DCN-CHG-37): /quick + /product-plan skills 머지
-- PR #35 (DCN-CHG-36): legacy triage skill 머지
+- /to-issue issue drafting 흐름 정리 완료
+- /impl-loop 병렬 peer 세션 정책 정리 완료
 - PR #34 (DCN-CHG-35): multi-session e2e smoke 머지
 - PR #33 (DCN-CHG-34): hooks/ 인프라 머지
 - PR #32 (DCN-CHG-33): session_state.py CLI 확장 머지
@@ -166,7 +166,7 @@ EOF
 - /ux skill (Pencil MCP 의존)
 - commands/ 카테고리 추가
 - ~~worktree 도입~~ → 옵션 D 채택 완료 — 행동형 skill 진입 시 EnterWorktree 기본 켜짐, 거부 표현 시에만 건너뜀 (loop-procedure §1.1)
-- manual smoke (실 claude 에서 legacy triage /quick 검증)
+- manual smoke (실 claude 에서 /spec → /design → /impl 흐름 검증)
 
 # 미해결 의논거리
 - ~~worktree 옵션 C vs D~~ → **D 채택 완료** (#255 정합). 행동형 skill 기본 켜짐, 거부 표현 정규식 `워크트리\s*(빼|없|말)`
@@ -174,9 +174,9 @@ EOF
 
 # 컨텍스트
 - 핵심: harness/session_state.py, harness/hooks.py, hooks/*.sh, commands/*.md
-- spec: docs/archive/conveyor-design.md (v2 Task tool 패턴, 역사 자료), docs/plugin/orchestration.md
+- spec: docs/archive/conveyor-design.md (v2 Task tool 패턴, 역사 자료), docs/plugin/loop-procedure.md
 - agents/*.md 12개 모두 prose-only (DCN-CHG-27)
-- proposal: docs/plugin/prose-only-principle.md §2 (Anti-Pattern 5원칙)
+- 기준: CLAUDE.md 강제 원칙 + docs/plugin/workflow-router.md
 
 다음 세션은 worktree 도입 의논 이어서 + manual smoke 또는 /init-dcness 진행.
 ```

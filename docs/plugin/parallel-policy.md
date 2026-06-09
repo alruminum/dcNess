@@ -1,15 +1,15 @@
-# 병렬 wave 실행 정책 (parallel wave execution policy)
+# 병렬 peer 세션 실행 정책
 
-> impl chain 의 **opt-in 독립 멀티세션 병렬** 정책 SSOT. 기본은 직렬 chain 이고, 병렬은 독립 task 가 명확히 판정될 때만 켜지는 예외다. lane/shape 판정 = [`workflow-router.md`](workflow-router.md). chain mechanics = [`loop-procedure.md`](loop-procedure.md).
+> impl chain 의 **opt-in 별도 세션 병렬** 정책 SSOT. 기본은 직렬 chain 이고, 병렬은 독립 task 가 명확히 판정될 때만 켜지는 예외다. lane/shape 판정 = [`workflow-router.md`](workflow-router.md). chain mechanics = [`loop-procedure.md`](loop-procedure.md).
 >
 > 🔴 **범위** — 본 문서는 허용 조건, claim board, merge lock, close semantics 를 정의한다. 구현 표면은 [`parallel_wave.py`](../../harness/parallel_wave.py) (`compute_waves`) + `dcness-helper wave-plan --register` + `wave-claim`/`wave-status` + [`pr-finalize.sh`](../../scripts/pr-finalize.sh) merge lock 이다.
 
-## 1. doctrine — 직렬이 기본, 병렬은 조건부 예외
+## 1. 운영 원칙 — 직렬이 기본, 병렬은 조건부 예외
 
 - **기본은 현행 직렬 chain.** impl chain 은 task 한 개씩 진행한다. 한 task 가 PR merge 까지 끝난 뒤 다음 task 에 진입한다.
 - **병렬은 opt-in.** `wave-plan` 이 독립 후보를 계산하고 사용자가 병렬 실행을 명시적으로 선택한 경우에만 peer mode 를 등록한다.
-- **각 peer 는 동등한 메인 세션이다.** leader / worker / fan-in 세션은 없다. 사용자가 터미널 N개에서 독립 interactive Claude Code 세션을 띄우고 각 세션이 기존 `/impl-loop <canonical-impl-path>` single task 를 수행한다.
-- **governance 는 줄이지 않는다.** 각 peer task 는 기존 branch → PR → review → CI → merge 규칙을 그대로 탄다.
+- **각 peer 는 동등한 메인 세션이다.** 한 세션 안에서 worker 를 흩뿌리고 모으는 방식이 아니다. 사용자가 터미널 N개에서 독립 interactive Claude Code 세션을 띄우고 각 세션이 기존 `/impl-loop <canonical-impl-path>` single task 를 수행한다.
+- **검증 규칙은 줄이지 않는다.** 각 peer task 는 기존 branch → PR → review → CI → merge 규칙을 그대로 탄다.
 
 ## 2. 실행 모델 — 독립 interactive 세션
 
@@ -37,7 +37,7 @@ dcness-helper wave-plan --register <impl-glob-or-dir> \
 
 - `wave-plan` 은 `depends_on` + Scope 파일집합 disjoint 로 후보 wave 를 계산한다.
 - `--register` 를 붙인 경우 computed `parallel` step 에 속한 impl 파일의 **canonical impl path** 만 claim board 에 등록한다. serial / high-risk / 의존 대기 task 는 등록하지 않는다. 이 등록이 peer mode activation 신호다.
-- 사용자에게 worker 세션 입력은 `wave-id` 가 아니라 `/impl-loop <canonical-impl-path>` 로 안내한다.
+- 사용자에게 peer 세션 입력은 `wave-id` 가 아니라 `/impl-loop <canonical-impl-path>` 로 안내한다.
 - 안내에는 각 task 의 엔진을 명시한다: single 기본은 풀 4-agent, chain 기본은 build-worker, high-risk task 는 풀 4-agent 승격.
 
 ## 4. task claim board
@@ -110,7 +110,3 @@ peer task 는 PR 생성까지 독립적으로 갈 수 있지만, merge 단계는
 | `wave-release` | completed/failed/released 상태 기록 |
 | `merge-lock acquire/release/complete` | `pr-finalize.sh` 내부 merge mutex + completed 기록 |
 | `merge-lock break` | operator 확인 후 stale merge lock tokenless 복구 |
-
-## 9. legacy residue
-
-`parallel_wave.fan_in_check` / `WorkerResult` / `FanInResult` 는 이전 fan-in 모델의 구조 검증 helper 로 남아 있다. 현재 peer 모델의 핵심 경로는 claim board + merge lock 이며, fan-in helper 는 호환/후속 정리 대상으로 취급한다.

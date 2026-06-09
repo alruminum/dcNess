@@ -278,7 +278,7 @@ chain = 위 공통 골격 + 엔진을 **task 한 개씩** 반복. task N 이 완
 
 ### 병렬 wave (opt-in, chain 한정)
 
-> 🔴 **기본은 직렬**. 병렬은 *독립 task 가 기계적으로 확신될 때만* opt-in 으로 켜진다. 정책 SSOT = [`parallel-policy.md`](../../docs/plugin/parallel-policy.md). 본 절은 그 정책의 *절차* 만 담는다.
+> 🔴 **기본은 직렬**. 병렬은 *독립 task 가 기계적으로 확신될 때만* opt-in 으로 켜진다. 별도 peer 세션 정책 = [`parallel-policy.md`](../../docs/plugin/parallel-policy.md). 본 절은 그 정책의 *절차* 만 담는다.
 
 dry preview 표 echo *직후*, wave 후보를 계산한다:
 
@@ -326,8 +326,6 @@ merge lock 이 보존하는 것:
 - 한 번에 한 peer 세션만 merge 단계 진입.
 - 뒤 task 가 앞 task 보다 먼저 merge 되어 `Closes #story` / `Closes #epic` 이 조기 발동하는 사고 차단.
 - lock 이후 base update / PR branch update 가능 여부 / CI 상태 재확인.
-
-`parallel_wave.fan_in_check` 는 이전 fan-in 모델의 legacy helper 로 남아 있지만, 현재 핵심 경로는 claim board + merge lock 이다.
 
 ### task 경계 — next-task 통합 호출 (#471)
 
@@ -430,7 +428,7 @@ PR merge 직후 *반드시* 실행 (issue #396):
 ## 안티패턴 (회귀 방지)
 
 - ❌ task N 개를 한 sub-agent 호출에 묶어 한 번에 처리 — task 별 PR / 이슈 close 분리가 깨지고 `/run-review` 분석 단위 붕괴. 한 번에 한 task. (build-worker 는 1 task 통합 — 충돌 X)
-- ❌ **무분별한** task 동시 병렬 진행 — git 충돌 + cache_read 폭주 ([#216](https://github.com/alruminum/dcNess/issues/216) — \$1,531 / 단일 세션). 직렬이 default 이며, 병렬은 *독립 task 가 기계 판정으로 확신될 때만* opt-in 으로 켜진다 ([병렬 wave](#병렬-wave-opt-in-chain-한정)). 정책 = [`parallel-policy.md`](../../docs/plugin/parallel-policy.md). opt-in 등록 없이/모호한데 병렬로 끌면 안티패턴 그대로.
+- ❌ **무분별한** task 동시 병렬 진행 — git 충돌 + cache_read 폭주 ([#216](https://github.com/alruminum/dcNess/issues/216) — \$1,531 / 단일 세션). 직렬이 default 이며, 병렬은 *독립 task 가 기계 판정으로 확신될 때만* opt-in 으로 켜진다 ([병렬 wave](#병렬-wave-opt-in-chain-한정)). 별도 peer 세션 정책 = [`parallel-policy.md`](../../docs/plugin/parallel-policy.md). opt-in 등록 없이/모호한데 병렬로 끌면 안티패턴 그대로.
 - ❌ 한 task 의 PR 머지 전 다음 task 진입 — task 간 의존 깨짐.
 - ❌ escalate 신호 무시하고 다음 task 진행 — 사용자 부재 환경 추측 진행 = 폭주.
 - ❌ chain 전체 완료 후 자율 작업 (이슈 등록 / cleanup / 분석) 진입 시 `post-task-begin` marker 누락 — task ROI 측정 왜곡 (#472).
