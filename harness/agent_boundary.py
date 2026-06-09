@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -77,9 +78,16 @@ RUN_DIR_PROSE_ALLOW: tuple[str, ...] = (
 
 
 # ── ALLOW_MATRIX (agent 별 Write 허용) ─────────────────────────
-# RWHarness agent-boundary.py:48~84 와 동일 패턴.
+# RWHarness agent-boundary.py:48~84 기반. engineer / test-engineer 는 #694 에서 언어·레이아웃
+# 중립으로 확장 (JS/TS 전용 → Python·Go·Ruby·JVM·C#·PHP·Elixir·remotion 등 비-JS 외부 프로젝트).
 ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
+    # engineer — 구현 소스. JS/TS·Python 모노레포(src/·apps/·packages/) + 언어 중립 소스 루트
+    # (lib/·app/·cmd/·internal/·pkg/) + Remotion 비디오 소스(remotion/). docs/ · 루트 비소스
+    # 문서(README 등)는 미매칭으로 차단 — 역할 격리 유지.
+    # ⚠️ remotion/ 같은 프로젝트 고유 디렉토리는 코어 기본값에 둔 임시 — 무한한 비표준 레이아웃은
+    #    프로젝트별 override 로 이관 예정(#696). 그때 코어 기본값 다이어트.
     "engineer": (
+        # JS/TS·Python 모노레포 관례
         r'(^|/)src/',
         r'(^|/)apps/[^/]+/src/',
         r'(^|/)apps/[^/]+/app/',
@@ -87,6 +95,15 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'(^|/)packages/[^/]+/src/',
         r'(^|/)apps/[^/]+/[^/]+\.toml$',
         r'(^|/)apps/[^/]+/[^/]+\.cfg$',
+        # 언어 중립 소스 루트 레이아웃 — 프로젝트 루트(^) 앵커. 위 src/ 는 monorepo 중첩
+        # (services/x/src 등)도 소스라 (^|/) 유지하지만, lib/cmd/pkg/internal 등은 모듈 루트
+        # 성격이라 중첩(node_modules/*/lib·.github/*/lib·vendor/*/pkg)을 소스로 오인하면 안 된다 (codex P2).
+        r'^lib/',          # 다수 언어 라이브러리 소스
+        r'^app/',          # Rails/Phoenix 등 루트 app/
+        r'^cmd/',          # Go 엔트리포인트
+        r'^internal/',     # Go 내부 패키지
+        r'^pkg/',          # Go 공개 패키지
+        r'^remotion/',     # Remotion 비디오 소스 (youTubeGenerator 등) — #696 override 이관 후보
     ),
     "architect": (
         r'(^|/)docs/',
@@ -109,15 +126,23 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'(^|/)design-variants/',
         r'(^|/)docs/ui-spec',
     ),
+    # test-engineer — 테스트만 (역할 격리: 구현 소스 write 금지). 언어 중립 테스트 컨벤션을
+    # 디렉토리(tests/·test/·spec/·__tests__/)와 파일명(test_*.py·*_test.{go,rb,..}·
+    # *.test.{ts,..}·*Test(s).{java,kt,cs,php}·*_spec.rb 등)으로 포괄.
+    # 기존 JS/TS 전용 패턴(src/__tests__/·apps/*/tests/ 등)은 아래 광범위 패턴에 흡수됨
+    # (test_test_engineer_js_ts_regression 회귀 가드가 보존 검증).
     "test-engineer": (
-        r'(^|/)src/__tests__/',
-        r'(^|/)src/.*\.test\.[jt]sx?$',
-        r'(^|/)src/.*\.spec\.[jt]sx?$',
-        r'(^|/)apps/[^/]+/tests/',
-        r'(^|/)apps/[^/]+/src/__tests__/',
-        r'(^|/)apps/[^/]+/src/.*\.test\.[jt]sx?$',
-        r'(^|/)apps/[^/]+/src/.*\.spec\.[jt]sx?$',
-        r'(^|/)packages/[^/]+/src/__tests__/',
+        # 테스트 디렉토리 — 안의 모든 파일이 테스트 (언어 다수)
+        r'(^|/)tests?/',           # tests/ · test/ — Python·Rust·PHP·JVM(src/test/)·JS·일반
+        r'(^|/)spec/',             # Ruby RSpec, JS Jasmine
+        r'(^|/)__tests__/',        # JS/TS jest — 어디든
+        # 테스트 파일명 — 디렉토리 밖 테스트 (언어별 컨벤션)
+        r'(^|/)test_[^/]+\.py$',                          # Python test_*.py
+        r'(^|/)[^/]+_test\.(py|go|rb|dart|exs?)$',        # Python·Go·Ruby·Dart·Elixir *_test.*
+        r'(^|/)[^/]+_spec\.rb$',                          # Ruby *_spec.rb
+        r'(^|/)[^/]+\.test\.[jt]sx?$',                    # JS/TS *.test.*
+        r'(^|/)[^/]+\.spec\.[jt]sx?$',                    # JS/TS *.spec.*
+        r'(^|/)[^/]+Tests?\.(java|kt|kts|scala|cs|php)$', # JVM·C#·PHP *Test(s).*
     ),
     "ux-architect": (
         r'(^|/)docs/ux-flow\.md$',
@@ -140,6 +165,40 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
 # 키 부재 시 "미정의 agent = 통과" fallback 으로 빠져 /impl-loop 핵심 mutation agent 의
 # 경계가 무력화되던 결함(#597) 수정. (run_dir prose self-write 는 RUN_DIR_PROSE_ALLOW carve-out.)
 ALLOW_MATRIX["build-worker"] = ALLOW_MATRIX["engineer"] + ALLOW_MATRIX["test-engineer"]
+
+
+# ── 코드 agent 전용영역 deny (#694 codex P2) ───────────────────────
+# engineer / test-engineer / build-worker 의 언어 중립 ALLOW 패턴(lib/·internal/·cmd/·
+# tests?/·spec/·test_*.py 등)은 re.search 라 docs/ 하위 동명 디렉토리(docs/internal/·
+# docs/spec/·docs/tests/)나 docs 안 테스트 파일명을 *우회 허용* 한다. docs/ 는 architect,
+# design-variants/ 는 designer 전용이므로, 코드 agent 의 write 를 ALLOW 검사보다 *먼저*
+# 차단해 역할 경계를 지킨다. (기존 src/ 패턴의 docs/src/ 우회도 함께 닫힌다.)
+_CODE_AGENTS: frozenset = frozenset({"engineer", "test-engineer", "build-worker"})
+# 루트(^) 앵커 — monorepo 의 동명 app/package(apps/docs/src·packages/docs/src)를 문서로
+# 오인해 정상 소스를 막지 않도록 루트 docs 트리만 deny (#694 codex P2). _normalize 가
+# ./·.. 를 해소하므로 ^ 앵커가 안전(우회 prefix 없음).
+_CODE_AGENT_EXCLUSIVE_DENY: tuple[str, ...] = (
+    # 다른 역할 전용 산출 영역 — 루트(^) 앵커 (monorepo 동명 패키지 apps/docs/src 는 소스라 허용).
+    r'^docs/',            # architect / ux-architect / tech-reviewer 전용
+    r'^design-variants/', # designer 전용
+    # 의존성 / 빌드 산출 트리 — 누구도 직접 write 하지 않는다. engineer 의 (^|/)src/ 와
+    # test-engineer 의 (^|/)tests?/·spec/ 가 이 트리 안 src/tests 를 *중첩* 매칭하던 우회를
+    # 차단 (codex P1/P2). 언어 전반의 보편 집합 — 프로젝트 고유 추가는 #696 override.
+    #
+    # 두 그룹으로 나눈다 (codex P2 round10):
+    #  A. 이름 충돌 없는 트리 — 디렉토리명이 소스 디렉토리·패키지명과 겹칠 일이 없어 어디서든
+    #     (^|/) deny 가 안전.
+    r'(^|/)node_modules/',   # JS/TS 의존성
+    r'(^|/)\.venv/',          # Python 가상환경
+    r'(^|/)venv/',
+    r'(^|/)__pycache__/',     # Python 캐시 (항상 캐시 — 어디든)
+    #  B. 이름 충돌 가능 트리 — vendor·third_party·dist·build·target·out 은 패키지명이나
+    #     소스 디렉토리명과 겹칠 수 있다 (예 monorepo 의 `apps/vendor/src/` 정상 패키지,
+    #     허용된 `src/build/`). 어디서든 (^|/) deny 하면 이런 정당 소스를 오차단하므로,
+    #     루트 또는 monorepo 패키지 루트(apps/*·packages/*)에만 앵커한다 (codex P2 round10).
+    r'^(?:vendor|third_party|dist|build|target|out)/',
+    r'(^|/)(?:apps|packages)/[^/]+/(?:vendor|third_party|dist|build|target|out)/',
+)
 
 
 # ── READ_DENY_MATRIX (agent 별 Read 금지) ──────────────────────
@@ -221,19 +280,39 @@ def is_opt_out(cwd: Optional[Path] = None) -> bool:
 
 
 def _normalize(file_path: str, cwd: Optional[Path] = None) -> str:
-    """절대 path → cwd 상대 path. 외부 path 는 그대로 반환."""
+    """path 를 cwd 기준으로 resolve(`.`/`..`/심볼릭 해소) 후 cwd 상대로 환원.
+
+    절대/상대 동일 정규화. cwd 밖(상위 탈출·외부 절대)이면 *절대경로* 를 반환한다 —
+    호출부(check_write/read_allowed)의 cwd-밖 가드(`/` 시작)가 차단하게 (#694 codex P1).
+    원본 문자열을 돌려주면 `lib/../../lib/x` 같은 중첩 .. 탈출이 ALLOW 패턴에 매칭되는
+    우회가 생긴다.
+    """
     if cwd is None:
         cwd = Path.cwd()
+    # 디렉토리 타깃(`cp x tests/`·`mv y apps/web/src/`)의 끝 구분자 보존 — resolve()가 끝 `/`를
+    # 떼면 ALLOW 패턴(`tests?/`·`.../src/`)과 deny 패턴(`^docs/`·`(^|/)hooks/`)이 디렉토리 루트를
+    # 미매칭해, 정당 in-bound write 가 오차단되고 보호 디렉토리 타깃이 누락된다 (#694 codex P2 r10).
+    # 끝 `/` 외에 `/.`(예 `cp x tests/.`)·`/./` 도 같은 디렉토리를 가리키는 흔한 스펠링이므로
+    # 동일하게 끝 `/`로 보존한다. resolve() 가 `/.` 를 떼어 `tests` 로 만드는 것을 보정 (codex P2 r10).
+    trailing = (
+        "/" if file_path.endswith(("/", os.sep, "/.", os.sep + ".")) else ""
+    )
     try:
-        p = Path(file_path)
-        if p.is_absolute():
-            try:
-                return str(p.resolve().relative_to(cwd.resolve()))
-            except ValueError:
-                # cwd 밖 — 그대로 반환 (외부 path 는 패턴 매칭에서 잡거나 통과)
-                return str(p)
-        return file_path
-    except (OSError, ValueError):
+        # ~ / ~user 는 셸이 hook 통과 *후* home 으로 확장하므로 미리 모사 — home 은 cwd 밖이라
+        # 아래 resolve 가 절대경로화 → 호출부 cwd-밖 가드가 차단 (#694 codex P2).
+        p = Path(file_path).expanduser()
+        base = p if p.is_absolute() else (cwd / p)
+        resolved = base.resolve()
+        try:
+            rel = str(resolved.relative_to(cwd.resolve()))
+            # cwd 자기 자신(rel == ".")엔 `/`를 붙이지 않는다 — 루트는 어떤 ALLOW 도 아니며
+            # `./` 오매칭을 막는다. resolve() 결과는 끝 `/`가 없으므로 슬래시 중복 없음.
+            return rel + trailing if rel != "." else rel
+        except ValueError:
+            # cwd 밖 — 절대경로 반환 (가드의 `/` 시작 체크가 차단). 끝 `/`는 무해(가드 우선).
+            return str(resolved) + trailing
+    except (OSError, ValueError, RuntimeError):
+        # expanduser 가 home 미해결 시 RuntimeError — 원본 반환(`~` 시작은 가드가 차단).
         return file_path
 
 
@@ -252,12 +331,17 @@ def check_write_allowed(
     file_path: str,
     *,
     cwd: Optional[Path] = None,
+    shell_context: bool = False,
 ) -> Optional[str]:
     """Write/Edit 검사 — block reason str / None=allow.
 
     메인 Claude (agent=None / 빈 문자열) = 통과. 메인 거버넌스는 Document Sync 가 강제.
     is_infra_project() True = 통과 — dcness 자체 SSOT 편집.
     `.no-dcness-guard` 마커 = 통과.
+
+    shell_context=True (Bash 추출 경로) — `$VAR`/`$()`/backtick 셸 확장 토큰을 추가 차단한다
+    (셸이 hook 후 확장 → 위치 미확정). Edit/Write 의 literal file_path 는 False(기본)라
+    프레임워크 route 파일명(users.$id.tsx 등)의 literal `$` 를 막지 않는다 (#694 codex P2).
     """
     if not agent:
         return None
@@ -266,7 +350,33 @@ def check_write_allowed(
     if is_opt_out(cwd):
         return None
 
+    # 셸 변수/명령치환 — Bash 출처(shell_context)만, *정규화 전 원본* 에 대해 검사한다.
+    # `$PWD/../tests/x` 처럼 `..` 가 `$` 세그먼트를 상쇄하면 _normalize 후 norm 에서 `$` 가
+    # 사라져(→ `tests/x`) 셸가드를 우회하지만, 런타임엔 셸이 `$PWD` 를 확장해 프로젝트 밖에
+    # write 한다 (#694 codex P2 r10). 원본 file_path 에 `$`/backtick 이 있으면 위치 미확정으로
+    # 즉시 차단. Edit/Write 의 literal `$` 파일명(users.$id.tsx)은 shell_context=False 라 통과.
+    # Bash 는 shlex tokenization 뒤 quote 원형을 보존하지 않으므로, write target 에 `$`/backtick 이
+    # 남아 있으면 보수적으로 expansion risk 로 본다.
+    if shell_context and ("$" in file_path or "`" in file_path):
+        return (
+            f"{agent} 셸 확장 경로 차단: `{file_path}` — Bash 의 $VAR/$()/backtick 은 hook 후 "
+            f"셸 확장돼 위치 미확정 (프로젝트 밖 write 우회 방지)."
+        )
+
     norm = _normalize(file_path, cwd)
+
+    # cwd 밖 경로 차단 (#694 codex P2) — _normalize 가 cwd 상대화에 성공하면 항상 cwd-내
+    # 상대경로다. `/`(절대 외부) 또는 `../`(상위 탈출)로 시작하면 cwd 밖이며, 이때 원본을
+    # ALLOW 패턴에 먹이면 `../tests/x` 가 `(^|/)tests?/` 에 매칭되는 등 경계 우회가 생긴다.
+    # 절대외부·상위탈출·~home — 출처 무관 공통 차단. _normalize 가 cwd 상대화에 성공하면 항상
+    # cwd-내 상대경로이므로, `/`(절대 외부)·`..`/`../`(상위 탈출)·`~`(home, expanduser 잔존)로
+    # 시작하면 프로젝트 루트 밖이다 (#694 codex P1/P2). 원본을 ALLOW 패턴에 먹이면 `../tests/x`
+    # 가 `(^|/)tests?/` 에 매칭되는 우회가 생긴다.
+    if norm.startswith("/") or norm == ".." or norm.startswith("../") or norm.startswith("~"):
+        return (
+            f"{agent} 경계 밖 경로 차단: `{norm}` — 프로젝트 루트 밖 write 금지 "
+            f"(.. 상위 탈출 / 절대 외부 / ~ home)."
+        )
 
     # 0. run_dir prose carve-out — build-worker 의 build-{test,impl,validate}.md self-write 한정.
     #    agent + 파일명 둘 다 좁혀 PASS 마커 위조를 차단 (codex P1). INFRA/ALLOW 검사보다 먼저.
@@ -278,7 +388,18 @@ def check_write_allowed(
     if matched:
         return f"인프라 path 보호: matched `{matched}` (DCNESS_INFRA_PATTERNS)"
 
-    # 2. ALLOW_MATRIX 미매칭 → 차단.
+    # 2. 코드 agent 전용영역 deny → ALLOW 검사보다 먼저 (#694 codex P2).
+    #    언어 중립 ALLOW 패턴이 docs/·design-variants/ 하위 동명 디렉토리/파일명을
+    #    re.search 로 우회 허용하는 것을 차단 — docs/ 는 architect, design-variants/ 는 designer.
+    if agent in _CODE_AGENTS:
+        matched = _matches_any(norm, _CODE_AGENT_EXCLUSIVE_DENY)
+        if matched:
+            return (
+                f"{agent} 전용영역 침범 차단: `{norm}` matched `{matched}` — "
+                f"docs/ 는 architect, design-variants/ 는 designer 전용 (코드 agent write 금지)."
+            )
+
+    # 3. ALLOW_MATRIX 미매칭 → 차단.
     allowed = ALLOW_MATRIX.get(agent)
     if allowed is None:
         # 미정의 agent — false positive 회피로 통과.
@@ -328,8 +449,9 @@ def check_read_allowed(
 
 # ── Bash heuristic ────────────────────────────────────────────────────
 
-# v1: 명시적 위반 패턴 (sed -i / awk -i / cp / mv / rm / 리다이렉션) 만 잡는다.
-# 정밀 path 추출 X — false negative 우선 (false positive 회피).
+# v1: 명시적 write 구문(sed/perl -i / cp / mv / rm / tee / 리다이렉션) 만 잡는다.
+# Bash 전체를 보안 파서처럼 해석하지 않는다. 단, 후보를 잡을 때는 "path처럼 보이는 모든
+# 토큰" 이 아니라 실제 write 대상만 추출해 read operand 오차단을 줄인다.
 _BASH_WRITE_INDICATORS: tuple[str, ...] = (
     r'\bsed\b\s+(?:[-]\w*i\w*|--in-place)',
     r'\bawk\b\s+(?:[-]\w*i\w*|--in-place)',
@@ -339,44 +461,272 @@ _BASH_WRITE_INDICATORS: tuple[str, ...] = (
     r'>>\s*\S',    # append redirect
     r'\btee\b',
 )
+_WRITE_REDIRECT_OPS = frozenset({">", ">>", ">|", "&>", ">&", "<>"})
+_READ_REDIRECT_OPS = frozenset({"<", "<<", "<<-"})
+_SHELL_SEPARATORS = frozenset({"&&", "||", ";", "|", "&"})
+_CP_VALUE_FLAGS = frozenset({"-t", "--target-directory"})
+_SED_EXPR_FLAGS = frozenset({"-e", "--expression", "-f", "--file"})
+
+
+def _shell_tokens_for_paths(command: str) -> list[str]:
+    """Path 추출용 shell tokenization.
+
+    `shlex` 로 quote 를 해석하고 punctuation 을 분리한다. unmatched quote 등으로 실패하면
+    빈 list 를 반환한다. 이 hook 은 보안 경계가 아니라 실수 방지용 denylist 이므로
+    parse 불능 command 에서 억지 추출로 false positive 를 만들지 않는다.
+    """
+    try:
+        lexer = shlex.shlex(_strip_heredocs(command), posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        return list(lexer)
+    except ValueError:
+        return []
+
+
+def _split_shell_segments(tokens: list[str]) -> list[list[str]]:
+    segments: list[list[str]] = []
+    cur: list[str] = []
+    for tok in tokens:
+        if tok in _SHELL_SEPARATORS:
+            if cur:
+                segments.append(cur)
+                cur = []
+        else:
+            cur.append(tok)
+    if cur:
+        segments.append(cur)
+    return segments
+
+
+def _strip_redirections_for_paths(tokens: list[str]) -> tuple[list[str], list[str]]:
+    """segment 에서 redirection write target 을 수집하고 command argv 만 반환."""
+    argv: list[str] = []
+    paths: list[str] = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        # `2>err.log` 는 shlex 가 `2`, `>`, `err.log` 로 분리한다. fd 번호는 argv 에 넣지 않는다.
+        if tok.isdigit() and i + 1 < len(tokens) and tokens[i + 1] in (
+            _WRITE_REDIRECT_OPS | _READ_REDIRECT_OPS
+        ):
+            op = tokens[i + 1]
+            if i + 2 < len(tokens) and op in _WRITE_REDIRECT_OPS:
+                paths.append(tokens[i + 2])
+            i += 3 if i + 2 < len(tokens) else 2
+            continue
+        if tok in (_WRITE_REDIRECT_OPS | _READ_REDIRECT_OPS):
+            if i + 1 < len(tokens) and tok in _WRITE_REDIRECT_OPS:
+                paths.append(tokens[i + 1])
+            i += 2 if i + 1 < len(tokens) else 1
+            continue
+        argv.append(tok)
+        i += 1
+    return argv, paths
+
+
+def _command_positionals(args: list[str], value_flags: frozenset = frozenset()) -> list[str]:
+    out: list[str] = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--":
+            out.extend(args[i + 1:])
+            break
+        if arg.startswith("-") and arg != "-":
+            base = arg.split("=", 1)[0]
+            if base in value_flags and "=" not in arg:
+                i += 2
+            else:
+                i += 1
+            continue
+        out.append(arg)
+        i += 1
+    return out
+
+
+def _target_directory_flag(args: list[str]) -> Optional[str]:
+    for i, arg in enumerate(args):
+        if arg.startswith("--target-directory="):
+            return arg.split("=", 1)[1]
+        if arg == "-t" and i + 1 < len(args):
+            return args[i + 1]
+        if arg == "--target-directory" and i + 1 < len(args):
+            return args[i + 1]
+    return None
+
+
+def _sed_in_place_targets(args: list[str]) -> list[str]:
+    in_place = False
+    expression_supplied = False
+    script_consumed = False
+    targets: list[str] = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--":
+            targets.extend(p for p in args[i + 1:] if p and "://" not in p)
+            break
+        if arg in ("-i", "--in-place"):
+            in_place = True
+            # BSD sed: `sed -i '' 's/x/y/' file`
+            if i + 1 < len(args) and args[i + 1] == "":
+                i += 2
+            else:
+                i += 1
+            continue
+        if arg.startswith("-i") and arg != "-":
+            in_place = True
+            i += 1
+            continue
+        if arg.startswith("--in-place"):
+            in_place = True
+            i += 1
+            continue
+        if arg in _SED_EXPR_FLAGS:
+            expression_supplied = True
+            i += 2
+            continue
+        if (
+            arg.startswith("-e")
+            or arg.startswith("--expression=")
+            or arg.startswith("-f")
+            or arg.startswith("--file=")
+        ):
+            expression_supplied = True
+            i += 1
+            continue
+        if arg.startswith("-") and arg != "-":
+            i += 1
+            continue
+        if not expression_supplied and not script_consumed:
+            script_consumed = True
+            i += 1
+            continue
+        if arg and "://" not in arg:
+            targets.append(arg)
+        i += 1
+    return targets if in_place else []
+
+
+def _perl_in_place_targets(args: list[str]) -> list[str]:
+    in_place = False
+    targets: list[str] = []
+    skip_next_expr = False
+    for arg in args:
+        if skip_next_expr:
+            skip_next_expr = False
+            continue
+        if arg == "--":
+            continue
+        if arg.startswith("-") and arg != "-":
+            if "i" in arg.lstrip("-"):
+                in_place = True
+            # `-e 'script'`, `-pe 'script'`, `-E 'script'` 등은 다음 토큰이 program text.
+            opt = arg.lstrip("-")
+            if ("e" in opt or "E" in opt) and opt.lower().endswith(("e", "pe", "ne")):
+                skip_next_expr = True
+            continue
+        if arg and "://" not in arg:
+            targets.append(arg)
+    return targets if in_place else []
+
+
+def _awk_in_place_targets(args: list[str]) -> list[str]:
+    in_place = False
+    program_supplied = False
+    program_consumed = False
+    targets: list[str] = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--":
+            targets.extend(p for p in args[i + 1:] if p and "://" not in p)
+            break
+        if arg == "-i":
+            if i + 1 < len(args) and args[i + 1] == "inplace":
+                in_place = True
+            i += 2
+            continue
+        if arg in ("-iinplace", "--include=inplace"):
+            in_place = True
+            i += 1
+            continue
+        if arg in ("-f", "--file"):
+            program_supplied = True
+            i += 2
+            continue
+        if arg.startswith("-f") or arg.startswith("--file="):
+            program_supplied = True
+            i += 1
+            continue
+        if arg in ("-v", "-F") and i + 1 < len(args):
+            i += 2
+            continue
+        if arg.startswith("-") and arg != "-":
+            i += 1
+            continue
+        if not program_supplied and not program_consumed:
+            program_consumed = True
+            i += 1
+            continue
+        # awk variable assignment arguments are not file operands.
+        if arg and "://" not in arg and not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", arg):
+            targets.append(arg)
+        i += 1
+    return targets if in_place else []
+
+
+def _command_write_targets(argv: list[str]) -> list[str]:
+    toks = _peel_wrappers(argv)
+    if not toks:
+        return []
+    cmd = _command_basename(toks[0])
+    args = toks[1:]
+    if cmd == "cp":
+        target_dir = _target_directory_flag(args)
+        if target_dir is not None:
+            return [target_dir]
+        pos = _command_positionals(args, _CP_VALUE_FLAGS)
+        return [pos[-1]] if len(pos) >= 2 else []
+    if cmd == "mv":
+        target_dir = _target_directory_flag(args)
+        pos = _command_positionals(args, _CP_VALUE_FLAGS)
+        return ([target_dir] if target_dir is not None else []) + pos
+    if cmd == "rm":
+        return _command_positionals(args)
+    if cmd == "tee":
+        return _command_positionals(args)
+    if cmd == "sed":
+        return _sed_in_place_targets(args)
+    if cmd == "perl":
+        return _perl_in_place_targets(args)
+    if cmd in ("awk", "gawk"):
+        return _awk_in_place_targets(args)
+    return []
 
 
 def extract_bash_paths(command: str) -> list[str]:
-    """Bash command 안의 의심 path 토큰 추출 (v1: 보수적).
+    """Bash command 안의 write target path 추출 (best-effort).
 
-    write 지표 (sed -i / cp / mv / rm / >) 가 보일 때만 토큰 분해 후
-    `/` 또는 `.md`/`.py`/`.json`/`.sh` 확장자 포함 토큰을 path 후보로 반환.
-    indicator 없으면 빈 list — false positive 회피.
+    이 함수는 file boundary 용이다. 따라서 `cat README.md > src/generated.ts` 에서
+    `README.md` 같은 read operand 는 후보가 아니고, 실제 write target 인
+    `src/generated.ts` 만 반환한다.
     """
     if not any(re.search(ind, command) for ind in _BASH_WRITE_INDICATORS):
         return []
-    # 토큰화 — quote 보존 (따옴표 친 토큰을 식별해 통째로 제외하기 위함).
-    tokens = re.findall(r"[\"'][^\"']*[\"']|\S+", command)
     paths: list[str] = []
-    for t in tokens:
-        # 따옴표로 감싼 토큰은 path 후보에서 제외 (codex P2 round10). sed/awk/perl 스크립트
-        # (`'s/foo/bar/'`)가 `/` 를 포함한다는 이유로 write path 로 오인돼 정상 편집
-        # (`sed -i 's/foo/bar/' src/main.ts`)이 차단되던 false positive 방지. 따옴표 친 write
-        # 대상이 누락되는 것은 본 guard 의 "false negative 우선" 원칙 + nested-shell 한계와 정합.
-        if len(t) >= 2 and t[0] in "\"'" and t[-1] == t[0]:
-            continue
-        if not t or t.startswith("-"):
-            continue
-        # URL/원격 스킴 토큰(`https://…`, `ssh://…`, `git://…`)은 로컬 write 대상이 아님 → 제외
-        # (codex P2 round9). `curl https://… > docs/…/x.json` 의 URL 이 `/` 를 포함한다는 이유로
-        # write path 후보로 오인돼 tech-reviewer 의 정상 evidence 수집이 차단되던 false positive 방지.
-        # shell `>` 리다이렉트 대상은 항상 로컬 path 이므로 URL 제외가 write 누락을 만들지 않는다.
-        if "://" in t:
-            continue
-        # 따옴표 없이 쓴 sed/awk 치환 스크립트(`s/foo/bar/`, `y/abc/def/`)도 명령 syntax → 제외
-        # (codex P2 round10). delimiter 가 2번 이상 등장하는 `[sy]<delim>…<delim>` 형태만 매칭해
-        # `src/main.ts` 같은 정상 path(`s` 다음이 delimiter 아님)는 보존.
-        if re.match(r"^[sy]([/|#@,!~]).+\1", t):
-            continue
-        # path 후보 — `/` 포함 또는 알려진 확장자.
-        if "/" in t or re.search(r"\.(md|py|json|sh|mjs|ts|tsx|js|jsx)$", t):
-            paths.append(t)
-    return paths
+    for segment in _split_shell_segments(_shell_tokens_for_paths(command)):
+        argv, redirect_paths = _strip_redirections_for_paths(segment)
+        paths.extend(redirect_paths)
+        paths.extend(_command_write_targets(argv))
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for path in paths:
+        if path not in seen:
+            seen.add(path)
+            deduped.append(path)
+    return deduped
 
 
 # ── 외부 시스템 mutation 차단 (#597 커밋5) ─────────────────────────────

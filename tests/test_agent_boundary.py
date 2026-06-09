@@ -301,6 +301,460 @@ class WriteAllowedAllowMatrixTests(unittest.TestCase):
             )
 
 
+class LanguageNeutralAllowMatrixTests(unittest.TestCase):
+    """#694 — ALLOW_MATRIX 언어 중립성.
+
+    test-engineer / engineer 의 write 경계가 JS/TS 모노레포 컨벤션에 묶여 비-JS 외부
+    프로젝트(Python·Go·Ruby·JVM·C#·PHP·Elixir·remotion 등)의 정상 산출물을 차단하던
+    회귀 수정. 역할 격리(test-engineer=테스트만, engineer=소스)는 유지하면서 언어·레이아웃만
+    중립화한다. 외부 프로젝트 시뮬레이션(DCNESS_INFRA="" + CLAUDE_PLUGIN_ROOT="").
+    """
+
+    def setUp(self):
+        self._patcher = patch.dict(
+            os.environ, {"DCNESS_INFRA": "", "CLAUDE_PLUGIN_ROOT": ""}, clear=False
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+
+    # ── test-engineer: 언어 중립 테스트 경로 허용 ──
+    def test_test_engineer_python_tests_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in (
+                "tests/core/domain/test_shorts.py",   # tests/ 디렉토리 + test_ 파일명
+                "test_module.py",                      # 루트 test_*.py
+                "pkg/utils_test.py",                   # *_test.py (디렉토리 밖)
+            ):
+                self.assertIsNone(
+                    check_write_allowed("test-engineer", p, cwd=cwd),
+                    f"Python 테스트 {p} 가 허용되어야 함",
+                )
+
+    def test_test_engineer_go_test_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # *_test.go (디렉토리 무관 파일명 컨벤션).
+            self.assertIsNone(
+                check_write_allowed("test-engineer", "internal/svc/handler_test.go", cwd=cwd)
+            )
+
+    def test_test_engineer_ruby_spec_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("spec/models/user_spec.rb", "lib/foo_test.rb"):
+                self.assertIsNone(
+                    check_write_allowed("test-engineer", p, cwd=cwd),
+                    f"Ruby 테스트 {p} 허용",
+                )
+
+    def test_test_engineer_jvm_csharp_php_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in (
+                "src/test/java/com/foo/UserServiceTest.java",  # src/test/ 디렉토리
+                "src/test/kotlin/FooTests.kt",
+                "MyApp.Tests/CalculatorTests.cs",              # 파일명 패턴 (디렉토리 밖)
+                "app/Service/UserTest.php",
+            ):
+                self.assertIsNone(
+                    check_write_allowed("test-engineer", p, cwd=cwd),
+                    f"JVM/C#/PHP 테스트 {p} 허용",
+                )
+
+    def test_test_engineer_elixir_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(
+                check_write_allowed("test-engineer", "test/foo_test.exs", cwd=cwd)
+            )
+
+    def test_test_engineer_js_ts_regression(self):
+        # 기존 JS/TS 패턴이 광범위 패턴에 흡수돼도 여전히 허용 (회귀 방지).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in (
+                "src/__tests__/a.test.ts",
+                "src/components/Button.spec.tsx",
+                "apps/web/tests/e2e.test.ts",
+                "packages/core/src/__tests__/x.test.ts",
+            ):
+                self.assertIsNone(
+                    check_write_allowed("test-engineer", p, cwd=cwd),
+                    f"기존 JS/TS 테스트 {p} 회귀",
+                )
+
+    def test_test_engineer_still_cannot_write_impl(self):
+        # 역할 격리 유지 — test-engineer 는 비-테스트 구현 코드를 쓰면 안 된다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("src/domain/shorts.py", "remotion/shorts-types.ts", "lib/core.go"):
+                reason = check_write_allowed("test-engineer", p, cwd=cwd)
+                self.assertIsNotNone(reason, f"test-engineer 가 구현 {p} 를 쓰면 안 됨")
+                self.assertIn("ALLOW_MATRIX", reason)
+
+    # ── engineer: 언어 중립 소스 레이아웃 허용 ──
+    def test_engineer_remotion_allowed(self):
+        # #694 핵심 — src/ 밖 소스 루트(remotion/) 허용 (youTubeGenerator task 04).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(
+                check_write_allowed("engineer", "remotion/shorts-types.ts", cwd=cwd)
+            )
+
+    def test_engineer_common_source_layouts_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in (
+                "lib/parser.rb",
+                "app/models/user.rb",
+                "cmd/server/main.go",
+                "internal/svc/handler.go",
+                "pkg/util/strings.go",
+            ):
+                self.assertIsNone(
+                    check_write_allowed("engineer", p, cwd=cwd),
+                    f"흔한 소스 레이아웃 {p} 허용",
+                )
+
+    def test_dot_slash_prefix_normalized(self):
+        # #694 codex P2 (라운드3) — Edit/Write/Bash 가 ./ prefix 로 넘긴 경로도 정규화되어
+        # 루트 앵커(^lib/ 등)가 빗나가지 않아야 하고, ./docs/ 우회는 여전히 차단돼야 한다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # ./ prefix 소스 — 허용
+            for p in ("./lib/parser.rb", "./remotion/shorts-types.ts", "./cmd/main.go"):
+                self.assertIsNone(
+                    check_write_allowed("engineer", p, cwd=cwd),
+                    f"./ prefix 소스 {p} 허용",
+                )
+            # ./ prefix 테스트 — 허용
+            self.assertIsNone(
+                check_write_allowed("test-engineer", "./tests/test_x.py", cwd=cwd)
+            )
+            # ./ prefix docs 우회 — 차단 유지
+            reason = check_write_allowed("engineer", "./docs/internal/x.md", cwd=cwd)
+            self.assertIsNotNone(reason, "./docs/ 우회가 차단돼야 함")
+            self.assertIn("docs", reason)
+
+    def test_code_agents_can_write_docs_named_package(self):
+        # #694 codex P2 — docs deny 는 루트 docs 트리(^docs/)만. monorepo 의 docs 이름
+        # app/package(apps/docs/src·packages/docs/src)는 정상 소스라 허용돼야 한다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("apps/docs/src/App.tsx", "packages/docs/src/index.ts"):
+                self.assertIsNone(
+                    check_write_allowed("engineer", p, cwd=cwd),
+                    f"docs 이름 패키지 소스 {p} 허용",
+                )
+
+    def test_dotdot_escape_via_allowed_dirname_blocked(self):
+        # #694 codex P2 — 부모 경로가 허용 디렉토리명(tests/spec/lib)이어도 cwd 밖 탈출은
+        # ALLOW 검사 전에 차단. `../tests/x` 가 (^|/)tests?/ 에 매칭되던 우회 봉쇄.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, p in [
+                ("test-engineer", "../tests/test_x.py"),
+                ("test-engineer", "../spec/foo_spec.rb"),
+                ("engineer", "../lib/x.rb"),
+                ("build-worker", "../src/main.py"),
+            ]:
+                reason = check_write_allowed(agent, p, cwd=cwd)
+                self.assertIsNotNone(reason, f"{agent} cwd 밖 {p} 차단")
+
+    def test_nested_dotdot_escape_blocked(self):
+        # #694 codex P1 — 초기 허용 세그먼트 뒤 중첩 .. 로 cwd 밖 탈출(lib/../../lib/x·
+        # tests/../../tests/y)도 resolve 후 절대경로화되어 cwd-밖 가드로 차단.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, p in [
+                ("engineer", "lib/../../lib/payload.rb"),
+                ("test-engineer", "tests/../../tests/test_x.py"),
+            ]:
+                reason = check_write_allowed(agent, p, cwd=cwd)
+                self.assertIsNotNone(reason, f"{agent} 중첩 .. 탈출 {p} 차단")
+
+    def test_code_agents_cannot_write_dependency_trees(self):
+        # #694 codex P2 — 의존성/vendored 트리는 test 패턴(tests?/·spec/)·src 패턴이 중첩
+        # 매칭해도 코드 agent write 금지 (node_modules·vendor·third_party·venv).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            cases = [
+                # 의존성/vendored — 안의 src/tests 가 중첩 매칭돼도 차단
+                ("test-engineer", "node_modules/pkg/tests/x.py"),
+                ("test-engineer", "vendor/foo/spec/bar_spec.rb"),
+                ("build-worker", "third_party/lib/foo_test.go"),
+                ("engineer", "node_modules/pkg/src/index.ts"),
+                ("engineer", ".venv/lib/python3.11/site.py"),
+                # 빌드 산출물 — 안의 src/tests 가 중첩 매칭돼도 차단
+                ("engineer", "dist/bundle/src/app.js"),
+                ("engineer", "build/gen/src/Main.java"),
+                ("engineer", "target/debug/build/foo/src/lib.rs"),
+                ("test-engineer", "out/tests/e2e.test.ts"),
+                ("engineer", "src/__pycache__/mod.cpython-311.pyc"),
+            ]
+            for agent, p in cases:
+                reason = check_write_allowed(agent, p, cwd=cwd)
+                self.assertIsNotNone(reason, f"{agent} 가 의존성/산출물 트리 {p} 를 쓰면 안 됨")
+
+    def test_source_dir_named_like_output_allowed(self):
+        # #694 codex P2 — 빌드 산출물 deny 는 루트/패키지 루트 앵커. 허용된 src/ 트리 안의
+        # 동명 디렉토리(src/build·src/dist·.../src/out)는 정당 소스라 허용돼야 한다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("src/build/index.ts", "src/dist/util.ts",
+                      "packages/core/src/out/x.ts", "apps/web/src/build/m.ts"):
+                self.assertIsNone(
+                    check_write_allowed("engineer", p, cwd=cwd),
+                    f"src 트리 안 동명 디렉토리 {p} 허용",
+                )
+
+    def test_output_dirs_root_and_package_blocked(self):
+        # 루트(^build/) 및 monorepo 패키지 루트(apps/*/build·packages/*/dist) 산출물은 차단.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("build/x.js", "dist/foo/src/a.js", "target/debug/x.rs",
+                      "out/index.html", "apps/web/build/foo/src/m.ts",
+                      "packages/core/dist/i.js"):
+                self.assertIsNotNone(
+                    check_write_allowed("engineer", p, cwd=cwd),
+                    f"산출물 루트 {p} 차단",
+                )
+
+    def test_vendor_named_package_allowed(self):
+        # #694 codex P2 round10 — vendor/third_party 는 패키지명과 겹칠 수 있어 루트/패키지 루트
+        # 앵커. monorepo 의 `apps/vendor/src/` 같은 정당 패키지 소스는 허용돼야 한다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("apps/vendor/src/index.ts",
+                      "packages/third_party/src/x.ts"):
+                self.assertIsNone(
+                    check_write_allowed("engineer", p, cwd=cwd),
+                    f"vendor/third_party 이름의 정당 패키지 소스 {p} 허용",
+                )
+
+    def test_vendor_tree_root_and_package_blocked(self):
+        # 루트(^vendor/·^third_party/) 및 monorepo 패키지 루트(apps/*/vendor·packages/*/third_party)
+        # vendored 트리는 여전히 차단 — 동명 패키지 허용이 진짜 vendored 트리를 뚫으면 안 됨.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, p in [
+                ("engineer", "vendor/p/index.ts"),
+                ("test-engineer", "third_party/lib/spec/x_spec.rb"),
+                ("engineer", "apps/web/vendor/p/y.ts"),
+                ("build-worker", "packages/core/third_party/foo_test.go"),
+            ]:
+                self.assertIsNotNone(
+                    check_write_allowed(agent, p, cwd=cwd),
+                    f"{agent} 가 vendored 트리 {p} 를 쓰면 안 됨",
+                )
+
+    def test_directory_target_write_allowed(self):
+        # #694 codex P2 round10 — `cp x tests/`·`mv y apps/web/src/` 의 디렉토리 목적지 토큰은
+        # resolve() 가 끝 `/`를 떼면 ALLOW 패턴(`tests?/`·`.../src/`)에 미매칭돼 정당 in-bound
+        # write 가 오차단되던 결함. 끝 `/`를 보존해 디렉토리 루트 자체가 허용돼야 한다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, p in [
+                ("test-engineer", "tests/"),
+                ("engineer", "src/"),
+                ("engineer", "apps/web/src/"),
+                ("engineer", "lib/"),
+                ("engineer", "packages/core/src/"),
+                # `/.`·`/./` 스펠링도 같은 디렉토리 타깃 (codex P2 r10).
+                ("test-engineer", "tests/."),
+                ("engineer", "apps/web/src/."),
+                ("engineer", "src/./"),
+            ]:
+                self.assertIsNone(
+                    check_write_allowed(agent, p, cwd=cwd, shell_context=True),
+                    f"{agent} 의 허용 디렉토리 타깃 {p} 허용",
+                )
+
+    def test_directory_target_role_and_deny_preserved(self):
+        # 디렉토리 타깃이라도 역할 격리(engineer 는 tests/ 못 씀)와 전용영역/인프라 deny 는 유지.
+        # 끝 `/` 보존이 보호를 뚫으면 안 됨 — 오히려 `docs/`·`hooks/` 디렉토리 타깃이 정확히 매칭.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, p in [
+                ("engineer", "tests/"),         # 역할 격리 — engineer ALLOW 미매칭
+                ("engineer", "docs/"),          # 전용영역 deny
+                ("engineer", "node_modules/"),  # 의존성 deny
+                ("engineer", "vendor/"),        # vendored deny (루트)
+                ("engineer", "hooks/"),         # 인프라 deny
+                # `/.` 스펠링도 동일하게 deny 매칭돼야 함 (보호 우회 방지).
+                ("engineer", "docs/."),
+                ("engineer", "node_modules/."),
+                ("engineer", "hooks/."),
+            ]:
+                self.assertIsNotNone(
+                    check_write_allowed(agent, p, cwd=cwd, shell_context=True),
+                    f"{agent} 의 보호 디렉토리 타깃 {p} 차단",
+                )
+
+    def test_shell_expansion_collapsed_by_dotdot_blocked(self):
+        # #694 codex P2 round10 — `$PWD/../tests/x` 는 _normalize 가 `$PWD/..` 를 상쇄해 norm 에서
+        # `$` 가 사라지지만, 런타임엔 셸이 `$PWD` 를 확장해 프로젝트 밖에 write 한다. 셸확장 검사를
+        # 정규화 *전* 원본에 적용해 차단해야 한다 (norm 기반 검사의 우회 봉쇄).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, p in [
+                ("test-engineer", "$PWD/../tests/x.py"),
+                ("engineer", "$PWD/../../etc/src/x.py"),
+                ("engineer", "`pwd`/../src/x.py"),
+                ("engineer", "${PWD}/../app/x.rb"),
+            ]:
+                self.assertIsNotNone(
+                    check_write_allowed(agent, p, cwd=cwd, shell_context=True),
+                    f"{agent} 셸확장+상쇄 경로 {p} 차단",
+                )
+
+    def test_shell_expansion_path_blocked(self):
+        # #694 codex P2 — Bash 출처(shell_context=True)의 $VAR/${}/$()/backtick 은 셸이 hook 후
+        # 확장하므로 위치 미확정 → 차단. (literal Edit/Write 경로는 shell_context=False 라 허용.)
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, p in [
+                ("test-engineer", "$HOME/tests/test_x.py"),
+                ("engineer", "${HOME}/lib/x.rb"),
+                ("engineer", "$(pwd)/src/x.py"),
+                ("engineer", "`echo /etc`/src/x.py"),
+            ]:
+                reason = check_write_allowed(agent, p, cwd=cwd, shell_context=True)
+                self.assertIsNotNone(reason, f"{agent} Bash 셸 확장 경로 {p} 차단")
+
+    def test_literal_dollar_filename_allowed_for_edit_write(self):
+        # #694 codex P2 — Edit/Write 의 literal 파일명에 $ 가 있어도(Remix/React Router route
+        # users.$id.tsx) 허용 (shell_context=False 기본). 셸확장 검사는 Bash 출처에만 적용.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("src/routes/users.$userId.tsx", "app/routes/$slug.tsx"):
+                self.assertIsNone(
+                    check_write_allowed("engineer", p, cwd=cwd),
+                    f"literal $ 파일명 {p} 허용 (Edit/Write)",
+                )
+            # 동일 경로라도 Bash 출처(shell_context=True)면 셸 변수로 간주 차단
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "src/routes/users.$userId.tsx",
+                                    cwd=cwd, shell_context=True),
+                "Bash 출처의 $ 경로는 차단",
+            )
+
+    def test_tilde_home_path_blocked(self):
+        # #694 codex P2 — Bash 의 ~/... 는 셸이 hook 통과 후 home 으로 확장하므로 cwd 밖.
+        # _normalize expanduser + cwd-밖 가드로 차단 (tests?/ 등 ALLOW 매칭 우회 방지).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, p in [
+                ("test-engineer", "~/tests/test_x.py"),
+                ("engineer", "~/lib/x.rb"),
+                ("engineer", "~/src/main.py"),
+            ]:
+                reason = check_write_allowed(agent, p, cwd=cwd)
+                self.assertIsNotNone(reason, f"{agent} tilde 경로 {p} 차단")
+
+    def test_dotdot_escape_blocked(self):
+        # #694 codex P1 — 상대 path 의 .. 세그먼트로 경계 밖(루트 문서·구현 코드)으로 탈출하는
+        # 우회 차단. _normalize 가 cwd 기준 resolve 로 실제 write 위치를 매칭 대상으로 삼는다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # lib/../README.md → 실제 README.md(루트 문서) → engineer 차단
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "lib/../README.md", cwd=cwd),
+                "lib/../README.md (.. 우회) 차단",
+            )
+            # tests/../src/main.py → 실제 src/main.py(구현) → test-engineer 차단
+            self.assertIsNotNone(
+                check_write_allowed("test-engineer", "tests/../src/main.py", cwd=cwd),
+                "tests/../src/main.py (.. 우회) 차단",
+            )
+            # ../ 상위 탈출 → 차단
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "../outside/x.ts", cwd=cwd),
+                "../ 상위 탈출 차단",
+            )
+            # 정상 .. 해소 후 유효 소스는 허용 (src/sub/../foo.ts → src/foo.ts)
+            self.assertIsNone(
+                check_write_allowed("engineer", "src/sub/../foo.ts", cwd=cwd),
+                "src/sub/../foo.ts → src/foo.ts 허용",
+            )
+
+    def test_engineer_nested_layout_names_not_matched(self):
+        # #694 codex P2 — 루트 소스 레이아웃(^lib/·^cmd/ 등)은 루트 앵커라, 의존성도 docs 도
+        # 아닌 일반 중첩 동명 디렉토리(.github/*/lib·services/*/lib·a/b/cmd)는 소스 루트가
+        # 아니므로 ALLOW 미매칭으로 차단된다 (의존성 트리는 별도 deny — 아래 테스트).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in (
+                ".github/actions/foo/lib/action.yml",
+                "services/foo/lib/util.rb",
+                "a/b/cmd/run.go",
+            ):
+                reason = check_write_allowed("engineer", p, cwd=cwd)
+                self.assertIsNotNone(reason, f"engineer 가 중첩 {p} 를 쓰면 안 됨")
+                self.assertIn("ALLOW_MATRIX", reason)
+
+    def test_engineer_invariant_still_blocks_docs_and_root(self):
+        # 회귀 가드 — engineer 가 docs / 루트 비소스 문서를 쓰면 안 된다 (기존 invariant 유지).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # 루트 비소스 문서 — ALLOW_MATRIX 미매칭 차단.
+            for p in ("README.md", "CHANGELOG.md"):
+                reason = check_write_allowed("engineer", p, cwd=cwd)
+                self.assertIsNotNone(reason, f"engineer 가 {p} 를 쓰면 안 됨")
+                self.assertIn("ALLOW_MATRIX", reason)
+            # docs/ — 전용영역 deny 로 차단 (#694 codex P2).
+            reason = check_write_allowed("engineer", "docs/storage-layout.md", cwd=cwd)
+            self.assertIsNotNone(reason)
+            self.assertIn("docs", reason)
+
+    def test_code_agents_cannot_write_docs_subtree(self):
+        # #694 codex P2 — 언어중립 패턴이 docs/ 하위 동명 디렉토리(docs/internal·docs/lib·
+        # docs/spec·docs/tests)나 docs 안 테스트 파일명을 re.search 로 우회 허용하면 안 된다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            cases = [
+                ("engineer", "docs/internal/release-notes.md"),  # internal/ 우회
+                ("engineer", "docs/lib/guide.md"),               # lib/ 우회
+                ("engineer", "docs/app/overview.md"),            # app/ 우회
+                ("test-engineer", "docs/spec/api.md"),           # spec/ 우회
+                ("test-engineer", "docs/tests/plan.md"),         # tests/ 우회
+                ("test-engineer", "docs/test_examples.py"),      # test_*.py 파일명 우회
+                ("build-worker", "docs/internal/x.md"),          # 합집합 상속
+            ]
+            for agent, p in cases:
+                reason = check_write_allowed(agent, p, cwd=cwd)
+                self.assertIsNotNone(reason, f"{agent} 가 docs 하위 {p} 를 쓰면 안 됨")
+                self.assertIn("docs", reason)
+
+    def test_code_agents_cannot_write_design_variants(self):
+        # design-variants/ 는 designer 전용 — 코드 agent 차단.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent in ("engineer", "test-engineer", "build-worker"):
+                reason = check_write_allowed(agent, "design-variants/v1/index.html", cwd=cwd)
+                self.assertIsNotNone(reason, f"{agent} 가 design-variants 를 쓰면 안 됨")
+
+    # ── build-worker: 합집합으로 둘 다 허용 (youTubeGenerator 통합 시나리오) ──
+    def test_build_worker_youtube_generator_scenario(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # 테스트 산출 (test-engineer 영역) — task 01·02·03·07
+            self.assertIsNone(
+                check_write_allowed("build-worker", "tests/core/domain/test_shorts.py", cwd=cwd)
+            )
+            # 소스 산출 (engineer 영역) — task 04
+            self.assertIsNone(
+                check_write_allowed("build-worker", "remotion/shorts-types.ts", cwd=cwd)
+            )
+            # remotion 디렉토리 안 테스트 (test 디렉토리 패턴)
+            self.assertIsNone(
+                check_write_allowed("build-worker", "remotion/test/render_test.ts", cwd=cwd)
+            )
+
+
 class AllowMatrixCoverageTests(unittest.TestCase):
     """#597 커밋4 — agents/*.md 전 agent 가 ALLOW_MATRIX key 로 등재 (누락 재발 차단).
 
@@ -414,7 +868,8 @@ class RunDirProseCarveOutTests(unittest.TestCase):
             cwd = Path(td)
             reason = check_write_allowed("build-worker", "docs/impl/01-x.md", cwd=cwd)
             self.assertIsNotNone(reason)
-            self.assertIn("ALLOW_MATRIX", reason)
+            # docs/ 는 architect 전용 — 코드 agent 전용영역 deny 로 차단 (#694 codex P2).
+            self.assertIn("docs", reason)
 
     def test_tech_reviewer_allowed_paths(self):
         with tempfile.TemporaryDirectory() as td:
@@ -517,8 +972,28 @@ class BashHeuristicTests(unittest.TestCase):
         paths = extract_bash_paths("cp src/a.ts hooks/b.sh")
         self.assertIn("hooks/b.sh", paths)
 
+    def test_read_operands_not_extracted_as_write_paths(self):
+        # write boundary 는 실제 write target 만 검사한다. read operand 를 섞으면
+        # `cat README.md > src/generated.ts` 같은 정상 생성이 README.md write 로 오차단된다.
+        self.assertEqual(
+            extract_bash_paths("cat README.md > src/generated.ts"),
+            ["src/generated.ts"],
+        )
+        self.assertEqual(
+            extract_bash_paths("cp README.md src/generated.ts"),
+            ["src/generated.ts"],
+        )
+        self.assertEqual(
+            extract_bash_paths("cat docs/prd.md | tee docs/tech-review/evidence/x.json"),
+            ["docs/tech-review/evidence/x.json"],
+        )
+
     def test_perl_in_place(self):
         paths = extract_bash_paths("perl -i -pe 's/a/b/' docs/x.md")
+        self.assertIn("docs/x.md", paths)
+
+    def test_awk_in_place(self):
+        paths = extract_bash_paths("awk -i inplace '{ print }' docs/x.md")
         self.assertIn("docs/x.md", paths)
 
     def test_url_not_extracted_as_write_path(self):
@@ -540,6 +1015,39 @@ class BashHeuristicTests(unittest.TestCase):
         paths2 = extract_bash_paths("sed -i s/foo/bar/ src/main.ts")
         self.assertNotIn("s/foo/bar/", paths2)
         self.assertIn("src/main.ts", paths2)
+        # 파일 operand 위치가 확정된 뒤에는 확장자 없는 파일도 write target 으로 본다.
+        self.assertIn("Makefile", extract_bash_paths("sed -i 's/a/b/' Makefile"))
+
+    def test_quoted_shell_expansion_token_extracted(self):
+        # codex P2 (round10) — 큰따옴표 안에 $/backtick 이 있는 토큰은 셸이 확장하므로 inner 를
+        # 살려 후보로 반환해야 한다. 따옴표째 버리면 `echo x > "$HOME/tests/x"` 가
+        # check_write_allowed 셸확장 가드에 도달 못 해 프로젝트 밖 write 우회가 된다.
+        paths = extract_bash_paths('echo x > "$HOME/tests/x.py"')
+        self.assertIn("$HOME/tests/x.py", paths)
+        # backtick 명령치환도 동일.
+        paths_bt = extract_bash_paths('echo x > "`pwd`/lib/y.rb"')
+        self.assertIn("`pwd`/lib/y.rb", paths_bt)
+
+    def test_quoted_literal_write_target_extracted(self):
+        # sed script 는 quote 여부와 무관하게 command syntax 라 제외한다.
+        self.assertNotIn(
+            "s/foo/bar/", extract_bash_paths("sed -i 's/foo/bar/' src/main.ts")
+        )
+        # 하지만 실제 write target 이면 quote 된 literal path 도 검사 대상이다.
+        self.assertIn(
+            "docs/x.md", extract_bash_paths('sed -i "s/a/b/" "docs/x.md"')
+        )
+        self.assertIn(
+            "hooks/evil.sh", extract_bash_paths('echo hi > "hooks/evil.sh"')
+        )
+
+    def test_quoted_sed_script_with_var_excluded(self):
+        # codex P2 (round10) — `sed -i "s/$old/$new/" src/main.ts` 의 큰따옴표 치환 스크립트는
+        # $ 가 있어 inner 가 살아나지만, 곧바로 sed 스크립트 제외 로직(^[sy]<delim>…)에 걸려
+        # 후보에서 빠진다. 실제 대상 src/main.ts 만 남아 정상 편집이 안 막혀야 한다.
+        paths = extract_bash_paths('sed -i "s/$old/$new/" src/main.ts')
+        self.assertNotIn("s/$old/$new/", paths)
+        self.assertIn("src/main.ts", paths)
 
 
 class BashMutationTests(unittest.TestCase):
@@ -948,6 +1456,72 @@ class BashIntegrationTests(unittest.TestCase):
             blocked = [
                 p for p in extract_bash_paths("sed -i 's/foo/bar/' src/main.ts")
                 if check_write_allowed("engineer", p, cwd=cwd) is not None
+            ]
+            self.assertEqual(blocked, [], f"engineer 정상 편집이 차단됨: {blocked}")
+
+    def test_quoted_redirect_shell_expansion_blocked(self):
+        # codex P2 (round10) — `echo x > "$HOME/tests/x.py"` 가 따옴표째 버려져 검사 미도달로
+        # 프로젝트 밖 write 우회되던 결함 수정 검증. extract → shell_context 가드까지 도달해 차단.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            paths = extract_bash_paths('echo x > "$HOME/tests/x.py"')
+            self.assertIn("$HOME/tests/x.py", paths)
+            blocked = [
+                p for p in paths
+                if check_write_allowed("test-engineer", p, cwd=cwd,
+                                       shell_context=True) is not None
+            ]
+            self.assertTrue(
+                any("$" in p for p in blocked),
+                f"quoted 셸확장 redirect 가 차단되지 않음: {paths}",
+            )
+
+    def test_cp_mv_into_allowed_dir_not_blocked(self):
+        # codex P2 (round10) — `cp src/foo.ts apps/web/src/`·`mv test_helper.py tests/` 의
+        # 디렉토리 목적지가 끝 `/` 소실로 차단되던 false positive 수정 검증 (end-to-end).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            blocked_eng = [
+                p for p in extract_bash_paths("cp src/foo.ts apps/web/src/")
+                if check_write_allowed("engineer", p, cwd=cwd,
+                                       shell_context=True) is not None
+            ]
+            self.assertEqual(blocked_eng, [],
+                             f"engineer cp 디렉토리 타깃 차단됨: {blocked_eng}")
+            blocked_te = [
+                p for p in extract_bash_paths("mv test_helper.py tests/")
+                if check_write_allowed("test-engineer", p, cwd=cwd,
+                                       shell_context=True) is not None
+            ]
+            self.assertEqual(blocked_te, [],
+                             f"test-engineer mv 디렉토리 타깃 차단됨: {blocked_te}")
+
+    def test_quoted_redirect_dotdot_collapse_blocked(self):
+        # codex P2 (round10) — `echo x > "$PWD/../tests/x.py"` 는 추출되어 norm 에서 `$PWD/..`
+        # 가 상쇄(→ tests/x.py)되지만, 원본 셸확장 검사로 차단돼야 한다 (프로젝트 밖 write).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            paths = extract_bash_paths('echo x > "$PWD/../tests/x.py"')
+            self.assertIn("$PWD/../tests/x.py", paths)
+            blocked = [
+                p for p in paths
+                if check_write_allowed("test-engineer", p, cwd=cwd,
+                                       shell_context=True) is not None
+            ]
+            self.assertTrue(
+                any("$" in p for p in blocked),
+                f"$PWD/.. 상쇄 escape 가 차단되지 않음: {paths}",
+            )
+
+    def test_quoted_sed_with_var_legit_edit_not_blocked(self):
+        # codex P2 (round10) — engineer 의 `sed -i "s/$old/$new/" src/main.ts` 가 따옴표 안
+        # 치환 스크립트 오인으로 차단되면 안 됨 (src/main.ts 만 후보, 정상 통과).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            blocked = [
+                p for p in extract_bash_paths('sed -i "s/$old/$new/" src/main.ts')
+                if check_write_allowed("engineer", p, cwd=cwd,
+                                       shell_context=True) is not None
             ]
             self.assertEqual(blocked, [], f"engineer 정상 편집이 차단됨: {blocked}")
 
