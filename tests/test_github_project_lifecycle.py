@@ -665,6 +665,58 @@ class GithubProjectLifecycleScriptTests(unittest.TestCase):
                 "})"
             )
 
+    def test_resolve_validation_relaxes_only_preserved_non_empty_field(self) -> None:
+        # preserve + 원래 값이 있던 필드 → 완화('any')로 보존값을 drift 오판 안 함.
+        item = {"status": "In progress", "priority": "minor"}
+        result = run_node(
+            "lifecycle.resolveValidationExpectations({"
+            f"item: {json.dumps(item)},"
+            "preserveExisting: true"
+            "})"
+        )
+        self.assertEqual(
+            {"validateStatus": "any", "validatePriority": "any"}, result
+        )
+
+    def test_resolve_validation_keeps_strict_for_blank_field(self) -> None:
+        # 백필 회귀 가드 (#669 round3): preserve 라도 원래 비어있던 Status 는 채우기 대상이라
+        # strict('Todo') 유지 → apply 가 실제로 채웠는지(부분 백필 실패) 검증한다.
+        item = {"priority": "major"}  # status 미설정 → 채움 대상
+        result = run_node(
+            "lifecycle.resolveValidationExpectations({"
+            f"item: {json.dumps(item)},"
+            "preserveExisting: true"
+            "})"
+        )
+        self.assertEqual(
+            {"validateStatus": "Todo", "validatePriority": "any"}, result
+        )
+
+    def test_resolve_validation_new_item_all_strict(self) -> None:
+        # 신규 add(item 없음)는 보존 대상 없음 → 전부 strict.
+        result = run_node(
+            "lifecycle.resolveValidationExpectations({"
+            "item: null,"
+            "preserveExisting: true"
+            "})"
+        )
+        self.assertEqual(
+            {"validateStatus": "Todo", "validatePriority": "major"}, result
+        )
+
+    def test_resolve_validation_non_preserve_all_strict(self) -> None:
+        # preserve 아님(fresh) → 기존 값 있어도 전부 strict (Todo/major 강제 검증).
+        item = {"status": "In progress", "priority": "minor"}
+        result = run_node(
+            "lifecycle.resolveValidationExpectations({"
+            f"item: {json.dumps(item)},"
+            "preserveExisting: false"
+            "})"
+        )
+        self.assertEqual(
+            {"validateStatus": "Todo", "validatePriority": "major"}, result
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -468,6 +468,26 @@ export function planRegistration({
   return { needsAdd: !item, sets };
 }
 
+// register-issue 검증 기대값을 *필드 단위*로 결정한다 (#669 백필).
+// preserve 모드라도, 완화('any')는 "원래 값이 있어 의도적으로 보존한 필드"에만 적용한다.
+// 원래 비어있던 필드는 채우기 대상이므로 strict 검증 유지 → apply 실패/부분 백필을 잡는다.
+// item 이 없으면(신규 add) 보존 대상이 없으니 전부 strict.
+export function resolveValidationExpectations({
+  item = null,
+  preserveExisting = false,
+  expectedStatus = 'Todo',
+  expectedPriority = 'major',
+}) {
+  const fieldWasSet = (fieldName) => {
+    const current = item ? projectItemFieldValue(item, fieldName) : null;
+    return !(current === null || current === undefined || current === '');
+  };
+  return {
+    validateStatus: (preserveExisting && fieldWasSet('Status')) ? 'any' : expectedStatus,
+    validatePriority: (preserveExisting && fieldWasSet('Priority')) ? 'any' : expectedPriority,
+  };
+}
+
 function printBootstrapRecovery({ repo, owner, project }) {
   console.error('[dcness-project] recovery commands:');
   console.error(`  gh project create --owner ${owner} --title "dcNess" --format json`);
@@ -632,13 +652,13 @@ function commandRegisterIssue(args) {
   const issue = getIssue(repo, args.issue);
 
   let item = getProjectItem({ owner, projectNumber: args.project, repo, issueNumber: issue.number });
+  // 검증 완화는 *필드 단위* + *apply 전 원본 item* 기준 — 원래 값이 있던 필드만 보존('any'),
+  // 원래 비어있던 필드는 strict 로 두어 채우기 실패/부분 백필을 잡는다. IssueType 은 항상 strict.
+  const { validateStatus, validatePriority } = resolveValidationExpectations({
+    item, preserveExisting, expectedStatus, expectedPriority,
+  });
   // plan throws early if the board lacks a required field/option (incomplete board signal).
   const plan = planRegistration({ item, fields, issueType, expectedStatus, expectedPriority, preserveExisting });
-  // 기존 item 보존 모드면 Status/Priority 사후검증을 완화('any') — 보존한 값을 drift 로 오판하지 않는다.
-  // 새로 add 한 item 은 풀 등록되므로 strict 유지. IssueType(정체성)은 항상 검증.
-  const relaxLifecycle = preserveExisting && !plan.needsAdd;
-  const validateStatus = relaxLifecycle ? 'any' : expectedStatus;
-  const validatePriority = relaxLifecycle ? 'any' : expectedPriority;
 
   if (!args.apply) {
     if (!item) {
@@ -654,13 +674,9 @@ function commandRegisterIssue(args) {
       expectedPriority: validatePriority,
     });
     for (const message of validation.messages) console.log(message);
-    // preserve 완화로 검증은 'any' 라도, 채울 빈 필드(또는 drift)가 남아있으면 apply 가 item 을
-    // 바꾸므로 dry-run 은 pending 으로 보고한다 (완화가 "백필 불필요" 오보고를 내지 않게).
-    for (const entry of plan.sets) {
-      console.log(`issue #${issue.number}: Project ${entry.fieldName} needs set to ${entry.optionName} (run --apply).`);
-    }
     console.log('Run again with --apply to register the issue and set Project fields.');
-    return item && validation.ok && plan.sets.length === 0 ? 0 : 1;
+    // 채울 빈 필드는 strict 검증에서 drift 로 잡혀 validation.ok=false → pending 으로 보고된다.
+    return item && validation.ok ? 0 : 1;
   }
 
   if (plan.needsAdd) {
