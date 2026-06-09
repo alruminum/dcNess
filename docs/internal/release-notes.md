@@ -4,6 +4,34 @@
 
 ---
 
+## v0.6.1 (2026-06-10)
+
+**커밋 범위**: `v0.6.0..v0.6.1` (머지 PR 10개)
+**핵심 변경**: v0.6.0 직후 버그픽스·문서 정합 패치. 병렬 wave 형식 직렬 강등 진단([#693](https://github.com/alruminum/dcNess/issues/693)), agent-boundary ALLOW_MATRIX 언어 중립화로 비-JS 외부 프로젝트 sub-agent write 회귀 수정([#694](https://github.com/alruminum/dcNess/issues/694)), GitHub Project lifecycle CI(머지→Done 자동전이) 설치.
+
+### 무엇이 바뀌나
+
+1. **agent-boundary ALLOW_MATRIX 언어 중립화** ([#697](https://github.com/alruminum/dcNess/pull/697) [#694](https://github.com/alruminum/dcNess/issues/694)) — sub-agent write 경계 매트릭스가 JS 경로 전제에 묶여 비-JS 외부 프로젝트에서 정상 write 가 차단되던 회귀 수정. 외부 활성 프로젝트 영향이 가장 큰 항목.
+
+2. **병렬 wave 형식 직렬 강등 진단** ([#695](https://github.com/alruminum/dcNess/pull/695) [#693](https://github.com/alruminum/dcNess/issues/693)) — wave-plan 직렬 강등 사유를 기계 판독 cause 코드로 분류(형식 미정규화 vs 의존성). impl-task `### 수정 허용` 형식 규격 강화(생산) + design Step 5.0 형식 점검(검증) + impl-loop dry preview 사유 구분 안내(소비) 3면 정합.
+
+3. **GitHub Project lifecycle CI** ([#692](https://github.com/alruminum/dcNess/pull/692)) — PR 머지 시 연결 issue 의 Project Status 를 Done 으로 자동 전이하는 워크플로 설치.
+
+4. **버그픽스·문서 정합** ([#687](https://github.com/alruminum/dcNess/pull/687)/[#688](https://github.com/alruminum/dcNess/pull/688) [#684](https://github.com/alruminum/dcNess/issues/684), [#682](https://github.com/alruminum/dcNess/pull/682) [#681](https://github.com/alruminum/dcNess/issues/681), [#683](https://github.com/alruminum/dcNess/pull/683), [#689](https://github.com/alruminum/dcNess/pull/689), [#686](https://github.com/alruminum/dcNess/pull/686), [#680](https://github.com/alruminum/dcNess/pull/680)) — run-ledger completed_at scan 회귀 테스트 + helper rid fallback 복구 + TDD guard false-negative 수정 + legacy workflow skill alias 제거 + 서브에이전트 호출 prompt 슬림 포인터 규약 + hooks.md 차단 메시지/3-layer enforcement 문서 정합.
+
+### 사용자 영향
+
+- **`claude plugin update dcness@dcness` 로 자동 반영** — 전부 plug-in 본체 경로(`harness/**`, `skills/**`, `agents/**`, `docs/plugin/**`). ALLOW_MATRIX 회귀 수정으로 비-JS 외부 프로젝트의 sub-agent write 정상화.
+- **lifecycle CI(머지→Done)** 는 `/init-dcness` 가 `.github/workflows` 로 배포하는 경로 — 기존 활성 프로젝트는 재배포(또는 `/init-dcness` 재실행) 필요.
+
+### 업데이트
+
+```sh
+claude plugin update dcness@dcness
+```
+
+---
+
 ## v0.6.0 (2026-06-09)
 
 **커밋 범위**: `v0.5.0..v0.6.0` (머지 PR 20개)
