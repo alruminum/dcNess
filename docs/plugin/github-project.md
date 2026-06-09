@@ -81,6 +81,8 @@ node scripts/github_project_lifecycle.mjs bootstrap --repo OWNER/REPO --owner OW
 
 issue 를 Project item 으로 추가하고 `Status=Todo` + `IssueType` + `Priority` 를 설정하는 경로는 `register-issue` 다. 단발 (`/to-issue`) 과 epic/story 일괄 생성이 같이 쓴다.
 
+Priority 처리는 두 경로가 다르다. 단발 `/to-issue` 는 Priority 를 맥락에서 추론해 `--priority` 로 명시한다 (기본값 없음 — [`../../skills/to-issue/issue-fields.md`](../../skills/to-issue/issue-fields.md) 의 Priority 추론 가이드). epic/story 일괄 생성은 전부 `major` 고정이다 (의도된 결정, 유지). `register-issue` 의 `--priority` 생략 시 `major` fallback 은 후자의 일괄 경로를 위한 동작이며, 단발 등록은 추론값을 항상 명시해 그 fallback 에 의존하지 않는다.
+
 ```bash
 node scripts/github_project_lifecycle.mjs register-issue \
   --repo OWNER/REPO --owner OWNER --project PROJECT_NUMBER \
