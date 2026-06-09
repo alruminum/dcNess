@@ -301,6 +301,151 @@ class WriteAllowedAllowMatrixTests(unittest.TestCase):
             )
 
 
+class LanguageNeutralAllowMatrixTests(unittest.TestCase):
+    """#694 — ALLOW_MATRIX 언어 중립성.
+
+    test-engineer / engineer 의 write 경계가 JS/TS 모노레포 컨벤션에 묶여 비-JS 외부
+    프로젝트(Python·Go·Ruby·JVM·C#·PHP·Elixir·remotion 등)의 정상 산출물을 차단하던
+    회귀 수정. 역할 격리(test-engineer=테스트만, engineer=소스)는 유지하면서 언어·레이아웃만
+    중립화한다. 외부 프로젝트 시뮬레이션(DCNESS_INFRA="" + CLAUDE_PLUGIN_ROOT="").
+    """
+
+    def setUp(self):
+        self._patcher = patch.dict(
+            os.environ, {"DCNESS_INFRA": "", "CLAUDE_PLUGIN_ROOT": ""}, clear=False
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+
+    # ── test-engineer: 언어 중립 테스트 경로 허용 ──
+    def test_test_engineer_python_tests_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in (
+                "tests/core/domain/test_shorts.py",   # tests/ 디렉토리 + test_ 파일명
+                "test_module.py",                      # 루트 test_*.py
+                "pkg/utils_test.py",                   # *_test.py (디렉토리 밖)
+            ):
+                self.assertIsNone(
+                    check_write_allowed("test-engineer", p, cwd=cwd),
+                    f"Python 테스트 {p} 가 허용되어야 함",
+                )
+
+    def test_test_engineer_go_test_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # *_test.go (디렉토리 무관 파일명 컨벤션).
+            self.assertIsNone(
+                check_write_allowed("test-engineer", "internal/svc/handler_test.go", cwd=cwd)
+            )
+
+    def test_test_engineer_ruby_spec_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("spec/models/user_spec.rb", "lib/foo_test.rb"):
+                self.assertIsNone(
+                    check_write_allowed("test-engineer", p, cwd=cwd),
+                    f"Ruby 테스트 {p} 허용",
+                )
+
+    def test_test_engineer_jvm_csharp_php_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in (
+                "src/test/java/com/foo/UserServiceTest.java",  # src/test/ 디렉토리
+                "src/test/kotlin/FooTests.kt",
+                "MyApp.Tests/CalculatorTests.cs",              # 파일명 패턴 (디렉토리 밖)
+                "app/Service/UserTest.php",
+            ):
+                self.assertIsNone(
+                    check_write_allowed("test-engineer", p, cwd=cwd),
+                    f"JVM/C#/PHP 테스트 {p} 허용",
+                )
+
+    def test_test_engineer_elixir_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(
+                check_write_allowed("test-engineer", "test/foo_test.exs", cwd=cwd)
+            )
+
+    def test_test_engineer_js_ts_regression(self):
+        # 기존 JS/TS 패턴이 광범위 패턴에 흡수돼도 여전히 허용 (회귀 방지).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in (
+                "src/__tests__/a.test.ts",
+                "src/components/Button.spec.tsx",
+                "apps/web/tests/e2e.test.ts",
+                "packages/core/src/__tests__/x.test.ts",
+            ):
+                self.assertIsNone(
+                    check_write_allowed("test-engineer", p, cwd=cwd),
+                    f"기존 JS/TS 테스트 {p} 회귀",
+                )
+
+    def test_test_engineer_still_cannot_write_impl(self):
+        # 역할 격리 유지 — test-engineer 는 비-테스트 구현 코드를 쓰면 안 된다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("src/domain/shorts.py", "remotion/shorts-types.ts", "lib/core.go"):
+                reason = check_write_allowed("test-engineer", p, cwd=cwd)
+                self.assertIsNotNone(reason, f"test-engineer 가 구현 {p} 를 쓰면 안 됨")
+                self.assertIn("ALLOW_MATRIX", reason)
+
+    # ── engineer: 언어 중립 소스 레이아웃 허용 ──
+    def test_engineer_remotion_allowed(self):
+        # #694 핵심 — src/ 밖 소스 루트(remotion/) 허용 (youTubeGenerator task 04).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(
+                check_write_allowed("engineer", "remotion/shorts-types.ts", cwd=cwd)
+            )
+
+    def test_engineer_common_source_layouts_allowed(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in (
+                "lib/parser.rb",
+                "app/models/user.rb",
+                "cmd/server/main.go",
+                "internal/svc/handler.go",
+                "pkg/util/strings.go",
+            ):
+                self.assertIsNone(
+                    check_write_allowed("engineer", p, cwd=cwd),
+                    f"흔한 소스 레이아웃 {p} 허용",
+                )
+
+    def test_engineer_invariant_still_blocks_docs_and_root(self):
+        # 회귀 가드 — engineer 가 docs / 루트 비소스 문서를 쓰면 안 된다 (기존 invariant 유지).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for p in ("README.md", "docs/storage-layout.md", "CHANGELOG.md"):
+                reason = check_write_allowed("engineer", p, cwd=cwd)
+                self.assertIsNotNone(reason, f"engineer 가 {p} 를 쓰면 안 됨")
+                self.assertIn("ALLOW_MATRIX", reason)
+
+    # ── build-worker: 합집합으로 둘 다 허용 (youTubeGenerator 통합 시나리오) ──
+    def test_build_worker_youtube_generator_scenario(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # 테스트 산출 (test-engineer 영역) — task 01·02·03·07
+            self.assertIsNone(
+                check_write_allowed("build-worker", "tests/core/domain/test_shorts.py", cwd=cwd)
+            )
+            # 소스 산출 (engineer 영역) — task 04
+            self.assertIsNone(
+                check_write_allowed("build-worker", "remotion/shorts-types.ts", cwd=cwd)
+            )
+            # remotion 디렉토리 안 테스트 (test 디렉토리 패턴)
+            self.assertIsNone(
+                check_write_allowed("build-worker", "remotion/test/render_test.ts", cwd=cwd)
+            )
+
+
 class AllowMatrixCoverageTests(unittest.TestCase):
     """#597 커밋4 — agents/*.md 전 agent 가 ALLOW_MATRIX key 로 등재 (누락 재발 차단).
 

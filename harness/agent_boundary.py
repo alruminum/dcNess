@@ -77,9 +77,16 @@ RUN_DIR_PROSE_ALLOW: tuple[str, ...] = (
 
 
 # ── ALLOW_MATRIX (agent 별 Write 허용) ─────────────────────────
-# RWHarness agent-boundary.py:48~84 와 동일 패턴.
+# RWHarness agent-boundary.py:48~84 기반. engineer / test-engineer 는 #694 에서 언어·레이아웃
+# 중립으로 확장 (JS/TS 전용 → Python·Go·Ruby·JVM·C#·PHP·Elixir·remotion 등 비-JS 외부 프로젝트).
 ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
+    # engineer — 구현 소스. JS/TS·Python 모노레포(src/·apps/·packages/) + 언어 중립 소스 루트
+    # (lib/·app/·cmd/·internal/·pkg/) + Remotion 비디오 소스(remotion/). docs/ · 루트 비소스
+    # 문서(README 등)는 미매칭으로 차단 — 역할 격리 유지.
+    # ⚠️ remotion/ 같은 프로젝트 고유 디렉토리는 코어 기본값에 둔 임시 — 무한한 비표준 레이아웃은
+    #    프로젝트별 override 로 이관 예정(#696). 그때 코어 기본값 다이어트.
     "engineer": (
+        # JS/TS·Python 모노레포 관례
         r'(^|/)src/',
         r'(^|/)apps/[^/]+/src/',
         r'(^|/)apps/[^/]+/app/',
@@ -87,6 +94,13 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'(^|/)packages/[^/]+/src/',
         r'(^|/)apps/[^/]+/[^/]+\.toml$',
         r'(^|/)apps/[^/]+/[^/]+\.cfg$',
+        # 언어 중립 소스 루트 레이아웃
+        r'(^|/)lib/',          # 다수 언어 라이브러리 소스
+        r'(^|/)app/',          # Rails/Phoenix 등 루트 app/
+        r'(^|/)cmd/',          # Go 엔트리포인트
+        r'(^|/)internal/',     # Go 내부 패키지
+        r'(^|/)pkg/',          # Go 공개 패키지
+        r'(^|/)remotion/',     # Remotion 비디오 소스 (youTubeGenerator 등) — #696 override 이관 후보
     ),
     "architect": (
         r'(^|/)docs/',
@@ -109,15 +123,23 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'(^|/)design-variants/',
         r'(^|/)docs/ui-spec',
     ),
+    # test-engineer — 테스트만 (역할 격리: 구현 소스 write 금지). 언어 중립 테스트 컨벤션을
+    # 디렉토리(tests/·test/·spec/·__tests__/)와 파일명(test_*.py·*_test.{go,rb,..}·
+    # *.test.{ts,..}·*Test(s).{java,kt,cs,php}·*_spec.rb 등)으로 포괄.
+    # 기존 JS/TS 전용 패턴(src/__tests__/·apps/*/tests/ 등)은 아래 광범위 패턴에 흡수됨
+    # (test_test_engineer_js_ts_regression 회귀 가드가 보존 검증).
     "test-engineer": (
-        r'(^|/)src/__tests__/',
-        r'(^|/)src/.*\.test\.[jt]sx?$',
-        r'(^|/)src/.*\.spec\.[jt]sx?$',
-        r'(^|/)apps/[^/]+/tests/',
-        r'(^|/)apps/[^/]+/src/__tests__/',
-        r'(^|/)apps/[^/]+/src/.*\.test\.[jt]sx?$',
-        r'(^|/)apps/[^/]+/src/.*\.spec\.[jt]sx?$',
-        r'(^|/)packages/[^/]+/src/__tests__/',
+        # 테스트 디렉토리 — 안의 모든 파일이 테스트 (언어 다수)
+        r'(^|/)tests?/',           # tests/ · test/ — Python·Rust·PHP·JVM(src/test/)·JS·일반
+        r'(^|/)spec/',             # Ruby RSpec, JS Jasmine
+        r'(^|/)__tests__/',        # JS/TS jest — 어디든
+        # 테스트 파일명 — 디렉토리 밖 테스트 (언어별 컨벤션)
+        r'(^|/)test_[^/]+\.py$',                          # Python test_*.py
+        r'(^|/)[^/]+_test\.(py|go|rb|dart|exs?)$',        # Python·Go·Ruby·Dart·Elixir *_test.*
+        r'(^|/)[^/]+_spec\.rb$',                          # Ruby *_spec.rb
+        r'(^|/)[^/]+\.test\.[jt]sx?$',                    # JS/TS *.test.*
+        r'(^|/)[^/]+\.spec\.[jt]sx?$',                    # JS/TS *.spec.*
+        r'(^|/)[^/]+Tests?\.(java|kt|kts|scala|cs|php)$', # JVM·C#·PHP *Test(s).*
     ),
     "ux-architect": (
         r'(^|/)docs/ux-flow\.md$',
