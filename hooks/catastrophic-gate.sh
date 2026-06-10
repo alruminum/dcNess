@@ -13,7 +13,8 @@
 #
 # 강제 룰 (3 게이트):
 #   - pr-reviewer 게이트 — pr-reviewer 직전 code-validator PASS 확인
-#   - engineer 게이트 — engineer 직전 module-architect PASS 확인
+#   - engineer 게이트 — engineer 직전 설계 산출물 확인 (같은 run 의 module-architect PASS
+#     또는 begin-run --design-doc 으로 기록된 설계 문서 실존)
 #   - module-architect 게이트 — architect-loop 안 module-architect × K 첫 호출 직전 architecture-validator PASS
 
 set -uo pipefail

@@ -449,6 +449,53 @@ def _resolve_run_dir_str(
         return str(rd)
 
 
+# design_doc 으로 인정하는 설계 산출물 표준 경로 prefix (impl 문서 / compact
+# plan / bugfix plan). 기록 시점에 repo-root 상대 prefix 앵커로 검증해 임의
+# .md(README 등)·traversal(`..`)·repo 밖 경로가 engineer 게이트 prerequisite
+# 증거가 되지 못하게 한다 (#701).
+_DESIGN_DOC_DIR_MARKERS = (
+    "docs/milestones/",
+    "docs/compact-plans/",
+    "docs/bugfix/",
+)
+
+
+def _validate_design_doc(design_doc: str) -> str:
+    """begin-run `--design-doc` 경로 fail-fast 검증 (#701) — resolve 절대경로 반환.
+
+    engineer 게이트의 prerequisite 증거로 쓰이므로 기록 시점에 (1) .md 파일,
+    (2) repo root(= helper 호출 cwd) 기준 설계 산출물 규약 경로 *안*, (3)
+    디스크 실존을 확인한다. 게이트는 호출 시점에 실존을 재확인한다 (기록 후
+    삭제 방어).
+
+    상대경로를 받은 그대로 기록하면 begin-run cwd(worktree)와 hook 프로세스
+    cwd 가 달라 게이트가 false-block 하므로 resolve 된 절대경로로 기록한다.
+    prefix 앵커 비교(substring 아님)라 traversal/symlink/repo 밖 경로는
+    resolve 후 거부된다.
+    """
+    if not isinstance(design_doc, str) or not design_doc.strip():
+        raise ValueError("design_doc must be non-empty str")
+    doc = design_doc.strip()
+    if not doc.endswith(".md"):
+        raise ValueError(f"design_doc must be a .md file: {doc!r}")
+    resolved = Path(doc).resolve()
+    root = Path.cwd().resolve()
+    try:
+        rel_posix = resolved.relative_to(root).as_posix()
+    except ValueError:
+        raise ValueError(
+            f"design_doc must live under the repo root ({root}): {doc!r}"
+        ) from None
+    if not any(rel_posix.startswith(marker) for marker in _DESIGN_DOC_DIR_MARKERS):
+        raise ValueError(
+            "design_doc must be a design artifact path under "
+            f"{' | '.join(_DESIGN_DOC_DIR_MARKERS)}: {doc!r}"
+        )
+    if not resolved.is_file():
+        raise ValueError(f"design_doc not found on disk: {doc!r}")
+    return str(resolved)
+
+
 def start_run(
     session_id: str,
     run_id: str,
@@ -456,10 +503,16 @@ def start_run(
     *,
     base_dir: Optional[Path] = None,
     issue_num: Optional[int] = None,
+    design_doc: Optional[str] = None,
 ) -> None:
     """`active_runs[run_id]` 슬롯 추가 + run 디렉토리 생성.
 
     이미 존재하면 ValueError (중복 run_id 방어).
+
+    design_doc — 이 run 이 참조하는 머지된 설계 문서 경로 (#701). 기록 시
+    engineer 게이트가 같은-run module-architect PASS 의 등가 prerequisite
+    증거로 인정한다 (impl-loop 풀 4-agent 처럼 설계가 별도 run 에서 머지된
+    뒤 진입하는 경우).
     """
     if not valid_session_id(session_id):
         raise ValueError(f"invalid session_id: {session_id!r}")
@@ -467,6 +520,15 @@ def start_run(
         raise ValueError(f"invalid run_id: {run_id!r}")
     if not isinstance(entry_point, str) or not entry_point:
         raise ValueError("entry_point must be non-empty str")
+    if design_doc is not None:
+        # design_doc 은 impl 구현 run 전용 — design/architect-loop run 의
+        # engineer ← module-architect PASS 강제가 코드 보장으로 유지되도록
+        # 다른 entry_point 의 기록 자체를 거부한다.
+        if entry_point != "impl":
+            raise ValueError(
+                f"design_doc is only valid for entry_point=impl (got {entry_point!r})"
+            )
+        design_doc = _validate_design_doc(design_doc)
 
     live = read_live(session_id, base_dir=base_dir) or {}
     active = live.get("active_runs", {})
@@ -485,6 +547,7 @@ def start_run(
         "run_dir": _resolve_run_dir_str(session_id, run_id, base_dir),
         "current_step": None,
         "issue_num": issue_num,
+        "design_doc": design_doc,
     }
     update_live(session_id, base_dir=base_dir, active_runs=active)
     # run 디렉토리 생성
@@ -497,6 +560,7 @@ def _ledger_run_started(
     entry_point: str,
     *,
     issue_num: Optional[int] = None,
+    design_doc: Optional[str] = None,
     base_dir: Optional[Path] = None,
 ) -> None:
     """start_run 직후 ledger run_started checkpoint 기록 (이슈 #587).
@@ -511,6 +575,8 @@ def _ledger_run_started(
         extra: Dict[str, Any] = {"entry_point": entry_point}
         if issue_num is not None:
             extra["issue_num"] = issue_num
+        if design_doc is not None:
+            extra["design_doc"] = design_doc
         ledger.append_event(session_id, run_id, "run_started", base_dir=base_dir, **extra)
     except Exception:
         pass
@@ -1362,8 +1428,15 @@ def _cli_begin_run(args: Any) -> int:
         return 1
     rid = generate_run_id()
     issue_num = args.issue_num if args.issue_num is not None else None
-    start_run(sid, rid, args.entry_point, issue_num=issue_num)
-    _ledger_run_started(sid, rid, args.entry_point, issue_num=issue_num)
+    design_doc = getattr(args, "design_doc", None)
+    try:
+        start_run(sid, rid, args.entry_point, issue_num=issue_num, design_doc=design_doc)
+    except ValueError as exc:
+        print(f"[begin-run] FAIL — {exc}", file=sys.stderr)
+        return 1
+    _ledger_run_started(
+        sid, rid, args.entry_point, issue_num=issue_num, design_doc=design_doc,
+    )
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         write_pid_current_run(cc_pid, rid)
@@ -1489,16 +1562,27 @@ def _cli_next_task(args: Any) -> int:
     5. stdout = previous review + 새 run_id + 새 run_dir
 
     Usage:
-        dcness-helper next-task [--entry-point impl]
+        dcness-helper next-task [--entry-point impl] [--design-doc <path>]
 
     Exit codes:
         0 — 정상 (이전 run finalize + 새 run 발급)
-        1 — sid 미해결
+        1 — sid 미해결 / design_doc 검증 실패
     """
     sid = auto_detect_session_id()
     if not sid:
         print(diagnose_sid_rid_resolution(mode="sid"), file=sys.stderr)
         return 1
+
+    entry_point = getattr(args, "entry_point", "impl") or "impl"
+    design_doc = getattr(args, "design_doc", None)
+    if design_doc is not None:
+        # 이전 run end-run(비가역) *전* 선검증 — 경로 오타로 이전 run 만 닫히고
+        # 새 run 발급이 실패하는 어긋남(prev review echo 영구 소실) 방지.
+        try:
+            design_doc = _validate_design_doc(design_doc)
+        except ValueError as exc:
+            print(f"[next-task] begin-run FAIL — {exc}", file=sys.stderr)
+            return 1
 
     prev_rid = auto_detect_run_id()
     prev_review_path: Optional[Path] = None
@@ -1515,15 +1599,14 @@ def _cli_next_task(args: Any) -> int:
         except Exception as exc:
             print(f"[next-task] end-run FAIL — {exc}", file=sys.stderr)
 
-    entry_point = getattr(args, "entry_point", "impl") or "impl"
     new_rid = generate_run_id()
     try:
-        start_run(sid, new_rid, entry_point, issue_num=None)
+        start_run(sid, new_rid, entry_point, issue_num=None, design_doc=design_doc)
     except Exception as exc:
         print(f"[next-task] begin-run FAIL — {exc}", file=sys.stderr)
         return 1
     # 이슈 #587 (codex review) — chain task run 도 run_started checkpoint 남김.
-    _ledger_run_started(sid, new_rid, entry_point)
+    _ledger_run_started(sid, new_rid, entry_point, design_doc=design_doc)
     cc_pid = get_cc_pid_via_ppid_chain()
     if cc_pid is not None:
         write_pid_current_run(cc_pid, new_rid)
@@ -1550,6 +1633,8 @@ def _cli_next_task(args: Any) -> int:
     print(f"\n[new] run_id: {new_rid}")
     print(f"[new] run_dir: {new_run_dir_path}")
     print(f"[new] entry_point: {entry_point}")
+    if design_doc:
+        print(f"[new] design_doc: {design_doc}")
     print("=== /next-task transition ===")
     return 0
 
@@ -2722,6 +2807,11 @@ def _build_arg_parser() -> Any:
     p_br = sub.add_parser("begin-run", help="run_id 발급 + start_run")
     p_br.add_argument("entry_point")
     p_br.add_argument("--issue-num", type=int, default=None)
+    p_br.add_argument(
+        "--design-doc", default=None, dest="design_doc",
+        help="이 run 이 참조하는 머지된 설계 문서 경로 — engineer 게이트가 "
+             "같은-run module-architect PASS 의 등가 prerequisite 로 인정",
+    )
     p_br.set_defaults(func=_cli_begin_run)
 
     p_er = sub.add_parser("end-run", help="complete_run + clear by-pid-current-run")
@@ -2734,6 +2824,10 @@ def _build_arg_parser() -> Any:
     p_nt.add_argument(
         "--entry-point", default="impl",
         help="새 run 의 entry_point (default: impl)",
+    )
+    p_nt.add_argument(
+        "--design-doc", default=None, dest="design_doc",
+        help="다음 task 가 참조하는 머지된 설계 문서 경로 (begin-run --design-doc 동일)",
     )
     p_nt.set_defaults(func=_cli_next_task)
 
