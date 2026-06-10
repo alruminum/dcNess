@@ -441,13 +441,19 @@ def handle_pretooluse_agent(
     except (OSError, ValueError):
         pass  # state 읽기 실패는 fail-open — hook 버그발 과차단 회피.
 
-    # engineer 게이트 — engineer 직전 module-architect PASS 필수 (mode != POLISH).
-    # #700 — namespaced 우회 차단을 위해 norm_subagent 비교(codex P1). 판정 로직은 main 그대로.
+    # engineer 게이트 — engineer 직전 설계 산출물 필수 (mode != POLISH).
+    # #700 — namespaced 우회 차단을 위해 norm_subagent 비교(codex P1).
+    # #701 — prerequisite = 같은-run module-architect PASS ∪ begin-run 에 기록된
+    # 머지된 설계 문서(design_doc) 실존. impl-loop 풀 4-agent 는 설계가 별도 run
+    # 에서 머지된 뒤 진입하므로 같은-run prose 단일 기준이면 구조적으로 차단된다.
     if norm_subagent == "engineer" and mode != "POLISH":
-        if not _has_pass(rd, "module-architect"):
+        if not _has_pass(rd, "module-architect") and not _run_design_doc_exists(
+            sid, rid, base_dir=base_dir
+        ):
             print(
-                "[catastrophic: engineer 게이트] engineer 호출은 module-architect PASS 후만 "
-                "(module-architect.md 안 PASS 마커)",
+                "[catastrophic: engineer 게이트] engineer 호출은 설계 산출물 확보 후만 — "
+                "같은 run 의 module-architect PASS (module-architect.md 안 PASS 마커) "
+                "또는 begin-run --design-doc 으로 기록된 설계 문서 실존",
                 file=sys.stderr,
             )
             return 1
@@ -1078,6 +1084,32 @@ def _has_pass(rd: Path, agent: str) -> bool:
 
 def _has_engineer_write(rd: Path) -> bool:
     return (rd / "engineer-IMPL.md").exists() or (rd / "engineer-POLISH.md").exists()
+
+
+def _run_design_doc_exists(
+    sid: str,
+    rid: str,
+    *,
+    base_dir: Optional[Path] = None,
+) -> bool:
+    """현재 run 슬롯에 기록된 design_doc 이 디스크에 실존하는지 (#701).
+
+    begin-run `--design-doc` 으로 기록된 머지된 설계 문서는 engineer 게이트의
+    같은-run module-architect PASS 등가 prerequisite 증거다. 경로 규약 검증은
+    기록 시점(start_run fail-fast)에 끝났고, 여기서는 실존만 재확인한다 (기록
+    후 삭제 방어). 기록 부재 / state 읽기 실패는 종전과 동일하게 차단 측
+    (fail-strict).
+    """
+    try:
+        live = read_live(sid, base_dir=base_dir) or {}
+        active = live.get("active_runs", {}) if isinstance(live, dict) else {}
+        slot = active.get(rid, {}) if isinstance(active, dict) else {}
+        doc = slot.get("design_doc") if isinstance(slot, dict) else None
+        if not isinstance(doc, str) or not doc:
+            return False
+        return Path(doc).is_file()
+    except (OSError, ValueError):
+        return False
 
 
 def _is_design_loop(

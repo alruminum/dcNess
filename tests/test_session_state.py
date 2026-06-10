@@ -453,6 +453,69 @@ class ActiveRunsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             start_run(self.sid, self.run_id, "impl", base_dir=self.base)
 
+    # -- design_doc 기록 — engineer 게이트 prerequisite 증거 --
+
+    def _write_design_doc(self, rel: str = "docs/compact-plans/foo.md") -> Path:
+        doc = self.base / rel
+        doc.parent.mkdir(parents=True, exist_ok=True)
+        doc.write_text("# design artifact\n", encoding="utf-8")
+        return doc
+
+    def test_start_run_records_design_doc(self) -> None:
+        doc = self._write_design_doc()
+        start_run(
+            self.sid, self.run_id, "impl",
+            base_dir=self.base, design_doc=str(doc),
+        )
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.run_id]
+        self.assertEqual(slot["design_doc"], str(doc))
+
+    def test_start_run_without_design_doc_records_none(self) -> None:
+        start_run(self.sid, self.run_id, "impl", base_dir=self.base)
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.run_id]
+        self.assertIsNone(slot["design_doc"])
+
+    def test_start_run_design_doc_missing_file_raises(self) -> None:
+        # 기록 시점 fail-fast — 실존하지 않는 경로는 게이트에서 막히기 전에 거부.
+        with self.assertRaises(ValueError):
+            start_run(
+                self.sid, self.run_id, "impl",
+                base_dir=self.base,
+                design_doc=str(self.base / "docs" / "compact-plans" / "nope.md"),
+            )
+
+    def test_start_run_design_doc_non_design_path_raises(self) -> None:
+        # 설계 산출물 경로 규약(docs/milestones|compact-plans|bugfix) 밖 파일은
+        # prerequisite 증거가 될 수 없다 — 임의 파일로 게이트 무력화 방지.
+        readme = self.base / "README.md"
+        readme.write_text("x\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            start_run(
+                self.sid, self.run_id, "impl",
+                base_dir=self.base, design_doc=str(readme),
+            )
+
+    def test_start_run_design_doc_non_md_raises(self) -> None:
+        doc = self.base / "docs" / "compact-plans" / "foo.txt"
+        doc.parent.mkdir(parents=True)
+        doc.write_text("x\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            start_run(
+                self.sid, self.run_id, "impl",
+                base_dir=self.base, design_doc=str(doc),
+            )
+
+    def test_start_run_design_doc_milestones_impl_path_ok(self) -> None:
+        doc = self._write_design_doc(
+            "docs/milestones/v01/epics/epic-01-x/impl/03-foo.md"
+        )
+        start_run(
+            self.sid, self.run_id, "impl",
+            base_dir=self.base, design_doc=str(doc),
+        )
+        slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.run_id]
+        self.assertEqual(slot["design_doc"], str(doc))
+
     def test_update_current_step(self) -> None:
         start_run(self.sid, self.run_id, "impl", base_dir=self.base)
         update_current_step(
@@ -2456,6 +2519,78 @@ class NextTaskTransitionTests(unittest.TestCase):
         self.assertIn("[new] run_dir:", out)
         # 새 rid != 이전 rid (begin-run 정상 동작)
         self.assertNotIn(f"[new] run_id: {prev_rid}", out)
+
+    def test_transition_records_design_doc(self) -> None:
+        # chain task — 다음 task 의 머지된 설계 문서를 새 run 에 기록 (engineer
+        # 게이트 prerequisite 증거 승계).
+        from harness.session_state import _cli_next_task, read_live
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+        sid = "11111111-2222-4333-8444-555555555555"
+        os.environ["DCNESS_SESSION_ID"] = sid
+
+        doc = Path("docs/compact-plans/foo.md")
+        doc.parent.mkdir(parents=True)
+        doc.write_text("# compact plan\n", encoding="utf-8")
+
+        buf = StringIO()
+        with redirect_stdout(buf):
+            rc = _cli_next_task(SimpleNamespace(
+                entry_point="impl", design_doc=str(doc),
+            ))
+        self.assertEqual(rc, 0)
+        active = read_live(sid)["active_runs"]
+        recorded = [s.get("design_doc") for s in active.values()]
+        self.assertIn(str(doc), recorded)
+        self.assertIn(f"[new] design_doc: {doc}", buf.getvalue())
+
+    def test_transition_invalid_design_doc_fails(self) -> None:
+        # 실존하지 않는 design_doc — begin-run FAIL 로 fail-fast (exit 1).
+        from harness.session_state import _cli_next_task
+        from io import StringIO
+        from contextlib import redirect_stdout, redirect_stderr
+        from types import SimpleNamespace
+        sid = "11111111-2222-4333-8444-555555555555"
+        os.environ["DCNESS_SESSION_ID"] = sid
+
+        out, err = StringIO(), StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = _cli_next_task(SimpleNamespace(
+                entry_point="impl",
+                design_doc="docs/compact-plans/nope.md",
+            ))
+        self.assertEqual(rc, 1)
+        self.assertIn("begin-run FAIL", err.getvalue())
+
+
+class DesignDocArgparseTests(unittest.TestCase):
+    """begin-run / next-task 의 --design-doc 플래그 파싱 회귀."""
+
+    def test_begin_run_accepts_design_doc(self) -> None:
+        from harness.session_state import _build_arg_parser
+        ns = _build_arg_parser().parse_args(
+            ["begin-run", "impl", "--design-doc", "docs/compact-plans/x.md"]
+        )
+        self.assertEqual(ns.cmd, "begin-run")
+        self.assertEqual(ns.design_doc, "docs/compact-plans/x.md")
+
+    def test_begin_run_design_doc_defaults_none(self) -> None:
+        from harness.session_state import _build_arg_parser
+        ns = _build_arg_parser().parse_args(["begin-run", "impl"])
+        self.assertIsNone(ns.design_doc)
+
+    def test_next_task_accepts_design_doc(self) -> None:
+        from harness.session_state import _build_arg_parser
+        ns = _build_arg_parser().parse_args(
+            ["next-task", "--design-doc",
+             "docs/milestones/v01/epics/epic-01-x/impl/01-x.md"]
+        )
+        self.assertEqual(ns.cmd, "next-task")
+        self.assertEqual(
+            ns.design_doc,
+            "docs/milestones/v01/epics/epic-01-x/impl/01-x.md",
+        )
 
 
 # ---------------------------------------------------------------------------

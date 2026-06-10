@@ -16,6 +16,8 @@ Coverage matrix:
         - engineer 게이트 — module-architect.md 안 PASS 있으면 통과
         - engineer 게이트 — module-architect-N.md (occurrence) 안 PASS 도 인정
         - engineer 게이트 — engineer POLISH 모드는 plan 검사 skip
+        - engineer 게이트 — run 에 기록된 design_doc 실존 시 module-architect 없이 통과
+        - engineer 게이트 — design_doc 기록됐지만 디스크 부재면 차단 (fail-strict)
         - 그 외 agent (architect MODULE_PLAN, code-validator 등) — run 외부에서도 통과
         - sid 없음 → silent allow
         - tool_input 비정상 → silent allow
@@ -232,6 +234,82 @@ class CatastrophicEngineerTests(_PreToolBase):
         # 정규화 비교한다. dcness:engineer 가 module-architect PASS 게이트를 우회하면 안 된다.
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("dcness:engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    # -- #701 — design_doc 실존 = module-architect PASS 의 등가 prerequisite --
+
+    def _start_run_with_design_doc(self, design_doc: str) -> None:
+        """begin-run --design-doc + begin-step engineer 경로 모사.
+
+        entry_point=impl run 은 strict-conveyor 가 begin-step 을 강제하므로
+        실제 풀 4-agent 시퀀스대로 current_step 까지 세팅 — 차단/통과가
+        engineer 게이트에서 판정되도록 한다.
+        """
+        rid2 = "run-87654321"
+        start_run(
+            self.sid, rid2, "impl",
+            base_dir=self.base, design_doc=design_doc,
+        )
+        write_pid_current_run(self.cc_pid, rid2, base_dir=self.base)
+        update_current_step(
+            self.sid, rid2, "engineer", "IMPL", base_dir=self.base,
+        )
+
+    def _write_design_doc(self) -> Path:
+        doc = (
+            self.base / "docs" / "milestones" / "v01" / "epics"
+            / "epic-01-x" / "impl" / "03-foo.md"
+        )
+        doc.parent.mkdir(parents=True)
+        doc.write_text("# impl task\n", encoding="utf-8")
+        return doc
+
+    def test_allowed_with_merged_design_doc(self) -> None:
+        # #701 — impl-loop 풀 4-agent: 설계(impl 문서)는 별도 run 에서 머지된 뒤
+        # 진입하므로, run 에 기록된 design_doc 실존이 같은-run module-architect
+        # PASS 없이도 engineer(IMPL) prerequisite 를 충족해야 한다.
+        doc = self._write_design_doc()
+        self._start_run_with_design_doc(str(doc))
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_blocked_when_design_doc_gone_from_disk(self) -> None:
+        # 기록 시점엔 실존했지만 게이트 시점에 삭제된 design_doc → fail-strict 차단.
+        # 차단 주체가 strict-conveyor 가 아닌 engineer 게이트임을 stderr 로 확정.
+        from io import StringIO
+        from contextlib import redirect_stderr
+
+        doc = self._write_design_doc()
+        self._start_run_with_design_doc(str(doc))
+        doc.unlink()
+        err = StringIO()
+        with redirect_stderr(err):
+            rc = handle_pretooluse_agent(
+                stdin_data=self._payload("engineer", "IMPL"),
+                cc_pid=self.cc_pid,
+                base_dir=self.base,
+            )
+        self.assertEqual(rc, 1)
+        self.assertIn("[catastrophic: engineer 게이트]", err.getvalue())
+
+    def test_other_run_design_doc_does_not_unlock_current_run(self) -> None:
+        # design_doc 은 *자기 run* 의 prerequisite 만 충족 — design_doc 없는 기존
+        # run(setUp 의 self.rid)은 종전대로 차단 유지 (회귀 가드).
+        doc = self._write_design_doc()
+        start_run(
+            self.sid, "run-87654321", "impl",
+            base_dir=self.base, design_doc=str(doc),
+        )
+        # current run 은 여전히 setUp 의 design_doc 없는 run
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer", "IMPL"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
