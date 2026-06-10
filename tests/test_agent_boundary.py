@@ -964,6 +964,18 @@ class BashHeuristicTests(unittest.TestCase):
         paths = extract_bash_paths("sed -i 's/x/y/' docs/foo.md")
         self.assertIn("docs/foo.md", paths)
 
+    def test_sed_clustered_in_place_extracts(self):
+        for flag in ("-ni", "-ri", "-nri", "-Ei"):
+            with self.subTest(flag=flag):
+                paths = extract_bash_paths(f"sed {flag} 's/x/y/' hooks/gate.sh")
+                self.assertIn("hooks/gate.sh", paths)
+
+    def test_sed_attached_expr_is_not_in_place(self):
+        self.assertEqual(
+            extract_bash_paths("sed -es/i/o/ input.txt > docs/out.txt"),
+            ["docs/out.txt"],
+        )
+
     def test_redirect_extracts(self):
         paths = extract_bash_paths("echo hi > hooks/evil.sh")
         self.assertIn("hooks/evil.sh", paths)

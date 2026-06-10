@@ -556,6 +556,17 @@ def _target_directory_flag(args: list[str]) -> Optional[str]:
     return None
 
 
+def _sed_short_options_include_in_place(arg: str) -> bool:
+    if not arg.startswith("-") or arg.startswith("--") or arg == "-":
+        return False
+    for opt in arg[1:]:
+        if opt == "i":
+            return True
+        if opt in ("e", "f"):
+            return False
+    return False
+
+
 def _sed_in_place_targets(args: list[str]) -> list[str]:
     in_place = False
     expression_supplied = False
@@ -575,7 +586,7 @@ def _sed_in_place_targets(args: list[str]) -> list[str]:
             else:
                 i += 1
             continue
-        if arg.startswith("-i") and arg != "-":
+        if _sed_short_options_include_in_place(arg):
             in_place = True
             i += 1
             continue
