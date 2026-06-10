@@ -975,6 +975,14 @@ class ConclusionEnumExtractionTests(unittest.TestCase):
         prose = "재시도 한도 초과.\n\nIMPLEMENTATION_ESCALATE — 사용자 위임."
         self.assertEqual(_extract_conclusion_enum(prose), "IMPLEMENTATION_ESCALATE")
 
+    def test_extracts_validation_blocked(self):
+        # build-worker 결론 — 검증 명령 실행 불가 (환경 제약). PASS 로 오인 금지 (#705).
+        prose = (
+            "self-validate 시도.\n\n게이트 명령 실행이 환경 제약으로 막힘 — "
+            "VALIDATION_BLOCKED. 메인 대행 명령: python -m pytest tests/"
+        )
+        self.assertEqual(_extract_conclusion_enum(prose), "VALIDATION_BLOCKED")
+
     def test_extracts_tests_fail(self):
         # TESTS_FAIL 이 FAIL 보다 우선 매칭
         prose = "테스트 결과.\n\n3회 후에도 동일 FAIL — TESTS_FAIL 결론."

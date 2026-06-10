@@ -248,8 +248,10 @@ default 시퀀스 = **test-engineer → engineer (IMPL) → code-validator → p
 > **advanced fallback — deep task 보강 필요 시 module-architect 선두** — build-worker 직전에 `begin-step module-architect` → `Agent(module-architect, prompt=<task 컨텍스트 + impl 파일 생성 위치>)` → `PASS` 시 impl 파일 생성 확인 후 `end-step module-architect` → 정상 build-worker 진입. 이것은 Lite direct 구현이 아니라 deep task 보강 경로다. `ESCALATE` 시 사용자 위임.
 >
 > **자동 폴백** — build-worker 가 진행 중 `SPEC_GAP_FOUND` 던지면 분량 메타 (small/medium/large) 기반 분기 (= [`impl-loop-routing.md`](impl-loop-routing.md#결론-다음-호출-매핑)). attempt 한도 초과 시 사용자 위임.
+>
+> **검증 대행 폴백** — build-worker 가 환경 제약으로 검증 명령을 실행하지 못해 `VALIDATION_BLOCKED` 를 보고하면, 메인이 worker 가 남긴 검증 명령을 같은 cwd(worktree)에서 직접 실행해 종료코드로 판정을 복원한다 (= [`impl-loop-routing.md`](impl-loop-routing.md#결론-다음-호출-매핑)). 검증 미실행 상태로 git/PR 진행 금지.
 
-❌ build-worker 안티패턴: phase 2 종료 전 GREEN 미확인 (false-clean) / build-worker 가 `Agent(pr-reviewer)` 또는 `git commit` 직접 호출 (권한 경계 위반 — 메인이 별 turn 처리) / phase prose 자체 Write 확인 skip (`build-{test,impl,validate}.md` 3개 실존 검증 의무, 부재 시 `blocked` 강등).
+❌ build-worker 안티패턴: phase 2 종료 전 GREEN 미확인 (false-clean) / 검증 실행 불가를 정적 분석 PASS 로 흡수 (실행 불가면 `VALIDATION_BLOCKED` — 메인이 게이트 대행) / build-worker 가 `Agent(pr-reviewer)` 또는 `git commit` 직접 호출 (권한 경계 위반 — 메인이 별 turn 처리) / phase prose 자체 Write 확인 skip (`build-{test,impl,validate}.md` 3개 실존 검증 의무, 부재 시 `blocked` 강등).
 
 ---
 
