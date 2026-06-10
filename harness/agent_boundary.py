@@ -467,6 +467,24 @@ _SHELL_SEPARATORS = frozenset({"&&", "||", ";", "|", "&"})
 _CP_VALUE_FLAGS = frozenset({"-t", "--target-directory"})
 _SED_EXPR_FLAGS = frozenset({"-e", "--expression", "-f", "--file"})
 
+# ── write target 이 아닌 redirect 대상 (#705) ─────────────────────────
+# `cmd 2>&1` 의 `1` (fd 복제) 과 `cmd > /dev/null` 의 `/dev/null` (device sink) 은
+# 프로젝트 파일 write 가 아니다. 이들이 write target 으로 추출되면 ALLOW 미매칭(`1`) /
+# 경계 밖(`/dev/null`) 차단이 발화하는데, `2>&1`·`>/dev/null` 은 테스트/lint 게이트 호출의
+# 보편 스펠링이라 sub-agent (특히 worktree 기반 /impl-loop 의 build-worker) 의 read-only
+# 검증 실행이 통째로 막히고, 검증 미실행이 정적 분석 PASS 로 흡수되는 false-clean 으로
+# 이어졌다. device sink 는 *정확 일치* 만 — `/dev/shm/...` 등 하위 경로는 일반 경계 검사 유지.
+_DEVICE_SINKS = frozenset({"/dev/null", "/dev/stdout", "/dev/stderr", "/dev/tty"})
+
+
+def _is_fd_dup_target(op: str, target: str) -> bool:
+    """`>&` 의 대상이 fd 숫자(`2>&1`) 또는 `-`(fd 닫기, `2>&-`) 면 파일 아님.
+
+    bash 시맨틱 그대로 — `>&word` 는 word 가 숫자/`-` 면 fd 복제, 그 외면 파일 redirect
+    (csh 스타일 `>& out.log` 는 계속 write target). `&>word` 는 항상 파일이라 비대상.
+    """
+    return op == ">&" and (target.isdigit() or target == "-")
+
 
 def _shell_tokens_for_paths(command: str) -> list[str]:
     """Path 추출용 shell tokenization.
@@ -512,12 +530,16 @@ def _strip_redirections_for_paths(tokens: list[str]) -> tuple[list[str], list[st
         ):
             op = tokens[i + 1]
             if i + 2 < len(tokens) and op in _WRITE_REDIRECT_OPS:
-                paths.append(tokens[i + 2])
+                # fd 복제 (`2>&1`) / 닫기 (`2>&-`) 는 파일 write 아님 (#705).
+                if not _is_fd_dup_target(op, tokens[i + 2]):
+                    paths.append(tokens[i + 2])
             i += 3 if i + 2 < len(tokens) else 2
             continue
         if tok in (_WRITE_REDIRECT_OPS | _READ_REDIRECT_OPS):
             if i + 1 < len(tokens) and tok in _WRITE_REDIRECT_OPS:
-                paths.append(tokens[i + 1])
+                # fd 복제 (`>&2`) / 닫기 (`>&-`) 는 파일 write 아님 (#705).
+                if not _is_fd_dup_target(tok, tokens[i + 1]):
+                    paths.append(tokens[i + 1])
             i += 2 if i + 1 < len(tokens) else 1
             continue
         argv.append(tok)
@@ -734,6 +756,8 @@ def extract_bash_paths(command: str) -> list[str]:
     seen: set[str] = set()
     deduped: list[str] = []
     for path in paths:
+        if path in _DEVICE_SINKS:
+            continue  # `/dev/null` 등 무해 sink — 프로젝트 write 아님 (#705)
         if path not in seen:
             seen.add(path)
             deduped.append(path)
