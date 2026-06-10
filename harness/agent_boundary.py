@@ -104,6 +104,12 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'^internal/',     # Go 내부 패키지
         r'^pkg/',          # Go 공개 패키지
         r'^remotion/',     # Remotion 비디오 소스 (youTubeGenerator 등) — #696 override 이관 후보
+        # 루트 직속 단일 파일 엔트리포인트 — Flask/FastAPI `app.py`·`main.py`, Django
+        # `manage.py`, Go 루트 `main.go`, Node `server.js`/`index.js` 등 (#705 실측: 디렉토리
+        # 패턴만 있으면 worker 가 루트 엔트리 파일을 못 고쳐 "prose 제시 → 메인 대리 적용"
+        # 우회가 강제됨). *코드 확장자만* — `.sh`(게이트 스크립트)·`.md`(문서)·toml/json/yaml
+        # (매니페스트)·Makefile/Dockerfile 은 계속 미매칭 차단. 그 외 언어는 #696 override 영역.
+        r'^[^/]+\.(?:py|pyi|go|rs|rb|php|ex|exs|js|jsx|ts|tsx|mjs|cjs)$',
     ),
     "architect": (
         r'(^|/)docs/',
@@ -143,6 +149,7 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
         r'(^|/)[^/]+\.test\.[jt]sx?$',                    # JS/TS *.test.*
         r'(^|/)[^/]+\.spec\.[jt]sx?$',                    # JS/TS *.spec.*
         r'(^|/)[^/]+Tests?\.(java|kt|kts|scala|cs|php)$', # JVM·C#·PHP *Test(s).*
+        r'(^|/)conftest\.py$',                            # pytest 픽스처 관례 파일 (#705)
     ),
     "ux-architect": (
         r'(^|/)docs/ux-flow\.md$',

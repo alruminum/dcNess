@@ -1689,5 +1689,86 @@ class WorktreeValidationBoundaryTests(unittest.TestCase):
             self.assertEqual(blocked, ["/tmp/evil.sh"])
 
 
+class RootCodeFileAllowTests(unittest.TestCase):
+    """#705 실측 보강 — repo 루트 직속 코드 파일(app.py 등) write 차단 friction.
+
+    엔트리포인트가 루트 단일 파일인 레이아웃(Flask/FastAPI `app.py`, Django `manage.py`,
+    Go `main.go`, Node `server.js`)에서 ALLOW_MATRIX 가 디렉토리 패턴만 갖고 있으면 code
+    agent 가 그 파일을 못 고쳐 "prose 제시 -> 메인 대리 적용" 우회가 강제된다. 루트 직속
+    *코드 확장자* 파일만 좁게 허용하고, 게이트 스크립트(.sh)/문서(.md)/매니페스트
+    (toml·json·yaml)/비루트 경로는 기존 차단을 유지한다.
+    """
+
+    def setUp(self):
+        self._patcher = patch.dict(
+            os.environ, {"DCNESS_INFRA": "", "CLAUDE_PLUGIN_ROOT": ""}, clear=False
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+
+    def test_root_entry_code_files_allowed_for_code_agents(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, fp in (
+                ("engineer", "app.py"),
+                ("engineer", "main.py"),
+                ("engineer", "manage.py"),
+                ("engineer", "server.js"),
+                ("engineer", "main.go"),
+                ("build-worker", "app.py"),
+                ("build-worker", "main.go"),
+            ):
+                with self.subTest(agent=agent, fp=fp):
+                    self.assertIsNone(check_write_allowed(agent, fp, cwd=cwd))
+
+    def test_root_non_code_files_still_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent, fp in (
+                ("engineer", "README.md"),       # 문서 — 역할 격리 유지
+                ("engineer", "check.sh"),        # 게이트 스크립트 — agent 가 수정 금지
+                ("engineer", "pyproject.toml"),  # 매니페스트
+                ("engineer", "package.json"),
+                ("engineer", "Makefile"),
+                ("engineer", ".env"),
+                ("build-worker", "release.yaml"),
+            ):
+                with self.subTest(agent=agent, fp=fp):
+                    self.assertIsNotNone(check_write_allowed(agent, fp, cwd=cwd))
+
+    def test_non_root_code_paths_unchanged(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # 루트 전용 앵커 — 디렉토리 하위는 기존 패턴 영역 그대로.
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "scripts/run.py", cwd=cwd)
+            )
+            # docs/ 하위 코드 파일명은 전용영역 deny 가 계속 우선.
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "docs/app.py", cwd=cwd)
+            )
+
+    def test_conftest_allowed_for_test_engineer(self):
+        # pytest 관례 파일 — 같은 클래스 friction (디렉토리 패턴 밖 관례 파일).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(
+                check_write_allowed("test-engineer", "conftest.py", cwd=cwd)
+            )
+            self.assertIsNone(
+                check_write_allowed("test-engineer", "tests/conftest.py", cwd=cwd)
+            )
+
+    def test_test_engineer_still_blocked_from_impl_source(self):
+        # 역할 격리 회귀 가드 — test-engineer 는 구현 엔트리 파일 write 금지 유지.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNotNone(
+                check_write_allowed("test-engineer", "app.py", cwd=cwd)
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
