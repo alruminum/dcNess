@@ -8,16 +8,17 @@ dcNess 의 기본 공개 workflow 는 제품 생명주기 기준으로 계획 / 
 |---|---|---|
 | `/spec` | 새 제품 기능, 큰 기획, PRD 변경처럼 의도 합의가 먼저 필요할 때 | PRD 초안/최종화 / stories / 필요한 tech-review preflight + `SPEC_ACCEPTANCE` |
 | `/design` | PRD 이후 구현 전 product/technical design, 즉 설계 전체가 필요할 때 | UX / 시스템 / 모듈 / 기술 선택 설계. visual design 단독 요청은 `/ux` |
-| `/impl` | 구현, 수정, 버그픽스, 작은 리팩터링을 실제 PR 로 끝낼 때 | Lite / Standard / Deep lane 을 내부 판정 |
+| `/impl` | 구현, 수정, 버그픽스, 작은 리팩터링을 실제 PR 로 끝낼 때 | lane(설계도 유무 — Lite / Standard) + 엔진(풀4/경량)을 내부 판정 |
 | `/acceptance` | PRD / Epic / Story 기준 제품 검수와 gap 후속 연결이 필요할 때 | story/epic acceptance. full E2E 는 MVP 범위 밖 |
 
-사용자는 lane 이름을 외울 필요가 없다. `/impl` 이 작업의 되돌리기 비용과 불확실성을 보고 다음 내부 lane 중 하나를 고른다.
+사용자는 lane 이름을 외울 필요가 없다. `/impl` 은 설계를 하지 않고 **설계도를 보고 구현만** 하며, lane(설계도 유무)과 엔진(풀4/경량)을 직교로 고른다.
 
 | 내부 lane | 조건 | 실행 |
 |---|---|---|
-| Lite | high-risk 가 없고 파일, symbol, 승인된 issue, 테스트 명령처럼 구현 경계가 이미 concrete | 메인 직접 `test -> impl -> test pass -> pr-reviewer -> PR` |
-| Standard | high-risk 는 없지만 수정 범위, 테스트 기준, 작은 내부 contract 가 애매함 | `module-architect` compact plan 1-pass 후 plan-aware 구현 |
-| Deep | high-risk trigger 가 있거나 새 epic/product feature 처럼 사전 설계 합의가 필요함 | `/spec` 내부 tech-review preflight 필요 시 / `/design` / `/impl` / `/acceptance` 흐름 |
+| Lite | 설계 문서가 없고 파일, symbol, 승인된 issue, 테스트 명령처럼 구현 경계가 이미 concrete (high-risk 0개) | 메인 직접 `test -> impl -> test pass -> pr-reviewer -> PR` |
+| Standard | 설계 문서(경로)가 들어옴 | `--design-doc` 기록 후 받은 설계도로 구현 — 엔진 풀4(디폴트) / 경량 build-worker |
+
+엔진(풀4/경량 build-worker)은 lane 과 직교 축이고 사용자 우선·미지정 시 메인 추천이다. 이번 범위에서 엔진 선택은 Standard 에 적용한다(Lite 는 메인 직접 구현). high-risk trigger 나 새 epic/product feature 는 impl *내부 lane 이 아니라* impl 진입 *전* 설계 선행(`/spec` 내부 tech-review preflight 필요 시 / `/design`)으로 라우팅되고, 산출된 설계도를 들고 Standard 로 진입한다.
 
 ## Support Entrypoints
 
@@ -33,7 +34,7 @@ dcNess 의 기본 공개 workflow 는 제품 생명주기 기준으로 계획 / 
 
 | 고급 진입점 | 위치 |
 |---|---|
-| `/tech-review` | Deep lane 에서 `/spec` 내부 preflight 로 쓰는 선행 기술 검증 |
+| `/tech-review` | high-risk 설계 선행에서 `/spec` 내부 preflight 로 쓰는 선행 기술 검증 |
 | `/impl-loop` | deep impl task 파일용 legacy/advanced runner |
 | `/ux` | 화면 UX / 디자인 핸드오프 전문 흐름 |
 

@@ -41,4 +41,4 @@ issue: <optional>
 - migration/destructive/public API breakage:
 - cross-module/cross-story contract 변화:
 
-위 항목 중 하나라도 실제로 필요하면 compact plan 을 확정하지 말고 Deep lane 승격을 보고한다.
+위 항목 중 하나라도 실제로 필요하면 compact plan 을 확정하지 말고 경량 범위 초과 → full 설계(`/design`) escalate 를 보고한다.

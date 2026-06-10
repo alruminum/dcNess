@@ -33,7 +33,7 @@
 
 1. 호출 단위를 Story, 공통 작업, bugfix, compact plan, 보강, 문서 동기화, contract_sweep 중 하나로 분류한다.
 2. 도메인 모델과 architecture의 계약 원장을 먼저 읽는다.
-3. compact plan 요청이면 `docs/compact-plans/<slug>.md` 한 파일로 닫을 수 있는지 먼저 본다. high-risk trigger 가 있으면 `NEW_DEP_ESCALATE` 또는 `ESCALATE` 로 Deep 승격을 보고한다.
+3. compact plan 요청이면 `docs/compact-plans/<slug>.md` 한 파일로 닫을 수 있는지 먼저 본다. high-risk trigger 가 있으면 `NEW_DEP_ESCALATE` 또는 `ESCALATE` 로 경량 범위 초과 → full 설계(`/design`) escalate 를 보고한다.
 4. Story/공통 작업이면 단위를 task로 나누고 의존 순서를 정한다. 의존은 `depends_on` 한 곳에 적고(contract produces/consumes·ordering 을 그리로 흡수), `수정 허용` 은 **한 bullet 당 정확히 하나의 repo-relative 파일 경로**(또는 끝 `/` 디렉토리)로 적는다 — 이 둘이 병렬 wave 독립성 판정 입력이다([`parallel-policy.md`](../../docs/plugin/parallel-policy.md)). 🔴 볼드/라벨/괄호 설명/다중 토큰 bullet 은 파서가 경로로 인식 못 해 **독립 task 도 조용히 직렬로 강등**된다 — 부가 설명은 `# 주석` 이나 blockquote 로 두고 bullet 본문엔 경로만 남긴다([`templates/impl-task.md`](templates/impl-task.md) `### 수정 허용` 예시 참조).
 5. 각 task 또는 compact plan 에 대해 템플릿으로 구현 문서를 작성한다.
 6. public contract를 만들거나 바꾸면 Contract Ledger와 impl/compact plan 문서를 함께 맞춘다.

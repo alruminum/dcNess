@@ -818,14 +818,14 @@ GitHub Project lifecycle bootstrap (Step 2.10.5 완료 시):
 기본 workflow:
 - /spec — PRD / Epic / Story / AC 정의
 - /design — product/technical design
-- /impl — 구현 진입 통합 (Lite / Standard / Deep lane 내부 판정)
+- /impl — 구현 진입 통합 (lane: 설계도 유무 — Lite / Standard + 엔진 내부 판정)
 - /acceptance — story/epic 제품 검수 MVP
 
 support:
 - /to-issue — Issue Brief 초안 작성 + 승인 후 GitHub issue/Project 등록
 
 고급 workflow:
-- /tech-review — Deep lane 선행 기술 검증
+- /tech-review — high-risk 설계 선행 기술 검증
 - /impl-loop — deep impl task 파일용 advanced runner
 - /ux — 화면 UX / 디자인 핸드오프
 
