@@ -24,7 +24,7 @@
 - phase integrity: RED, GREEN, self-validate 증거가 각각 남는가.
 - 범위 준수: impl Scope 밖을 고쳐야 하는 순간 gap으로 보는가.
 - TDD 신뢰성: 테스트가 먼저 실패하고 구현 뒤 통과했는가.
-- 자체 검증: 구현 계획, 계약, lint 또는 프로젝트 표준 검증을 실제로 확인했는가.
+- 자체 검증: 구현 계획, 계약, lint 또는 프로젝트 표준 검증 명령을 실제로 실행해 종료코드로 판정했는가. 실행하지 못한 검증을 코드 읽기만으로 통과 처리하지 않았는가.
 - 신뢰 경계: 외부 HTTP, 파일/URL 입력, 보안, 도메인 invariant를 바꾸면 self-test가 놓친 실패 경로를 별도로 적발했는가.
 - handoff 품질: 메인이 PR과 커밋을 만들 수 있는 최소 정보를 남겼는가.
 - 도구 경제성: 같은 파일과 같은 명령을 반복하지 않고 읽은 내용과 편집 계획을 재사용했는가.
@@ -33,7 +33,7 @@
 
 1. build-test: 계획과 설계만 읽고 테스트를 작성한 뒤 RED를 확인한다.
 2. build-impl: 허용된 코드 경로만 수정하고 GREEN을 확인한다.
-3. build-validate: 계획, 코드, 계약, lint 또는 프로젝트 표준 검증을 확인한다.
+3. build-validate: 계획, 코드, 계약, lint 또는 프로젝트 표준 검증을 확인한다. 테스트/lint/build 게이트는 명령을 실제로 실행해 종료코드 기반으로 판정한다.
 4. 각 phase 결과를 phase prose 파일로 남긴다.
 5. PASS일 때만 다음 task를 위한 한 줄 요약을 남긴다.
 
@@ -52,6 +52,15 @@
 - 외부 데이터가 누락되거나 실패했을 때 도메인 모델을 날조하지 않는다.
 - 이 범위를 build-worker 한 호출로 신뢰하기 어렵다고 판단하면 구현을 억지로 끝내지 말고 `IMPLEMENTATION_ESCALATE` 또는 `SPEC_GAP_FOUND`로 메인에게 풀 4-agent 승격을 요구한다.
 
+## 검증 실행 불가 시 — 정적 분석 PASS 금지
+
+테스트/lint/build 게이트 명령이 환경 제약(도구 호출 차단, 의존성 부재, 권한 거부 등)으로 실행 자체가 안 될 수 있다. worktree 기반 실행에서는 `.venv`/`node_modules` 가 main repo 로 가는 심볼릭으로 연결되는 게 정상 패턴인데, 그 경로의 게이트 실행이 막히는 환경도 같은 경우다. 이때:
+
+- 실행하지 못한 검증을 코드 읽기(정적 분석)로 대체해 `PASS` 를 보고하지 않는다. 실행되지 않은 검증은 검증이 아니다.
+- `build-validate.md` 에 무엇을 실행하려 했고 어떻게 막혔는지(명령, 차단/오류 메시지)를 남긴다.
+- 마지막 단락 결론은 `VALIDATION_BLOCKED` 로 쓰고, 메인이 대신 실행할 검증 명령 목록을 함께 적는다. 메인이 같은 명령을 직접 실행해 종료코드로 판정을 복원한다.
+- 검증이 실행됐는데 실패한 것은 `VALIDATION_BLOCKED` 가 아니라 `TESTS_FAIL` 이다. 실행 불가와 실행 실패를 섞지 않는다.
+
 ## 도구 사용 가드
 
 - 같은 파일은 처음 읽은 내용을 기준으로 계획을 세우고, 의미 있는 외부 변경 가능성이 생긴 경우에만 다시 읽는다.
@@ -64,7 +73,7 @@
 - phase prose 3개 실존을 `ls`로 확인했다.
 - RED와 GREEN 결과가 보고된다.
 - 변경 파일이 impl Scope와 권한 경계 안에 있다.
-- 자체 검증 결과가 `PASS` 또는 finding으로 남는다.
+- 자체 검증 결과가 실제 실행 증거(명령 + 종료코드)와 함께 `PASS` 또는 finding으로 남는다. 실행 불가였다면 `VALIDATION_BLOCKED` 로 보고했다.
 - PR 본문 초안에 close keyword가 불확실하면 메인 검토 요청을 남긴다.
 
 ## 권한 경계
@@ -80,7 +89,7 @@
 
 ## 결론과 보고
 
-마지막 단락에 `PASS`, `SPEC_GAP_FOUND`, `TESTS_FAIL`, `IMPLEMENTATION_ESCALATE` 중 하나를 쓴다. `SPEC_GAP_FOUND`에는 small, medium, large 중 분량 메타를 함께 쓴다.
+마지막 단락에 `PASS`, `SPEC_GAP_FOUND`, `TESTS_FAIL`, `VALIDATION_BLOCKED`, `IMPLEMENTATION_ESCALATE` 중 하나를 쓴다. `SPEC_GAP_FOUND`에는 small, medium, large 중 분량 메타를 함께 쓴다. `VALIDATION_BLOCKED`에는 메인이 대신 실행할 검증 명령 목록을 함께 쓴다.
 
 ## 템플릿과 참고 문서
 

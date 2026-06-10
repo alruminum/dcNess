@@ -324,6 +324,9 @@ _CONCLUSION_ENUMS: tuple[tuple[str, str], ...] = (
     ("IMPLEMENTATION_ESCALATE", re.compile(r"\bIMPLEMENTATION_ESCALATE\b")),
     # test-engineer
     ("TESTS_WRITTEN", re.compile(r"\bTESTS_WRITTEN\b")),
+    # build-worker — 검증 명령 실행 불가 (환경 제약) 보고. 정적 분석 PASS 흡수 금지 —
+    # 메인이 게이트 대행 실행 (skills/impl-loop/impl-loop-routing.md).
+    ("VALIDATION_BLOCKED", re.compile(r"\bVALIDATION_BLOCKED\b")),
     # ux-architect
     ("UX_FLOW_DONE", re.compile(r"\bUX_FLOW_DONE\b")),
     ("UX_FLOW_ESCALATE", re.compile(r"\bUX_FLOW_ESCALATE\b")),
@@ -339,6 +342,7 @@ _STANDALONE_CONCLUSIONS: frozenset[str] = frozenset({
     "IMPL_DONE", "IMPL_PARTIAL",
     "POLISH_DONE", "IMPLEMENTATION_ESCALATE",
     "TESTS_WRITTEN", "TESTS_FAIL",
+    "VALIDATION_BLOCKED",
     "UX_FLOW_DONE", "UX_FLOW_ESCALATE",
 })
 _NEGATION_RE = re.compile(

@@ -1538,5 +1538,156 @@ class BashIntegrationTests(unittest.TestCase):
             self.assertEqual(blocked, [], f"engineer 정상 편집이 차단됨: {blocked}")
 
 
+class FdRedirectAndDeviceSinkTests(unittest.TestCase):
+    """#705 — fd 복제 redirect / device sink 가 write path 로 오추출되던 false positive.
+
+    `cmd 2>&1` 의 `1`, `cmd > /dev/null` 의 `/dev/null` 은 프로젝트 파일 write 가 아니다.
+    이들이 write target 으로 추출되면 ALLOW 미매칭(`1`) / 경계 밖(`/dev/null`) 차단이 발화해
+    sub-agent 의 read-only 검증 명령(pytest/lint 게이트) 이 통째로 막힌다 — build-worker 가
+    검증을 한 번도 실행 못 하고 정적 분석만으로 PASS 를 보고하는 false-clean 의 근본원인.
+    """
+
+    # ── fd 복제 (N>&M) / fd 닫기 (N>&-) — 파일 아님 ──────────────────
+
+    def test_stderr_to_stdout_dup_not_extracted(self):
+        self.assertEqual(extract_bash_paths("pytest tests/ 2>&1"), [])
+        self.assertEqual(extract_bash_paths("pytest tests/ 2>&1 | tail -20"), [])
+
+    def test_stdout_to_stderr_dup_not_extracted(self):
+        self.assertEqual(extract_bash_paths("echo warn 1>&2"), [])
+        self.assertEqual(extract_bash_paths("echo warn >&2"), [])
+
+    def test_fd_close_not_extracted(self):
+        self.assertEqual(extract_bash_paths("cmd 2>&-"), [])
+        self.assertEqual(extract_bash_paths("cmd >&-"), [])
+
+    def test_plain_redirect_to_digit_named_file_still_extracted(self):
+        # `> 1` 은 fd 복제가 아니라 파일명 `1` write — 추출 유지 (경계 검사 대상).
+        self.assertEqual(extract_bash_paths("echo x > 1"), ["1"])
+
+    def test_csh_style_redirect_to_file_still_extracted(self):
+        # `>& out.log` (stdout+stderr 를 파일로) — 대상이 fd 숫자가 아니면 파일 write.
+        self.assertEqual(extract_bash_paths("cmd >& out.log"), ["out.log"])
+
+    def test_fd_numbered_file_redirect_still_extracted(self):
+        # `2> err.log` 는 stderr 를 *파일* 로 — write target 추출 유지.
+        self.assertEqual(extract_bash_paths("cmd 2> err.log"), ["err.log"])
+
+    # ── device sink — 어디에 써도 프로젝트 mutation 아님 ─────────────
+
+    def test_dev_null_redirect_not_extracted(self):
+        self.assertEqual(extract_bash_paths("pytest -q > /dev/null"), [])
+        self.assertEqual(extract_bash_paths("ruff check src/ 2>/dev/null"), [])
+        self.assertEqual(
+            extract_bash_paths("bash scripts/gate.sh >/dev/null 2>&1"), []
+        )
+
+    def test_dev_stream_sinks_not_extracted(self):
+        self.assertEqual(extract_bash_paths("cmd > /dev/stdout"), [])
+        self.assertEqual(extract_bash_paths("cmd > /dev/stderr"), [])
+        self.assertEqual(extract_bash_paths("cmd | tee /dev/null"), [])
+
+    def test_dev_lookalike_paths_still_extracted(self):
+        # device sink allowlist 는 정확한 경로만 — 하위/유사 경로는 일반 경계 검사 유지.
+        self.assertEqual(extract_bash_paths("echo x > /dev/shm/evil"), ["/dev/shm/evil"])
+        self.assertEqual(extract_bash_paths("echo x > dev/null"), ["dev/null"])
+
+    def test_real_outside_write_still_extracted(self):
+        # 회귀 가드 — repo 밖 실제 파일 write 는 계속 추출 (경계가 차단해야 함).
+        self.assertEqual(
+            extract_bash_paths("npm test 2>&1 | tee /tmp/test.log"), ["/tmp/test.log"]
+        )
+
+
+class WorktreeValidationBoundaryTests(unittest.TestCase):
+    """#705 통합 — worktree(.venv/node_modules 심볼릭) 의 read-only 검증 명령 비차단.
+
+    git worktree 에는 .venv/node_modules 가 없어(gitignore) main repo 로 가는 심볼릭으로
+    우회하는 게 정상 패턴이다. 그 경로로 게이트를 실행하는 Bash 가 agent-boundary 에
+    차단되지 않아야 하고(AC), 동시에 repo 밖 write / 의존 트리 write 차단은 유지돼야 한다.
+    """
+
+    def setUp(self):
+        self._patcher = patch.dict(
+            os.environ, {"DCNESS_INFRA": "", "CLAUDE_PLUGIN_ROOT": ""}, clear=False
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+
+    def _make_worktree(self, td: str) -> Path:
+        root = Path(td)
+        main = root / "mainrepo"
+        (main / ".venv" / "bin").mkdir(parents=True)
+        (main / "node_modules" / ".bin").mkdir(parents=True)
+        wt = root / "worktrees" / "wt1"
+        wt.mkdir(parents=True)
+        (wt / ".venv").symlink_to(main / ".venv")
+        (wt / "node_modules").symlink_to(main / "node_modules")
+        (wt / "tests").mkdir()
+        (wt / "scripts").mkdir()
+        return wt
+
+    def _blocked(self, agent: str, cmd: str, cwd: Path) -> list:
+        return [
+            p for p in extract_bash_paths(cmd)
+            if check_write_allowed(agent, p, cwd=cwd, shell_context=True) is not None
+        ]
+
+    def test_venv_symlink_pytest_not_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            wt = self._make_worktree(td)
+            for cmd in (
+                ".venv/bin/python -m pytest tests/ 2>&1",
+                ".venv/bin/python -m pytest tests/ -x -q 2>&1 | tail -20",
+                ".venv/bin/ruff check src/ 2>/dev/null",
+            ):
+                with self.subTest(cmd=cmd):
+                    self.assertEqual(
+                        self._blocked("build-worker", cmd, wt), [],
+                        f"worktree 검증 명령이 차단됨: {cmd}",
+                    )
+
+    def test_node_modules_symlink_gate_not_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            wt = self._make_worktree(td)
+            for cmd in (
+                "node_modules/.bin/eslint src/ 2>&1",
+                "bash scripts/check_quality.sh >/dev/null 2>&1",
+                "npm test 2>&1",
+            ):
+                with self.subTest(cmd=cmd):
+                    self.assertEqual(
+                        self._blocked("build-worker", cmd, wt), [],
+                        f"worktree 검증 명령이 차단됨: {cmd}",
+                    )
+
+    def test_dependency_tree_write_still_blocked(self):
+        # 회귀 가드 — 심볼릭 *경유 실행* 허용이지 의존 트리 *write* 허용이 아니다.
+        with tempfile.TemporaryDirectory() as td:
+            wt = self._make_worktree(td)
+            self.assertIsNotNone(
+                check_write_allowed(
+                    "build-worker", ".venv/lib/site.py", cwd=wt, shell_context=True
+                )
+            )
+            self.assertIsNotNone(
+                check_write_allowed(
+                    "build-worker", "node_modules/pkg/index.js", cwd=wt,
+                    shell_context=True,
+                )
+            )
+
+    def test_outside_write_still_blocked(self):
+        # 회귀 가드 — repo 밖 실제 write 는 worktree 에서도 계속 차단.
+        with tempfile.TemporaryDirectory() as td:
+            wt = self._make_worktree(td)
+            blocked = self._blocked(
+                "build-worker", "echo pwned | tee /tmp/evil.sh", wt
+            )
+            self.assertEqual(blocked, ["/tmp/evil.sh"])
+
+
 if __name__ == "__main__":
     unittest.main()
