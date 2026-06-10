@@ -76,14 +76,7 @@ class CatastrophicGateWrapperExitTests(unittest.TestCase):
         }
 
     def test_violation_exits_2_with_stderr(self) -> None:
-        # #700 — module-architect 가 시퀀스에 있으나(prose 존재) PASS 부재 → engineer 게이트
-        # 위반 → handler return 1 → wrapper exit 2. (기본 시퀀스 module-architect 부재 시엔
-        # 면제 — 그 경로는 test_allowed_without_module_architect_in_sequence 가 커버.)
-        from harness.session_state import run_dir
-        run_path = run_dir(self.sid, self.rid, base_dir=self.base)
-        (run_path / "module-architect.md").write_text(
-            "## 결론\nESCALATE\n", encoding="utf-8",
-        )
+        # engineer 직전 module-architect PASS 부재 → engineer 게이트 위반 → handler return 1.
         result = _run_wrapper(
             "catastrophic-gate.sh",
             self._agent_payload("engineer", "IMPL"),

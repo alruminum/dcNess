@@ -403,10 +403,11 @@ def handle_pretooluse_agent(
         return 0
     subagent = tool_input.get("subagent_type", "") or ""
     mode = tool_input.get("mode", "") or ""
-    # #700 — 게이트 비교는 canonical 이름으로. namespaced(`dcness:engineer`) / legacy alias 가
-    # raw 비교에서 strict-conveyor 불일치로 차단되거나 engineer/pr-reviewer/module-architect
-    # 게이트를 우회하던 것을 정규화로 해소. active_agent / pending 기록은 raw subagent 유지
-    # (식별 원본 보존 — issue #598 _resolve_acting_agent 와 역할 분리).
+    # #700 — strict-conveyor 게이트 비교는 canonical 이름으로. namespaced(`dcness:engineer`) /
+    # legacy alias 가 raw 비교에서 begin-step/Agent 불일치로 차단되던 것을 정규화로 해소.
+    # active_agent / pending 기록은 raw subagent 유지(식별 원본 보존). engineer/pr-reviewer/
+    # module-architect catastrophic 게이트의 lane-aware 화는 lane 신호 인프라가 선행돼야 하는
+    # 별개 작업이라 이번 PR scope 밖(raw 유지) — Finding C follow-up.
     norm_subagent = normalize_agent_type(subagent) or subagent
 
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
@@ -438,23 +439,19 @@ def handle_pretooluse_agent(
     except (OSError, ValueError):
         pass  # state 읽기 실패는 fail-open — hook 버그발 과차단 회피.
 
-    # engineer 게이트 — engineer 직전 module-architect PASS 필수 (mode != POLISH).
-    # #700 — 단 module-architect 가 이 run 시퀀스에 *포함된 경우*(prose 존재)에만 강제.
-    # impl-loop 풀 4-agent 기본 시퀀스(test-engineer → engineer:IMPL → code-validator →
-    # pr-reviewer)는 module-architect 가 없으므로 면제 — 있을 때(advanced fallback)만 그
-    # 산출물의 PASS 를 요구한다. (entry_point 분기 대신 시퀀스 산출물 존재로 판정.)
-    if norm_subagent == "engineer" and mode != "POLISH":
-        if _has_prose(rd, "module-architect") and not _has_pass(rd, "module-architect"):
+    # engineer 게이트 — engineer 직전 module-architect PASS 필수 (mode != POLISH)
+    if subagent == "engineer" and mode != "POLISH":
+        if not _has_pass(rd, "module-architect"):
             print(
-                "[catastrophic: engineer 게이트] module-architect 가 시퀀스에 있으나 PASS 마커 "
-                "없음 — engineer 호출은 module-architect PASS 후만 (module-architect.md 안 PASS)",
+                "[catastrophic: engineer 게이트] engineer 호출은 module-architect PASS 후만 "
+                "(module-architect.md 안 PASS 마커)",
                 file=sys.stderr,
             )
             return 1
 
     # pr-reviewer 게이트 — engineer sub-agent 산출물 이후 code-validator PASS 필수.
     # Lite lane 은 메인 직접 구현 경로라 engineer prose 가 없고, pr-reviewer 단독 허용.
-    if norm_subagent == "pr-reviewer":
+    if subagent == "pr-reviewer":
         if _has_engineer_write(rd) and not _has_pass(rd, "code-validator"):
             print(
                 "[catastrophic: pr-reviewer 게이트] engineer 산출물 이후 "
@@ -466,7 +463,7 @@ def handle_pretooluse_agent(
     # module-architect 게이트 — design 안 module-architect × K *첫 호출* 직전
     # architecture-validator PASS 필수. jajang Spike Gate 사단 회피.
     if (
-        norm_subagent == "module-architect"
+        subagent == "module-architect"
         and _is_design_loop(sid, rid, base_dir=base_dir)
         and _module_architect_first_call(rd)
     ):
@@ -1063,36 +1060,21 @@ def _read_or_empty(path: Path) -> str:
 
 
 def _has_pass(rd: Path, agent: str) -> bool:
-    """`<agent>.md` 또는 `<agent>-<suffix>.md` (occurrence/mode suffix) 안 PASS 마커 확인.
+    """`<agent>.md` 또는 `<agent>-N.md` (occurrence) 안 PASS 마커 확인.
 
     8 agent enum 통일 (PR B-3) 후 모든 catastrophic 검사가 PASS 단일 마커.
-    #700 — mode-suffixed 파일(`module-architect-COMPACT_PLAN.md`,
-    `code-validator-VERIFY_ONLY.md` 등)도 glob 으로 포함. 이전엔 occurrence(`-N.md`)만 봐
-    Standard lane 의 module-architect:COMPACT_PLAN PASS 를 놓쳤다 (가장 최근 호출까지 포함).
+    occurrence 카운터 — `<agent>-2.md` / `-3.md` ... 까지 가장 최근 호출.
     """
     if "PASS" in _read_or_empty(rd / f"{agent}.md"):
         return True
-    for p in rd.glob(f"{agent}-*.md"):
-        if "PASS" in _read_or_empty(p):
+    for n in range(2, 10):
+        if "PASS" in _read_or_empty(rd / f"{agent}-{n}.md"):
             return True
     return False
 
 
 def _has_engineer_write(rd: Path) -> bool:
     return (rd / "engineer-IMPL.md").exists() or (rd / "engineer-POLISH.md").exists()
-
-
-def _has_prose(rd: Path, agent: str) -> bool:
-    """`<agent>.md` 또는 `<agent>-<suffix>.md` (occurrence/mode suffix) prose 가 하나라도 존재.
-
-    #700 — engineer 게이트가 module-architect 를 *이 run 시퀀스에 포함된 경우에만* PASS
-    강제하도록, 시퀀스 포함 여부를 prose 파일 존재로 판정한다. mode-suffixed
-    (`module-architect-COMPACT_PLAN.md`)도 glob 으로 포함 — _has_pass 와 같은 범위라
-    presence/PASS 판정이 정합 (Standard lane module-architect:COMPACT_PLAN).
-    """
-    if (rd / f"{agent}.md").exists():
-        return True
-    return any(rd.glob(f"{agent}-*.md"))
 
 
 def _is_design_loop(

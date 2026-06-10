@@ -183,32 +183,12 @@ class _PreToolBase(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# engineer 게이트 — engineer 직전 module-architect PASS 검사 (#700: 시퀀스 인지)
+# engineer 게이트 — engineer 직전 plan READY 검사
 # ---------------------------------------------------------------------------
 
 
 class CatastrophicEngineerTests(_PreToolBase):
-    """engineer:IMPL 진입 게이트.
-
-    #700 — module-architect 가 이 run 시퀀스에 *포함된 경우*(prose 존재)에만
-    PASS 를 강제한다. impl-loop 풀 4-agent 기본 시퀀스(module-architect 없음)는
-    면제 — 그래야 engineer:IMPL 한 step 의 begin→Agent→end 사이클이 통과한다.
-    """
-
-    def test_allowed_without_module_architect_in_sequence(self) -> None:
-        # #700 — module-architect prose 부재(기본 시퀀스) → 게이트 면제 → 통과.
-        rc = handle_pretooluse_agent(
-            stdin_data=self._payload("engineer", "IMPL"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 0)
-
-    def test_blocked_when_module_architect_present_without_pass(self) -> None:
-        # advanced fallback — module-architect 가 시퀀스에 있는데 PASS 안 났으면 차단.
-        (self.run_path / "module-architect.md").write_text(
-            "## 결론\nESCALATE\n", encoding="utf-8",
-        )
+    def test_blocked_without_plan(self) -> None:
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("engineer", "IMPL"),
             cc_pid=self.cc_pid,
@@ -246,53 +226,6 @@ class CatastrophicEngineerTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
-
-    def test_allowed_with_module_architect_compact_plan_pass(self) -> None:
-        # #700 (codex P1) — Standard lane module-architect:COMPACT_PLAN PASS 는
-        # module-architect-COMPACT_PLAN.md 로 저장된다. mode-suffixed PASS 도 인정 → 통과.
-        (self.run_path / "module-architect-COMPACT_PLAN.md").write_text(
-            "## 결론\nPASS\n", encoding="utf-8",
-        )
-        rc = handle_pretooluse_agent(
-            stdin_data=self._payload("engineer", "IMPL"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 0)
-
-    def test_blocked_with_module_architect_compact_plan_without_pass(self) -> None:
-        # #700 (codex P1) — mode-suffixed module-architect prose 가 비PASS 면 engineer 차단.
-        # _has_prose/_has_pass 가 mode suffix 를 무시하면 면제로 새던 결함 회귀 차단.
-        (self.run_path / "module-architect-COMPACT_PLAN.md").write_text(
-            "## 결론\nESCALATE\n", encoding="utf-8",
-        )
-        rc = handle_pretooluse_agent(
-            stdin_data=self._payload("engineer", "IMPL"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 1)
-
-    def test_namespaced_engineer_allowed_without_module_architect(self) -> None:
-        # #700 — namespaced(dcness:engineer)도 정규화 후 게이트 인지. 기본 시퀀스면 통과.
-        rc = handle_pretooluse_agent(
-            stdin_data=self._payload("dcness:engineer", "IMPL"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 0)
-
-    def test_namespaced_engineer_blocked_when_module_architect_present_without_pass(self) -> None:
-        # #700 — Finding A 가 게이트를 우회시키던 것 차단: namespaced 도 정규화 후 발동.
-        (self.run_path / "module-architect.md").write_text(
-            "## 결론\nESCALATE\n", encoding="utf-8",
-        )
-        rc = handle_pretooluse_agent(
-            stdin_data=self._payload("dcness:engineer", "IMPL"),
-            cc_pid=self.cc_pid,
-            base_dir=self.base,
-        )
-        self.assertEqual(rc, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -578,11 +511,12 @@ class StrictConveyorGateTests(_PreToolBase):
         self.assertEqual(rc, 1)
 
     def test_allows_moded_step_when_agent_omits_mode(self) -> None:
-        # #700 Finding B — Agent 도구는 mode 를 실을 수 없어 항상 None.
-        # begin-step engineer IMPL 후 Agent(engineer, mode 미지정) 가 통과해야 한다.
-        self._begin_step("engineer", "IMPL")
+        # #700 Finding B — Agent 도구는 mode 를 실을 수 없어 항상 None. begin-step
+        # code-validator VERIFY_ONLY 후 Agent(code-validator, mode 미지정)가 통과해야 한다.
+        # (engineer 대신 catastrophic 게이트 없는 code-validator 로 strict-conveyor 순수 검증.)
+        self._begin_step("code-validator", "VERIFY_ONLY")
         rc = handle_pretooluse_agent(
-            stdin_data=self._payload("engineer", ""),
+            stdin_data=self._payload("code-validator", ""),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -609,12 +543,13 @@ class StrictConveyorGateTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
 
-    def test_allows_namespaced_moded_engineer_full_cycle(self) -> None:
-        # #700 AC3 — 풀 4-agent engineer:IMPL 핵심. namespaced + moded step +
-        # mode 미지정 Agent 가 추가 우회 없이 통과해야 한다.
-        self._begin_step("engineer", "IMPL")
+    def test_allows_namespaced_moded_agent_full_cycle(self) -> None:
+        # #700 AC3 (strict-conveyor 부분) — namespaced + moded step + mode 미지정 Agent 가
+        # strict-conveyor 를 추가 우회 없이 통과해야 한다. engineer catastrophic 게이트의
+        # lane-aware 화(풀4 engineer:IMPL)는 별개 작업 — Finding C follow-up.
+        self._begin_step("code-validator", "VERIFY_ONLY")
         rc = handle_pretooluse_agent(
-            stdin_data=self._payload("dcness:engineer", ""),
+            stdin_data=self._payload("dcness:code-validator", ""),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
