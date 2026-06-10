@@ -48,7 +48,7 @@ echo "[<entry>] run started: $RUN_ID"
 
 `<entry_point>` = 해당 skill 의 `## Loop` 의 `entry_point` 필드 (예: `impl`, `design`, `ux`). begin-run 동작: sid auto-detect + run_id 발급 + `live.json.active_runs` 슬롯 + `.by-pid-current-run/{cc_pid}` 씀.
 
-`--design-doc <path>` — 이 run 이 참조하는 **머지된 설계 문서**(impl task 문서 / compact plan) 경로. 설계가 별도 run 에서 머지된 뒤 구현 run 으로 진입하는 흐름(예: `/impl-loop` 풀 4-agent)에서 기록하면, engineer 게이트가 같은-run module-architect PASS 의 등가 prerequisite 로 인정한다 ([`hooks.md` catastrophic-gate](hooks.md#catastrophic-gatesh)). 설계 산출물 규약 경로(`docs/milestones/**` / `docs/compact-plans/**` / `docs/bugfix/**`)의 실존 `.md` 만 허용 — 아니면 begin-run 이 fail-fast 거부한다. chain 의 다음 task 진입은 `next-task --design-doc <path>` 로 동일 기록.
+`--design-doc <path>` — 이 run 이 참조하는 **머지된 설계 문서**(impl task 문서 / compact plan) 경로. 설계가 별도 run 에서 머지된 뒤 구현 run 으로 진입하는 흐름(예: `/impl-loop` 풀 4-agent)에서 기록하면, engineer 게이트가 같은-run module-architect PASS 의 등가 prerequisite 로 인정한다 ([`hooks.md` catastrophic-gate](hooks.md#catastrophic-gatesh)). `entry_point=impl` 전용이며, 설계 산출물 규약 경로(`docs/milestones/**` / `docs/compact-plans/**` / `docs/bugfix/**`)의 실존 `.md` 만 허용 — 아니면 begin-run 이 fail-fast 거부한다. 기록값은 resolve 된 절대경로(hook 프로세스와 cwd 가 달라도 안전). chain 의 다음 task 진입은 `next-task --design-doc <path>` 로 동일 기록.
 
 > `/impl-loop` 의 **chain 모드(N task)** 는 자기 run 을 갖지 않는 driver 다 — `impl-task-loop × N` 이므로 각 task 가 독립 `begin-run impl` … `end-run` run 1개씩 (N task = N run = N review.md). **single 모드(1 task)** 는 `impl` entry_point 로 run 1개. 자세히 = [`/impl-loop`](../../skills/impl-loop/SKILL.md).
 

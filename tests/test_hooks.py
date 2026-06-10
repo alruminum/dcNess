@@ -18,6 +18,8 @@ Coverage matrix:
         - engineer 게이트 — engineer POLISH 모드는 plan 검사 skip
         - engineer 게이트 — run 에 기록된 design_doc 실존 시 module-architect 없이 통과
         - engineer 게이트 — design_doc 기록됐지만 디스크 부재면 차단 (fail-strict)
+        - engineer 게이트 — 상대경로 기록 후 cwd 가 달라도 통과 (기록 시점 resolve)
+        - engineer 게이트 — mode-suffixed prose(module-architect-COMPACT_PLAN.md) PASS 인정
         - 그 외 agent (architect MODULE_PLAN, code-validator 등) — run 외부에서도 통과
         - sid 없음 → silent allow
         - tool_input 비정상 → silent allow
@@ -241,6 +243,18 @@ class CatastrophicEngineerTests(_PreToolBase):
 
     # -- #701 — design_doc 실존 = module-architect PASS 의 등가 prerequisite --
 
+    def _record_run_with_design_doc(self, rid: str, design_doc: str) -> None:
+        """design_doc 검증은 cwd(repo root) 기준 — begin-run cwd 를 base 로 모사."""
+        old_cwd = os.getcwd()
+        os.chdir(self.base)
+        try:
+            start_run(
+                self.sid, rid, "impl",
+                base_dir=self.base, design_doc=design_doc,
+            )
+        finally:
+            os.chdir(old_cwd)
+
     def _start_run_with_design_doc(self, design_doc: str) -> None:
         """begin-run --design-doc + begin-step engineer 경로 모사.
 
@@ -249,10 +263,7 @@ class CatastrophicEngineerTests(_PreToolBase):
         engineer 게이트에서 판정되도록 한다.
         """
         rid2 = "run-87654321"
-        start_run(
-            self.sid, rid2, "impl",
-            base_dir=self.base, design_doc=design_doc,
-        )
+        self._record_run_with_design_doc(rid2, design_doc)
         write_pid_current_run(self.cc_pid, rid2, base_dir=self.base)
         update_current_step(
             self.sid, rid2, "engineer", "IMPL", base_dir=self.base,
@@ -303,10 +314,7 @@ class CatastrophicEngineerTests(_PreToolBase):
         # design_doc 은 *자기 run* 의 prerequisite 만 충족 — design_doc 없는 기존
         # run(setUp 의 self.rid)은 종전대로 차단 유지 (회귀 가드).
         doc = self._write_design_doc()
-        start_run(
-            self.sid, "run-87654321", "impl",
-            base_dir=self.base, design_doc=str(doc),
-        )
+        self._record_run_with_design_doc("run-87654321", str(doc))
         # current run 은 여전히 setUp 의 design_doc 없는 run
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("engineer", "IMPL"),
@@ -314,6 +322,34 @@ class CatastrophicEngineerTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 1)
+
+    def test_design_doc_recorded_relative_survives_cwd_change(self) -> None:
+        # 기록은 worktree cwd 에서 상대경로로, 게이트는 다른 cwd(hook 프로세스)
+        # 에서 실행 — 기록 시점 resolve 절대화가 없으면 false-block 하는 회귀 가드.
+        doc = self._write_design_doc()
+        rel = doc.relative_to(self.base)
+        self._start_run_with_design_doc(str(rel))
+        # 게이트는 테스트 프로세스 cwd(레포 루트, self.base 아님)에서 실행된다.
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_allowed_with_mode_suffixed_module_architect_pass(self) -> None:
+        # /impl Standard — module-architect:COMPACT_PLAN 의 prose 는
+        # module-architect-COMPACT_PLAN.md 에 기록된다. 같은-run PASS 로 인정
+        # 해야 engineer(IMPL) 가 진입 가능 (mode-suffixed 파일명 인식).
+        (self.run_path / "module-architect-COMPACT_PLAN.md").write_text(
+            "## 결론\nPASS\n", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
 
 
 # ---------------------------------------------------------------------------

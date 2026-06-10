@@ -449,9 +449,10 @@ def _resolve_run_dir_str(
         return str(rd)
 
 
-# design_doc 으로 인정하는 설계 산출물 경로 규약 — module-architect Write 허용
-# 경로와 동일 집합. 임의 파일(README 등)로 engineer 게이트를 무력화하지 못하게
-# 기록 시점에 fail-fast 제한한다 (#701).
+# design_doc 으로 인정하는 설계 산출물 표준 경로 prefix (impl 문서 / compact
+# plan / bugfix plan). 기록 시점에 repo-root 상대 prefix 앵커로 검증해 임의
+# .md(README 등)·traversal(`..`)·repo 밖 경로가 engineer 게이트 prerequisite
+# 증거가 되지 못하게 한다 (#701).
 _DESIGN_DOC_DIR_MARKERS = (
     "docs/milestones/",
     "docs/compact-plans/",
@@ -460,25 +461,39 @@ _DESIGN_DOC_DIR_MARKERS = (
 
 
 def _validate_design_doc(design_doc: str) -> str:
-    """begin-run `--design-doc` 경로 fail-fast 검증 (#701).
+    """begin-run `--design-doc` 경로 fail-fast 검증 (#701) — resolve 절대경로 반환.
 
     engineer 게이트의 prerequisite 증거로 쓰이므로 기록 시점에 (1) .md 파일,
-    (2) 설계 산출물 경로 규약, (3) 디스크 실존을 확인한다. 게이트는 호출
-    시점에 실존을 재확인한다 (기록 후 삭제 방어).
+    (2) repo root(= helper 호출 cwd) 기준 설계 산출물 규약 경로 *안*, (3)
+    디스크 실존을 확인한다. 게이트는 호출 시점에 실존을 재확인한다 (기록 후
+    삭제 방어).
+
+    상대경로를 받은 그대로 기록하면 begin-run cwd(worktree)와 hook 프로세스
+    cwd 가 달라 게이트가 false-block 하므로 resolve 된 절대경로로 기록한다.
+    prefix 앵커 비교(substring 아님)라 traversal/symlink/repo 밖 경로는
+    resolve 후 거부된다.
     """
     if not isinstance(design_doc, str) or not design_doc.strip():
         raise ValueError("design_doc must be non-empty str")
     doc = design_doc.strip()
     if not doc.endswith(".md"):
         raise ValueError(f"design_doc must be a .md file: {doc!r}")
-    if not any(marker in doc.replace("\\", "/") for marker in _DESIGN_DOC_DIR_MARKERS):
+    resolved = Path(doc).resolve()
+    root = Path.cwd().resolve()
+    try:
+        rel_posix = resolved.relative_to(root).as_posix()
+    except ValueError:
         raise ValueError(
-            "design_doc must be a design artifact path "
-            f"({' | '.join(_DESIGN_DOC_DIR_MARKERS)}): {doc!r}"
+            f"design_doc must live under the repo root ({root}): {doc!r}"
+        ) from None
+    if not any(rel_posix.startswith(marker) for marker in _DESIGN_DOC_DIR_MARKERS):
+        raise ValueError(
+            "design_doc must be a design artifact path under "
+            f"{' | '.join(_DESIGN_DOC_DIR_MARKERS)}: {doc!r}"
         )
-    if not Path(doc).is_file():
+    if not resolved.is_file():
         raise ValueError(f"design_doc not found on disk: {doc!r}")
-    return doc
+    return str(resolved)
 
 
 def start_run(
@@ -506,6 +521,13 @@ def start_run(
     if not isinstance(entry_point, str) or not entry_point:
         raise ValueError("entry_point must be non-empty str")
     if design_doc is not None:
+        # design_doc 은 impl 구현 run 전용 — design/architect-loop run 의
+        # engineer ← module-architect PASS 강제가 코드 보장으로 유지되도록
+        # 다른 entry_point 의 기록 자체를 거부한다.
+        if entry_point != "impl":
+            raise ValueError(
+                f"design_doc is only valid for entry_point=impl (got {entry_point!r})"
+            )
         design_doc = _validate_design_doc(design_doc)
 
     live = read_live(session_id, base_dir=base_dir) or {}
@@ -1540,16 +1562,27 @@ def _cli_next_task(args: Any) -> int:
     5. stdout = previous review + 새 run_id + 새 run_dir
 
     Usage:
-        dcness-helper next-task [--entry-point impl]
+        dcness-helper next-task [--entry-point impl] [--design-doc <path>]
 
     Exit codes:
         0 — 정상 (이전 run finalize + 새 run 발급)
-        1 — sid 미해결
+        1 — sid 미해결 / design_doc 검증 실패
     """
     sid = auto_detect_session_id()
     if not sid:
         print(diagnose_sid_rid_resolution(mode="sid"), file=sys.stderr)
         return 1
+
+    entry_point = getattr(args, "entry_point", "impl") or "impl"
+    design_doc = getattr(args, "design_doc", None)
+    if design_doc is not None:
+        # 이전 run end-run(비가역) *전* 선검증 — 경로 오타로 이전 run 만 닫히고
+        # 새 run 발급이 실패하는 어긋남(prev review echo 영구 소실) 방지.
+        try:
+            design_doc = _validate_design_doc(design_doc)
+        except ValueError as exc:
+            print(f"[next-task] begin-run FAIL — {exc}", file=sys.stderr)
+            return 1
 
     prev_rid = auto_detect_run_id()
     prev_review_path: Optional[Path] = None
@@ -1566,8 +1599,6 @@ def _cli_next_task(args: Any) -> int:
         except Exception as exc:
             print(f"[next-task] end-run FAIL — {exc}", file=sys.stderr)
 
-    entry_point = getattr(args, "entry_point", "impl") or "impl"
-    design_doc = getattr(args, "design_doc", None)
     new_rid = generate_run_id()
     try:
         start_run(sid, new_rid, entry_point, issue_num=None, design_doc=design_doc)

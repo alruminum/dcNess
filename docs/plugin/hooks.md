@@ -78,7 +78,7 @@ Stop hook 은 tool 호출을 막는 hook 이 아니다. 필요할 때 `decision:
 
 **strict conveyor 대상**: `entry_point=design|impl|ux`. 정상 `/design` 은 `begin-run design` 로 시작하며 같은 strict conveyor gate 와 module-architect gate 를 탄다.
 
-**engineer gate 의 design_doc 경로**: 설계(impl 문서 / compact plan)가 *별도 run* 에서 작성·머지된 뒤 구현 run 으로 진입하는 흐름(예: `/impl-loop` 풀 4-agent)에서는 같은 run 안에 module-architect prose 가 없다. 이때 `begin-run impl --design-doc <머지된 설계 문서 경로>` 로 run 에 설계 산출물을 기록하면 engineer gate 가 그 실존을 prerequisite 증거로 인정한다. 경로는 설계 산출물 규약(`docs/milestones/**` / `docs/compact-plans/**` / `docs/bugfix/**`) 안의 `.md` 만 허용 — 기록 시점에 fail-fast 검증하고, 게이트 시점에 실존을 재확인한다. design / architect-loop run 은 design_doc 을 기록하지 않으므로 기존 module-architect PASS 강제가 그대로 유지된다.
+**engineer gate 의 design_doc 경로**: 설계(impl 문서 / compact plan)가 *별도 run* 에서 작성·머지된 뒤 구현 run 으로 진입하는 흐름(예: `/impl-loop` 풀 4-agent)에서는 같은 run 안에 module-architect prose 가 없다. 이때 `begin-run impl --design-doc <머지된 설계 문서 경로>` 로 run 에 설계 산출물을 기록하면 engineer gate 가 그 실존을 prerequisite 증거로 인정한다. 경로는 설계 산출물 규약(`docs/milestones/**` / `docs/compact-plans/**` / `docs/bugfix/**`) 안의 실존 `.md` 만 허용 — 기록 시점에 resolve 절대경로로 fail-fast 검증(traversal / repo 밖 경로 거부)하고, 게이트 시점에 실존을 재확인한다. `--design-doc` 은 `entry_point=impl` run 에서만 수용된다(다른 entry_point 는 begin-run 이 거부) — design / architect-loop run 의 기존 module-architect PASS 강제는 코드 보장으로 유지된다.
 
 **tech-review 관례**: `/design` 진입 후 tech-reviewer 재호출은 관례상 비권장이지만 코드 차단은 아니다. /design 도중 미검증 새 외부 의존이 발견되면 design 의 `NEW_DEP_ESCALATE` 경로로 처리한다.
 

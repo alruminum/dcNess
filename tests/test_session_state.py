@@ -455,20 +455,29 @@ class ActiveRunsTests(unittest.TestCase):
 
     # -- design_doc 기록 — engineer 게이트 prerequisite 증거 --
 
+    def _chdir_base(self) -> None:
+        # design_doc 검증은 repo root(= helper 호출 cwd) 기준 — base 를 root 로 모사.
+        old = os.getcwd()
+        os.chdir(self.base)
+        self.addCleanup(os.chdir, old)
+
     def _write_design_doc(self, rel: str = "docs/compact-plans/foo.md") -> Path:
         doc = self.base / rel
         doc.parent.mkdir(parents=True, exist_ok=True)
         doc.write_text("# design artifact\n", encoding="utf-8")
         return doc
 
-    def test_start_run_records_design_doc(self) -> None:
+    def test_start_run_records_design_doc_resolved(self) -> None:
+        # 기록값 = resolve 된 절대경로 — hook 프로세스 cwd 와 무관하게 실존 확인 가능.
+        self._chdir_base()
         doc = self._write_design_doc()
         start_run(
             self.sid, self.run_id, "impl",
-            base_dir=self.base, design_doc=str(doc),
+            base_dir=self.base, design_doc="docs/compact-plans/foo.md",
         )
         slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.run_id]
-        self.assertEqual(slot["design_doc"], str(doc))
+        self.assertEqual(slot["design_doc"], str(doc.resolve()))
+        self.assertTrue(Path(slot["design_doc"]).is_absolute())
 
     def test_start_run_without_design_doc_records_none(self) -> None:
         start_run(self.sid, self.run_id, "impl", base_dir=self.base)
@@ -477,22 +486,24 @@ class ActiveRunsTests(unittest.TestCase):
 
     def test_start_run_design_doc_missing_file_raises(self) -> None:
         # 기록 시점 fail-fast — 실존하지 않는 경로는 게이트에서 막히기 전에 거부.
+        self._chdir_base()
         with self.assertRaises(ValueError):
             start_run(
                 self.sid, self.run_id, "impl",
                 base_dir=self.base,
-                design_doc=str(self.base / "docs" / "compact-plans" / "nope.md"),
+                design_doc="docs/compact-plans/nope.md",
             )
 
     def test_start_run_design_doc_non_design_path_raises(self) -> None:
         # 설계 산출물 경로 규약(docs/milestones|compact-plans|bugfix) 밖 파일은
         # prerequisite 증거가 될 수 없다 — 임의 파일로 게이트 무력화 방지.
+        self._chdir_base()
         readme = self.base / "README.md"
         readme.write_text("x\n", encoding="utf-8")
         with self.assertRaises(ValueError):
             start_run(
                 self.sid, self.run_id, "impl",
-                base_dir=self.base, design_doc=str(readme),
+                base_dir=self.base, design_doc="README.md",
             )
 
     def test_start_run_design_doc_non_md_raises(self) -> None:
@@ -505,16 +516,69 @@ class ActiveRunsTests(unittest.TestCase):
                 base_dir=self.base, design_doc=str(doc),
             )
 
+    def test_start_run_design_doc_traversal_rejected(self) -> None:
+        # 경로 규약은 resolve *후* prefix 앵커 비교 — `..` 로 규약 디렉토리를
+        # 경유만 하고 빠져나가는 우회 차단.
+        self._chdir_base()
+        (self.base / "README.md").write_text("x\n", encoding="utf-8")
+        (self.base / "docs" / "milestones").mkdir(parents=True)
+        with self.assertRaises(ValueError):
+            start_run(
+                self.sid, self.run_id, "impl",
+                base_dir=self.base,
+                design_doc="docs/milestones/../../README.md",
+            )
+
+    def test_start_run_design_doc_outside_repo_rejected(self) -> None:
+        # repo 밖 절대경로는 marker 문자열을 포함해도 거부 (substring 매치 아님).
+        self._chdir_base()
+        with TemporaryDirectory() as td2:
+            outside = Path(td2) / "docs" / "compact-plans" / "fake.md"
+            outside.parent.mkdir(parents=True)
+            outside.write_text("x\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                start_run(
+                    self.sid, self.run_id, "impl",
+                    base_dir=self.base, design_doc=str(outside),
+                )
+
+    def test_start_run_design_doc_symlink_outside_rejected(self) -> None:
+        # 규약 디렉토리 안 symlink 가 규약 밖 파일을 가리키면 resolve 후 거부.
+        self._chdir_base()
+        target = self.base / "secret.md"
+        target.write_text("x\n", encoding="utf-8")
+        link_dir = self.base / "docs" / "compact-plans"
+        link_dir.mkdir(parents=True)
+        (link_dir / "link.md").symlink_to(target)
+        with self.assertRaises(ValueError):
+            start_run(
+                self.sid, self.run_id, "impl",
+                base_dir=self.base, design_doc="docs/compact-plans/link.md",
+            )
+
+    def test_start_run_design_doc_non_impl_entry_rejected(self) -> None:
+        # design_doc 은 impl 구현 run 전용 — design run 의 engineer ←
+        # module-architect PASS 강제가 코드 보장으로 유지.
+        self._chdir_base()
+        self._write_design_doc()
+        with self.assertRaises(ValueError):
+            start_run(
+                self.sid, self.run_id, "design",
+                base_dir=self.base, design_doc="docs/compact-plans/foo.md",
+            )
+
     def test_start_run_design_doc_milestones_impl_path_ok(self) -> None:
+        self._chdir_base()
         doc = self._write_design_doc(
             "docs/milestones/v01/epics/epic-01-x/impl/03-foo.md"
         )
         start_run(
             self.sid, self.run_id, "impl",
-            base_dir=self.base, design_doc=str(doc),
+            base_dir=self.base,
+            design_doc="docs/milestones/v01/epics/epic-01-x/impl/03-foo.md",
         )
         slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.run_id]
-        self.assertEqual(slot["design_doc"], str(doc))
+        self.assertEqual(slot["design_doc"], str(doc.resolve()))
 
     def test_update_current_step(self) -> None:
         start_run(self.sid, self.run_id, "impl", base_dir=self.base)
@@ -2522,7 +2586,7 @@ class NextTaskTransitionTests(unittest.TestCase):
 
     def test_transition_records_design_doc(self) -> None:
         # chain task — 다음 task 의 머지된 설계 문서를 새 run 에 기록 (engineer
-        # 게이트 prerequisite 증거 승계).
+        # 게이트 prerequisite 증거 승계). 기록값 = resolve 절대경로.
         from harness.session_state import _cli_next_task, read_live
         from io import StringIO
         from contextlib import redirect_stdout
@@ -2533,6 +2597,7 @@ class NextTaskTransitionTests(unittest.TestCase):
         doc = Path("docs/compact-plans/foo.md")
         doc.parent.mkdir(parents=True)
         doc.write_text("# compact plan\n", encoding="utf-8")
+        resolved = str(doc.resolve())
 
         buf = StringIO()
         with redirect_stdout(buf):
@@ -2542,17 +2607,22 @@ class NextTaskTransitionTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         active = read_live(sid)["active_runs"]
         recorded = [s.get("design_doc") for s in active.values()]
-        self.assertIn(str(doc), recorded)
-        self.assertIn(f"[new] design_doc: {doc}", buf.getvalue())
+        self.assertIn(resolved, recorded)
+        self.assertIn(f"[new] design_doc: {resolved}", buf.getvalue())
 
-    def test_transition_invalid_design_doc_fails(self) -> None:
-        # 실존하지 않는 design_doc — begin-run FAIL 로 fail-fast (exit 1).
-        from harness.session_state import _cli_next_task
+    def test_transition_invalid_design_doc_fails_before_end_run(self) -> None:
+        # 실존하지 않는 design_doc — begin-run FAIL fail-fast (exit 1). 검증은
+        # 이전 run end-run *전* 이라 이전 run 이 닫히지 않고 보존돼야 한다
+        # (오타 한 번에 prev review echo 영구 소실 방지).
+        from harness.session_state import _cli_next_task, read_live, start_run
         from io import StringIO
         from contextlib import redirect_stdout, redirect_stderr
         from types import SimpleNamespace
         sid = "11111111-2222-4333-8444-555555555555"
+        prev_rid = "run-prev1234"
         os.environ["DCNESS_SESSION_ID"] = sid
+        os.environ["DCNESS_RUN_ID"] = prev_rid
+        start_run(sid, prev_rid, "impl", issue_num=None)
 
         out, err = StringIO(), StringIO()
         with redirect_stdout(out), redirect_stderr(err):
@@ -2562,6 +2632,8 @@ class NextTaskTransitionTests(unittest.TestCase):
             ))
         self.assertEqual(rc, 1)
         self.assertIn("begin-run FAIL", err.getvalue())
+        prev_slot = read_live(sid)["active_runs"][prev_rid]
+        self.assertIsNone(prev_slot["completed_at"])
 
 
 class DesignDocArgparseTests(unittest.TestCase):

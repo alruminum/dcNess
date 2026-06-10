@@ -447,13 +447,13 @@ def handle_pretooluse_agent(
     # 머지된 설계 문서(design_doc) 실존. impl-loop 풀 4-agent 는 설계가 별도 run
     # 에서 머지된 뒤 진입하므로 같은-run prose 단일 기준이면 구조적으로 차단된다.
     if norm_subagent == "engineer" and mode != "POLISH":
-        if not _has_pass(rd, "module-architect") and not _run_design_doc_exists(
+        if not _has_module_architect_pass(rd) and not _run_design_doc_exists(
             sid, rid, base_dir=base_dir
         ):
             print(
                 "[catastrophic: engineer 게이트] engineer 호출은 설계 산출물 확보 후만 — "
-                "같은 run 의 module-architect PASS (module-architect.md 안 PASS 마커) "
-                "또는 begin-run --design-doc 으로 기록된 설계 문서 실존",
+                "같은 run 의 module-architect PASS prose (module-architect*.md 안 "
+                "PASS 마커) 또는 begin-run --design-doc 으로 기록된 설계 문서 실존",
                 file=sys.stderr,
             )
             return 1
@@ -1084,6 +1084,30 @@ def _has_pass(rd: Path, agent: str) -> bool:
 
 def _has_engineer_write(rd: Path) -> bool:
     return (rd / "engineer-IMPL.md").exists() or (rd / "engineer-POLISH.md").exists()
+
+
+def _has_module_architect_pass(rd: Path) -> bool:
+    """module-architect prose PASS — 무모드 / occurrence / mode-suffixed 모두 인정 (#701).
+
+    moded step 의 prose 파일명은 `<agent>-<MODE>.md` 라서, `/impl` Standard 의
+    `module-architect:COMPACT_PLAN` PASS 는 `module-architect-COMPACT_PLAN.md`
+    에 기록된다 — `_has_pass` 의 occurrence 카운터(-2..-9)만으로는 못 읽어
+    engineer 게이트가 false-block 했다(#700 에서 #701 로 이연된 Finding C).
+
+    engineer 게이트 전용 helper — pr-reviewer 게이트의 code-validator 는 mode
+    별 의미가 달라(PLAN_VALIDATION ≠ CODE_VALIDATION) 일괄 glob 을 적용하면
+    plan 단계 PASS 가 code 검증을 대신하는 새 구멍이 생긴다. `_has_pass` 는
+    그대로 둔다.
+    """
+    if "PASS" in _read_or_empty(rd / "module-architect.md"):
+        return True
+    try:
+        for prose in rd.glob("module-architect-*.md"):
+            if "PASS" in _read_or_empty(prose):
+                return True
+    except OSError:
+        pass
+    return False
 
 
 def _run_design_doc_exists(
