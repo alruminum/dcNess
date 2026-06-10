@@ -1063,15 +1063,17 @@ def _read_or_empty(path: Path) -> str:
 
 
 def _has_pass(rd: Path, agent: str) -> bool:
-    """`<agent>.md` 또는 `<agent>-N.md` (occurrence) 안 PASS 마커 확인.
+    """`<agent>.md` 또는 `<agent>-<suffix>.md` (occurrence/mode suffix) 안 PASS 마커 확인.
 
     8 agent enum 통일 (PR B-3) 후 모든 catastrophic 검사가 PASS 단일 마커.
-    occurrence 카운터 — `<agent>-2.md` / `-3.md` ... 까지 가장 최근 호출.
+    #700 — mode-suffixed 파일(`module-architect-COMPACT_PLAN.md`,
+    `code-validator-VERIFY_ONLY.md` 등)도 glob 으로 포함. 이전엔 occurrence(`-N.md`)만 봐
+    Standard lane 의 module-architect:COMPACT_PLAN PASS 를 놓쳤다 (가장 최근 호출까지 포함).
     """
     if "PASS" in _read_or_empty(rd / f"{agent}.md"):
         return True
-    for n in range(2, 10):
-        if "PASS" in _read_or_empty(rd / f"{agent}-{n}.md"):
+    for p in rd.glob(f"{agent}-*.md"):
+        if "PASS" in _read_or_empty(p):
             return True
     return False
 
@@ -1081,18 +1083,16 @@ def _has_engineer_write(rd: Path) -> bool:
 
 
 def _has_prose(rd: Path, agent: str) -> bool:
-    """`<agent>.md` 또는 `<agent>-N.md` (occurrence) prose 가 하나라도 존재하는지.
+    """`<agent>.md` 또는 `<agent>-<suffix>.md` (occurrence/mode suffix) prose 가 하나라도 존재.
 
-    #700 — engineer 게이트가 module-architect 를 *이 run 시퀀스에 포함된 경우에만*
-    PASS 강제하도록, 시퀀스 포함 여부를 prose 파일 존재로 판정한다. _has_pass 와 같은
-    occurrence(.md / -N.md) 범위.
+    #700 — engineer 게이트가 module-architect 를 *이 run 시퀀스에 포함된 경우에만* PASS
+    강제하도록, 시퀀스 포함 여부를 prose 파일 존재로 판정한다. mode-suffixed
+    (`module-architect-COMPACT_PLAN.md`)도 glob 으로 포함 — _has_pass 와 같은 범위라
+    presence/PASS 판정이 정합 (Standard lane module-architect:COMPACT_PLAN).
     """
     if (rd / f"{agent}.md").exists():
         return True
-    for n in range(2, 10):
-        if (rd / f"{agent}-{n}.md").exists():
-            return True
-    return False
+    return any(rd.glob(f"{agent}-*.md"))
 
 
 def _is_design_loop(

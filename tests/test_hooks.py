@@ -247,6 +247,32 @@ class CatastrophicEngineerTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
 
+    def test_allowed_with_module_architect_compact_plan_pass(self) -> None:
+        # #700 (codex P1) — Standard lane module-architect:COMPACT_PLAN PASS 는
+        # module-architect-COMPACT_PLAN.md 로 저장된다. mode-suffixed PASS 도 인정 → 통과.
+        (self.run_path / "module-architect-COMPACT_PLAN.md").write_text(
+            "## 결론\nPASS\n", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_blocked_with_module_architect_compact_plan_without_pass(self) -> None:
+        # #700 (codex P1) — mode-suffixed module-architect prose 가 비PASS 면 engineer 차단.
+        # _has_prose/_has_pass 가 mode suffix 를 무시하면 면제로 새던 결함 회귀 차단.
+        (self.run_path / "module-architect-COMPACT_PLAN.md").write_text(
+            "## 결론\nESCALATE\n", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
     def test_namespaced_engineer_allowed_without_module_architect(self) -> None:
         # #700 — namespaced(dcness:engineer)도 정규화 후 게이트 인지. 기본 시퀀스면 통과.
         rc = handle_pretooluse_agent(
