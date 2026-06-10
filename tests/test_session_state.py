@@ -508,7 +508,7 @@ class ActiveRunsTests(unittest.TestCase):
         self.assertIn("engineer", err.getvalue())
         # 새 current_step 박힘 (동작 정상)
         slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.run_id]
-        self.assertEqual(slot["current_step"]["agent"], "validator")
+        self.assertEqual(slot["current_step"]["agent"], "code-validator")
 
     def test_update_step_no_warn_when_prev_fresh(self) -> None:
         # last_confirmed_at 가 30min 이내면 WARN 없음 (정상 워크플로우 — 빠른 step 전환).
@@ -840,7 +840,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         live = read_live(self.sid)
         slot = live["active_runs"][self.rid]
-        self.assertEqual(slot["current_step"]["agent"], "validator")
+        self.assertEqual(slot["current_step"]["agent"], "code-validator")
         self.assertEqual(slot["current_step"]["mode"], "PLAN_VALIDATION")
 
     def test_run_dir_cli_outputs_absolute_path(self) -> None:
@@ -883,7 +883,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertIn("ok", out.getvalue())
         live = read_live(self.sid)
         slot = live["active_runs"][self.rid]
-        self.assertEqual(slot["current_step"]["agent"], "validator")
+        self.assertEqual(slot["current_step"]["agent"], "code-validator")
         self.assertEqual(slot["current_step"]["mode"], "CODE_VALIDATION")
 
         out = StringIO()
@@ -1167,7 +1167,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         # prose 저장 확인 (메인이 직접 읽고 routing)
         prose_md = (
             session_dir(self.sid) / "runs" / self.rid /
-            "validator-PLAN_VALIDATION.md"
+            "code-validator-PLAN_VALIDATION.md"
         )
         self.assertTrue(prose_md.exists())
 

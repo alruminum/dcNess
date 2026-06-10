@@ -227,6 +227,16 @@ class CatastrophicEngineerTests(_PreToolBase):
         )
         self.assertEqual(rc, 0)
 
+    def test_namespaced_engineer_does_not_bypass_gate(self) -> None:
+        # #700 (codex P1) — strict-conveyor 가 namespaced 를 통과시키므로 engineer 게이트도
+        # 정규화 비교한다. dcness:engineer 가 module-architect PASS 게이트를 우회하면 안 된다.
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("dcness:engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
 
 # ---------------------------------------------------------------------------
 # pr-reviewer 게이트 — pr-reviewer 직전 validator PASS 검사
@@ -247,6 +257,16 @@ class CatastrophicPrReviewerTests(_PreToolBase):
         (self.run_path / "engineer-IMPL.md").write_text("IMPL_DONE", encoding="utf-8")
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("pr-reviewer", ""),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_namespaced_pr_reviewer_does_not_bypass_gate(self) -> None:
+        # #700 (codex P1) — namespaced pr-reviewer 도 정규화 후 게이트 발동(우회 차단).
+        (self.run_path / "engineer-IMPL.md").write_text("IMPL_DONE", encoding="utf-8")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("dcness:pr-reviewer", ""),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -501,9 +521,67 @@ class StrictConveyorGateTests(_PreToolBase):
         self.assertEqual(rc, 1)
 
     def test_blocks_agent_mode_mismatch(self) -> None:
+        # mode 가 *실제로 실린* 경우(인위적)엔 여전히 불일치 차단 — 방어 유지.
         self._begin_step("engineer", "IMPL")
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("engineer", "POLISH"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_allows_moded_step_when_agent_omits_mode(self) -> None:
+        # #700 Finding B — Agent 도구는 mode 를 실을 수 없어 항상 None. begin-step
+        # code-validator VERIFY_ONLY 후 Agent(code-validator, mode 미지정)가 통과해야 한다.
+        # (engineer 대신 catastrophic 게이트 없는 code-validator 로 strict-conveyor 순수 검증.)
+        self._begin_step("code-validator", "VERIFY_ONLY")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("code-validator", ""),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_allows_namespaced_agent_against_bare_begin_step(self) -> None:
+        # #700 Finding A — begin-step bare + Agent namespaced → 정규화 후 일치.
+        self._begin_step("module-architect")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("dcness:module-architect"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_allows_bare_agent_against_namespaced_begin_step(self) -> None:
+        # #700 Finding A — begin-step namespaced 는 current_step.agent 가 bare 로
+        # 정규화 저장돼야 하고(staging/end-step ValueError 회피), Agent bare 와 일치.
+        self._begin_step("dcness:module-architect")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("module-architect"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_allows_namespaced_moded_agent_full_cycle(self) -> None:
+        # #700 AC3 (strict-conveyor 부분) — namespaced + moded step + mode 미지정 Agent 가
+        # strict-conveyor 를 추가 우회 없이 통과해야 한다. engineer catastrophic 게이트의
+        # lane-aware 화(풀4 engineer:IMPL)는 별개 작업 — Finding C follow-up.
+        self._begin_step("code-validator", "VERIFY_ONLY")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("dcness:code-validator", ""),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_namespaced_agent_passing_strict_does_not_bypass_catastrophic_gate(self) -> None:
+        # #700 (codex P1) — active impl run 에서 begin-step engineer 후 dcness:engineer 가
+        # strict-conveyor 를 통과해도 engineer catastrophic 게이트(module-architect PASS)를
+        # 우회하면 안 된다 (strict norm 과 게이트 norm 의 연계 검증).
+        self._begin_step("engineer", "IMPL")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("dcness:engineer", "IMPL"),
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -1824,6 +1902,9 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self.assertEqual(expected.read_text(encoding="utf-8"), prose)
 
     def test_prose_staged_with_mode(self) -> None:
+        # #700 — legacy alias `validator` 는 begin-step 정규화로 canonical `code-validator`
+        # 가 돼 prose 도 canonical 파일명으로 staging 된다(게이트 _has_pass 와 일치). mode
+        # suffix 는 그대로 유지.
         self._set_current_step("validator", "PLAN_VALIDATION")
         prose = "## 결론\nPASS\n"
         rc = handle_posttooluse_agent(
@@ -1834,7 +1915,7 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self.assertEqual(rc, 0)
         expected = (
             session_dir(self.sid, base_dir=self.base) / "runs" / self.rid
-            / "validator-PLAN_VALIDATION.md"
+            / "code-validator-PLAN_VALIDATION.md"
         )
         self.assertTrue(expected.exists())
 

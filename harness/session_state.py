@@ -525,6 +525,12 @@ def update_current_step(
     base_dir: Optional[Path] = None,
 ) -> None:
     """`active_runs[run_id].current_step` 갱신 + heartbeat (`last_confirmed_at`)."""
+    # #700 — current_step.agent 를 canonical 로 정규화 저장. namespaced(`dcness:engineer`)
+    # / legacy alias 를 bare 로 통일해 strict-conveyor 게이트 비교 + prose 파일명(staging/
+    # end-step)이 표기 무관하게 일관되도록. agent 이름 검증 정규식(콜론 거부)을 바꾸지 않고
+    # 정규화로 해소 (이슈 out-of-scope: 정규식 정책 변경).
+    from harness.agent_names import normalize_agent_type
+    agent = normalize_agent_type(agent) or agent
     live = read_live(session_id, base_dir=base_dir) or {}
     active = live.get("active_runs", {})
     if not isinstance(active, dict) or run_id not in active:
@@ -1670,18 +1676,22 @@ def _cli_begin_step(args: Any) -> int:
         print(diagnose_sid_rid_resolution(mode="both"), file=sys.stderr)
         return 1
     mode = args.mode if args.mode else None
-    update_current_step(sid, rid, args.agent, mode)
+    # #700 — agent 이름 canonical 정규화. update_current_step 도 내부 정규화하지만
+    # ledger checkpoint / engineer hint 까지 같은 표기로 일관시킨다.
+    from harness.agent_names import normalize_agent_type
+    agent = normalize_agent_type(args.agent) or args.agent
+    update_current_step(sid, rid, agent, mode)
     # 이슈 #587 — ledger step_started checkpoint. 기록 실패가 begin-step 막지 않게 silent.
     try:
         from harness import ledger
-        ledger.append_event(sid, rid, "step_started", agent=args.agent, mode=mode)
+        ledger.append_event(sid, rid, "step_started", agent=agent, mode=mode)
     except Exception:
         pass
 
     # DCN-CHG-20260430-36: agent="engineer" 시 직전 engineer invocation 의
     # tool_use_count stderr hint. LLM self-monitor 불가 영역 정보 보강.
     # 측정 실패 silent (노이즈 회피).
-    if args.agent == "engineer":
+    if agent == "engineer":
         prior = _prior_engineer_tool_use_count(sid)
         if prior is not None and prior > 0:
             print(
@@ -2197,8 +2207,13 @@ def _cli_end_step(args: Any) -> int:
         return 1
 
     mode = args.mode if args.mode else None
+    # #700 — end-step 의 agent 도 canonical 정규화. namespaced 로 begin-step+Agent 한 뒤
+    # end-step 을 namespaced 로 호출해도 write_prose 이름 검증(콜론 거부)에 안 걸리고,
+    # begin-step 이 정규화 저장한 current_step.agent(bare)와 DRIFT 오탐 없이 일치한다.
+    from harness.agent_names import normalize_agent_type
+    agent = normalize_agent_type(args.agent) or args.agent
 
-    # DCN-CHG-20260430-25: drift detector — current_step 와 args.agent 불일치 시 WARN.
+    # DCN-CHG-20260430-25: drift detector — current_step 와 end-step agent 불일치 시 WARN.
     # 메인 Claude 가 begin-step 안 부르고 end-step 호출하거나, 다른 agent 에 대한
     # begin-step 이후 다른 agent end-step 부르는 경우 잡음. 자동 보정 X (안전).
     try:
@@ -2208,10 +2223,10 @@ def _cli_end_step(args: Any) -> int:
         if cur_step:
             cur_agent = cur_step.get("agent")
             cur_mode = cur_step.get("mode")
-            if cur_agent and cur_agent != args.agent:
+            if cur_agent and cur_agent != agent:
                 print(
                     f"[session_state] DRIFT WARN — current_step={cur_agent}"
-                    f"{':' + cur_mode if cur_mode else ''} but end-step={args.agent}"
+                    f"{':' + cur_mode if cur_mode else ''} but end-step={agent}"
                     f"{':' + mode if mode else ''}. begin-step 누락 의심.",
                     file=sys.stderr,
                 )
@@ -2225,7 +2240,7 @@ def _cli_end_step(args: Any) -> int:
             # current_step 자체 부재 — begin-step 안 부른 경우 (engineer auto-PR 후 등).
             print(
                 f"[session_state] DRIFT WARN — current_step 부재. "
-                f"end-step={args.agent}{':' + mode if mode else ''}. "
+                f"end-step={agent}{':' + mode if mode else ''}. "
                 f"begin-step 안 호출하고 end-step 호출. ledger.jsonl 에 기록은 됨.",
                 file=sys.stderr,
             )
@@ -2240,8 +2255,8 @@ def _cli_end_step(args: Any) -> int:
             print("[session_state] empty prose", file=sys.stderr)
             return 1
         base = session_dir(sid) / "runs"
-        occ = _count_step_occurrences(sid, rid, args.agent, mode)
-        prose_path = write_prose(args.agent, rid, prose, mode=mode, base_dir=base, occurrence=occ)
+        occ = _count_step_occurrences(sid, rid, agent, mode)
+        prose_path = write_prose(agent, rid, prose, mode=mode, base_dir=base, occurrence=occ)
     else:
         # hook auto-staged prose — live.json.current_step.prose_file 에서 경로 읽기
         try:
@@ -2252,7 +2267,7 @@ def _cli_end_step(args: Any) -> int:
         except Exception:
             _staged = None
         if not _staged:
-            _staged = _find_prose_fallback(sid, rid, args.agent, mode)
+            _staged = _find_prose_fallback(sid, rid, agent, mode)
             if _staged:
                 print(
                     f"[session_state] hook staging fallback → {Path(_staged).name}",
@@ -2272,7 +2287,7 @@ def _cli_end_step(args: Any) -> int:
 
     # prose-only (이슈 #280/#284) — 메인 Claude 가 prose 자체를 직접 읽고 routing 결정.
     # stdout 은 sentinel "PROSE_LOGGED" 로 통일. 옛 enum 기계 추출은 폐기.
-    agent_label = args.agent if not mode else f"{args.agent}:{mode}"
+    agent_label = agent if not mode else f"{agent}:{mode}"
 
     print("PROSE_LOGGED")
     print(f"[{agent_label} = PROSE_LOGGED]", file=sys.stderr)
@@ -2281,9 +2296,9 @@ def _cli_end_step(args: Any) -> int:
         print(summary, file=sys.stderr)
     # step status append — finalize-run / 회고용
     _append_step_status(
-        sid, rid, args.agent, mode, "PROSE_LOGGED", prose, prose_path,
+        sid, rid, agent, mode, "PROSE_LOGGED", prose, prose_path,
     )
-    clear_current_step(sid, rid, agent=args.agent, mode=mode)
+    clear_current_step(sid, rid, agent=agent, mode=mode)
     return 0
 
 
