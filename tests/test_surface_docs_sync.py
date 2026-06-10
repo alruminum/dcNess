@@ -144,7 +144,11 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.assertIn("기본/support/고급/유틸리티/내부 agent 분류", self.readme)
         self.assertNotIn("호환 workflow", self.readme)
         self.assertNotIn("호환 alias", self.readme)
-        self.assertIn("`/impl` 이 내부적으로 Lite / Standard / Deep lane", self.readme)
+        # #711 — impl 내부 lane = Lite/Standard (설계도 유무), Deep 제거
+        self.assertIn(
+            "`/impl` 이 내부적으로 lane(설계도 유무 — Lite / Standard)", self.readme
+        )
+        self.assertNotIn("Lite / Standard / Deep lane", self.readme)
 
     def test_init_summary_uses_same_lifecycle_surface(self) -> None:
         default_block = self._section(
@@ -262,12 +266,14 @@ class SurfaceDocsSyncTests(unittest.TestCase):
             self.assertNotIn("`/product-plan` 호환", text)
             self.assertNotIn("architect-loop", text)
 
+        # #711 — Deep 는 impl 내부 lane 이 아니라 impl 진입 전 high-risk 설계 선행 라우팅
         self.assertIn(
-            "Deep: /spec 내부 tech-review preflight? → /design → /impl → /acceptance",
+            "high-risk → 설계 선행: /spec 내부 tech-review preflight? → /design → /impl → /acceptance",
             self.router,
         )
+        self.assertNotIn("Deep: /spec 내부 tech-review", self.router)
         self.assertIn(
-            "`/spec` 내부 tech-review preflight 필요 시 / `/design` / `/impl` / `/acceptance` 흐름",
+            "설계 선행(`/spec` 내부 tech-review preflight 필요 시 / `/design`)",
             self.positioning,
         )
         self.assertIn("Lite: /impl direct PR", self.router)
@@ -278,9 +284,11 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         )
 
     def test_internal_routing_docs_prefer_lifecycle_names(self) -> None:
-        self.assertIn("`/spec` / `/design` / `/impl-loop`", self.impl_skill)
-        self.assertIn("없으면 `/spec` 또는 `/design` 선행", self.impl_skill)
-        self.assertIn('PLAN["/spec 또는 /design"]', self.impl_routing)
+        # #711 — high-risk 선행은 impl 밖. impl 문서가 lifecycle 진입점을 가리킨다.
+        self.assertIn("deep impl task 파일이 이미 있다 → `/impl-loop <task>`", self.impl_skill)
+        self.assertIn("`/spec` 부터 시작한다", self.impl_skill)
+        self.assertIn("`/design` 으로 설계한다", self.impl_skill)
+        self.assertIn('OUT["impl 밖 — 설계 선행: /spec 또는 /design"]', self.impl_routing)
         self.assertIn("없으면 `/spec` / `/tech-review` / `/design` 선행", self.impl_routing)
         self.assertIn(
             "spec / design 단계 → `/spec` (PRD) 또는 `/design` (설계)",

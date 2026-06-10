@@ -79,13 +79,14 @@ dcness-helper routing disable-codex-validation
 | `/impl` | 구현, 수정, 버그픽스, 작은 리팩터링을 실제 PR 로 끝낼 때 |
 | `/acceptance` | PRD / Epic / Story 기준 제품 검수와 gap 후속 연결이 필요할 때 |
 
-`/impl` 이 내부적으로 Lite / Standard / Deep lane 을 고른다.
+`/impl` 이 내부적으로 lane(설계도 유무 — Lite / Standard)과 엔진(풀4/경량)을 직교로 고른다. impl 은 설계를 하지 않고 설계도를 보고 구현만 한다.
 
 | lane | 조건 | 실행 |
 |---|---|---|
-| Lite | high-risk 없음 + 파일/symbol/승인된 issue 같은 concrete signal + 테스트 기준 명확 | 메인 직접 `test -> impl -> test pass -> pr-reviewer -> PR` |
-| Standard | high-risk 는 없지만 구현 경계나 테스트 기준이 애매함 | `module-architect` compact plan 1-pass 후 구현 |
-| Deep | high-risk trigger 또는 새 epic/product feature | `/spec` 내부 tech-review preflight 필요 시 / `/design` / `/impl` / `/acceptance` 사용 |
+| Lite | 설계 문서 없음 + 파일/symbol/승인된 issue 같은 concrete signal + high-risk 0개 + 테스트 기준 명확 | 메인 직접 `test -> impl -> test pass -> pr-reviewer -> PR` |
+| Standard | 설계 문서(경로)가 들어옴 | `--design-doc` 기록 후 받은 설계도로 구현 (엔진: 풀4 디폴트 / 경량 build-worker) |
+
+high-risk trigger 나 새 epic/product feature 는 impl *내부 lane 이 아니라* impl 진입 *전* 설계 선행(`/spec` 내부 tech-review preflight 필요 시 / `/design`)으로 라우팅되고, 산출된 설계도를 들고 Standard 로 진입한다.
 
 **새 기능**
 
@@ -111,7 +112,7 @@ dcness-helper routing disable-codex-validation
 support/advanced entrypoint 는 기본 생명주기 표면 밖의 보조 흐름이다.
 
 - `/to-issue` — 메인 주도 Issue Brief 초안 + 승인 후 GitHub issue/Project 등록
-- `/tech-review` — Deep lane 에서 `/spec` 내부 preflight 로 쓰는 선행 기술 검증
+- `/tech-review` — high-risk 설계 선행에서 `/spec` 내부 preflight 로 쓰는 선행 기술 검증
 - `/impl-loop` — deep impl task 파일용 legacy/advanced runner
 - `/ux` — 화면 UX / 디자인 핸드오프 전문 흐름
 
@@ -144,10 +145,10 @@ escalate) 가 진본이다 — 예: [`skills/impl/impl-routing.md`](skills/impl/
 |---|---|---|
 | 기본 workflow | `/spec` | 새 기능 spec + SPEC_ACCEPTANCE 체크포인트 |
 | 기본 workflow | `/design` | product/technical design |
-| 기본 workflow | `/impl` | 구현 진입 통합 — Lite / Standard / Deep lane 내부 판정 |
+| 기본 workflow | `/impl` | 구현 진입 통합 — lane(설계도 유무 — Lite / Standard) + 엔진(풀4/경량) 내부 판정 |
 | 기본 workflow | `/acceptance` | story/epic 제품 검수 MVP |
 | support | `/to-issue` | Issue Brief 초안 작성 + 승인 후 GitHub issue/Project 등록 |
-| 고급 workflow | `/tech-review` | Deep lane 의 `/spec` 내부 선행 기술 검증 |
+| 고급 workflow | `/tech-review` | high-risk 설계 선행의 `/spec` 내부 선행 기술 검증 |
 | 고급 workflow | `/impl-loop` | deep impl task 파일용 legacy/advanced runner |
 | 고급 workflow | `/ux` | 화면 UX 플로우 + 디자인 시안 핸드오프 |
 | 유틸리티 | `/init-dcness` | 현 프로젝트를 plugin 활성 whitelist 에 등록 |
