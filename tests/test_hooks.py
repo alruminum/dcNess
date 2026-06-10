@@ -183,12 +183,32 @@ class _PreToolBase(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# engineer 게이트 — engineer 직전 plan READY 검사
+# engineer 게이트 — engineer 직전 module-architect PASS 검사 (#700: 시퀀스 인지)
 # ---------------------------------------------------------------------------
 
 
 class CatastrophicEngineerTests(_PreToolBase):
-    def test_blocked_without_plan(self) -> None:
+    """engineer:IMPL 진입 게이트.
+
+    #700 — module-architect 가 이 run 시퀀스에 *포함된 경우*(prose 존재)에만
+    PASS 를 강제한다. impl-loop 풀 4-agent 기본 시퀀스(module-architect 없음)는
+    면제 — 그래야 engineer:IMPL 한 step 의 begin→Agent→end 사이클이 통과한다.
+    """
+
+    def test_allowed_without_module_architect_in_sequence(self) -> None:
+        # #700 — module-architect prose 부재(기본 시퀀스) → 게이트 면제 → 통과.
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_blocked_when_module_architect_present_without_pass(self) -> None:
+        # advanced fallback — module-architect 가 시퀀스에 있는데 PASS 안 났으면 차단.
+        (self.run_path / "module-architect.md").write_text(
+            "## 결론\nESCALATE\n", encoding="utf-8",
+        )
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("engineer", "IMPL"),
             cc_pid=self.cc_pid,
@@ -226,6 +246,27 @@ class CatastrophicEngineerTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
+
+    def test_namespaced_engineer_allowed_without_module_architect(self) -> None:
+        # #700 — namespaced(dcness:engineer)도 정규화 후 게이트 인지. 기본 시퀀스면 통과.
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("dcness:engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_namespaced_engineer_blocked_when_module_architect_present_without_pass(self) -> None:
+        # #700 — Finding A 가 게이트를 우회시키던 것 차단: namespaced 도 정규화 후 발동.
+        (self.run_path / "module-architect.md").write_text(
+            "## 결론\nESCALATE\n", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("dcness:engineer", "IMPL"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -501,6 +542,7 @@ class StrictConveyorGateTests(_PreToolBase):
         self.assertEqual(rc, 1)
 
     def test_blocks_agent_mode_mismatch(self) -> None:
+        # mode 가 *실제로 실린* 경우(인위적)엔 여전히 불일치 차단 — 방어 유지.
         self._begin_step("engineer", "IMPL")
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("engineer", "POLISH"),
@@ -508,6 +550,49 @@ class StrictConveyorGateTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 1)
+
+    def test_allows_moded_step_when_agent_omits_mode(self) -> None:
+        # #700 Finding B — Agent 도구는 mode 를 실을 수 없어 항상 None.
+        # begin-step engineer IMPL 후 Agent(engineer, mode 미지정) 가 통과해야 한다.
+        self._begin_step("engineer", "IMPL")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer", ""),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_allows_namespaced_agent_against_bare_begin_step(self) -> None:
+        # #700 Finding A — begin-step bare + Agent namespaced → 정규화 후 일치.
+        self._begin_step("module-architect")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("dcness:module-architect"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_allows_bare_agent_against_namespaced_begin_step(self) -> None:
+        # #700 Finding A — begin-step namespaced 는 current_step.agent 가 bare 로
+        # 정규화 저장돼야 하고(staging/end-step ValueError 회피), Agent bare 와 일치.
+        self._begin_step("dcness:module-architect")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("module-architect"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_allows_namespaced_moded_engineer_full_cycle(self) -> None:
+        # #700 AC3 — 풀 4-agent engineer:IMPL 핵심. namespaced + moded step +
+        # mode 미지정 Agent 가 추가 우회 없이 통과해야 한다.
+        self._begin_step("engineer", "IMPL")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("dcness:engineer", ""),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
 
     def test_blocks_blank_current_step_agent(self) -> None:
         self._begin_step("module-architect")
@@ -1824,6 +1909,9 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self.assertEqual(expected.read_text(encoding="utf-8"), prose)
 
     def test_prose_staged_with_mode(self) -> None:
+        # #700 — legacy alias `validator` 는 begin-step 정규화로 canonical `code-validator`
+        # 가 돼 prose 도 canonical 파일명으로 staging 된다(게이트 _has_pass 와 일치). mode
+        # suffix 는 그대로 유지.
         self._set_current_step("validator", "PLAN_VALIDATION")
         prose = "## 결론\nPASS\n"
         rc = handle_posttooluse_agent(
@@ -1834,7 +1922,7 @@ class PostToolUseAgentProseAutoStageTests(_PreToolBase):
         self.assertEqual(rc, 0)
         expected = (
             session_dir(self.sid, base_dir=self.base) / "runs" / self.rid
-            / "validator-PLAN_VALIDATION.md"
+            / "code-validator-PLAN_VALIDATION.md"
         )
         self.assertTrue(expected.exists())
 

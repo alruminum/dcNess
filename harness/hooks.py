@@ -232,7 +232,11 @@ def _strict_conveyor_gate_message(
     step_mode = _mode_or_none(cur_step.get("mode"))
     current = _agent_mode_label(step_agent, step_mode)
 
-    if step_agent != subagent or step_mode != mode:
+    # #700 — 이름은 canonical 비교(namespaced/alias 무관, subagent 는 호출부에서 정규화 전달).
+    # mode 는 Agent 도구가 실을 수 없어 항상 None 이므로, Agent 측 mode 가 *실제로 실린*
+    # 경우(미래 호환)에만 불일치 차단 — moded step(engineer:IMPL)이 영구 차단되던 결함 해소.
+    norm_step_agent = normalize_agent_type(step_agent) or step_agent
+    if norm_step_agent != subagent or (mode is not None and step_mode != mode):
         return (
             "[strict-conveyor] begin-step/Agent 불일치 — current_step="
             f"{current}, requested Agent={requested}. 현재 step을 닫아야 하면 "
@@ -399,6 +403,11 @@ def handle_pretooluse_agent(
         return 0
     subagent = tool_input.get("subagent_type", "") or ""
     mode = tool_input.get("mode", "") or ""
+    # #700 — 게이트 비교는 canonical 이름으로. namespaced(`dcness:engineer`) / legacy alias 가
+    # raw 비교에서 strict-conveyor 불일치로 차단되거나 engineer/pr-reviewer/module-architect
+    # 게이트를 우회하던 것을 정규화로 해소. active_agent / pending 기록은 raw subagent 유지
+    # (식별 원본 보존 — issue #598 _resolve_acting_agent 와 역할 분리).
+    norm_subagent = normalize_agent_type(subagent) or subagent
 
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
 
@@ -420,7 +429,7 @@ def handle_pretooluse_agent(
                 rid=rid,
                 base_dir=base_dir,
                 slot=slot,
-                subagent=subagent,
+                subagent=norm_subagent,
                 mode=_mode_or_none(mode),
             )
             if strict_msg:
@@ -429,19 +438,23 @@ def handle_pretooluse_agent(
     except (OSError, ValueError):
         pass  # state 읽기 실패는 fail-open — hook 버그발 과차단 회피.
 
-    # engineer 게이트 — engineer 직전 module-architect PASS 필수 (mode != POLISH)
-    if subagent == "engineer" and mode != "POLISH":
-        if not _has_pass(rd, "module-architect"):
+    # engineer 게이트 — engineer 직전 module-architect PASS 필수 (mode != POLISH).
+    # #700 — 단 module-architect 가 이 run 시퀀스에 *포함된 경우*(prose 존재)에만 강제.
+    # impl-loop 풀 4-agent 기본 시퀀스(test-engineer → engineer:IMPL → code-validator →
+    # pr-reviewer)는 module-architect 가 없으므로 면제 — 있을 때(advanced fallback)만 그
+    # 산출물의 PASS 를 요구한다. (entry_point 분기 대신 시퀀스 산출물 존재로 판정.)
+    if norm_subagent == "engineer" and mode != "POLISH":
+        if _has_prose(rd, "module-architect") and not _has_pass(rd, "module-architect"):
             print(
-                "[catastrophic: engineer 게이트] engineer 호출은 module-architect PASS 후만 "
-                "(module-architect.md 안 PASS 마커)",
+                "[catastrophic: engineer 게이트] module-architect 가 시퀀스에 있으나 PASS 마커 "
+                "없음 — engineer 호출은 module-architect PASS 후만 (module-architect.md 안 PASS)",
                 file=sys.stderr,
             )
             return 1
 
     # pr-reviewer 게이트 — engineer sub-agent 산출물 이후 code-validator PASS 필수.
     # Lite lane 은 메인 직접 구현 경로라 engineer prose 가 없고, pr-reviewer 단독 허용.
-    if subagent == "pr-reviewer":
+    if norm_subagent == "pr-reviewer":
         if _has_engineer_write(rd) and not _has_pass(rd, "code-validator"):
             print(
                 "[catastrophic: pr-reviewer 게이트] engineer 산출물 이후 "
@@ -453,7 +466,7 @@ def handle_pretooluse_agent(
     # module-architect 게이트 — design 안 module-architect × K *첫 호출* 직전
     # architecture-validator PASS 필수. jajang Spike Gate 사단 회피.
     if (
-        subagent == "module-architect"
+        norm_subagent == "module-architect"
         and _is_design_loop(sid, rid, base_dir=base_dir)
         and _module_architect_first_call(rd)
     ):
@@ -1065,6 +1078,21 @@ def _has_pass(rd: Path, agent: str) -> bool:
 
 def _has_engineer_write(rd: Path) -> bool:
     return (rd / "engineer-IMPL.md").exists() or (rd / "engineer-POLISH.md").exists()
+
+
+def _has_prose(rd: Path, agent: str) -> bool:
+    """`<agent>.md` 또는 `<agent>-N.md` (occurrence) prose 가 하나라도 존재하는지.
+
+    #700 — engineer 게이트가 module-architect 를 *이 run 시퀀스에 포함된 경우에만*
+    PASS 강제하도록, 시퀀스 포함 여부를 prose 파일 존재로 판정한다. _has_pass 와 같은
+    occurrence(.md / -N.md) 범위.
+    """
+    if (rd / f"{agent}.md").exists():
+        return True
+    for n in range(2, 10):
+        if (rd / f"{agent}-{n}.md").exists():
+            return True
+    return False
 
 
 def _is_design_loop(

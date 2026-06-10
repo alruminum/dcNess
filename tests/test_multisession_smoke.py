@@ -352,6 +352,15 @@ class CatastrophicRuleE2eTests(unittest.TestCase):
         self._td.cleanup()
 
     def test_engineer_without_plan_blocks_e2e(self) -> None:
+        # #700 — module-architect 가 시퀀스에 있으나 PASS 없음 → 차단. (기본 시퀀스에서
+        # module-architect 부재 시엔 면제되므로, 차단을 보려면 prose 를 둔다.)
+        run_path = (
+            self.cwd / ".claude" / "harness-state"
+            / ".sessions" / self.sid / "runs" / self.rid
+        )
+        (run_path / "module-architect.md").write_text(
+            "## 결론\nESCALATE\n", encoding="utf-8",
+        )
         result = _run_python_hook(
             "pretooluse-agent",
             {
