@@ -429,10 +429,14 @@ def handle_pretooluse_agent(
         slot = active.get(rid, {}) if isinstance(active, dict) else {}
         if isinstance(slot, dict):
             # #709 — begin-step 이 기록한 current_step.mode 를 effective mode fallback 으로
-            # 쓰기 위해 같은 slot read 에서 함께 추출(중복 read 회피).
-            cur_step = slot.get("current_step")
-            if isinstance(cur_step, dict):
-                step_mode = _mode_or_none(cur_step.get("mode"))
+            # 쓰기 위해 같은 slot read 에서 함께 추출(중복 read 회피). 단 fallback 의 신뢰
+            # 근거가 "strict-conveyor 가 begin-step↔Agent 정합을 보장" 이므로, strict
+            # entry_point 일 때만 step_mode 를 채운다 — 비-strict run 은 그 정합이 없어
+            # 다른 step 의 mode 가 면제로 새는 것을 원천 차단(게이트 약화 방향 방어).
+            if slot.get("entry_point", "") in _STRICT_CONVEYOR_ENTRY_POINTS:
+                cur_step = slot.get("current_step")
+                if isinstance(cur_step, dict):
+                    step_mode = _mode_or_none(cur_step.get("mode"))
             strict_msg = _strict_conveyor_gate_message(
                 sid=sid,
                 rid=rid,

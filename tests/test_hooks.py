@@ -221,14 +221,24 @@ class CatastrophicEngineerTests(_PreToolBase):
 
     # -- #709 — POLISH 면제의 effective mode 는 tool_input.mode ∪ current_step.mode --
 
+    def _strict_impl_run(self, rid: str = "run-87650001") -> Path:
+        # effective-mode fallback 은 strict entry_point(impl) 에서만 신뢰되므로
+        # current_step.mode 의존 테스트는 strict impl run 으로 세팅한다.
+        start_run(self.sid, rid, "impl", base_dir=self.base)
+        write_pid_current_run(self.cc_pid, rid, base_dir=self.base)
+        return run_dir(self.sid, rid, base_dir=self.base)
+
     def test_polish_via_current_step_when_toolinput_mode_absent(self) -> None:
         # impl-loop engine B 실전 — Agent 도구 스키마에 mode 파라미터가 없는 CC 빌드에선
         # tool_input.mode 가 안 실린다. begin-step 이 기록한 current_step.mode=POLISH 를
         # effective mode 로 봐야 POLISH 면제가 환경 무관하게 작동한다.
-        (self.run_path / "build-worker.md").write_text("PASS\n", encoding="utf-8")
-        self._begin_step("engineer", "POLISH")
+        rd = self._strict_impl_run()
+        (rd / "build-worker.md").write_text("PASS\n", encoding="utf-8")
+        update_current_step(
+            self.sid, "run-87650001", "engineer", "POLISH", base_dir=self.base,
+        )
         rc = handle_pretooluse_agent(
-            stdin_data=self._payload("engineer"),  # mode 키 부재 (실전 payload)
+            stdin_data=self._payload("engineer"),  # tool_input.mode 빈값 (실전 payload)
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
@@ -237,18 +247,39 @@ class CatastrophicEngineerTests(_PreToolBase):
     def test_impl_still_blocked_when_current_step_mode_impl_and_no_artifact(self) -> None:
         # 회귀 가드 — current_step.mode=IMPL 이고 설계 산출물 없으면 여전히 차단.
         # effective-mode fallback 이 IMPL 까지 면제로 새지 않는다.
-        self._begin_step("engineer", "IMPL")
+        self._strict_impl_run()
+        update_current_step(
+            self.sid, "run-87650001", "engineer", "IMPL", base_dir=self.base,
+        )
         rc = handle_pretooluse_agent(
-            stdin_data=self._payload("engineer"),  # mode 키 부재
+            stdin_data=self._payload("engineer"),  # tool_input.mode 빈값
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
         self.assertEqual(rc, 1)
 
     def test_blocked_when_no_mode_anywhere_and_no_artifact(self) -> None:
-        # 회귀 가드 — tool_input.mode 도 current_step.mode 도 없고 설계 산출물도 없으면 차단.
+        # 회귀 가드 — tool_input.mode 도 current_step.mode(부재) 도 POLISH 가 아니고
+        # 설계 산출물도 없으면 차단. begin-step engineer(mode 없음) → current_step.mode=None.
+        self._strict_impl_run()
+        update_current_step(
+            self.sid, "run-87650001", "engineer", None, base_dir=self.base,
+        )
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("engineer"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 1)
+
+    def test_polish_step_mode_ignored_in_nonstrict_run(self) -> None:
+        # 게이트 약화 방향 방어 — 비-strict entry_point 에서는 current_step.mode 정합이
+        # strict-conveyor 로 보장되지 않으므로 step_mode fallback 을 쓰지 않는다.
+        # setUp 의 run 은 entry_point="test"(비-strict). current_step.mode=POLISH 여도
+        # 산출물 없으면 차단(POLISH 누수 차단).
+        self._begin_step("engineer", "POLISH")
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("engineer"),  # tool_input.mode 빈값
             cc_pid=self.cc_pid,
             base_dir=self.base,
         )
