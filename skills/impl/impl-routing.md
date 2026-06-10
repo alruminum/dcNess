@@ -50,6 +50,8 @@ lane(설계도 유무)과 엔진(풀4/경량)은 직교다. 이번 범위에서 
 | Standard · 풀 4-agent (디폴트) | `begin-run impl --design-doc <경로>` 기록 후 `test-engineer -> engineer:IMPL -> code-validator -> pr-reviewer` |
 | Standard · 경량 build-worker | `begin-run impl --design-doc <경로>` 기록 후 `build-worker` 1 step (테스트·구현·자체검증) |
 
+Standard 의 설계도는 (a) 이미 머지된 설계 문서이거나 (b) `compact-design` 이 방금 산출한 compact plan 이다. 두 경우 모두 메인이 `begin-run impl --design-doc <경로>` 로 같은 경로를 기록하며, Standard 는 same-run module-architect step 없이 받은 설계도로 구현만 한다 — `--design-doc` 이 engineer 게이트 prerequisite 의 단일 메커니즘이다.
+
 high-risk 는 impl 밖 — deep impl task 있으면 `/impl-loop`, 없으면 `/spec` / `/tech-review` / `/design` 선행. 산출된 설계도를 들고 Standard 로 (재)진입한다.
 
 ## 결론 → 다음 호출

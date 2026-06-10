@@ -71,7 +71,7 @@ lane 을 고르기 전에 먼저 묻는다 — **이 작업을 닫을 설계 산
 - **있음** → **Standard**. 그 설계도를 기준으로 구현만 한다. `begin-run impl --design-doc <설계 문서 경로>` 로 산출물을 기록해 engineer 게이트 prerequisite 를 충족한다([`hooks.md` engineer gate](../../docs/plugin/hooks.md#catastrophic-gatesh)). 엔진(풀4/경량)은 직교로 별도 판정한다.
 - **없음** → 메인이 "직접 고칠 수준인가 / 설계가 필요한가" 를 판단한다. 단, 사용자가 "설계 생략·빨리 고쳐" 로 지시하면 사용자 지시가 우선이라 곧장 Lite 다.
   - 직접 고칠 수준(concrete signal 충분, high-risk 0개) → **Lite** 로 직접 구현.
-  - 경량 설계 필요(구현 경계·테스트 기준·작은 contract 가 애매) → 내부 [`compact-design`](../../skills/compact-design/SKILL.md) skill 로 **되돌려** compact plan(`docs/compact-plans/<slug>.md`)을 산출한 뒤, 그 경로를 들고 **Standard 로 진입**한다(`--design-doc` 기록). impl 은 설계를 직접 만들지 않는다.
+  - 경량 설계 필요(구현 경계·테스트 기준·작은 contract 가 애매) → 메인이 내부 [`compact-design`](../../skills/compact-design/SKILL.md) skill 을 호출해 compact plan(`docs/compact-plans/<slug>.md`)을 산출한 뒤, **그 경로를 `begin-run impl --design-doc <경로>` 로 기록하고 Standard 로 (재)진입**한다. impl 은 설계를 직접 만들지 않는다 — compact-design 은 impl 밖 호출이고, Standard 는 same-run module-architect step 없이 그 설계도를 받아 구현만 한다.
   - full 설계 필요(high-risk trigger 있음) → impl *밖*으로. `/design`(또는 PRD 부재 시 `/spec`)을 선행해 설계도를 확보한 뒤 그 경로로 Standard 진입한다.
 
 이 되돌림은 한 번으로 끝나지 않는다. 구현 중 설계가 또 부족하면 다시 `compact-design`/`/design` 으로 되돌릴 수 있다 — 되돌림은 정상 루프다.
@@ -139,7 +139,7 @@ Lite 에서 `code-validator` 를 호출하지 않는 이유: 검증 대상인 im
 
 Standard 는 **설계 문서(경로)가 들어온** lane 이다. impl 은 설계를 만들지 않는다 — 받은 설계도(`docs/compact-plans/<slug>.md` / `docs/milestones/**/impl/*.md` / `docs/bugfix/**`)를 충실히 구현만 한다. 경량 설계 산출 자체는 impl 밖 내부 skill [`compact-design`](../../skills/compact-design/SKILL.md)(= `module-architect:COMPACT_PLAN` wrapper) 또는 full `/design` 이 담당하고, 그 산출물 경로가 Standard 진입의 prerequisite 다.
 
-진입 시 `begin-run impl --design-doc <설계 문서 경로>` 로 설계도를 기록한다 — 이것이 engineer 게이트의 설계 산출물 prerequisite 증거다([`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh)). impl 이 같은 run 에서 설계를 생성하지 않으므로 Standard 는 항상 이 기록으로 진입한다.
+진입 시 `begin-run impl --design-doc <설계 문서 경로>` 로 설계도를 기록한다 — 이것이 engineer 게이트의 설계 산출물 prerequisite 증거다([`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh)). 설계도가 (a) 이전에 머지된 설계 문서든 (b) `compact-design` 이 방금 산출한 compact plan 이든, impl 은 같은 run 에서 설계를 생성하지 않으므로 Standard 는 **항상 `--design-doc` 기록 하나로** 진입한다 (same-run module-architect step 없음).
 
 엔진(풀4/경량)은 lane 과 직교로 별도 판정한다 — 사용자 우선, 미지정 시 메인 추천.
 
