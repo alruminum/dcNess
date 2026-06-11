@@ -1066,6 +1066,69 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn(self.rid, out.getvalue())
 
+    def test_step_reentry_after_finalize_resolves_same_run_without_pointer(self) -> None:
+        """issue #730 — pr-reviewer FAIL 후 fix round begin-step 재진입 회귀."""
+        from harness.session_state import (
+            _cli_begin_step,
+            _cli_end_step,
+            _cli_finalize_run,
+            clear_pid_current_run,
+            read_live,
+        )
+        from types import SimpleNamespace
+        from io import StringIO
+        from contextlib import redirect_stdout, redirect_stderr
+
+        clear_pid_current_run(self.cc_pid)
+
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_begin_step(SimpleNamespace(agent="build-worker", mode=None))
+        self.assertEqual(rc, 0, out.getvalue())
+
+        build_prose = self.base / "build_prose.md"
+        build_prose.write_text("구현 라운드 완료\n\nPASS\n", encoding="utf-8")
+        with redirect_stdout(StringIO()):
+            rc = _cli_end_step(SimpleNamespace(
+                agent="build-worker",
+                mode=None,
+                prose_file=str(build_prose),
+            ))
+        self.assertEqual(rc, 0)
+
+        with redirect_stdout(StringIO()):
+            rc = _cli_begin_step(SimpleNamespace(agent="pr-reviewer", mode=None))
+        self.assertEqual(rc, 0)
+
+        review_prose = self.base / "review_prose.md"
+        review_prose.write_text("MUST FIX: 보강 필요\n\nFAIL\n", encoding="utf-8")
+        with redirect_stdout(StringIO()):
+            rc = _cli_end_step(SimpleNamespace(
+                agent="pr-reviewer",
+                mode=None,
+                prose_file=str(review_prose),
+            ))
+        self.assertEqual(rc, 0)
+
+        with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            rc = _cli_finalize_run(SimpleNamespace(
+                expected_steps=2,
+                auto_review=False,
+            ))
+        self.assertEqual(rc, 0)
+        slot = read_live(self.sid)["active_runs"][self.rid]
+        self.assertIsNotNone(slot.get("finalized_at"))
+        self.assertIsNone(slot.get("completed_at"))
+
+        out = StringIO()
+        err = StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = _cli_begin_step(SimpleNamespace(agent="build-worker", mode=None))
+        self.assertEqual(rc, 0, err.getvalue())
+        self.assertIn("ok", out.getvalue())
+        slot = read_live(self.sid)["active_runs"][self.rid]
+        self.assertEqual(slot["current_step"]["agent"], "build-worker")
+
     def test_end_step_drift_warn_on_agent_mismatch(self) -> None:
         # DCN-30-25: end-step 호출 시 current_step 의 agent 와 args.agent 불일치
         # → stderr DRIFT WARN. 자동 보정 X (동작은 정상 진행).
@@ -2292,6 +2355,7 @@ class AutoDetectFallbackTests(unittest.TestCase):
       - #469: impl-loop/helper 직접 호출의 PPID mismatch fallback
       - #483: sid/rid 미해결 진단 출력
       - #684: by-pid sid 는 있으나 current-run pointer 유실 + 전역 scan miss
+      - #730: finalize-run 후 같은 run fix round begin-step 재진입 scan miss
     """
 
     SID_A = "11111111-2222-4333-8444-555555555555"
@@ -2397,6 +2461,26 @@ class AutoDetectFallbackTests(unittest.TestCase):
         )
         result = _scan_recent_active_run_slot(base_dir=self.base)
         self.assertEqual(result, (self.SID_B, self.RID_B))
+
+    def test_session_scoped_scan_includes_finalized_uncompleted_run(self) -> None:
+        """issue #730 — finalized_at 은 review snapshot 이지 run close 가 아니다."""
+        from harness.session_state import _scan_recent_active_run_slot
+
+        self._write_live(
+            self.SID_A,
+            root=".sessions",
+            runs={self.RID_A: {
+                "run_id": self.RID_A,
+                "started_at": "2026-06-11T01:00:00+00:00",
+                "completed_at": None,
+                "finalized_at": "2026-06-11T01:30:00+00:00",
+            }},
+        )
+        result = _scan_recent_active_run_slot(
+            base_dir=self.base,
+            session_id=self.SID_A,
+        )
+        self.assertEqual(result, (self.SID_A, self.RID_A))
 
     def test_scan_skips_completed_runs_without_finalized_at(self) -> None:
         """completed_at tombstone 만 있는 end-run 완료 슬롯도 fallback 후보에서 제외."""
