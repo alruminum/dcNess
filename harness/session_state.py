@@ -1062,7 +1062,7 @@ def auto_detect_session_id(*, base_dir: Optional[Path] = None) -> str:
     sid = current_session_id(base_dir=base_dir)
     if sid:
         return sid
-    # (d) active_runs scan 폴백 — 가장 최근 미finalized run 의 session_id
+    # (d) active_runs scan 폴백 — 가장 최근 미완료 run 의 session_id
     slot_info = _scan_recent_active_run_slot(base_dir=base_dir)
     if slot_info:
         return slot_info[0]  # (sid, rid)
@@ -1097,7 +1097,7 @@ def auto_detect_run_id(*, base_dir: Optional[Path] = None) -> str:
         slot_info = _scan_recent_active_run_slot(base_dir=base_dir, session_id=sid)
         if slot_info:
             return slot_info[1]
-    # (d) active_runs scan 폴백 — 가장 최근 미finalized run 의 run_id
+    # (d) active_runs scan 폴백 — 가장 최근 미완료 run 의 run_id
     slot_info = _scan_recent_active_run_slot(base_dir=base_dir)
     if slot_info:
         return slot_info[1]
@@ -1167,7 +1167,7 @@ def diagnose_sid_rid_resolution(
         session_id=sid_hint or None,
     )
     if slot is None:
-        lines.append("  (c) active_runs scan: 매치 없음 (모든 run finalized 또는 sessions dir 비어있음)")
+        lines.append("  (c) active_runs scan: 매치 없음 (모든 run completed 또는 sessions dir 비어있음)")
     else:
         lines.append(f"  (c) active_runs scan best-guess: sid={slot[0]} rid={slot[1]}")
 
@@ -1182,10 +1182,13 @@ def diagnose_sid_rid_resolution(
 
 
 def _is_open_active_run_slot(slot: Any) -> bool:
-    """active_runs 슬롯이 helper fallback 후보인지 판정."""
+    """active_runs 슬롯이 helper fallback 후보인지 판정.
+
+    `finalized_at` 은 finalize-run/review snapshot 완료 신호이고, run 종료 신호는
+    `completed_at` 이다. 같은 run 의 fix round 재진입과 PPID mapping 단절 복구를
+    위해 `completed_at` 전까지는 전역/sid-scoped scan 모두 후보로 유지한다 (#730).
+    """
     if not isinstance(slot, dict):
-        return False
-    if slot.get("finalized_at"):
         return False
     return slot.get("completed_at") is None
 
@@ -1248,18 +1251,18 @@ def _scan_recent_active_run_slot(
     max_sessions: int = 5,
     session_id: Optional[str] = None,
 ) -> Optional[tuple[str, str]]:
-    """.sessions/ 디렉토리 scan 후 가장 최근 미finalized active_run slot 의 (sid, rid).
+    """.sessions/ 디렉토리 scan 후 가장 최근 미완료 active_run slot 의 (sid, rid).
 
     issue #469 결함 B 의 best-effort 폴백 — PPID chain 미해결 시 사용.
     다음 우선순위:
-    1. `session_id` 가 주어지면 그 세션 live.json 을 직접 검사 (#684)
+    1. `session_id` 가 주어지면 그 세션 live.json 을 직접 검사 (#684/#730)
     2. live.json mtime 최신 `max_sessions` 개만 검사 (비용 가드)
-    3. 각 live.json 의 `active_runs` 중 `finalized_at`/`completed_at` 부재 +
-       `started_at` 가장 최근 slot 있는 (sid, rid) 반환
+    3. 각 live.json 의 `active_runs` 중 `completed_at` 부재 + `started_at` 최신 slot 반환
+    4. `finalized_at` 은 review snapshot 신호일 뿐 종료 신호가 아니므로 제외 조건이 아니다
 
     Returns:
         (session_id, run_id) tuple — best-guess.
-        None — 매치 부재 (clean session 또는 모든 run finalized).
+        None — 매치 부재 (clean session 또는 모든 run completed).
 
     주의: multi-session 환경에서 잘못된 매핑 위험 있음. 본 폴백은 PPID chain
     실패 케이스의 무대응 (= helper 동작 X) 대신 best-guess 제공. 정확 매핑 필요시
@@ -1302,7 +1305,7 @@ def _scan_recent_active_run_slot(
     candidates.sort(key=lambda x: x[0], reverse=True)
     candidates = candidates[:max_sessions]
 
-    # 각 live.json 의 미finalized active_run 중 started_at 최신 후보 수집
+    # 각 live.json 의 미완료 active_run 중 started_at 최신 후보 수집
     best: Optional[tuple[str, str, str]] = None  # (started_at, sid, rid)
     for _, live_file in candidates:
         slot = _scan_live_file_for_active_run(live_file)
