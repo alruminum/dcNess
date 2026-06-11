@@ -28,7 +28,7 @@ flowchart TB
   PR -->|PASS| M([메인 regular merge])
   PR -->|PASS · 마감 task| PA[product-acceptance]
   PA -->|PASS| M
-  PA -->|FAIL ≤3 · auto-fixable gap| ENP
+  PA -->|FAIL ≤3 · auto-fixable gap| EN
   PA -.->|ESCALATE / round 초과 / 비자동 gap| U
   PR -->|변경 요청| ENP[engineer:POLISH]
   ENP -->|POLISH_DONE| PR
@@ -57,7 +57,7 @@ flowchart TB
   PR2 -->|PASS| M2([메인 regular merge])
   PR2 -->|PASS · 마감 task| PA2[product-acceptance]
   PA2 -->|PASS| M2
-  PA2 -->|FAIL ≤3 · auto-fixable gap| ENP2
+  PA2 -->|FAIL ≤3 · auto-fixable gap| EN2
   PA2 -.->|ESCALATE / round 초과 / 비자동 gap| U2
   PR2 -->|변경 요청 ≤2| ENP2[engineer:POLISH] --> MGP([메인 commit/push to PR branch]) --> PR2
   BW -->|SPEC_GAP_FOUND small| ME([메인 직접 Edit]) --> BW
@@ -95,7 +95,7 @@ flowchart TB
 | **build-worker** | `PASS` → 메인 git/PR → pr-reviewer · `SPEC_GAP_FOUND` → 분량 메타 분기(아래) · `TESTS_FAIL` → engineer(마저 구현) → **`IMPL_DONE` → code-validator → `PASS` 후 메인 git/PR** (self-validate 미통과분을 code-validator 가 복원 — 검증 없이 PR 금지) 또는 attempt 한도 초과 시 사용자 · `VALIDATION_BLOCKED` → **메인이 worker 가 남긴 검증 명령을 직접 실행(게이트 대행)** — exit 0 → 메인 git/PR → pr-reviewer · 게이트 FAIL → engineer 재시도(TESTS_FAIL 경로 합류, ≤3) · 메인도 실행 불가 → 사용자 · `IMPLEMENTATION_ESCALATE` → 사용자 |
 | **module-architect** | `PASS` → (impl 파일 생성·보강 후) build-worker 또는 test-engineer · `ESCALATE` → 사용자 |
 | **designer** | `PASS` → 사용자 PICK → test-engineer · `ESCALATE` → 사용자. 환경 = `docs/design.md` frontmatter `medium`. 재호출 한도 X |
-| **product-acceptance** | 마감 task 한정 (pr-reviewer PASS 후 · pr-finalize 전, [마감 acceptance 라우팅](#마감-acceptance-라우팅)). `PASS` → 메인 pr-finalize 머지 (epic 마감은 STORY → EPIC 2회 모두 PASS 후) · `FAIL` (auto-fixable gap) → engineer POLISH(gap 수정) → 메인 commit/push to PR branch → pr-reviewer 재리뷰 → product-acceptance 재검수 (round ≤3) · `FAIL` (설계 결함·범위 재정의·보안/권한/데이터 gap) 또는 round 초과 → 정지 + 사용자 위임 · `ESCALATE` → 정지 + 사용자 위임 |
+| **product-acceptance** | 마감 task 한정 (pr-reviewer PASS 후 · pr-finalize 전, [마감 acceptance 라우팅](#마감-acceptance-라우팅)). `PASS` → 메인 pr-finalize 머지 (epic 마감은 STORY → EPIC 2회 모두 PASS 후) · `FAIL` (auto-fixable gap) → engineer:IMPL 재진입(gap 수정 — POLISH 아님) → code-validator → 메인 commit/push to PR branch → pr-reviewer 재리뷰 → product-acceptance 재검수 (round ≤3) · `FAIL` (설계 결함·범위 재정의·보안/권한/데이터 gap) 또는 round 초과 → 정지 + 사용자 위임 · `ESCALATE` → 정지 + 사용자 위임 |
 
 **build-worker `SPEC_GAP_FOUND` 분량 메타 분기** (외부 사용자 [F4 실측](https://github.com/alruminum/dcNess/issues/506)):
 - **small** (1 enum 값 / 1 필드 / 1 메서드 시그니처) → 메인이 직접 Edit (`docs/impl/NN-*.md` / `docs/domain-model.md`) + build-worker 재호출. **cycle 카운트 불포함** (경량 예외).
@@ -131,7 +131,7 @@ standalone `/acceptance` 의 라우팅([`acceptance-routing.md`](../acceptance/a
 
 | gap 종류 | 라우팅 |
 |---|---|
-| PRD / AC 미충족 · 검수 증거 부족 · 스모크 실패 (auto-fixable) | engineer POLISH(gap 수정) → lint/build/test green → 메인 commit/push to PR branch → pr-reviewer 재리뷰 → product-acceptance 재검수 (round ≤3) |
+| PRD / AC 미충족 · 검수 증거 부족 · 스모크 실패 (auto-fixable) | engineer:IMPL 재진입(gap 수정 — POLISH 아님: POLISH 는 pr-reviewer finding 전용·로직 변경 금지 모드, [`engineer-agent.md`](../../agents/engineer/engineer-agent.md) 정합) → `IMPL_DONE` → code-validator `PASS` → lint/build/test green → 메인 commit/push to PR branch → pr-reviewer 재리뷰 → product-acceptance 재검수 (round ≤3) |
 | 설계 결함 / 범위 재정의 필요 | 정지 + 사용자 위임 (`/design`·`compact-design` 회수 후보 제시) |
 | 성능 병목 / 리팩토링 필요 | 정지 + 사용자 위임 (마감 PR 범위 초과 가능성 — follow-up `/to-issue` 후보 제시. 사용자가 본 PR 범위 내 수정을 지시한 경우에만 auto-fixable 루프 재사용) |
 | 보안 / 권한 / 데이터 리스크 | 정지 + 사용자 위임 |
