@@ -4,6 +4,34 @@
 
 ---
 
+## v0.6.5 (2026-06-11)
+
+**커밋 범위**: `v0.6.1..v0.6.5` (머지 PR 12개)
+**핵심 변경**: v0.6.1 직후 strict-conveyor·engineer 게이트 정합 버그픽스 일괄 + `/impl` 2축(lane×engine) 재설계 + sub-agent 검증 경계 보강. 외부 활성 프로젝트 영향이 큰 게이트 회귀 수정이 다수 포함된 패치 롤업. v0.6.1 릴리즈 이후 main 에 쌓였으나 미배포 상태였던 변경을 전부 전달한다([#718](https://github.com/alruminum/dcNess/issues/718) — 같은 버전 번호에 코드 2개가 공존하던 배포 누락 해소).
+
+### 무엇이 바뀌나
+
+1. **strict-conveyor·engineer 게이트 agent 이름 정규화 정합** ([#704](https://github.com/alruminum/dcNess/pull/704) [#700](https://github.com/alruminum/dcNess/issues/700), [#706](https://github.com/alruminum/dcNess/pull/706) [#701](https://github.com/alruminum/dcNess/issues/701), [#710](https://github.com/alruminum/dcNess/pull/710) [#709](https://github.com/alruminum/dcNess/issues/709)) — strict-conveyor 게이트가 `current_step.agent` 와 Agent `subagent_type` **양변 모두** namespace 정규화 후 비교(`dcness:engineer` ↔ `engineer` 불일치 차단 해소) + `current_step.agent` canonical 저장으로 end-step prose 파일명 모순 동시 해소. engineer 게이트 prerequisite 를 설계 산출물 실존으로 확장 + effective mode(`tool_input.mode` ∪ `current_step.mode`) 판정. namespaced agent 가 catastrophic 게이트를 우회하지 못하도록 후속 게이트도 정규화 비교. **이 묶음으로 [#718](https://github.com/alruminum/dcNess/issues/718)(impl-loop 풀 4-agent 진입 차단) 이 실배포본에서 해소된다.**
+
+2. **`/impl` 2축(lane × engine) 재설계** ([#713](https://github.com/alruminum/dcNess/pull/713) [#711](https://github.com/alruminum/dcNess/issues/711), [#716](https://github.com/alruminum/dcNess/pull/716) [#714](https://github.com/alruminum/dcNess/issues/714)) — Deep lane 을 제거하고 lane(설계 산출물 유무) × 엔진(full 4-agent / build-worker) 을 직교 축으로 재모델링. Standard 진입은 `--design-doc` 단일 메커니즘으로 통일. Lite lane 에서 engineer 게이트를 lane-aware 로 면제(설계 산출물 없는 경량 작업이 게이트에 막히지 않도록).
+
+3. **sub-agent 검증 경계 보강** ([#707](https://github.com/alruminum/dcNess/pull/707) / [#712](https://github.com/alruminum/dcNess/pull/712) / [#715](https://github.com/alruminum/dcNess/pull/715) [#705](https://github.com/alruminum/dcNess/issues/705)) — bash fd 복제·device sink redirect 를 외부 변경으로 오추출해 sub-agent 검증이 차단되던 false-block 수정 + 루트 직속 코드 파일(`app.py` 류 엔트리포인트) ALLOW 보강(prose 우회 제거) + 루트 도구체인 파일 deny + 검증 미실행 PASS 금지(`VALIDATION_BLOCKED` 계약).
+
+4. **단계 간 되돌림 일급화 + impl-task risk 메타 + acceptance 검수** ([#708](https://github.com/alruminum/dcNess/pull/708) [#702](https://github.com/alruminum/dcNess/issues/702), [#717](https://github.com/alruminum/dcNess/pull/717) [#703](https://github.com/alruminum/dcNess/issues/703), [#720](https://github.com/alruminum/dcNess/pull/720) [#719](https://github.com/alruminum/dcNess/issues/719), [#699](https://github.com/alruminum/dcNess/pull/699) [#694](https://github.com/alruminum/dcNess/issues/694)) — 단계 간 되돌림(이전 단계 보강)을 정상 루프로 일급화 + compact-design 내부 스킬 분리. impl-task frontmatter 에 risk/engine 메타 도입으로 impl-loop dry preview 추론 제거. impl-loop story/epic 마감 시 acceptance 검수 삽입. sed clustered in-place 플래그 추출 보강.
+
+### 사용자 영향
+
+- **`claude plugin update dcness@dcness` 로 자동 반영** — 전부 plug-in 본체 경로(`harness/**`, `skills/**`, `agents/**`, `docs/plugin/**`).
+- **impl-loop 풀 4-agent 흐름 정상화** — v0.6.1 cache 에서 namespaced Agent 호출이 strict-conveyor 게이트에 매번 차단되던 회귀([#718](https://github.com/alruminum/dcNess/issues/718))가 해소된다. 별도 우회 없이 begin→Agent→end 사이클 통과.
+
+### 업데이트
+
+```sh
+claude plugin update dcness@dcness
+```
+
+---
+
 ## v0.6.1 (2026-06-10)
 
 **커밋 범위**: `v0.6.0..v0.6.1` (머지 PR 10개)
