@@ -52,6 +52,44 @@ class DesignSurfaceContractTests(unittest.TestCase):
             self.assertNotIn("`/architect-loop`", text)
             self.assertNotIn("호환 alias", text)
 
+    def test_design_validation_interleaves_common_and_story_units(self) -> None:
+        """#691 — /design validates each module-architect unit before continuing."""
+        design_dir = ROOT / "skills" / "design"
+        design = (design_dir / "SKILL.md").read_text(encoding="utf-8")
+        routing = (design_dir / "design-routing.md").read_text(encoding="utf-8")
+
+        self.assertNotIn("module-architect × K → architecture-validator(2차)", design)
+        self.assertNotIn("`PASS × K`", design)
+        self.assertNotIn(
+            "다음 단위 module-architect / (마지막이면) architecture-validator 2차",
+            routing,
+        )
+
+        for expected in (
+            "architecture-validator(1차/system freeze)",
+            "공통 task 선행 검증",
+            "module-architect(common) → architecture-validator(공통 단위)",
+            "module-architect(Story N) → architecture-validator(Story 단위)",
+            "공통 task 없음 → 공통 단위 검증 없이 Story 1",
+            "Cross-Story Lessons",
+            "prompt 직접 전달은 미기록 결정 예외",
+            "architecture-validator(cross-story 통합)",
+            "Step 5 — architecture-validator cross-story 통합",
+        ):
+            self.assertIn(expected, design)
+
+        for expected in (
+            "MA_COMMON -->|PASS| AV_COMMON",
+            "AV_COMMON -->|PASS| MA_STORY",
+            "MA_STORY -->|PASS| AV_STORY",
+            "AV_STORY -->|PASS: 다음 Story| MA_STORY",
+            "AV_STORY -->|PASS: 마지막 Story| AV_FINAL",
+            "`PASS`(공통/Story 단위)",
+            "`PASS`(cross-story 통합)",
+            "SSOT 문서 기록 + 포인터 전달",
+        ):
+            self.assertIn(expected, routing)
+
 
 if __name__ == "__main__":
     unittest.main()

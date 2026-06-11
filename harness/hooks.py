@@ -497,7 +497,7 @@ def handle_pretooluse_agent(
             )
             return 1
 
-    # module-architect 게이트 — design 안 module-architect × K *첫 호출* 직전
+    # module-architect 게이트 — design 안 첫 module-architect 단위 호출 직전
     # architecture-validator PASS 필수. jajang Spike Gate 사단 회피.
     if (
         norm_subagent == "module-architect"
@@ -506,8 +506,8 @@ def handle_pretooluse_agent(
     ):
         if not _has_pass(rd, "architecture-validator"):
             print(
-                "[순서 차단 훅: module-architect 게이트] module-architect × K 첫 호출은 "
-                "architecture-validator PASS 후만 "
+                "[순서 차단 훅: module-architect 게이트] 첫 module-architect 단위 호출은 "
+                "architecture-validator 1차 PASS 후만 "
                 "(architecture-validator.md 안 PASS 마커)",
                 file=sys.stderr,
             )
