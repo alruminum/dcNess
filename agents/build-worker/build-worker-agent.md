@@ -42,6 +42,7 @@
 - 메인이 전달한 `<run_dir>`는 `.claude/harness-state/.sessions/<sid>/runs/<run-id>` 경로이며, phase prose를 실제로 쓰는 디렉토리도 이 경로다.
 - `phases/<RUN_ID>/` 같은 별도 worktree 경로를 만들거나 보고하지 않는다.
 - `build-test.md`, `build-impl.md`, `build-validate.md`를 쓴 뒤 `ls <run_dir>/build-test.md <run_dir>/build-impl.md <run_dir>/build-validate.md`로 3개 실존을 확인한다.
+- pr-reviewer finding 대응 등 별도 polish 기록이 필요하면 `build-polish.md`도 같은 `<run_dir>`에만 쓴다. 이 파일은 선택 기록이며 clean 게이트의 필수 3개에는 포함하지 않는다.
 - 하나라도 없으면 PASS를 내지 말고 즉시 재기록하거나 `TESTS_FAIL`/`IMPLEMENTATION_ESCALATE`로 보고한다.
 
 ## 고위험 task self-check

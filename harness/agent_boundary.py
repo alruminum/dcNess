@@ -32,6 +32,8 @@ import shlex
 from pathlib import Path
 from typing import Iterable, Optional
 
+from harness.session_state import _resolve_project_root
+
 
 __all__ = [
     "DCNESS_INFRA_PATTERNS",
@@ -62,18 +64,19 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
 
 
 # ── run_dir prose carve-out (#597 커밋4) ──────────────────────────────
-# build-worker 의 `<run_dir>/build-{test,impl,validate}.md` self-write 만 보존
+# build-worker 의 `<run_dir>/build-{test,impl,validate,polish}.md` self-write 만 보존
 # (`agents/build-worker.md` 권한 경계). run_dir 는 INFRA 패턴 `(^|/)\.claude/` 에
 # 걸리고, build-worker 가 ALLOW_MATRIX 에 등재된 순간 ALLOW 미매칭으로도 막힌다.
 # → INFRA / ALLOW_MATRIX 검사보다 *먼저*, build-worker + build-*.md 만 좁게 허용한다.
 #
-# 🔴 반드시 (agent == build-worker) AND (파일명 = build-{test,impl,validate}.md) 둘 다 좁힌다.
+# 🔴 반드시 (agent == build-worker) AND (파일명 = build-{test,impl,validate,polish}.md)
+#    둘 다 좁힌다.
 #    넓게(임의 agent, 임의 .md) 열면 engineer 같은 agent 가 run_dir 에 module-architect.md /
 #    code-validator.md / architecture-validator.md 를 `PASS` 로 *위조* → `_has_pass` 가 신뢰 →
 #    catastrophic gate (pr-reviewer / engineer / module-architect 게이트) 우회 (codex review P1). build-* 파일명은 어떤
 #    gate 도 신뢰하지 않으므로 forge 불가.
 RUN_DIR_PROSE_ALLOW: tuple[str, ...] = (
-    r'(^|/)\.claude/harness-state/\.sessions/[^/]+/runs/[^/]+/build-(test|impl|validate)\.md$',
+    r'(^|/)\.claude/harness-state/\.sessions/[^/]+/runs/[^/]+/build-(test|impl|validate|polish)\.md$',
 )
 
 
@@ -333,6 +336,26 @@ def _normalize(file_path: str, cwd: Optional[Path] = None) -> str:
         return file_path
 
 
+def _normalize_to_project_root(file_path: str, cwd: Optional[Path] = None) -> Optional[str]:
+    """path 를 main project root 기준 상대경로로 정규화한다.
+
+    일반 write 경계는 worktree cwd 기준으로 검사해야 하지만, build-worker phase prose
+    run_dir 는 worktree 안에서도 main repo 의 `.claude/harness-state` 가 정본이다. worker 가
+    `dcness-helper run-dir` 의 절대경로를 그대로 Write 할 때 cwd 밖 경로로 오차단하지 않도록
+    run_dir carve-out 판정에만 project-root 정규화를 쓴다.
+    """
+    if cwd is None:
+        cwd = Path.cwd()
+    try:
+        p = Path(file_path).expanduser()
+        base = p if p.is_absolute() else (cwd / p)
+        resolved = base.resolve()
+        project_root = _resolve_project_root(cwd).resolve()
+        return str(resolved.relative_to(project_root))
+    except (OSError, ValueError, RuntimeError):
+        return None
+
+
 def _matches_any(path: str, patterns: Iterable[str]) -> Optional[str]:
     for pat in patterns:
         if re.search(pat, path):
@@ -380,6 +403,16 @@ def check_write_allowed(
             f"셸 확장돼 위치 미확정 (프로젝트 밖 write 우회 방지)."
         )
 
+    # run_dir prose carve-out — worktree cwd 에서도 helper run-dir 는 main repo 아래 절대경로다.
+    # cwd 기준으로 보면 "프로젝트 밖"이므로, 먼저 project-root 기준으로 좁게 허용 여부를 본다.
+    project_norm = _normalize_to_project_root(file_path, cwd)
+    if (
+        agent == "build-worker"
+        and project_norm is not None
+        and _matches_any(project_norm, RUN_DIR_PROSE_ALLOW)
+    ):
+        return None
+
     norm = _normalize(file_path, cwd)
 
     # cwd 밖 경로 차단 (#694 codex P2) — _normalize 가 cwd 상대화에 성공하면 항상 cwd-내
@@ -394,11 +427,6 @@ def check_write_allowed(
             f"{agent} 경계 밖 경로 차단: `{norm}` — 프로젝트 루트 밖 write 금지 "
             f"(.. 상위 탈출 / 절대 외부 / ~ home)."
         )
-
-    # 0. run_dir prose carve-out — build-worker 의 build-{test,impl,validate}.md self-write 한정.
-    #    agent + 파일명 둘 다 좁혀 PASS 마커 위조를 차단 (codex P1). INFRA/ALLOW 검사보다 먼저.
-    if agent == "build-worker" and _matches_any(norm, RUN_DIR_PROSE_ALLOW):
-        return None
 
     # 1. INFRA pattern → 모든 agent 차단.
     matched = _matches_any(norm, DCNESS_INFRA_PATTERNS)
