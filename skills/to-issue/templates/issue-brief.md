@@ -17,7 +17,7 @@
 {{예외적으로 prototype 의 state machine, schema, type shape 가 prose 보다 결정을 정확히 담는 경우만 짧게 포함하고 prototype 출처를 명시한다.}}
 
 **Key interfaces / Contracts:**
-- {{사용자가 보게 되는 command, API, 문서 surface, config shape, type/field 이름 같은 안정적인 계약을 쓴다.}}
+- {{사용자가 보게 되는 command, API, 문서 공개 노출 범위, config shape, type/field 이름 같은 안정적인 계약을 쓴다.}}
 - {{현재 파일 위치가 아니라 바뀌어야 하는 인터페이스나 행동 계약을 쓴다.}}
 - {{모르면 추측하지 말고 비워두거나 명확화 질문으로 남긴다.}}
 

@@ -792,8 +792,8 @@ def extract_bash_paths(command: str) -> list[str]:
     return deduped
 
 
-# ── 외부 시스템 mutation 차단 (#597 커밋5) ─────────────────────────────
-# 활성 sub-agent 의 외부 상태 mutation (git push / gh pr·issue mutation / GitHub MCP)
+# ── 외부 상태 변경 차단 (#597 커밋5) ─────────────────────────────
+# 활성 sub-agent 의 외부 상태 변경 (git push / gh pr·issue 변경 / GitHub MCP)
 # 차단. push·이슈·PR 은 메인 영역 (git-spec 절차). read-only 는 통과.
 # 토큰 단위 파싱 — 문자열 grep 아님 (`gh issue list` 같은 read 를 오차단하지 않기 위함).
 
@@ -1054,11 +1054,11 @@ def _gh_api_mutation(toks: list[str]) -> Optional[str]:
         ):
             has_field = True
     if explicit_method in _HTTP_MUTATION_METHODS:
-        return f"gh api {explicit_method} 차단 — 외부 mutation 은 메인 영역 (git-spec 절차)."
+        return f"gh api {explicit_method} 차단 — 외부 상태 변경은 메인 영역 (git-spec 절차)."
     if explicit_method == "GET":
         return None  # 명시적 GET — field 있어도 GET
     if has_field:
-        return "gh api field flag (method 미지정 = POST 기본) 차단 — 외부 mutation 은 메인 영역."
+        return "gh api field flag (method 미지정 = POST 기본) 차단 — 외부 상태 변경은 메인 영역."
     return None
 
 
@@ -1184,14 +1184,14 @@ def _check_bash_mutation(command: str, *, depth: int = 0) -> Optional[str]:
         verbs = _GH_MUTATION.get(noun)
         if verbs and len(pos) >= 2 and pos[1] in verbs:
             return (
-                f"gh {noun} {pos[1]} 차단 — 외부 시스템 mutation 은 메인 영역 "
+                f"gh {noun} {pos[1]} 차단 — 외부 상태 변경은 메인 영역 "
                 f"(git-spec 이슈/PR 절차). read-only (view/list) 는 허용."
             )
     return None
 
 
 def check_bash_mutation(command: str) -> Optional[str]:
-    """Bash command 안의 외부 시스템 mutation 차단 — block reason str / None=allow.
+    """Bash command 안의 외부 상태 변경 차단 — block reason str / None=allow.
 
     차단: `git push`, `gh pr (create|merge|...)`, `gh issue (create|edit|close|comment|...)`,
           `gh api` (mutating method / field flag), main-owned `dcness-helper`
@@ -1212,14 +1212,14 @@ def check_bash_mutation(command: str) -> Optional[str]:
       - 값-소비 래퍼 옵션 뒤 명령 (`sudo -u root git push`, `nice -n 10 git push`) 은 미탐 —
         같은 short flag 가 래퍼마다 값 유무가 달라(`-n`: nice=값 / sudo=bare) 정확한 arity
         판정이 충돌하기 때문. bare 옵션(`sudo -E`, `command --`, `env -i`)까지는 식별.
-      sub-agent 는 Bash 도구를 가지므로 완전 차단은 원천 불가. 실제 경계는 "외부 mutation 은
+      sub-agent 는 Bash 도구를 가지므로 완전 차단은 원천 불가. 실제 경계는 "외부 상태 변경은
       메인 영역" 시퀀스 규약 + 흔한 직접 호출 차단의 조합이다. 추가 강화는 별도 follow-up 영역.
     """
     return _check_bash_mutation(command)
 
 
 def check_github_mcp_mutation(tool_name: str) -> Optional[str]:
-    """GitHub MCP tool mutation 차단 — block reason str / None=allow.
+    """GitHub MCP tool 외부 상태 변경 차단 — block reason str / None=allow.
 
     read (`get_*`, `list_*`, `search_*`) = 통과. mutation verb prefix = 차단.
     보수적 — 알려진 mutation prefix 만 차단, 그 외 unknown 은 통과 (false positive 회피).
@@ -1242,7 +1242,7 @@ def check_github_mcp_mutation(tool_name: str) -> Optional[str]:
         return None  # issue mutation = per-agent tools gate 설계 권한 — 예외
     if op.startswith(_MCP_GH_MUTATION_PREFIXES):
         return (
-            f"GitHub MCP mutation 차단: {tool_name} — 외부 시스템 mutation 은 메인 영역 "
+            f"GitHub MCP 외부 상태 변경 차단: {tool_name} — 외부 상태 변경은 메인 영역 "
             f"(git-spec PR/repo 절차)."
         )
     return None

@@ -51,7 +51,7 @@ epic 구현 완료 후 호출된다. 여러 story 가 합쳐졌을 때 PRD Must,
 - story 사이의 흐름, 상태, 권한, 데이터 ownership 이 서로 어긋나지 않는다.
 - 보안/권한/데이터 리스크가 새로 생겼는데 별도 후속 없이 묻히지 않았다.
 - 비용, 성능, migration, 배포 설정 같은 운영 리스크가 출시 판단을 막지 않는지 확인한다.
-- 남은 gap 은 `/impl`, `/design`, `/spec`, `/ux`, `/to-issue`, 사용자 위임 같은 후속으로 라우팅 가능하게 쓴다.
+- 남은 gap 은 `/impl`, `/design`, `/spec`, `/ux`, `/to-issue`, 사용자 위임 같은 후속으로 분기 가능하게 쓴다.
 - 성능 병목 / 리팩토링 필요는 `/to-issue` 후보 + `/impl` 또는 `/design` 으로 제안한다.
 - 보안 / 권한 / 데이터 리스크는 `/to-issue` 후보 + `/design` 또는 사용자 위임으로 제안한다.
 
@@ -69,7 +69,7 @@ epic 구현 완료 후 호출된다. 여러 story 가 합쳐졌을 때 PRD Must,
 2. 기준 문서에서 Must AC, 완료 기준, story 목적, release readiness 기준을 추출한다.
 3. 구현 증거를 읽고 각 기준이 어떤 PR, 테스트, smoke, 화면/API/CLI 설명과 연결되는지 대조한다.
 4. 충족된 기준과 증거 없는 기준을 분리한다.
-5. gap 이 있으면 기준 문서, 증거, 누락 사실, 후속 라우팅을 함께 쓴다.
+5. gap 이 있으면 기준 문서, 증거, 누락 사실, 후속 분기를 함께 쓴다.
 6. 판단에 필요한 문서나 권한이 없으면 추측하지 않고 ESCALATE한다.
 
 ## 완료 기준
@@ -77,7 +77,7 @@ epic 구현 완료 후 호출된다. 여러 story 가 합쳐졌을 때 PRD Must,
 - 증거 없이 PASS 하지 않는다.
 - 구현했다는 주장보다 문서 경로, PR, 테스트 결과, smoke 결과, 화면/API/CLI 동작 설명을 우선한다.
 - gap 은 제품 기준에서 Must 인지, 후속으로 분리 가능한지 구분한다.
-- 자동으로 issue 를 만들지 않는다. gap issue 생성이 필요하면 `/to-issue` 사용자 승인 후속으로 라우팅만 제안한다.
+- 자동으로 issue 를 만들지 않는다. gap issue 생성이 필요하면 `/to-issue` 사용자 승인 후속으로 분기만 제안한다.
 - full E2E 는 MVP acceptance 범위 밖이다. E2E 부재만으로 story acceptance 를 FAIL 로 만들지 않는다.
 - 파일/라인/링크 근거가 없으면 추측하지 않는다.
 
@@ -86,7 +86,7 @@ epic 구현 완료 후 호출된다. 여러 story 가 합쳐졌을 때 PRD Must,
 - 읽기 전용이다.
 - Bash를 쓰지 않는다.
 - 파일을 수정하지 않는다.
-- GitHub issue 생성, PR 수정, merge 같은 외부 mutation 을 하지 않는다.
+- GitHub issue 생성, PR 수정, merge 같은 외부 상태 변경을 하지 않는다.
 
 ## 결론과 보고
 
@@ -96,15 +96,15 @@ epic 구현 완료 후 호출된다. 여러 story 가 합쳐졌을 때 PRD Must,
 - 기준 문서와 구현 증거
 - 충족된 핵심 AC 또는 완료 기준
 - 미충족 gap 과 근거
-- gap 별 후속 라우팅
+- gap 별 후속 분기
 
 마지막 단락에는 `PASS`, `FAIL`, `ESCALATE` 중 하나를 쓴다.
 
 - `PASS`: 현재 mode 의 Must 검수 기준이 증거로 닫혔다. NICE TO HAVE 는 별도 후속으로만 남긴다.
-- `FAIL`: gap 이 있으며, 각 gap 은 기준 문서/증거/누락 사실/후속 라우팅을 포함한다.
+- `FAIL`: gap 이 있으며, 각 gap 은 기준 문서/증거/누락 사실/후속 분기를 포함한다.
 - `ESCALATE`: 기준 문서가 없거나, 호출자가 제공해야 할 PR/테스트/권한 증거가 부족하거나, 사용자 결정 없이는 판단할 수 없다.
 
 ## 템플릿과 참고 문서
 
-- 별도 template 은 아직 없다. prose-only 원칙에 따라 의미와 근거를 우선한다.
+- 별도 template 은 아직 없다. 자유서술 방식 원칙에 따라 의미와 근거를 우선한다.
 - agent 문서 작성 기준: [`../_shared/agent-doc-format.md`](../_shared/agent-doc-format.md)

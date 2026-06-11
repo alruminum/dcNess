@@ -2,6 +2,7 @@
 
 > dcNess plug-in 활성화 프로젝트의 **git / PR / 이슈 등록 규칙** 단일 SSOT.
 > 본 문서 = *룰 (양식·키워드)* SSOT. *흐름·메커니즘 (gh API 호출 / 멱등성 / pre-flight gate)* 은 [`issue-lifecycle.md`](issue-lifecycle.md).
+> 용어·공개 진입점·분기 표현을 수정하거나 리뷰할 때는 [`terms.md`](terms.md) 를 확인한다.
 
 ## 브랜치
 
@@ -306,7 +307,7 @@ $cur"
 ## 참조
 
 - lifecycle 흐름·메커니즘 (sub-issue API / 멱등성 / 마일스톤 조회 / pre-flight gate): [`issue-lifecycle.md`](issue-lifecycle.md)
-- 라우팅 / 핸드오프: 각 loop skill 의 `<skill>-routing.md` (예: [`../../skills/impl-loop/impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md))
+- 분기 규칙 / 핸드오프: 각 loop skill 의 `<skill>-routing.md` (예: [`../../skills/impl-loop/impl-loop-routing.md`](../../skills/impl-loop/impl-loop-routing.md))
 - loop 진입 spec: 각 skill 본문 `skills/<skill>/SKILL.md` 의 `## Loop` contract + `<skill>-routing.md`. 공통 실행 절차 = [`loop-procedure.md`](loop-procedure.md#진입-모델)
 - spec skill (메인 직접): [`../../skills/spec/SKILL.md`](../../skills/spec/SKILL.md)
 - system-architect (모듈 토폴로지 + 공통 task 목록 SSOT): [`../../agents/system-architect.md`](../../agents/system-architect.md)

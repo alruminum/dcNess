@@ -468,13 +468,13 @@ def infer_next_action(
 ) -> str:
     """다음 액션 best-effort hint (없으면 빈 문자열).
 
-    🔴 prose-only 철학 보존: 이건 *hint* 일 뿐 메인 Claude 의 routing 판단을
+    🔴 자유서술 방식 보존: 이건 *hint* 일 뿐 메인 Claude 의 분기 판단을
     대체하지 않는다. 확실하지 않으면 빈 문자열 → status 가 생략.
     """
     if agent not in _VALIDATOR_AGENTS:
         return ""
     if agent == "product-acceptance" and enum == "FAIL":
-        return "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상"
+        return "acceptance gap 후속 분기(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상"
     if not must_fix:
         return ""
     if agent == "code-validator":
@@ -482,12 +482,12 @@ def infer_next_action(
     if agent == "pr-reviewer":
         return "지적 근본원인 수정 후 재리뷰 예상 (engineer 경유)"
     if agent == "architecture-validator":
-        return "finding 분류로 architect 라우팅 예상 (engineer 단계 아님)"
+        return "finding 분류로 architect 분기 예상 (engineer 단계 아님)"
     return ""
 
 
 def _product_acceptance_fail_from_prose(prose: str) -> bool:
-    """product-acceptance prose-only 결론에서 FAIL hint 만 보수적으로 추출."""
+    """product-acceptance 자유서술 방식 결론에서 FAIL hint 만 보수적으로 추출."""
     for line in reversed(prose.splitlines()):
         stripped = line.strip()
         if not stripped:

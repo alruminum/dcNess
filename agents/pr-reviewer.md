@@ -9,7 +9,7 @@ model: sonnet
 
 # pr-reviewer
 
-이 파일은 기존 `agents/pr-reviewer.md` 소비자를 위한 호환 entrypoint다.
+이 파일은 기존 `agents/pr-reviewer.md` 소비자를 위한 호환 진입점이다.
 
 첫 행동:
 

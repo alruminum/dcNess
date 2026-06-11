@@ -1,4 +1,4 @@
-"""test_signal_io — prose-only pattern foundation 검증.
+"""test_signal_io — 자유서술 방식 foundation 검증.
 
 Coverage matrix:
     write_prose       : happy / atomic / unicode / mode 분기 / type error

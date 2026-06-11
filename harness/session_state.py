@@ -451,7 +451,7 @@ def _resolve_run_dir_str(
 
 # design_doc 으로 인정하는 설계 산출물 표준 경로 prefix (impl 문서 / compact
 # plan / bugfix plan). 기록 시점에 repo-root 상대 prefix 앵커로 검증해 임의
-# .md(README 등)·traversal(`..`)·repo 밖 경로가 engineer 게이트 prerequisite
+# .md(README 등)·traversal(`..`)·repo 밖 경로가 engineer 게이트 사전 조건
 # 증거가 되지 못하게 한다 (#701).
 _DESIGN_DOC_DIR_MARKERS = (
     "docs/milestones/",
@@ -463,7 +463,7 @@ _DESIGN_DOC_DIR_MARKERS = (
 def _validate_design_doc(design_doc: str) -> str:
     """begin-run `--design-doc` 경로 fail-fast 검증 (#701) — resolve 절대경로 반환.
 
-    engineer 게이트의 prerequisite 증거로 쓰이므로 기록 시점에 (1) .md 파일,
+    engineer 게이트의 사전 조건 증거로 쓰이므로 기록 시점에 (1) .md 파일,
     (2) repo root(= helper 호출 cwd) 기준 설계 산출물 규약 경로 *안*, (3)
     디스크 실존을 확인한다. 게이트는 호출 시점에 실존을 재확인한다 (기록 후
     삭제 방어).
@@ -498,7 +498,7 @@ def _validate_design_doc(design_doc: str) -> str:
 
 # /impl 2축 모델의 lane(설계도 유무) 닫힌 enum (#714). lite = 설계도 없음,
 # standard = 설계도 있음. engineer 게이트가 lane=lite 를 설계 산출물
-# prerequisite 면제 신호로 인정하므로, 임의 문자열이 면제를 유발하지 못하게
+# 사전 조건 면제 신호로 인정하므로, 임의 문자열이 면제를 유발하지 못하게
 # 기록 시점에 이 집합으로 fail-fast 검증한다.
 _VALID_LANES = ("lite", "standard")
 
@@ -518,13 +518,13 @@ def start_run(
     이미 존재하면 ValueError (중복 run_id 방어).
 
     design_doc — 이 run 이 참조하는 머지된 설계 문서 경로 (#701). 기록 시
-    engineer 게이트가 같은-run module-architect PASS 의 등가 prerequisite
+    engineer 게이트가 같은-run module-architect PASS 의 등가 사전 조건
     증거로 인정한다 (impl-loop 풀 4-agent 처럼 설계가 별도 run 에서 머지된
     뒤 진입하는 경우).
 
     lane — /impl 2축 모델의 lane(설계도 유무: "lite" / "standard", #714).
-    lane="lite" 는 설계도 없는 Lite lane 으로, engineer 게이트가 설계 산출물
-    prerequisite 를 면제하는 신호다. 면제 누수 방지를 위해 (1) 닫힌 enum 만
+    lane="lite" 는 설계도 없는 Lite 구현 경로로, engineer 게이트가 설계 산출물
+    사전 조건을 면제하는 신호다. 면제 누수 방지를 위해 (1) 닫힌 enum 만
     수용하고 (2) design_doc 과 동일하게 entry_point=impl run 에서만 기록을
     허용한다 — design/architect-loop run 의 module-architect PASS 강제는 코드
     보장으로 유지된다.
@@ -1885,7 +1885,7 @@ def _cli_wave_plan(args: Any) -> int:
 
     `/impl-loop` chain dry preview 가 호출해 병렬 wave 후보를 표에 echo 한다.
     정책 SSOT = docs/plugin/parallel-policy.md (독립 interactive peer sessions).
-    내부 helper (run-dir / run-status 류) — 새 public surface 아님.
+    내부 helper (run-dir / run-status 류) — 새 공개 진입점 아님.
     """
     import json as _json
 
@@ -2403,7 +2403,7 @@ def _cli_end_step(args: Any) -> int:
             print("[session_state] empty prose (hook staged)", file=sys.stderr)
             return 1
 
-    # prose-only (이슈 #280/#284) — 메인 Claude 가 prose 자체를 직접 읽고 routing 결정.
+    # 자유서술 방식 (이슈 #280/#284) — 메인 Claude 가 prose 자체를 직접 읽고 분기 결정.
     # stdout 은 sentinel "PROSE_LOGGED" 로 통일. 옛 enum 기계 추출은 폐기.
     agent_label = agent if not mode else f"{agent}:{mode}"
 
@@ -2691,14 +2691,14 @@ _YOLO_FALLBACKS: Dict[str, Dict[str, str]] = {
         "next_enum": None,
     },
     "architecture-validator:FAIL": {
-        # 분류 의존 라우팅 — 단일 정적 action 으로 target 을 못 정한다.
+        # 분류 의존 분기 — 단일 정적 action 으로 target 을 못 정한다.
         # re-invoke(현재=read-only validator 재호출, 같은 FAIL 반복) X.
         # re-invoke-prev(직전 step 고정) X — Step 5 SYSTEM_BOUNDARY 는 직전이 module-architect
         # 라도 target 이 system-architect. 실제 target 은 finding 분류(hint)가 진본 —
-        # 메인이 분류를 읽고 라우팅, 분류 모호하면 사용자 위임 (mechanical 재호출 금지).
+        # 메인이 분류를 읽고 분기, 분류 모호하면 사용자 위임 (mechanical 재호출 금지).
         "action": "route-by-classification",
         "hint": (
-            "validator 재호출 X — finding 분류로 architect 라우팅 (design-routing): "
+            "validator 재호출 X — finding 분류로 architect 분기 (design-routing): "
             "SYSTEM_BOUNDARY → system-architect 재진입 / "
             "CONTRACT_PROPAGATION → module-architect mode=contract_sweep / "
             "TASK_LOCAL → module-architect 보강(해당 task). 분류 모호 시 사용자 위임 (cycle ≤ 2)"
@@ -2773,10 +2773,10 @@ def _cli_status(args: Any) -> int:
 
 
 def _cli_routing(args: Any) -> int:
-    """Local provider routing CLI.
+    """Local provider 분기 CLI.
 
-    Routing state is plugin-scoped local config. The repository intentionally
-    carries no provider routing config.
+    Provider 분기 state 는 plugin-scoped local config 다. Repository 는 의도적으로
+    provider 분기 config 를 들고 있지 않다.
     """
     from harness import agent_routing
 
@@ -2843,12 +2843,12 @@ def _build_arg_parser() -> Any:
     p_br.add_argument(
         "--design-doc", default=None, dest="design_doc",
         help="이 run 이 참조하는 머지된 설계 문서 경로 — engineer 게이트가 "
-             "같은-run module-architect PASS 의 등가 prerequisite 로 인정",
+             "같은-run module-architect PASS 의 등가 사전 조건으로 인정",
     )
     p_br.add_argument(
         "--lane", default=None, choices=_VALID_LANES,
-        help="/impl 2축 lane(설계도 유무: lite / standard, #714) — lane=lite 는 "
-             "설계도 없는 Lite lane 으로 engineer 게이트 설계 산출물 prerequisite "
+        help="/impl 2축 구현 경로(설계도 유무: lite / standard, #714) — lane=lite 는 "
+             "설계도 없는 Lite 구현 경로로 engineer 게이트 설계 산출물 사전 조건 "
              "면제 신호. entry_point=impl 에서만 수용",
     )
     p_br.set_defaults(func=_cli_begin_run)
@@ -2911,7 +2911,7 @@ def _build_arg_parser() -> Any:
 
     p_es = sub.add_parser(
         "end-step",
-        help="prose 저장 (prose-only — stdout=PROSE_LOGGED, 이슈 #280/#284)",
+        help="prose 저장 (자유서술 방식 — stdout=PROSE_LOGGED, 이슈 #280/#284)",
     )
     p_es.add_argument("agent")
     p_es.add_argument("mode", nargs="?", default="")
@@ -3068,25 +3068,25 @@ def _build_arg_parser() -> Any:
 
     p_rt = sub.add_parser(
         "routing",
-        help="provider routing 상태/설정 (local plugin data only)",
+        help="provider 분기 상태/설정 (local plugin data only)",
     )
     rt_sub = p_rt.add_subparsers(dest="routing_cmd", required=True)
 
-    rt_status = rt_sub.add_parser("status", help="routing config 출력")
+    rt_status = rt_sub.add_parser("status", help="분기 config 출력")
     rt_status.set_defaults(func=_cli_routing)
 
-    rt_doctor = rt_sub.add_parser("doctor", help="routing config 검증")
+    rt_doctor = rt_sub.add_parser("doctor", help="분기 config 검증")
     rt_doctor.set_defaults(func=_cli_routing)
 
     rt_enable = rt_sub.add_parser(
         "enable-codex-validation",
-        help="code-validator / architecture-validator / pr-reviewer 를 Codex 로 route",
+        help="code-validator / architecture-validator / pr-reviewer 를 Codex 로 보냄",
     )
     rt_enable.set_defaults(func=_cli_routing)
 
     rt_disable = rt_sub.add_parser(
         "disable-codex-validation",
-        help="validation agent route 를 Claude 로 되돌림",
+        help="validation agent 분기를 Claude 로 되돌림",
     )
     rt_disable.set_defaults(func=_cli_routing)
 

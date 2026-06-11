@@ -1,4 +1,4 @@
-"""Design public surface contract tests."""
+"""Design 공개 진입점 contract tests."""
 from __future__ import annotations
 
 import re

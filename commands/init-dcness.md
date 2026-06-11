@@ -460,7 +460,7 @@ agent (메인 Claude / engineer / 등) 가 `Edit` / `Write` 시도 시 **PreTool
 - *test 실행 X* — 존재만 확인. 실행은 사용자 개별 (vitest watch / CI 등)
 - `Bash` 로 직접 파일 작성 시 TDD guard 는 발화하지 않음 — TDD guard 는 `Edit`/`Write`/`NotebookEdit` 전용. Bash 쓰기는 file-guard 가 *경로 경계* 만 검사하고 매칭 test 존재는 검사하지 않으므로, Bash 경유 구현 파일은 현재 TDD 강제 범위 밖이다 (이 동작을 명시적으로 추가하지 않는 한)
 
-### Step 2.10 — Codex validator skills + local routing opt-in
+### Step 2.10 — Codex validator skills + local provider 분기 opt-in
 
 `code-validator` / `architecture-validator` / `pr-reviewer` 만 Codex read-only 실행으로 보낼 수 있다. 이 설정은 **사용자 repo 에 파일을 만들지 않는다**. 전부 local plugin data 와 `$CODEX_HOME/skills/` 안에만 저장된다.
 
@@ -478,22 +478,22 @@ for DIR in dcness-code-validator dcness-architecture-validator dcness-pr-reviewe
 done
 ```
 
-#### Codex validation routing opt-in
+#### Codex validation 분기 opt-in
 
 사용자에게 1회 묻는다.
 
 ```
-[dcness] read-only validation 3종(code-validator / architecture-validator / pr-reviewer)을 Codex 로 route 할까요? (Y/n)
+[dcness] read-only validation 3종(code-validator / architecture-validator / pr-reviewer)을 Codex 로 보낼까요? (Y/n)
 ```
 
-- **Y**: local routing config 생성/갱신.
+- **Y**: local 분기 config 생성/갱신.
 
   ```bash
   "$PLUGIN_ROOT/scripts/dcness-helper" routing enable-codex-validation
   "$PLUGIN_ROOT/scripts/dcness-helper" routing status
   ```
 
-- **n**: skill 설치만 유지하고 route 는 Claude default.
+- **n**: skill 설치만 유지하고 분기는 Claude default.
 
   ```bash
   "$PLUGIN_ROOT/scripts/dcness-helper" routing disable-codex-validation
@@ -502,8 +502,8 @@ done
 
 #### 설정 위치 + 끄기
 
-- routing config: `~/.claude/plugins/data/dcness-dcness/routing.json`
-- repo 안 provider routing config 없음.
+- 분기 config: `~/.claude/plugins/data/dcness-dcness/routing.json`
+- repo 안 provider 분기 config 없음.
 - 끄기:
 
   ```bash
@@ -512,11 +512,13 @@ done
 
 #### 기존 활성화 프로젝트
 
-이미 dcNess 를 쓰는 프로젝트는 plugin 업데이트 후 각 프로젝트 root 의 새 Claude Code 세션에서 `/init-dcness` 를 다시 실행한다.
+이미 dcNess 를 쓰는 프로젝트가 terms.md 같은 plug-in 본체 문서/skill/hook 갱신만 받으려면 아래 명령만 실행한다. `/init-dcness` 재실행은 필요 없다.
 
 ```bash
 claude plugin update dcness@dcness
 ```
+
+단, Codex validation 분기 opt-in, GitHub Project lifecycle bootstrap, 새 project-local hook/CI 파일 seed 처럼 사용자 repo/local data 를 새로 설치·갱신해야 할 때만 각 프로젝트 root 의 새 Claude Code 세션에서 `/init-dcness` 를 다시 실행한다.
 
 문제 시:
 
@@ -770,7 +772,7 @@ EOF
 
 다음 세션부터 발화하는 것:
 - SessionStart 훅 — by-pid / live.json 자동 생성
-- PreToolUse Agent 훅 — catastrophic 룰 (hooks.md 의 catastrophic-gate.sh) 검사
+- PreToolUse Agent 훅 — 중대 차단 룰 (hooks.md 의 catastrophic-gate.sh) 검사
 
 git-naming 강제 (Step 2.6 완료 시):
 - 로컬: .git/hooks/commit-msg (thin shim) — 커밋 제목 형식 위반 차단. 본체 로직 plugin SSOT 안.
@@ -798,10 +800,10 @@ TDD Guard (Step 2.9 — PreToolUse hook):
 - 사용자 설정 0 — plug-in 활성화만으로 발화
 - 진짜 TDD 강제 — 코드 작성 *전* 테스트 먼저
 
-Codex validator routing (Step 2.10 — local opt-in):
+Codex validator 분기 (Step 2.10 — local opt-in):
 - `$CODEX_HOME/skills/dcness-{code-validator,architecture-validator,pr-reviewer}` 설치/갱신
-- `~/.claude/plugins/data/dcness-dcness/routing.json` 에 provider route 저장
-- route 대상은 read-only validation 3종만. build/engineer 계열은 Claude 유지
+- `~/.claude/plugins/data/dcness-dcness/routing.json` 에 provider 분기 저장
+- 분기 대상은 read-only validation 3종만. build/engineer 계열은 Claude 유지
 - 상태 확인: `dcness-helper routing status`
 - 끄기: `dcness-helper routing disable-codex-validation`
 
@@ -809,7 +811,7 @@ GitHub Project lifecycle bootstrap (Step 2.10.5 완료 시):
 - Project field: Status / IssueType / Priority 점검
 - repo label 6종: epic / feature / story / task / subTask / bug 점검/생성
 - optional CI/CD: issue drift 검출 + PR merge 후 Done 보정 workflow
-- 기존 활성 프로젝트는 plugin update 후 `/init-dcness` 재실행 필요
+- terms/plugin-body 문서 갱신은 plugin update 만 필요. `/init-dcness` 재실행은 Codex 분기 opt-in / Project bootstrap / project-local 파일 seed 가 필요할 때만 수행
 
 자동 commit + PR (Step 2.11 완료 시):
 - Step 2.6 ~ 2.9 깔린 인프라 파일들 자동 stage + commit + push + PR
@@ -818,7 +820,7 @@ GitHub Project lifecycle bootstrap (Step 2.10.5 완료 시):
 기본 workflow:
 - /spec — PRD / Epic / Story / AC 정의
 - /design — product/technical design
-- /impl — 구현 진입 통합 (lane: 설계도 유무 — Lite / Standard + 엔진 내부 판정)
+- /impl — 구현 진입 통합 (구현 경로: 설계도 유무 — Lite / Standard + 엔진 내부 판정)
 - /acceptance — story/epic 제품 검수 MVP
 
 support:

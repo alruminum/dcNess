@@ -1,22 +1,22 @@
-# impl-loop 라우팅 SSOT
+# impl-loop 분기 규칙 SSOT
 
 > **Status**: ACTIVE
-> **Scope**: `/impl-loop` skill **단일 전용** 라우팅 진본 — 이 skill 안 agent (test-engineer / engineer / code-validator / pr-reviewer / build-worker / module-architect / designer) 의 결론 → 다음 호출 + retry 한도 + escalate 처리. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
-> **Cross-ref**: catastrophic 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) · 권한 경계 = [`agent_boundary.py`](../../harness/agent_boundary.py).
+> **Scope**: `/impl-loop` skill **단일 전용** 분기 규칙 진본 — 이 skill 안 agent (test-engineer / engineer / code-validator / pr-reviewer / build-worker / module-architect / designer) 의 결론 → 다음 호출 + retry 한도 + escalate 처리. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
+> **Cross-ref**: 순서 차단 훅 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) · 권한 경계 = [`agent_boundary.py`](../../harness/agent_boundary.py) · 용어 기준 = [`terms.md`](../../docs/plugin/terms.md).
 
 ## 읽는 법
 
 agent 는 일을 마치면 prose 마지막 단락에 *어떤 결과로 끝났는지 + 사유* 를 자기 언어로 적는다. 메인 Claude 가 그 prose 를 읽고 아래 매핑으로 다음 호출을 정한다. 이 문서는 형식 강제가 아니라 *판단 보조* — 의미만 맞으면 된다. prose 가 모호하면 사용자에게 위임한다.
 
-라우팅은 **skill 이 소유**한다. agent 는 결론(enum)만 내고, "그 결론이면 다음 누구" 는 본 문서가 정한다. 같은 agent 가 다른 skill 에 나와도 그건 *그 skill 의 라우팅* 이지 본 문서 영역이 아니다.
+분기 규칙은 **skill 이 소유**한다. agent 는 결론(enum)만 내고, "그 결론이면 다음 누구" 는 본 문서가 정한다. 같은 agent 가 다른 skill 에 나와도 그건 *그 skill 의 분기 규칙* 이지 본 문서 영역이 아니다.
 
-**개수 vs 엔진** — 개수(single/chain)는 절차 골격(1 run vs N run), 엔진(풀 4-agent / build-worker)은 각 run 안의 시퀀스를 정한다 ([진입 분기](SKILL.md#진입-분기-개수-엔진-직교)). 본 라우팅은 *엔진별* 시퀀스 안의 결론→다음을 다룬다. chain 의 task 경계 라우팅(`clean`/`error`/`blocked`)은 [chain 모드 task 경계 라우팅](#chain-모드-task-경계-라우팅).
+**개수 vs 엔진** — 개수(single/chain)는 절차 골격(1 run vs N run), 엔진(풀 4-agent / build-worker)은 각 run 안의 시퀀스를 정한다 ([진입 분기](SKILL.md#진입-분기-개수-엔진-직교)). 본 분기 규칙은 *엔진별* 시퀀스 안의 결론→다음을 다룬다. chain 의 task 경계 분기(`clean`/`error`/`blocked`)는 [chain 모드 task 경계 분기](#chain-모드-task-경계-분기).
 
-**고위험 task 승격** — build-worker 는 비용 절감 엔진이지 보안 경계가 아니다. 고위험 trigger([`workflow-router.md`](../../docs/plugin/workflow-router.md) high-risk trigger 표 — auth·PII / migration·destructive / public API breakage / cross-module·cross-story interface / 외부 dependency — 에 impl-loop 런타임 고위험인 외부 HTTP·네트워크 어댑터 / URL·파일·사용자 입력 파싱 / 도메인 invariant 변경을 더한 집합) task 는 chain 안에서도 해당 task만 풀 4-agent 경로로 라우팅한다. 일반 UI/문구/순수 내부 도메인 task 는 build-worker 경량 경로를 유지한다. **이 판정의 진본 = impl 문서 frontmatter 의 `risk`/`engine` (#703)**: `risk: high` → 풀 4-agent 승격, `engine: 4agent` → 풀 4-agent · `engine: 2agent` → build-worker. 설계자(module-architect)가 task 를 자르는 시점에 박은 값이라 진입마다 재추론하지 않는다. 단 **유효한 단일 값일 때만** 신뢰한다 — 템플릿 placeholder(`risk: normal|high|low` 처럼 `|` 포함)·빈 값은 부재로 간주해 추론으로 떨어진다([`SKILL.md`](SKILL.md) placeholder 가드). frontmatter 에 risk 필드가 **없거나 placeholder 일 때만** 메인이 위 고위험 trigger 기준으로 추론한다(하위호환). 어느 경로든 결과를 task1 진입 전 dry preview 표의 `risk / engine / reason` 열에 남기고, `risk: high` slug 를 `wave-plan --high-risk` 입력으로 도출한다([병렬 wave](SKILL.md#병렬-wave-opt-in-chain-한정)). 고위험 trigger 는 build-worker 선호보다 우선하며, 사용자가 고위험 사유를 인지하고도 경량 강행을 명시한 경우에만 그 결정을 `reason` 에 기록한다.
+**고위험 task 승격** — build-worker 는 비용 절감 엔진이지 보안 경계가 아니다. 고위험 trigger([`workflow-router.md`](../../docs/plugin/workflow-router.md) high-risk trigger 표 — auth·PII / migration·destructive / public API breakage / cross-module·cross-story interface / 외부 dependency — 에 impl-loop 런타임 고위험인 외부 HTTP·네트워크 어댑터 / URL·파일·사용자 입력 파싱 / 도메인 invariant 변경을 더한 집합) task 는 chain 안에서도 해당 task만 풀 4-agent 경로로 분기한다. 일반 UI/문구/순수 내부 도메인 task 는 build-worker 경량 경로를 유지한다. **이 판정의 진본 = impl 문서 frontmatter 의 `risk`/`engine` (#703)**: `risk: high` → 풀 4-agent 승격, `engine: 4agent` → 풀 4-agent · `engine: 2agent` → build-worker. 설계자(module-architect)가 task 를 자르는 시점에 박은 값이라 진입마다 재추론하지 않는다. 단 **유효한 단일 값일 때만** 신뢰한다 — 템플릿 placeholder(`risk: normal|high|low` 처럼 `|` 포함)·빈 값은 부재로 간주해 추론으로 떨어진다([`SKILL.md`](SKILL.md) placeholder 가드). frontmatter 에 risk 필드가 **없거나 placeholder 일 때만** 메인이 위 고위험 trigger 기준으로 추론한다(하위호환). 어느 경로든 결과를 task1 진입 전 dry preview 표의 `risk / engine / reason` 열에 남기고, `risk: high` slug 를 `wave-plan --high-risk` 입력으로 도출한다([병렬 wave](SKILL.md#병렬-wave-opt-in-chain-한정)). 고위험 trigger 는 build-worker 선호보다 우선하며, 사용자가 고위험 사유를 인지하고도 경량 강행을 명시한 경우에만 그 결정을 `reason` 에 기록한다.
 
 **verify-only 예외** — task 산출물이 코드 변경이 아니라 검증 결과이고 검증 exit 0 + 변경 0 이면 PR 생성이 정상적으로 생략된다. 이때 `code-validator:VERIFY_ONLY` prose `PASS` 기록을 clean 증거로 삼고 `pr-create.sh` 를 호출하지 않는다. 검증 실패나 BROKEN 확인 시 일반 impl 수정 경로로 전환한다.
 
-## 라우팅 그래프
+## 분기 그래프
 
 ### 엔진 A — 풀 4-agent (default = single)
 
@@ -118,9 +118,9 @@ escalate 계열 결론 수신 시 **메인이 즉시 사용자 보고 후 대기
 - **`IMPLEMENTATION_ESCALATE`** (engineer / build-worker attempt 한도 초과) → 사용자 위임 (하드스톱).
 - **`ESCALATE`** (module-architect / designer) → 사용자 위임 (하드스톱).
 - **code-validator `ESCALATE` = 하드스톱 예외, 사유별 분기** ([`loop-procedure.md`](../../docs/plugin/loop-procedure.md#enum-분기) 정합): *사유 = spec 부재* → module-architect(보강 케이스) 자동 호출 (spec 갭 메움이지 trust boundary 우회 아님) · *사유 = 재시도 한도 초과 등 그 외* → 사용자 위임 (하드스톱). prose 에 사유가 모호하면 사용자 위임이 기본.
-- **`blocked`** (chain task — false-clean 의심 / 권한 위반 / phase prose 부재) → 즉시 정지 + 사용자 위임 ([chain 모드 task 경계 라우팅](#chain-모드-task-경계-라우팅)).
+- **`blocked`** (chain task — false-clean 의심 / 권한 위반 / phase prose 부재) → 즉시 정지 + 사용자 위임 ([chain 모드 task 경계 분기](#chain-모드-task-경계-분기)).
 
-## chain 모드 task 경계 라우팅
+## chain 모드 task 경계 분기
 
 chain (N task) 에서 *각 task run* 의 종료 결론에 따른 다음 task 진입 ([chain 모드](SKILL.md#chain-모드-n-task-오케스트레이션)):
 

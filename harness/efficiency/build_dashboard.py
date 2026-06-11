@@ -263,7 +263,7 @@ def build_html(data, repo_name):
   <h2>비용 절감 개선안 (예상 $ 기준)</h2>
   <div class="card">
     <div class="imp">
-      <div class="h"><div class="t">1. Opus → Sonnet 라우팅 (작업 난이도별)</div><div class="s">~${savings['model_routing']:.0f} (~{savings['model_routing']/totals['cost_usd']*100:.0f}%)</div></div>
+      <div class="h"><div class="t">1. Opus → Sonnet 분기 (작업 난이도별)</div><div class="s">~${savings['model_routing']:.0f} (~{savings['model_routing']/totals['cost_usd']*100:.0f}%)</div></div>
       <p>간단한 리팩터/리드/테스트 실행은 Sonnet으로 이관. <code>/fast</code> 토글 또는 <code>--model sonnet</code> 세션.</p>
       <p><b>Why:</b> Opus 가격 = Sonnet × 5. 30%만 다운그레이드해도 큰 폭 절감.</p>
     </div>

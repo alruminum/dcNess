@@ -152,7 +152,7 @@ EOF
 - PR #32 (DCN-CHG-33): session_state.py CLI 확장 머지
 
 # 핵심 디자인 결정
-- Task tool + Agent + helper + 훅 패턴 채택 (Python run_conveyor 폐기)
+- Task tool + Agent + helper + 훅 패턴 채택 (Python `run_conveyor` 실행기 폐기)
 - heuristic-only enum 추출 (haiku 미사용 — API 키 의존 회피)
 - by-pid 레지스트리로 멀티세션 격리
 - AMBIGUOUS = 메인 단독 판단 X, agent 재호출 → 사용자 위임 cascade
@@ -175,7 +175,7 @@ EOF
 # 컨텍스트
 - 핵심: harness/session_state.py, harness/hooks.py, hooks/*.sh, commands/*.md
 - spec: docs/archive/conveyor-design.md (v2 Task tool 패턴, 역사 자료), docs/plugin/loop-procedure.md
-- agents/*.md 12개 모두 prose-only (DCN-CHG-27)
+- agents/*.md 12개 모두 자유서술 방식 (DCN-CHG-27)
 - 기준: CLAUDE.md 강제 원칙 + docs/plugin/workflow-router.md
 
 다음 세션은 worktree 도입 의논 이어서 + manual smoke 또는 /init-dcness 진행.

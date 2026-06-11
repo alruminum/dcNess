@@ -109,7 +109,7 @@ class ProductAcceptanceAgentContractTests(unittest.TestCase):
                 must_fix=True,
                 enum="FAIL",
             ),
-            "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상",
+            "acceptance gap 후속 분기(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상",
         )
         self.assertEqual(
             infer_next_action(
@@ -118,7 +118,7 @@ class ProductAcceptanceAgentContractTests(unittest.TestCase):
                 must_fix=False,
                 enum="FAIL",
             ),
-            "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상",
+            "acceptance gap 후속 분기(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상",
         )
 
     def test_prompt_uses_acceptance_routing_surface_names(self) -> None:

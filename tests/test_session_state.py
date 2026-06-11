@@ -453,7 +453,7 @@ class ActiveRunsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             start_run(self.sid, self.run_id, "impl", base_dir=self.base)
 
-    # -- design_doc 기록 — engineer 게이트 prerequisite 증거 --
+    # -- design_doc 기록 — engineer 게이트 사전 조건 증거 --
 
     def _chdir_base(self) -> None:
         # design_doc 검증은 repo root(= helper 호출 cwd) 기준 — base 를 root 로 모사.
@@ -496,7 +496,7 @@ class ActiveRunsTests(unittest.TestCase):
 
     def test_start_run_design_doc_non_design_path_raises(self) -> None:
         # 설계 산출물 경로 규약(docs/milestones|compact-plans|bugfix) 밖 파일은
-        # prerequisite 증거가 될 수 없다 — 임의 파일로 게이트 무력화 방지.
+        # 사전 조건 증거가 될 수 없다 — 임의 파일로 게이트 무력화 방지.
         self._chdir_base()
         readme = self.base / "README.md"
         readme.write_text("x\n", encoding="utf-8")
@@ -580,7 +580,7 @@ class ActiveRunsTests(unittest.TestCase):
         slot = read_live(self.sid, base_dir=self.base)["active_runs"][self.run_id]
         self.assertEqual(slot["design_doc"], str(doc.resolve()))
 
-    # -- #714 — lane 기록 (engineer 게이트 lane-aware prerequisite) --
+    # -- #714 — lane 기록 (engineer 게이트 lane-aware 사전 조건) --
 
     def test_start_run_records_lane(self) -> None:
         start_run(self.sid, self.run_id, "impl", base_dir=self.base, lane="lite")
@@ -1088,7 +1088,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
                 prose_file=str(prose_path),
             ))
         self.assertEqual(rc, 0)
-        # stdout = PROSE_LOGGED (prose-only, 정상 동작)
+        # stdout = PROSE_LOGGED (자유서술 방식 정상 동작)
         self.assertEqual(out.getvalue().strip(), "PROSE_LOGGED")
         # stderr 에 DRIFT WARN
         self.assertIn("DRIFT WARN", err.getvalue())
@@ -1301,7 +1301,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
             jsonl.unlink(missing_ok=True)
 
     def test_end_step_prose_only_writes_prose(self) -> None:
-        """prose-only: --allowed-enums 없이 PROSE_LOGGED + prose 파일 저장."""
+        """자유서술 방식: --allowed-enums 없이 PROSE_LOGGED + prose 파일 저장."""
         from harness.session_state import _cli_end_step, session_dir
         from types import SimpleNamespace
         prose_path = self.base / "tmp_prose.md"
@@ -1320,7 +1320,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "PROSE_LOGGED")
 
-        # prose 저장 확인 (메인이 직접 읽고 routing)
+        # prose 저장 확인 (메인이 직접 읽고 분기 판단)
         prose_md = (
             session_dir(self.sid) / "runs" / self.rid /
             "code-validator-PLAN_VALIDATION.md"
@@ -1328,14 +1328,14 @@ class CliBeginStepEndStepTests(unittest.TestCase):
         self.assertTrue(prose_md.exists())
 
     def test_end_step_prose_only_mode_no_allowed_enums(self) -> None:
-        """prose-only (이슈 #280/#284) — PROSE_LOGGED + prose 저장 + .steps.jsonl + stderr 요약."""
+        """자유서술 방식 (이슈 #280/#284) — PROSE_LOGGED + prose 저장 + .steps.jsonl + stderr 요약."""
         from harness.session_state import (
             _cli_end_step, session_dir, _read_steps_jsonl,
         )
         from types import SimpleNamespace
         prose_path = self.base / "tmp_prose.md"
         prose_path.write_text(
-            "## 결론\n\n자유로운 자연어 prose. enum 없음. 메인이 직접 routing.\n",
+            "## 결론\n\n자유로운 자연어 prose. enum 없음. 메인이 직접 분기 판단.\n",
             encoding="utf-8",
         )
 
@@ -1351,7 +1351,7 @@ class CliBeginStepEndStepTests(unittest.TestCase):
             ))
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "PROSE_LOGGED")
-        # prose 자체는 저장됨 (메인이 직접 읽고 routing)
+        # prose 자체는 저장됨 (메인이 직접 읽고 분기 판단)
         prose_md = session_dir(self.sid) / "runs" / self.rid / "code-validator.md"
         self.assertTrue(prose_md.exists())
         self.assertIn("자연어", prose_md.read_text(encoding="utf-8"))
@@ -2254,9 +2254,9 @@ PASS — 빈 문자열 가드 추가.
         self.assertEqual(payload["action"], "unmapped")
 
     def test_auto_resolve_architecture_validator_fail_routes_by_classification(self) -> None:
-        # issue #612 — validator FAIL 은 finding 분류 의존 라우팅.
+        # issue #612 — validator FAIL 은 finding 분류 의존 분기.
         # read-only validator 재호출(re-invoke) / 직전 step 고정(re-invoke-prev) 둘 다
-        # 오라우팅 — action 은 route-by-classification, 실제 target 은 hint 의 분류가 진본.
+        # 오분기 — action 은 route-by-classification, 실제 target 은 hint 의 분류가 진본.
         from harness.session_state import _cli_auto_resolve
         from io import StringIO
         from contextlib import redirect_stdout
@@ -2271,7 +2271,7 @@ PASS — 빈 문자열 가드 추가.
         self.assertEqual(payload["action"], "route-by-classification")
         # mechanical 재호출 action 이 아니어야 함 (read-only validator 재실행 = 같은 FAIL)
         self.assertNotIn(payload["action"], ("re-invoke", "re-invoke-prev"))
-        # hint 에 3 분류 토큰이 모두 있어야 메인이 분류로 라우팅 가능
+        # hint 에 3 분류 토큰이 모두 있어야 메인이 분류로 분기 가능
         self.assertIn("SYSTEM_BOUNDARY", payload["hint"])
         self.assertIn("CONTRACT_PROPAGATION", payload["hint"])
         self.assertIn("TASK_LOCAL", payload["hint"])
@@ -2615,7 +2615,7 @@ class NextTaskTransitionTests(unittest.TestCase):
 
     def test_transition_records_design_doc(self) -> None:
         # chain task — 다음 task 의 머지된 설계 문서를 새 run 에 기록 (engineer
-        # 게이트 prerequisite 증거 승계). 기록값 = resolve 절대경로.
+        # 게이트 사전 조건 증거 승계). 기록값 = resolve 절대경로.
         from harness.session_state import _cli_next_task, read_live
         from io import StringIO
         from contextlib import redirect_stdout

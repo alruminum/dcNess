@@ -2,12 +2,12 @@
 
 > **Status**: ACTIVE
 > **Scope**: `/init-dcness` 로 활성화된 사용자 프로젝트에서 dcNess 가 어떤 시점에 무엇을 막는지 설명한다.
-> **Cross-ref**: [`CLAUDE.md`](../../CLAUDE.md#dcness-강제-원칙-룰-추가설계-시-가드레일) (대원칙), [`harness/agent_boundary.py`](../../harness/agent_boundary.py) (권한 매트릭스). catastrophic 시퀀스 진본 = 본 문서 [catastrophic-gate.sh](#catastrophic-gatesh).
+> **Cross-ref**: [`CLAUDE.md`](../../CLAUDE.md#dcness-강제-원칙-룰-추가설계-시-가드레일) (대원칙), [`terms.md`](terms.md) (사용자-facing 용어), [`harness/agent_boundary.py`](../../harness/agent_boundary.py) (권한 매트릭스). 순서 차단 훅 진본 = 본 문서 [catastrophic-gate.sh](#catastrophic-gatesh).
 
 dcNess 의 강제 영역은 두 가지뿐이다.
 
 1. **작업 순서** — agent 시퀀스 + retry 전제
-2. **접근 영역** — 파일 경계 + 외부 시스템 mutation 차단
+2. **접근 영역** — 파일 경계 + 외부 상태 변경 차단
 
 그 외 prose 형식, handoff 형식, preamble, marker, status JSON, flag 는 agent 자율이다. 이 문서는 위 두 강제 영역이 실제 실행 환경에서 어느 레이어에 걸려 있는지 보여준다.
 
@@ -28,8 +28,8 @@ dcNess 의 강제 영역은 두 가지뿐이다.
 | Hook | Event / matcher | 언제 | 하는 일 | 차단 |
 |---|---|---|---|---|
 | `session-start.sh` | `SessionStart` | 새 세션, resume, `/clear` 직후 | sid/live state 초기화 + 활성 안내 inject | X |
-| `catastrophic-gate.sh` | `PreToolUse / Agent` | sub-agent 호출 직전 | catastrophic 시퀀스 + strict conveyor step 순서 검사 | O |
-| `file-guard.sh` | `PreToolUse / Edit|Write|NotebookEdit|Read|Bash|mcp__.*` | file/bash/MCP tool 호출 직전 | agent 별 파일 경계 + 외부 mutation denylist 검사 | O |
+| `catastrophic-gate.sh` | `PreToolUse / Agent` | sub-agent 호출 직전 | 작업 순서 보호 + 진행 순서 검사 | O |
+| `file-guard.sh` | `PreToolUse / Edit|Write|NotebookEdit|Read|Bash|mcp__.*` | file/bash/MCP tool 호출 직전 | agent 별 파일 경계 + 외부 변경 차단 목록 검사 | O |
 | `tdd-guard.sh` | `PreToolUse / Edit|Write|NotebookEdit` | 파일 수정 직전 | TS/JS 구현 파일에 매칭 test 존재 확인 | O |
 | `post-agent-clear.sh` | `PostToolUse / Agent` | sub-agent 호출 직후 | active agent clear, prose 자동 staging, histogram inject | X |
 | `post-file-op-trace.sh` | `PostToolUse / Edit|Write|NotebookEdit|Read|Bash|mcp__.*` | file/bash/MCP tool 호출 직후 | agent trace append | X |
@@ -65,26 +65,28 @@ Stop hook 은 tool 호출을 막는 hook 이 아니다. 필요할 때 `decision:
 
 ### catastrophic-gate.sh
 
+사용자-facing 용어: **순서 차단 훅**. 파일명과 hook command 는 호환성을 위해 `catastrophic-gate.sh` 를 유지한다.
+
 **시점**: 메인 Claude 가 `Agent` tool 로 sub-agent 를 호출하기 직전.
 
-**역할**: catastrophic 시퀀스와 active conveyor run 의 `begin-step -> Agent -> end-step` 물리 순서를 강제한다.
+**역할**: 작업 순서 보호와 active run 의 `begin-step -> Agent -> end-step` 물리 순서를 강제한다.
 
 | Gate | 차단 조건 |
 |---|---|
 | pr-reviewer gate | engineer 산출물이 있는데 code-validator PASS 없이 pr-reviewer 호출 |
-| engineer gate | 설계 산출물 없이 engineer 가 src 구현으로 진입 — 같은 run 의 module-architect PASS *또는* `begin-run --design-doc` 으로 기록된 설계 문서 실존 *또는* `begin-run --lane lite` 로 기록된 Lite lane(#714), 셋 중 하나로 충족 |
+| engineer gate | 설계 산출물 없이 engineer 가 src 구현으로 진입 — 같은 run 의 module-architect PASS *또는* `begin-run --design-doc` 으로 기록된 설계 문서 실존 *또는* `begin-run --lane lite` 로 기록된 Lite 구현 경로(#714), 셋 중 하나로 충족 |
 | module-architect gate | architecture-validator 1차 PASS 없이 design 의 module-architect 반복 진입 |
-| strict conveyor gate | active run 안에서 직전 `begin-step` 과 다른 agent/mode 호출, `current_step` 부재, 이미 staged 된 stale step |
+| 진행 순서 검사 | active run 안에서 직전 `begin-step` 과 다른 agent/mode 호출, `current_step` 부재, 이미 staged 된 stale step |
 
-**strict conveyor 대상**: `entry_point=design|impl|ux`. 정상 `/design` 은 `begin-run design` 로 시작하며 같은 strict conveyor gate 와 module-architect gate 를 탄다.
+**진행 순서 검사 대상**: `entry_point=design|impl|ux`. 정상 `/design` 은 `begin-run design` 로 시작하며 같은 진행 순서 검사와 module-architect gate 를 탄다.
 
-**engineer gate 의 design_doc 경로**: 설계(impl 문서 / compact plan)가 *별도 run* 에서 작성·머지된 뒤 구현 run 으로 진입하는 흐름(예: `/impl-loop` 풀 4-agent)에서는 같은 run 안에 module-architect prose 가 없다. 이때 `begin-run impl --design-doc <머지된 설계 문서 경로>` 로 run 에 설계 산출물을 기록하면 engineer gate 가 그 실존을 prerequisite 증거로 인정한다. 경로는 설계 산출물 규약(`docs/milestones/**` / `docs/compact-plans/**` / `docs/bugfix/**`) 안의 실존 `.md` 만 허용 — 기록 시점에 resolve 절대경로로 fail-fast 검증(traversal / repo 밖 경로 거부)하고, 게이트 시점에 실존을 재확인한다. `--design-doc` 은 `entry_point=impl` run 에서만 수용된다(다른 entry_point 는 begin-run 이 거부) — design / architect-loop run 의 기존 module-architect PASS 강제는 코드 보장으로 유지된다.
+**engineer gate 의 design_doc 경로**: 설계(impl 문서 / compact plan)가 *별도 run* 에서 작성·머지된 뒤 구현 run 으로 진입하는 흐름(예: `/impl-loop` 풀 4-agent)에서는 같은 run 안에 module-architect prose 가 없다. 이때 `begin-run impl --design-doc <머지된 설계 문서 경로>` 로 run 에 설계 산출물을 기록하면 engineer gate 가 그 실존을 사전 조건 증거로 인정한다. 경로는 설계 산출물 규약(`docs/milestones/**` / `docs/compact-plans/**` / `docs/bugfix/**`) 안의 실존 `.md` 만 허용 — 기록 시점에 resolve 절대경로로 fail-fast 검증(traversal / repo 밖 경로 거부)하고, 게이트 시점에 실존을 재확인한다. `--design-doc` 은 `entry_point=impl` run 에서만 수용된다(다른 entry_point 는 begin-run 이 거부) — design / architect-loop run 의 기존 module-architect PASS 강제는 코드 보장으로 유지된다.
 
-**engineer gate 의 lane 경로 (#714)**: `/impl` 2축 모델의 Lite lane(설계도 없음)에 sub-agent 엔진(풀4 / 경량 build-worker)을 붙이는 4번째 조합용 면제 경로다. Lite 는 정의상 설계도가 없어 module-architect PASS 도 design_doc 도 없으므로, `begin-run impl --lane lite` 로 run 슬롯에 lane 을 기록하면 engineer gate 가 그 기록을 설계 산출물 prerequisite 면제 신호로 인정한다. **면제 경계** — (1) lane 값은 닫힌 enum(`lite` / `standard`)만 수용(임의 문자열 거부), (2) `--lane lite` 는 `entry_point=impl` run 에서만 수용(다른 entry_point 는 begin-run 이 거부)되어 design / architect-loop 의 module-architect PASS 강제는 영향받지 않음, (3) 면제는 *명시적으로 기록된* lane=lite 한정 — lane 미기록(impl-loop 풀4 / 기본)과 lane=standard 는 종전대로 설계 산출물을 요구(면제 누수 차단), (4) 면제는 engineer gate *하나만* 푼다 — engineer 산출물 이후 `pr-reviewer ← code-validator PASS` 잔존 보호는 lane 무관하게 그대로 강제된다(풀4 경로의 catastrophic 보호 불변).
+**engineer gate 의 구현 경로 면제 (#714)**: `/impl` 2축 모델의 Lite 구현 경로(설계도 없음)에 sub-agent 엔진(풀4 / 경량 build-worker)을 붙이는 4번째 조합용 면제 경로다. Lite 는 정의상 설계도가 없어 module-architect PASS 도 design_doc 도 없으므로, `begin-run impl --lane lite` 로 run 슬롯에 구현 경로를 기록하면 engineer gate 가 그 기록을 설계 산출물 사전 조건 면제 신호로 인정한다. **면제 경계** — (1) `--lane` 값은 닫힌 enum(`lite` / `standard`)만 수용(임의 문자열 거부), (2) `--lane lite` 는 `entry_point=impl` run 에서만 수용(다른 entry_point 는 begin-run 이 거부)되어 design / architect-loop 의 module-architect PASS 강제는 영향받지 않음, (3) 면제는 *명시적으로 기록된* `lane=lite` 한정 — 값 미기록(impl-loop 풀4 / 기본)과 `lane=standard` 는 종전대로 설계 산출물을 요구(면제 누수 차단), (4) 면제는 engineer gate *하나만* 푼다 — engineer 산출물 이후 `pr-reviewer ← code-validator PASS` 잔존 보호는 구현 경로와 무관하게 그대로 강제된다(풀4 경로의 중대 차단 보호 불변).
 
 **tech-review 관례**: `/design` 진입 후 tech-reviewer 재호출은 관례상 비권장이지만 코드 차단은 아니다. /design 도중 미검증 새 외부 의존이 발견되면 design 의 `NEW_DEP_ESCALATE` 경로로 처리한다.
 
-**차단**: 위반 시 `exit 2` + stderr. engineer / pr-reviewer / module-architect 게이트 위반은 `[catastrophic: <gate>]`, strict conveyor 게이트 위반은 `[strict-conveyor]` 접두사를 포함한다.
+**차단**: 위반 시 `exit 2` + stderr. engineer / pr-reviewer / module-architect 게이트 위반은 `[순서 차단 훅: <gate>]`, 진행 순서 검사 위반은 `[진행 순서 검사]` 접두사를 포함한다.
 
 ### file-guard.sh
 
@@ -98,18 +100,18 @@ Stop hook 은 tool 호출을 막는 hook 이 아니다. 필요할 때 `decision:
 | `RUN_DIR_PROSE_ALLOW` | build-worker 가 자기 run dir 의 `build-*.md` prose 를 쓰는 좁은 예외 |
 | `ALLOW_MATRIX` | agent 별 Write 허용 path 제한 |
 | `READ_DENY_MATRIX` | agent 별 Read 금지 path 제한 |
-| 외부 mutation denylist | sub-agent 의 `git push`, Bash `gh pr create/merge/review`, Bash `gh issue create/edit/close/comment`, mutating `gh api`, GitHub MCP PR/repo mutation 차단 |
+| 외부 변경 차단 목록 | sub-agent 의 `git push`, Bash `gh pr create/merge/review`, Bash `gh issue create/edit/close/comment`, 상태 변경 `gh api`, GitHub MCP PR/repo 외부 상태 변경 차단 |
 
 메인 Claude turn 은 file boundary 를 통과한다.
 
-GitHub issue mutation 은 경로에 따라 다르게 처리한다 — 같은 "issue 변경"이라도 차단 여부가 갈린다.
+GitHub issue 외부 상태 변경은 경로에 따라 다르게 처리한다 — 같은 "issue 변경"이라도 차단 여부가 갈린다.
 
-| issue mutation 경로 | file-guard 동작 |
+| issue 외부 상태 변경 경로 | file-guard 동작 |
 |---|---|
-| Bash `gh issue create/edit/close/comment/...` | **차단** (Bash mutation denylist — `harness/agent_boundary.py` 의 `check_bash_mutation`) |
+| Bash `gh issue create/edit/close/comment/...` | **차단** (Bash 외부 변경 차단 목록 — `harness/agent_boundary.py` 의 `check_bash_mutation`) |
 | GitHub MCP issue 도구 (`mcp__github__create_issue`, `update_issue`, `add_issue_comment` 등) | **통과** (의도된 예외 — `check_github_mcp_mutation`). per-agent `tools:` 권한이 이미 gate 하므로 도구 미부여 agent 는 호출 자체 불가. designer 등 issue 도구를 가진 agent 의 설계된 흐름을 막지 않는다. |
 
-PR/repo mutation (`gh pr ...` / `merge_pull_request` / `push_files` / `create_or_update_file` 등) 은 Bash·MCP 양쪽 다 sub-agent 에서 차단한다.
+PR/repo 외부 상태 변경 (`gh pr ...` / `merge_pull_request` / `push_files` / `create_or_update_file` 등) 은 Bash·MCP 양쪽 다 sub-agent 에서 차단한다.
 
 **차단**: 경계 위반 시 `exit 2` + stderr. `.no-dcness-guard` marker 는 file-guard 만 임시 우회한다.
 
@@ -290,7 +292,7 @@ hook 또는 workflow 를 추가/삭제/이름 변경할 때 이 문서가 빠지
 | `commands/init-dcness.md` 의 `scripts/hooks/*` copy 목록 | 모든 사용자 repo git hook 의 `### .git/hooks/<name>` 상세 섹션 |
 | `commands/init-dcness.md` 의 선택형 `.github/workflows/*.yml` 목록 | 모든 workflow 의 `### .github/workflows/<name>.yml` 상세 섹션 |
 
-이 테스트는 hook 구현 변경의 의미까지 판정하지 않는다. 하지만 등록 surface 가 바뀌었는데 `hooks.md` 요약/상세가 누락되는 회귀는 CI에서 막는다.
+이 테스트는 hook 구현 변경의 의미까지 판정하지 않는다. 하지만 등록 공개 노출 범위가 바뀌었는데 `hooks.md` 요약/상세가 누락되는 회귀는 CI에서 막는다.
 
 ## 등록 메커니즘
 
@@ -307,7 +309,7 @@ hook 또는 workflow 를 추가/삭제/이름 변경할 때 이 문서가 빠지
 | Mechanism | Scope | Effect |
 |---|---|---|
 | 미활성 프로젝트 | 전체 CC hook | `is-active` 게이트에서 즉시 no-op |
-| `.no-dcness-guard` cwd marker | file-guard | file boundary / mutation denylist 임시 우회 |
+| `.no-dcness-guard` cwd marker | file-guard | file boundary / 외부 변경 차단 목록 임시 우회 |
 | `DCNESS_INFRA=1`, `~/.claude/.dcness-infra`, dcNess self repo marker | file boundary | dcNess 자체 작업에서 infra path 보호 해제 |
 
 우회 marker 는 catastrophic-gate 와 tdd-guard 에 없다. git hook 의 `--no-verify` 우회는 가능하지만 dcNess 절차상 금지다. CI/CD workflow 는 GitHub 에 올라온 PR/issue 이벤트에서 다시 검증한다.
@@ -317,7 +319,7 @@ hook 또는 workflow 를 추가/삭제/이름 변경할 때 이 문서가 빠지
 자연어 SSOT:
 
 - [`CLAUDE.md`](../../CLAUDE.md#dcness-강제-원칙-룰-추가설계-시-가드레일) — 강제 영역 2가지
-- 본 문서 [catastrophic-gate.sh](#catastrophic-gatesh) — catastrophic 시퀀스 진본
+- 본 문서 [catastrophic-gate.sh](#catastrophic-gatesh) — 순서 차단 훅 진본
 - [`git-spec.md`](git-spec.md) — branch / commit / PR naming + PR trailer
 - [`issue-lifecycle.md`](issue-lifecycle.md) — Project lifecycle workflow 의미
 - [`loop-procedure.md`](loop-procedure.md) — begin-run / begin-step / end-step / end-run mechanics
@@ -326,7 +328,7 @@ hook 또는 workflow 를 추가/삭제/이름 변경할 때 이 문서가 빠지
 
 - [`harness/hooks.py`](../../harness/hooks.py) — CC hook handler dispatch
 - [`harness/session_state.py`](../../harness/session_state.py) — 활성 프로젝트 판정 + run state machine
-- [`harness/agent_boundary.py`](../../harness/agent_boundary.py) — file boundary + external mutation denylist
+- [`harness/agent_boundary.py`](../../harness/agent_boundary.py) — file boundary + 외부 변경 차단 목록
 - [`scripts/check_git_naming.mjs`](../../scripts/check_git_naming.mjs) — git naming validator
 - [`scripts/check_pr_body.mjs`](../../scripts/check_pr_body.mjs) — PR body validator
 - [`scripts/github_project_lifecycle.mjs`](../../scripts/github_project_lifecycle.mjs) — Project lifecycle validator/applicator

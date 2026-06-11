@@ -198,7 +198,7 @@ class WasteDetectionTests(unittest.TestCase):
         self.assertIn("RETRY_SAME_FAIL", kinds)
 
     def test_retry_same_fail_prose_logged_skip(self):
-        """이슈 #302 #1 — PROSE_LOGGED 는 prose-only mode 정상 sentinel.
+        """이슈 #302 #1 — PROSE_LOGGED 는 자유서술 방식 정상 sentinel.
         연속 발생해도 RETRY_SAME_FAIL false positive 안 됨."""
         steps = [
             StepRecord(idx=0, ts="t1", agent="architect", mode="MODULE_PLAN",
@@ -925,7 +925,7 @@ class MustFixLeakTests(unittest.TestCase):
 
 
 class ConclusionEnumExtractionTests(unittest.TestCase):
-    """B4 — prose-only mode 후 enum 컬럼이 PROSE_LOGGED 그대로 박히는 회귀.
+    """B4 — 자유서술 방식 후 enum 컬럼이 PROSE_LOGGED 그대로 박히는 회귀.
 
     agent prose 마지막 단락에 PASS/LGTM/FAIL/ESCALATE 결론 박혀있음
     (agents/code-validator.md 의 결론 + 권장 다음 단계 등 강제). 표시 단계에서 그 결론 추출 의무.

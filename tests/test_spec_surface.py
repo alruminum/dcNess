@@ -1,4 +1,4 @@
-"""Spec public surface contract tests."""
+"""Spec 공개 진입점 contract tests."""
 from __future__ import annotations
 
 import re
@@ -30,8 +30,8 @@ class SpecSurfaceContractTests(unittest.TestCase):
     def test_spec_skill_owns_planning_flow_without_product_plan_alias(self) -> None:
         self.assertFalse((ROOT / "skills" / "product-plan").exists())
         self.assertRegex(self.skill, r"(?m)^name:\s*spec$")
-        self.assertIn("사용자-facing 기본 surface 의 `/spec` 진입점", self.skill)
-        self.assertIn("`/spec` public entrypoint", self.routing)
+        self.assertIn("사용자-facing 기본 공개 진입점의 `/spec`", self.skill)
+        self.assertIn("`/spec` 공개 진입점", self.routing)
         self.assertIn("SPEC_ACCEPTANCE", self.skill)
         self.assertIn("/spec -> /design -> /impl -> /acceptance", self.skill)
 

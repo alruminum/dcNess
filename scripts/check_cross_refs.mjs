@@ -47,7 +47,7 @@ const DENY_LIST = [
   },
   {
     pattern: /prose-only-principle\.md/,
-    label: '폐기 SSOT `prose-only-principle.md` — prose-only 원칙은 `CLAUDE.md` / `docs/plugin/loop-procedure.md` 로 흡수',
+    label: '폐기 SSOT `prose-only-principle.md` — 자유서술 방식 원칙은 `CLAUDE.md` / `docs/plugin/loop-procedure.md` 로 흡수',
   },
   {
     pattern: /dcness-rules\.md/,
@@ -82,9 +82,9 @@ const DENY_LIST = [
     label: '옛 loop 카운트 — 현재 loop 진본은 각 `skills/<skill>/SKILL.md` 의 `## Loop` contract',
   },
   {
-    // `design-routing.md` 등 skill 라우팅 파일은 앞에 `-`/단어문자가 붙어 제외.
+    // `design-routing.md` 등 skill 분기 파일은 앞에 `-`/단어문자가 붙어 제외.
     pattern: /(?<![\w-])routing\.md/,
-    label: '폐기 SSOT `docs/plugin/routing.md` — Phase 3 (#564) 폐기, 라우팅은 각 skill `<skill>-routing.md` 로 분산',
+    label: '폐기 SSOT `docs/plugin/routing.md` — Phase 3 (#564) 폐기, 분기 규칙은 각 skill `<skill>-routing.md` 로 분산',
   },
   {
     // 위치번호 §N 참조 금지 (doc-conventions.md). §2.1.N 룰 번호 체계 폐기 → 예외 없음.

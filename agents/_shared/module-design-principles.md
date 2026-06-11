@@ -83,7 +83,7 @@ function applyDiscount(cart): void {
 }
 ```
 
-### 룰 3. 표면을 작게
+### 룰 3. 공개 노출 범위를 작게
 
 메서드와 파라미터를 줄이면 테스트도 단순해진다. 본 룰은 [Deep Modules](#deep-modules-깊은-모듈) 의 *작은 인터페이스* 영역과 직결된다.
 
@@ -153,7 +153,7 @@ system-architect 가 architecture.md 의 *기술 스택* 영역에 DI 패턴 명
 | Agent | evidence |
 |---|---|
 | [`system-architect`](../system-architect.md) | architecture 템플릿의 `Module Design Check`, 의존성 차단 도구, DI 패턴, Contract Ledger |
-| [`module-architect`](../module-architect.md) | impl 템플릿의 `Module Design Check`, 작은 공개 표면, contract/interface, 검증 가능한 수용 기준 |
+| [`module-architect`](../module-architect.md) | impl 템플릿의 `Module Design Check`, 작은 공개 노출 범위, contract/interface, 검증 가능한 수용 기준 |
 | [`engineer`](../engineer.md) | 구현 보고의 계약 준수, 의존 주입 또는 wrapper 사용, 검증 결과 |
 | [`test-engineer`](../test-engineer.md) | 테스트 보고의 REQ 연결, 의존 mock 경계, 구현 독립성 |
 | [`build-worker`](../build-worker.md) | phase 보고의 RED/GREEN/self-validate 증거 |
@@ -164,18 +164,19 @@ system-architect 가 architecture.md 의 *기술 스택* 영역에 DI 패턴 명
 
 [`architecture-validator`](../architecture-validator.md) 는 본 SSOT 를 고정 checklist 로 세지 않는다. 다음 축에서 evidence 를 확인한다.
 
-- **설계 표준**: 모듈 공개 표면, 의존 방향, DI 판단, 차단 도구가 산출물에 남았는가.
+- **설계 표준**: 모듈 공개 노출 범위, 의존 방향, DI 판단, 차단 도구가 산출물에 남았는가.
 - **계약과 인터페이스**: Contract Ledger 가 signature 뿐 아니라 invariant, ordering, error mode, config, consumer, forbidden alternative 를 담는가.
 - **구현 가능성**: engineer 와 test-engineer 가 의존을 주입하고 결과를 관찰할 수 있는가.
 - **drift 통제**: 같은 계약의 사본이 서로 다른 의미로 남지 않았는가.
 
 자동으로 확인 가능한 신호는 적극 활용하되, grep 으로 잡히는 패턴만 검증 범위로 축소하지 않는다. 질적 판단이 필요한 영역은 finding 이 아니라 수동 review 권고로 분리해 사용자에게 보여준다.
 
-**Contract Ledger (계약 원장) 연계** — "interface" 는 시그니처가 아니라 caller 가 올바르게 쓰기 위해 알아야 하는 **signature + invariant + ordering + error mode + config + consumer + forbidden alternative** 전부다 ([Deep Modules](#deep-modules-깊은-모듈) 의 작은 표면 뒤 풍부한 계약 관점의 운영화). 이 계약들은 `/design` 에서 epic architecture.md 의 `## Contract Ledger` 에 1급 산출물로 모인다. system-architect 가 작성하고, module-architect 가 public contract 변경 시 갱신하며, architecture-validator 가 stale 사본과 shallow contract 를 검토한다. 분류·라우팅 상세 = [`design-routing.md`](../../skills/design/design-routing.md#finding-분류-라우팅).
+**Contract Ledger (계약 원장) 연계** — "interface" 는 시그니처가 아니라 caller 가 올바르게 쓰기 위해 알아야 하는 **signature + invariant + ordering + error mode + config + consumer + forbidden alternative** 전부다 ([Deep Modules](#deep-modules-깊은-모듈) 의 작은 공개 노출 범위 뒤 풍부한 계약 관점의 운영화). 이 계약들은 `/design` 에서 epic architecture.md 의 `## Contract Ledger` 에 1급 산출물로 모인다. system-architect 가 작성하고, module-architect 가 public contract 변경 시 갱신하며, architecture-validator 가 stale 사본과 shallow contract 를 검토한다. 분류·분기 상세 = [`design-routing.md`](../../skills/design/design-routing.md#finding-분류-분기).
 
 ## 참조
 
-- 각 loop skill 의 `<skill>-routing.md` — agent 호출 라우팅 (예: [`../../skills/design/design-routing.md`](../../skills/design/design-routing.md))
+- [`../../docs/plugin/terms.md`](../../docs/plugin/terms.md) — 용어·공개 진입점·분기 표현 수정/리뷰 시 확인
+- 각 loop skill 의 `<skill>-routing.md` — agent 호출 분기 (예: [`../../skills/design/design-routing.md`](../../skills/design/design-routing.md))
 - [`harness/agent_boundary.py`](../../harness/agent_boundary.py) — agent 권한 영역 (코드 SSOT)
 - John Ousterhout, "A Philosophy of Software Design"
 - [mattpocock skills — Deep Modules](https://github.com/mattpocock/skills/blob/main/skills/engineering/tdd/deep-modules.md)

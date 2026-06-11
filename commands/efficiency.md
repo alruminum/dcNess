@@ -22,7 +22,7 @@ description: Claude Code 세션 JSONL 로그 (`~/.claude/projects/<encoded-repo>
 
 ## 시퀀스
 
-본 skill 은 **read-only 분석 도구** — agent 호출 X, prose 종이 X, catastrophic 룰 비대상. 단순 helper wrapper 호출 chain.
+본 skill 은 **read-only 분석 도구** — agent 호출 X, prose 종이 X, 중대 차단 룰 비대상. 단순 helper wrapper 호출 chain.
 
 ```
 analyze_sessions (Python) → JSON 리포트
@@ -121,7 +121,7 @@ prefix 매칭 — `claude-haiku-4-5-20251001`, `claude-opus-4-7[1m]` 같은 vari
 
 ## 6 절감 휴리스틱 (`build_dashboard.py`)
 
-1. **Opus → Sonnet 라우팅** — 30% Sonnet 이관 가정. 5배 비용비.
+1. **Opus → Sonnet 분기** — 30% Sonnet 이관 가정. 5배 비용비.
 2. **장시간 세션 `/compact`** — 상위 14 세션 cache_read 30% 감소 가정.
 3. **이미지 세션 관리** — 이미지 포함 세션 컴팩션 50% 절감.
 4. **Cache TTL 1h → 5m** — 1h 캐시의 40% 가 5m 충분 가정.

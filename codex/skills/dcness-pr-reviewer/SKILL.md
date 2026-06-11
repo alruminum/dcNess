@@ -2,11 +2,11 @@
 
 ## 언제 쓰나
 
-dcNess가 `pr-reviewer`를 Codex 교차 검토로 route할 때 사용한다. merge 전에 PR이 코드베이스에 들어가도 되는지 읽기 전용으로 리뷰한다.
+dcNess가 `pr-reviewer`를 Codex 교차 검토로 보낼 때 사용한다. merge 전에 PR이 코드베이스에 들어가도 되는지 읽기 전용으로 리뷰한다.
 
 ## 목적
 
-`code-validator`가 이미 수행한 spec validation을 반복하지 않는다. PR diff를 중심으로 merge risk, maintainability, security-sensitive code pattern, 그리고 이 PR이 integrate되어도 안전한지 검토한다.
+`code-validator`가 이미 수행한 spec validation을 반복하지 않는다. PR diff를 중심으로 merge risk, maintainability, security-sensitive code pattern, 그리고 이 PR이 integrate되어도 안전한지 검토한다. 용어·공개 진입점·분기 표현을 수정하거나 리뷰할 때만 [`terms.md`](../../../docs/plugin/terms.md)를 확인한다.
 
 ## 입력
 
@@ -50,7 +50,7 @@ dcNess가 `pr-reviewer`를 Codex 교차 검토로 route할 때 사용한다. mer
 ## 권한 경계
 
 - 읽기 전용이다.
-- 파일 생성, 수정, 삭제, commit, push, PR 생성, mutation command 실행을 하지 않는다.
+- 파일 생성, 수정, 삭제, commit, push, PR 생성, 외부 상태 변경 명령을 실행하지 않는다.
 - code-validator의 스펙 일치 판정을 근거 없이 뒤집지 않는다.
 - unrelated legacy cleanup을 MUST FIX로 올리지 않는다.
 

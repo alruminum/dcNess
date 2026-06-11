@@ -59,7 +59,7 @@ class AcceptanceGapRoutingContractTests(unittest.TestCase):
         text = self.acceptance_routing.read_text(encoding="utf-8")
         self.assertIn("`/design` 또는 `/spec`", text)
         self.assertNotIn("#649 시점", text)
-        self.assertNotIn("surface flip 이후", text)
+        self.assertNotIn("공개 진입점 전환 이후", text)
         self.assertNotIn("[/design", text)
 
 

@@ -1279,7 +1279,7 @@ class BashMutationTests(unittest.TestCase):
     def test_helper_buildworker_subcommands_pass(self):
         # #636 회귀 가드 — serial build-worker(sub-agent)가 정상 호출하는 것은 통과.
         # begin-step/end-step: hybrid-A phase 직접 구동. prev-tasks-append: phase 3 누적.
-        # (deny set 에 넣으면 기존 직렬 conveyor 가 깨진다 — codex P2 F2.)
+        # (deny set 에 넣으면 기존 직렬 run 실행이 깨진다 — codex P2 F2.)
         self.assertIsNone(check_bash_mutation("dcness-helper begin-step build-worker"))
         self.assertIsNone(check_bash_mutation("dcness-helper end-step build-worker"))
         self.assertIsNone(

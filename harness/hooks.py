@@ -202,7 +202,7 @@ def _strict_conveyor_gate_message(
     subagent: str,
     mode: Optional[str],
 ) -> Optional[str]:
-    """active conveyor run 안 Agent 직접 호출을 begin-step/current_step 기준으로 차단."""
+    """active run 안 Agent 직접 호출을 begin-step/current_step 기준으로 차단."""
     if not subagent:
         return None
     entry_point = slot.get("entry_point", "")
@@ -215,7 +215,7 @@ def _strict_conveyor_gate_message(
     cur_step = slot.get("current_step")
     if not isinstance(cur_step, dict):
         return (
-            "[strict-conveyor] begin-step 누락 — active conveyor run"
+            "[진행 순서 검사] begin-step 누락 — active run"
             f"(entry_point={entry_point}, rid={rid[:8]}...) 안에서 Agent({requested}) "
             "직접 호출을 차단했습니다. 먼저 "
             f"`{_begin_step_cmd(subagent, mode)}` 실행 후 Agent를 다시 호출하세요."
@@ -224,7 +224,7 @@ def _strict_conveyor_gate_message(
     step_agent = cur_step.get("agent")
     if not isinstance(step_agent, str) or not step_agent:
         return (
-            "[strict-conveyor] current_step.agent 공백 — active conveyor run"
+            "[진행 순서 검사] current_step.agent 공백 — active run"
             f"(entry_point={entry_point}, rid={rid[:8]}...) 의 step 상태가 불완전합니다. "
             f"`{_begin_step_cmd(subagent, mode)}` 로 올바른 step을 다시 설정한 뒤 "
             "Agent를 호출하세요."
@@ -238,7 +238,7 @@ def _strict_conveyor_gate_message(
     norm_step_agent = normalize_agent_type(step_agent) or step_agent
     if norm_step_agent != subagent or (mode is not None and step_mode != mode):
         return (
-            "[strict-conveyor] begin-step/Agent 불일치 — current_step="
+            "[진행 순서 검사] begin-step/Agent 불일치 — current_step="
             f"{current}, requested Agent={requested}. 현재 step을 닫아야 하면 "
             f"`{_end_step_cmd(step_agent, step_mode)}` 를 먼저 호출하고, 다른 Agent를 "
             f"호출하려면 `{_begin_step_cmd(subagent, mode)}` 로 step을 재설정하세요."
@@ -247,7 +247,7 @@ def _strict_conveyor_gate_message(
     prose_file = cur_step.get("prose_file")
     if isinstance(prose_file, str) and prose_file:
         return (
-            "[strict-conveyor] 이전 Agent 결과가 이미 staged 상태입니다 — "
+            "[진행 순서 검사] 이전 Agent 결과가 이미 staged 상태입니다 — "
             f"current_step={current}, prose_file={Path(prose_file).name}. "
             f"같은 Agent를 다시 호출하기 전에 `{_end_step_cmd(step_agent, step_mode)}` 로 "
             "현재 step을 먼저 기록하세요."
@@ -274,7 +274,7 @@ def _strict_conveyor_gate_message(
                 and current_count > count_at_begin
             ):
                 return (
-                    "[strict-conveyor] 이전 step이 이미 ledger.jsonl 에 기록됐습니다 — "
+                    "[진행 순서 검사] 이전 step이 이미 ledger.jsonl 에 기록됐습니다 — "
                     f"logged_step={current}. 다음 Agent 호출 전 "
                     f"`{_begin_step_cmd(subagent, mode)}` 로 새 step을 먼저 시작하세요."
                 )
@@ -404,8 +404,8 @@ def handle_pretooluse_agent(
     subagent = tool_input.get("subagent_type", "") or ""
     mode = tool_input.get("mode", "") or ""
     # #700 — 게이트 비교는 canonical 이름으로 일관화. namespaced(`dcness:engineer`) / legacy
-    # alias 가 raw 비교에서 strict-conveyor 불일치로 차단되던 것을 정규화로 해소(A). 그리고
-    # strict-conveyor 가 namespaced 를 통과시키는 이상, 뒤따르는 catastrophic 게이트(engineer/
+    # alias 가 raw 비교에서 진행 순서 검사 불일치로 차단되던 것을 정규화로 해소(A). 그리고
+    # 진행 순서 검사가 namespaced 를 통과시키는 이상, 뒤따르는 catastrophic 게이트(engineer/
     # pr-reviewer/module-architect)도 norm 으로 비교해야 namespaced 우회를 막는다(codex P1).
     # active_agent / pending 기록은 raw subagent 유지(식별 원본 보존). 단 게이트의 *판정 로직*
     # (module-architect PASS 요구)은 main 그대로 — engineer 게이트의 lane-aware 면제 + effective
@@ -415,11 +415,11 @@ def handle_pretooluse_agent(
     rid = _resolve_rid(sid, cc_pid, base_dir=base_dir)
 
     if not rid:
-        return 0  # 컨베이어 외부 — 그 외 agent 는 통과
+        return 0  # active run 외부 — 그 외 agent 는 통과
 
     rd = run_dir(sid, rid, base_dir=base_dir)
 
-    # issue #604 — active conveyor run 안에서는 begin-step 없이 Agent 직접 호출 금지.
+    # issue #604 — active run 안에서는 begin-step 없이 Agent 직접 호출 금지.
     # PostToolUse staging 이후 같은 step 재호출, end-step 완료 후 stale current_step 도
     # PreToolUse 시점에서 차단해 `.steps.jsonl` 누락을 실행 전에 막는다.
     step_mode = None
@@ -430,8 +430,8 @@ def handle_pretooluse_agent(
         if isinstance(slot, dict):
             # #709 — begin-step 이 기록한 current_step.mode 를 effective mode fallback 으로
             # 쓰기 위해 같은 slot read 에서 함께 추출(중복 read 회피). 단 fallback 의 신뢰
-            # 근거가 "strict-conveyor 가 begin-step↔Agent 정합을 보장" 이므로, strict
-            # entry_point 일 때만 step_mode 를 채운다 — 비-strict run 은 그 정합이 없어
+            # 근거가 "진행 순서 검사가 begin-step↔Agent 정합을 보장" 이므로, strict
+            # entry_point 일 때만 step_mode 를 채운다 — 일반 run 은 그 정합이 없어
             # 다른 step 의 mode 가 면제로 새는 것을 원천 차단(게이트 약화 방향 방어).
             if slot.get("entry_point", "") in _STRICT_CONVEYOR_ENTRY_POINTS:
                 cur_step = slot.get("current_step")
@@ -453,7 +453,7 @@ def handle_pretooluse_agent(
 
     # engineer 게이트 — engineer 직전 설계 산출물 필수 (effective mode != POLISH).
     # #700 — namespaced 우회 차단을 위해 norm_subagent 비교(codex P1).
-    # #701 — prerequisite = 같은-run module-architect PASS ∪ begin-run 에 기록된
+    # #701 — 사전 조건 = 같은-run module-architect PASS ∪ begin-run 에 기록된
     # 머지된 설계 문서(design_doc) 실존. impl-loop 풀 4-agent 는 설계가 별도 run
     # 에서 머지된 뒤 진입하므로 같은-run prose 단일 기준이면 구조적으로 차단된다.
     # #714 — /impl 2축 모델의 Lite lane(설계도 없음)에 sub-agent 엔진을 붙이는
@@ -468,7 +468,7 @@ def handle_pretooluse_agent(
     # mode 파라미터가 없는 CC 빌드에선 tool_input.mode 가 안 실려, POLISH 면제가
     # tool_input.mode 단독이면 죽는다(impl-loop engine B 의 pr-reviewer→engineer:POLISH 가
     # design_doc·MA PASS 둘 다 없어 구조적 차단). begin-step 이 CLI 로 확실히 기록한
-    # current_step.mode 를 fallback 으로 봐 환경 무관하게 면제를 복원한다. strict-conveyor 가
+    # current_step.mode 를 fallback 으로 봐 환경 무관하게 면제를 복원한다. 진행 순서 검사가
     # begin-step↔Agent(agent) 정합을 이미 보장하므로 current_step.mode=POLISH 는 신뢰 신호.
     effective_mode = _mode_or_none(mode) or step_mode
     if norm_subagent == "engineer" and effective_mode != "POLISH":
@@ -479,7 +479,7 @@ def handle_pretooluse_agent(
             and not _run_design_doc_exists(sid, rid, base_dir=base_dir)
         ):
             print(
-                "[catastrophic: engineer 게이트] engineer 호출은 설계 산출물 확보 후만 — "
+                "[순서 차단 훅: engineer 게이트] engineer 호출은 설계 산출물 확보 후만 — "
                 "같은 run 의 module-architect PASS prose (module-architect*.md 안 "
                 "PASS 마커) 또는 begin-run --design-doc 으로 기록된 설계 문서 실존",
                 file=sys.stderr,
@@ -491,7 +491,7 @@ def handle_pretooluse_agent(
     if norm_subagent == "pr-reviewer":
         if _has_engineer_write(rd) and not _has_pass(rd, "code-validator"):
             print(
-                "[catastrophic: pr-reviewer 게이트] engineer 산출물 이후 "
+                "[순서 차단 훅: pr-reviewer 게이트] engineer 산출물 이후 "
                 "pr-reviewer 호출은 code-validator PASS 후만",
                 file=sys.stderr,
             )
@@ -506,7 +506,7 @@ def handle_pretooluse_agent(
     ):
         if not _has_pass(rd, "architecture-validator"):
             print(
-                "[catastrophic: module-architect 게이트] module-architect × K 첫 호출은 "
+                "[순서 차단 훅: module-architect 게이트] module-architect × K 첫 호출은 "
                 "architecture-validator PASS 후만 "
                 "(architecture-validator.md 안 PASS 마커)",
                 file=sys.stderr,
@@ -520,14 +520,14 @@ def handle_pretooluse_agent(
     # 관례 (skill/agent prose) 로 두고 재호출 여부는 메인/사용자 자율 판단 (forcing function 을
     # 코드 강제하지 않는 대원칙 — CLAUDE.md). design 도중 미검증 새 외부 의존 발견 =
     # NEW_DEP_ESCALATE 3안.
-    #   ※ 자유 재호출은 active conveyor run *밖* (메인 루프 / 루프 finalize 후) 에서 일어난다 —
-    #   그 경우 rid 부재 또는 strict-conveyor 의 finalize 분기로 게이트가 발화하지 않는다. active
-    #   conveyor run *안* 에서는 위 strict-conveyor gate(#604) 가 *모든* off-sequence agent
+    #   ※ 자유 재호출은 active run *밖* (메인 루프 / 루프 finalize 후) 에서 일어난다 —
+    #   그 경우 rid 부재 또는 finalize 분기로 게이트가 발화하지 않는다. active
+    #   run *안* 에서는 위 진행 순서 검사(#604) 가 *모든* off-sequence agent
     #   (tech-reviewer 포함) 에 begin-step 선언을 요구한다 — 이는 tech-reviewer 전용 차단이 아닌
-    #   일반 conveyor 무결성 룰이라 #609 범위 밖이고, 루프 도중 의존 검증은 NEW_DEP_ESCALATE 로 간다.
+    #   일반 loop 무결성 룰이라 #609 범위 밖이고, 루프 도중 의존 검증은 NEW_DEP_ESCALATE 로 간다.
 
     # 옛 merge-gate (LGTM 없이 merge) / impl-task-loop 3-commit 룰 (자연어 폐기) —
-    # /design 이 impl/NN-*.md 미리 머지로 의미 소멸 또는 prerequisite
+    # /design 이 impl/NN-*.md 미리 머지로 의미 소멸 또는 사전 조건
     # 검증은 메인 영역 (skill 안에서 보장) 으로 이전. 코드 강제 폐기.
 
     # DCN-CHG-20260501-01: 통과 시 live.json.active_agent 기록 — sub-agent 내부
@@ -570,10 +570,10 @@ def _warn_concurrent_subagent(
     base_dir: Optional[Path] = None,
 ) -> None:
     """issue #598 — PreToolUse Agent 가 *이미 미완 pending* 상태에서 새 Agent 를
-    발사하면 동시 sub-agent (컨베이어 순차 전제 위반) 로 보고 stderr 진단 (비차단).
+    발사하면 동시 sub-agent (loop 실행 절차 순차 전제 위반) 로 보고 stderr 진단 (비차단).
 
     self-attribution (file-op payload agent_type) 덕에 boundary/trace 는 이미
-    안전하지만, dcness 컨베이어는 step 당 agent 1개 순차 전제라 동시 발사는 메인
+    안전하지만, dcness loop 실행 절차는 step 당 agent 1개 순차 전제라 동시 발사는 메인
     로직 버그 신호일 수 있어 가시화한다. 차단·inject 아님 (권고 — 측정+경고).
     """
     try:
@@ -588,7 +588,7 @@ def _warn_concurrent_subagent(
             print(
                 f"[hook concurrency] 동시 sub-agent 감지 — 이미 미완 Agent "
                 f"{len(others)}개(pending) 상태에서 '{subagent}' 추가 발사. dcness "
-                f"컨베이어는 step 당 agent 1개 순차 전제. self-attribution 으로 "
+                f"loop 실행 절차는 step 당 agent 1개 순차 전제. self-attribution 으로 "
                 f"권한/trace 는 안전하나 순차 전제 위반 여부 점검 권장.",
                 file=sys.stderr,
             )
@@ -670,7 +670,7 @@ def handle_pretooluse_file_op(
                 return 1
     elif tool_name == "Bash":
         cmd = tool_input.get("command", "") or ""
-        # 외부 시스템 mutation (git push / gh pr mutation) — sub-agent 차단 (#597 커밋5).
+        # 외부 상태 변경 (git push / gh pr 변경) — sub-agent 차단 (#597 커밋5).
         # opt-out/infra 면 우회 (path 검사와 동일 우회 시맨틱).
         if not mutation_guard_off:
             reason = check_bash_mutation(cmd)
@@ -685,7 +685,7 @@ def handle_pretooluse_file_op(
                 print(f"[agent-boundary][Bash] {reason}", file=sys.stderr)
                 return 1
     elif tool_name.startswith("mcp__github__"):
-        # GitHub MCP PR/repo mutation (merge_pull_request / push_files 등) — 차단 (#597 커밋5).
+        # GitHub MCP PR/repo 외부 상태 변경 (merge_pull_request / push_files 등) — 차단 (#597 커밋5).
         # opt-out/infra 면 우회.
         reason = None if mutation_guard_off else check_github_mcp_mutation(tool_name)
         if reason:
@@ -981,7 +981,7 @@ def handle_posttooluse_agent(
             # agent_id join 이 없어(부모 Agent tool_use_id 는 sub trace 에 없음) 정확 매핑
             # 불가. 영향은 *측정 신호*(additionalContext) 뿐 — file-guard 경계는 per-call
             # self-attribution, prose staging 은 current_step 키라 무관. 동일-타입 동시
-            # 실행은 순차 컨베이어에서 사실상 안 일어나는 엣지 → 측정 한정 수용 + follow-up.
+            # 실행은 순차 loop 에서 사실상 안 일어나는 엣지 → 측정 한정 수용 + follow-up.
             _agent_filter = sub_type or None
             hist = (
                 _trace_hist_since(
@@ -1147,7 +1147,7 @@ def _run_design_doc_exists(
     """현재 run 슬롯에 기록된 design_doc 이 디스크에 실존하는지 (#701).
 
     begin-run `--design-doc` 으로 기록된 머지된 설계 문서는 engineer 게이트의
-    같은-run module-architect PASS 등가 prerequisite 증거다. 경로 규약 검증은
+    같은-run module-architect PASS 등가 사전 조건 증거다. 경로 규약 검증은
     기록 시점(start_run fail-fast)에 끝났고, 여기서는 실존만 재확인한다 (기록
     후 삭제 방어). 기록 부재 / state 읽기 실패는 종전과 동일하게 차단 측
     (fail-strict).
@@ -1174,7 +1174,7 @@ def _run_lane(
 
     /impl 2축 모델의 lane 은 begin-run `--lane lite|standard` 로 start_run 슬롯에
     기록된다. engineer 게이트는 lane="lite"(설계도 없는 Lite lane) 를 설계 산출물
-    prerequisite 면제 신호로 인정한다. 기록 부재 / state 읽기 실패는 None 반환 →
+    사전 조건 면제 신호로 인정한다. 기록 부재 / state 읽기 실패는 None 반환 →
     종전 차단 경로(설계 산출물 요구)로 떨어진다 (면제 누수 차단, fail-strict).
     """
     try:
@@ -1225,7 +1225,7 @@ def handle_stop(
 ) -> int:
     """Stop hook — 메인 응답 종료 시 자동 end-run.
 
-    배경 (issue #382): /impl / /impl-loop / /design 등 컨베이어 루프
+    배경 (issue #382): /impl / /impl-loop / /design 등 loop run
     종료 후 메인 Claude 가 `end-run` 까먹는 회귀 반복 발생. loop-procedure.md 의
     end-run 호출 prose 의무로는 본능 (PR merge 후 "작업 끝" 인지) 패배.
 
@@ -1444,7 +1444,7 @@ def _maybe_emit_continuation_signal(
 
     next_hint = (
         "worker 가 남긴 검증 명령을 메인이 직접 실행(게이트 대행) 후 exit 0 이면 "
-        "git/PR, FAIL 이면 engineer 재시도 라우팅. "
+        "git/PR, FAIL 이면 engineer 재시도 분기. "
         if enum == "VALIDATION_BLOCKED"
         else "정의된 다음 agent 호출 또는 PR/review/merge 영역 "
         "(예: begin-step pr-reviewer + Agent pr-reviewer + end-step + PR 머지). "

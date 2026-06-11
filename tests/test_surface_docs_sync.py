@@ -1,4 +1,4 @@
-"""Surface documentation sync tests for the current public lifecycle."""
+"""Documentation sync tests for the current public lifecycle."""
 from __future__ import annotations
 
 import json
@@ -129,7 +129,7 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         for name in REMOVED_WORKFLOW + SUPPORT:
             self.assertNotIn(f"| `{name}` |", basic_table)
 
-        public_surface = self._section(self.readme, r"## Public Surface", r"\n12개 sub-agent")
+        public_surface = self._section(self.readme, r"## 공개 진입점", r"\n12개 sub-agent")
         for name in LIFECYCLE:
             self.assertIn(f"| 기본 workflow | `{name}` |", public_surface)
         for name in REMOVED_WORKFLOW:
@@ -144,9 +144,9 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.assertIn("기본/support/고급/유틸리티/내부 agent 분류", self.readme)
         self.assertNotIn("호환 workflow", self.readme)
         self.assertNotIn("호환 alias", self.readme)
-        # #711 — impl 내부 lane = Lite/Standard (설계도 유무), Deep 제거
+        # #711 — impl 내부 구현 경로 = Lite/Standard (설계도 유무), Deep 제거
         self.assertIn(
-            "`/impl` 이 내부적으로 lane(설계도 유무 — Lite / Standard)", self.readme
+            "`/impl` 이 내부적으로 구현 경로(설계도 유무 — Lite / Standard)", self.readme
         )
         self.assertNotIn("Lite / Standard / Deep lane", self.readme)
 
@@ -266,7 +266,7 @@ class SurfaceDocsSyncTests(unittest.TestCase):
             self.assertNotIn("`/product-plan` 호환", text)
             self.assertNotIn("architect-loop", text)
 
-        # #711 — Deep 는 impl 내부 lane 이 아니라 impl 진입 전 high-risk 설계 선행 라우팅
+        # #711 — Deep 는 impl 내부 lane 이 아니라 impl 진입 전 high-risk 설계 선행 분기
         self.assertIn(
             "high-risk → 설계 선행: /spec 내부 tech-review preflight? → /design → /impl → /acceptance",
             self.router,
@@ -382,7 +382,7 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.assertIn("contest.ts", self.hooks_doc)
 
     def test_backpressure_loop_is_first_class_across_stages(self) -> None:
-        """#702 — 단계 간 되돌림(backpressure) 원리가 router SSOT 에 일급으로 명시된다."""
+        """#702 — 단계 간 되돌림(backpressure) 원리가 분기 규칙 SSOT 에 일급으로 명시된다."""
         # 원리 SSOT — workflow-router: 정의 + 최소 경로(design→spec, impl→설계) + 내부 루프 통합 기술
         self.assertIn("## 되돌림(backpressure) 원리", self.router)
         self.assertIn("정상 루프", self.router)
@@ -409,7 +409,7 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.assertIn("COMPACT_PLAN", compact_design)
         self.assertIn("module-architect", compact_design)
         self.assertIn("docs/compact-plans/", compact_design)
-        # engineer 게이트 prerequisite 두 경로 (같은-run PASS / --design-doc) 명시
+        # engineer 게이트 사전 조건 두 경로 (같은-run PASS / --design-doc) 명시
         self.assertIn("--design-doc", compact_design)
 
         # positioning: internal 분류로만 노출 — 기본/고급 public 진입점 표에 추가되지 않는다

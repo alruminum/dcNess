@@ -179,8 +179,8 @@ if git -C "$PROJECT_ROOT" diff --quiet --no-ext-diff 2>/dev/null \
   BASELINE_CLEAN=1
 fi
 
-TMP_PROSE="$(mktemp "${TMPDIR:-/tmp}/dcness-codex-${AGENT}.XXXXXX.md")"
-TMP_PROMPT="$(mktemp "${TMPDIR:-/tmp}/dcness-codex-prompt-${AGENT}.XXXXXX.md")"
+TMP_PROSE="$(mktemp "${TMPDIR:-/tmp}/dcness-codex-${AGENT}.XXXXXX")"
+TMP_PROMPT="$(mktemp "${TMPDIR:-/tmp}/dcness-codex-prompt-${AGENT}.XXXXXX")"
 trap 'rm -f "$TMP_PROSE" "$TMP_PROMPT"' EXIT
 
 SKILL_NAME="dcness-${AGENT}"
