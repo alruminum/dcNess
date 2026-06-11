@@ -804,12 +804,90 @@ class RunDirProseCarveOutTests(unittest.TestCase):
     def test_build_worker_run_dir_prose_allowed(self):
         with tempfile.TemporaryDirectory() as td:
             cwd = Path(td)
-            for fname in ("build-test.md", "build-impl.md", "build-validate.md"):
+            for fname in ("build-test.md", "build-impl.md", "build-validate.md", "build-polish.md"):
                 p = f".claude/harness-state/.sessions/SID123/runs/run-abcd1234/{fname}"
                 self.assertIsNone(
                     check_write_allowed("build-worker", p, cwd=cwd),
                     f"run_dir prose {fname} self-write 가 허용되어야 함",
                 )
+
+    def test_build_worker_absolute_main_run_dir_allowed_from_worktree(self):
+        with tempfile.TemporaryDirectory() as td:
+            main = Path(td) / "main"
+            worktree = Path(td) / "wt"
+            main.mkdir()
+            worktree.mkdir()
+            run_path = (
+                main
+                / ".claude"
+                / "harness-state"
+                / ".sessions"
+                / "SID123"
+                / "runs"
+                / "run-abcd1234"
+                / "build-test.md"
+            )
+
+            with patch("harness.agent_boundary._resolve_project_root", return_value=main):
+                self.assertIsNone(
+                    check_write_allowed("build-worker", str(run_path), cwd=worktree),
+                    "worktree cwd 에서 main repo run_dir 절대경로 phase prose self-write 가 허용되어야 함",
+                )
+
+    def test_build_worker_bash_redirect_to_absolute_run_dir_allowed_from_worktree(self):
+        with tempfile.TemporaryDirectory() as td:
+            main = Path(td) / "main"
+            worktree = Path(td) / "wt"
+            main.mkdir()
+            worktree.mkdir()
+            run_path = (
+                main
+                / ".claude"
+                / "harness-state"
+                / ".sessions"
+                / "SID123"
+                / "runs"
+                / "run-abcd1234"
+                / "build-validate.md"
+            )
+
+            command = f"printf '%s\\n' PASS > {run_path}"
+            paths = extract_bash_paths(command)
+            self.assertEqual(paths, [str(run_path)])
+            with patch("harness.agent_boundary._resolve_project_root", return_value=main):
+                self.assertIsNone(
+                    check_write_allowed(
+                        "build-worker",
+                        paths[0],
+                        cwd=worktree,
+                        shell_context=True,
+                    ),
+                    "Bash redirect 로 쓰는 main run_dir phase prose 도 같은 carve-out 을 타야 함",
+                )
+
+    def test_absolute_run_dir_outside_project_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            main = Path(td) / "main"
+            worktree = Path(td) / "wt"
+            other = Path(td) / "other"
+            main.mkdir()
+            worktree.mkdir()
+            other.mkdir()
+            run_path = (
+                other
+                / ".claude"
+                / "harness-state"
+                / ".sessions"
+                / "SID123"
+                / "runs"
+                / "run-abcd1234"
+                / "build-test.md"
+            )
+
+            with patch("harness.agent_boundary._resolve_project_root", return_value=main):
+                reason = check_write_allowed("build-worker", str(run_path), cwd=worktree)
+            self.assertIsNotNone(reason)
+            self.assertIn("경계 밖", reason)
 
     def test_build_worker_arbitrary_claude_blocked(self):
         with tempfile.TemporaryDirectory() as td:

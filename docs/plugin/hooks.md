@@ -97,7 +97,7 @@ Stop hook 은 tool 호출을 막는 hook 이 아니다. 필요할 때 `decision:
 | Rule | 효과 |
 |---|---|
 | `DCNESS_INFRA_PATTERNS` | sub-agent 의 `.claude/`, `hooks/`, `harness/*.py`, `docs/plugin/*.md`, `scripts/*.mjs` 등 infra path 접근 차단 |
-| `RUN_DIR_PROSE_ALLOW` | build-worker 가 자기 run dir 의 `build-*.md` prose 를 쓰는 좁은 예외 |
+| `RUN_DIR_PROSE_ALLOW` | build-worker 가 자기 run dir 의 `build-{test,impl,validate,polish}.md` prose 를 쓰는 좁은 예외 |
 | `ALLOW_MATRIX` | agent 별 Write 허용 path 제한 |
 | `READ_DENY_MATRIX` | agent 별 Read 금지 path 제한 |
 | 외부 변경 차단 목록 | sub-agent 의 `git push`, Bash `gh pr create/merge/review`, Bash `gh issue create/edit/close/comment`, 상태 변경 `gh api`, GitHub MCP PR/repo 외부 상태 변경 차단 |
