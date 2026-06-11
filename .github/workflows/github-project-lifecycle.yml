@@ -5,8 +5,10 @@
 # 외부 활성화 프로젝트는 init-dcness Step 2.10.5 가 묻고 Y 답변 시 thin yml 을 사용자 repo 에 배포 — 그 yml 은
 # `uses: alruminum/dcNess/.github/actions/github-project-lifecycle@main` 1줄로 동일 검증.
 #
-# Project v2 쓰기에는 project scope token 필요: secrets.DCNESS_PROJECT_TOKEN
-#   (없으면 github.token 폴백 → Projects v2 쓰기 불가, drift 검출만 동작).
+# Project v2 자동화에는 classic PAT 의 project + read:org scope 둘 다 필요: secrets.DCNESS_PROJECT_TOKEN
+#   (read:org 없으면 gh project owner 판별이 unknown owner type 으로 실패. 토큰 없거나 권한 부족이면
+#    github.token 폴백 → 스크립트가 warn+exit 0 으로 graceful degrade, CI 는 깨지지 않음).
+# 토큰은 with.gh-token 으로 composite action 에 전달 (composite 은 부모 step env 미상속).
 # Project 좌표: vars.DCNESS_PROJECT_NUMBER / vars.DCNESS_PROJECT_OWNER.
 
 name: github-project-lifecycle
@@ -32,14 +34,13 @@ jobs:
 
       - name: Validate issue lifecycle via composite action
         uses: ./.github/actions/github-project-lifecycle
-        env:
-          GH_TOKEN: ${{ secrets.DCNESS_PROJECT_TOKEN || github.token }}
         with:
           mode: validate-issue
           repo: ${{ github.repository }}
           project-owner: ${{ vars.DCNESS_PROJECT_OWNER || github.repository_owner }}
           project-number: ${{ vars.DCNESS_PROJECT_NUMBER }}
           issue-number: ${{ github.event.issue.number }}
+          gh-token: ${{ secrets.DCNESS_PROJECT_TOKEN || github.token }}
 
   pr-merged:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true && vars.DCNESS_PROJECT_NUMBER != '' }}
@@ -50,8 +51,6 @@ jobs:
 
       - name: Correct Status=Done on merge via composite action
         uses: ./.github/actions/github-project-lifecycle
-        env:
-          GH_TOKEN: ${{ secrets.DCNESS_PROJECT_TOKEN || github.token }}
         with:
           mode: pr-merged
           repo: ${{ github.repository }}
@@ -59,3 +58,4 @@ jobs:
           project-number: ${{ vars.DCNESS_PROJECT_NUMBER }}
           pr-body: ${{ github.event.pull_request.body }}
           apply: "true"
+          gh-token: ${{ secrets.DCNESS_PROJECT_TOKEN || github.token }}

@@ -593,7 +593,7 @@ GitHub Actions 에서 Project lifecycle drift 검출과 PR merge 후 `Done` 보�
   - issue open/edit/label 변경 시 Project IssueType 과 repo label drift 검출
   - PR closed+merged 시 Closes/Fixes/Resolves issue 의 Status=Done 보정
   - Part of #N 만 있는 PR 은 Done 후보로 보지 않음
-  - Project v2 쓰기에는 project scope token 필요: secrets.DCNESS_PROJECT_TOKEN
+  - Project v2 자동화에는 classic PAT 의 project + read:org scope 둘 다 필요: secrets.DCNESS_PROJECT_TOKEN (read:org 없으면 gh project owner 판별이 unknown owner type 으로 실패)
   - Project 번호/owner 는 vars.DCNESS_PROJECT_NUMBER / vars.DCNESS_PROJECT_OWNER 사용
 (Y/n)
 ```
@@ -617,21 +617,18 @@ GitHub Actions 에서 Project lifecycle drift 검출과 PR merge 후 `Done` 보�
       runs-on: ubuntu-latest
       steps:
         - uses: alruminum/dcNess/.github/actions/github-project-lifecycle@main
-          env:
-            GH_TOKEN: ${{ secrets.DCNESS_PROJECT_TOKEN || github.token }}
           with:
             mode: validate-issue
             repo: ${{ github.repository }}
             project-owner: ${{ vars.DCNESS_PROJECT_OWNER || github.repository_owner }}
             project-number: ${{ vars.DCNESS_PROJECT_NUMBER }}
             issue-number: ${{ github.event.issue.number }}
+            gh-token: ${{ secrets.DCNESS_PROJECT_TOKEN || github.token }}
     pr-merged:
       if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true && vars.DCNESS_PROJECT_NUMBER != '' }}
       runs-on: ubuntu-latest
       steps:
         - uses: alruminum/dcNess/.github/actions/github-project-lifecycle@main
-          env:
-            GH_TOKEN: ${{ secrets.DCNESS_PROJECT_TOKEN || github.token }}
           with:
             mode: pr-merged
             repo: ${{ github.repository }}
@@ -639,6 +636,7 @@ GitHub Actions 에서 Project lifecycle drift 검출과 PR merge 후 `Done` 보�
             project-number: ${{ vars.DCNESS_PROJECT_NUMBER }}
             pr-body: ${{ github.event.pull_request.body }}
             apply: "true"
+            gh-token: ${{ secrets.DCNESS_PROJECT_TOKEN || github.token }}
   ```
 
 - **n**: skip. 메인은 PR merge 후 `scripts/github_project_lifecycle.mjs pr-merged` 를 수동 실행해 drift 를 확인한다.
