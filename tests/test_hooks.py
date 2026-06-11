@@ -549,7 +549,7 @@ class CatastrophicPrReviewerTests(_PreToolBase):
 
 
 # ---------------------------------------------------------------------------
-# module-architect 게이트 — design 안 module-architect × N 첫 호출 직전
+# module-architect 게이트 — design 안 첫 module-architect 단위 호출 직전
 # architecture-validator PASS 필수 (PR B-4 부활, β-strong)
 # ---------------------------------------------------------------------------
 

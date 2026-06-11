@@ -216,7 +216,7 @@ stories.md 상단에 `**Base Branch:** feature/<slug>` 마커 박힌 epic (= 통
 
 ### 적용 절차 — PR 생성 직전 사전 체크 (impl 파일 frontmatter 기반)
 
-판정 입력 = **impl 파일 frontmatter `task_index: <i>/<total>` + `story: <N>`**. module-architect × K 시점 (design) 에 박힘. `task_index` 의미 = 그 Story 안 task 의 순번 / 그 Story 의 총 task 수 (옛 의미: 옛 `## impl 목차` 표 행 위치 → 폐기, 이슈 [#511](https://github.com/alruminum/dcNess/issues/511)). 공통 task 는 `task_index: —`. stories.md `[ ]` 카운트 룰 폐기 (2026-05-12) — 새 stories.md 양식엔 task `[ ]` 자체 없음 (user story 만, [`spec-stories-reference.md`](../../skills/spec/spec-stories-reference.md#storiesmd-산출물) 기준).
+판정 입력 = **impl 파일 frontmatter `task_index: <i>/<total>` + `story: <N>`**. `/design` 의 Story/공통 module-architect 단위 산출 시점에 박힘. `task_index` 의미 = 그 Story 안 task 의 순번 / 그 Story 의 총 task 수 (옛 의미: 옛 `## impl 목차` 표 행 위치 → 폐기, 이슈 [#511](https://github.com/alruminum/dcNess/issues/511)). 공통 task 는 `task_index: —`. stories.md `[ ]` 카운트 룰 폐기 (2026-05-12) — 새 stories.md 양식엔 task `[ ]` 자체 없음 (user story 만, [`spec-stories-reference.md`](../../skills/spec/spec-stories-reference.md#storiesmd-산출물) 기준).
 
 1. **task 파일 frontmatter read** — `task_index: 3/3` + `story: 1`
 2. **본 task 가 Story 마지막인지 판정** — `i == total` 이면 마지막

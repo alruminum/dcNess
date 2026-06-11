@@ -102,11 +102,11 @@ flowchart TB
 | 새 외부 dependency / API / SDK / model 선택이 없고 비용 / 라이선스 / 성능 / 품질 / 실현성 trigger 도 없음 | Lite / Standard 에서 `/tech-review` 생략 |
 | 새 외부 dependency / API / SDK / model 선택이 필요함 | 설계 선행으로 (impl 밖) `/spec` 내부 `/tech-review` preflight |
 | 비용 / 라이선스 / 성능 / 품질이 MVP 성패를 좌우하거나 "이게 되는지"가 기능 정의를 바꿈 | 설계 선행으로 (impl 밖) `/spec` 내부 `/tech-review` preflight |
-| auth / security / PII / compliance, migration, public API breakage, cross-module / cross-story interface 영향 | 설계 선행으로 (impl 밖) `/design` + architecture-validator 2-pass |
-| high-risk 0개지만 구현 경계나 테스트 기준이 애매함 | `compact-design` compact plan 산출(impl 밖) 후 `/impl` Standard: 받은 설계도로 구현 + `code-validator`. 이것이 architecture-lite 역할이며 architecture-validator 2-pass 는 호출하지 않음 |
+| auth / security / PII / compliance, migration, public API breakage, cross-module / cross-story interface 영향 | 설계 선행으로 (impl 밖) `/design` + architecture-validator system freeze/단위/final 검증 |
+| high-risk 0개지만 구현 경계나 테스트 기준이 애매함 | `compact-design` compact plan 산출(impl 밖) 후 `/impl` Standard: 받은 설계도로 구현 + `code-validator`. 이것이 architecture-lite 역할이며 full `/design` architecture-validator 검증은 호출하지 않음 |
 | high-risk 0개이고 설계도 없이 concrete signal 이 충분함 | Lite: 계획 파일 없이 직접 구현 + `pr-reviewer`. `code-validator` / architecture-validator 호출 없음 |
 
-즉 architecture-validator 2-pass 는 high-risk 설계 선행(`/design`)의 설계 검증이다. Standard 의 architecture-lite 는 별도 새 public command 가 아니라 impl 밖 `compact-design` compact plan 1-pass 로 흡수하고, `/impl` 은 그 설계도를 받아 구현만 한다.
+즉 architecture-validator system freeze/단위/final 검증은 high-risk 설계 선행(`/design`)의 설계 검증이다. Standard 의 architecture-lite 는 별도 새 public command 가 아니라 impl 밖 `compact-design` compact plan 1-pass 로 흡수하고, `/impl` 은 그 설계도를 받아 구현만 한다.
 
 ## low-risk regression scenario (full chain 빨림 방지)
 
@@ -115,7 +115,7 @@ flowchart TB
 | # | 요청 예시 | 올바른 구현 경로 | 회귀 (이러면 안 됨) |
 |---|---|---|---|
 | R1 | 파일/symbol 명시한 "이 함수 버그 고쳐줘" | Lite (`/impl` 직접) | `/spec` 내부 tech-review preflight → `/design` → `/impl` → `/acceptance` full chain |
-| R2 | 작은 docs-only 오타/문구 수정 | Lite | architect 2-pass / consensus 호출 |
+| R2 | 작은 docs-only 오타/문구 수정 | Lite | full architect 검증 / consensus 호출 |
 | R3 | 이미 분류·승인된 issue/PR 번호 "구현해줘" | Lite | `/spec` 재기획으로 우회 |
 | R4 | high-risk 0개지만 수정 범위·테스트 기준이 애매 | `compact-design` 산출 후 Standard | full 설계(`/design`) 과승격 |
 | R5 | 새 외부 API/SDK/model 도입이 필요 | 설계 선행 (`/spec` 내부 `/tech-review` preflight, impl 밖) | Lite 직행으로 검증 생략 |

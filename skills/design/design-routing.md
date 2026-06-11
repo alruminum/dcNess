@@ -17,23 +17,34 @@ flowchart TB
   UX[ux-architect] -->|UX_FLOW_READY| SA[system-architect]
   UX -->|UX_REFINE_READY| DS[designer]
   SA -->|PASS| AV1[architecture-validator 1차]
-  AV1 -->|PASS| MA[module-architect × K]
-  MA -->|PASS × K| AV2[architecture-validator 2차]
-  AV2 -->|PASS| M([PR · 머지 → /impl 안내])
+  AV1 -->|PASS: 공통 task 있음| MA_COMMON[module-architect common]
+  AV1 -->|PASS: 공통 task 없음| MA_STORY[module-architect Story N]
+  MA_COMMON -->|PASS| AV_COMMON[architecture-validator 공통 단위]
+  AV_COMMON -->|PASS| MA_STORY
+  MA_STORY -->|PASS| AV_STORY[architecture-validator Story 단위]
+  AV_STORY -->|PASS: 다음 Story| MA_STORY
+  AV_STORY -->|PASS: 마지막 Story| AV_FINAL[architecture-validator cross-story 통합]
+  AV_FINAL -->|PASS| M([PR · 머지 → /impl 안내])
   AV1 -->|FAIL ≤2| SA
-  AV2 -->|"FAIL: SYSTEM_BOUNDARY ≤2"| SA
-  AV2 -->|"FAIL: CONTRACT_PROPAGATION · TASK_LOCAL ≤2"| MA
+  AV_COMMON -->|"FAIL: SYSTEM_BOUNDARY ≤2"| SA
+  AV_COMMON -->|"FAIL: CONTRACT_PROPAGATION · TASK_LOCAL ≤2"| MA_COMMON
+  AV_STORY -->|"FAIL: SYSTEM_BOUNDARY ≤2"| SA
+  AV_STORY -->|"FAIL: CONTRACT_PROPAGATION · TASK_LOCAL ≤2"| MA_STORY
+  AV_FINAL -->|"FAIL: SYSTEM_BOUNDARY ≤2"| SA
+  AV_FINAL -->|"FAIL: CONTRACT_PROPAGATION · TASK_LOCAL ≤2"| MA_STORY
   SA -->|NEW_DEP_ESCALATE| U((사용자 · 3안))
-  MA -->|NEW_DEP_ESCALATE| U
+  MA_COMMON -->|NEW_DEP_ESCALATE| U
+  MA_STORY -->|NEW_DEP_ESCALATE| U
   UX -.->|UX_FLOW_ESCALATE| U
   SA -.->|ESCALATE| U
-  MA -.->|ESCALATE| U
+  MA_COMMON -.->|ESCALATE| U
+  MA_STORY -.->|ESCALATE| U
 
   classDef produce fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
   classDef verify fill:#e8f5e9,stroke:#388e3c,color:#1b5e20
   classDef user fill:#eeeeee,stroke:#757575,color:#212121
-  class UX,SA,DS,MA produce
-  class AV1,AV2 verify
+  class UX,SA,DS,MA_COMMON,MA_STORY produce
+  class AV1,AV_COMMON,AV_STORY,AV_FINAL verify
   class U user
 ```
 
@@ -47,14 +58,15 @@ flowchart TB
 |---|---|
 | **ux-architect** | `UX_FLOW_READY` → system-architect · `UX_REFINE_READY` → designer · `UX_FLOW_ESCALATE` → 사용자. (UI-less epic 이면 메인이 호출 안 함 — [`SKILL.md`](SKILL.md) UI-less 분기) |
 | **system-architect** | `PASS` → architecture-validator(1차) · `ESCALATE` → 사용자(`/spec` 재진입) · `NEW_DEP_ESCALATE` → 3안([escalate 처리](#escalate-처리)) |
-| **architecture-validator** | `PASS`(1차) → module-architect × K · `PASS`(2차) → SKILL.md Step 6 PR · `FAIL` → finding 분류별 재진입([finding 분류 분기](#finding-분류-분기)) · `ESCALATE` → 사용자 |
-| **module-architect** | `PASS` → 다음 단위 module-architect / (마지막이면) architecture-validator 2차 · `SPEC_GAP_FOUND` → module-architect 보강([retry 한도](#retry-한도)) · `ESCALATE` → 사용자 · `NEW_DEP_ESCALATE` → 3안([escalate 처리](#escalate-처리)) |
+| **architecture-validator** | `PASS`(1차) → 공통 task 있으면 module-architect(common), 없으면 Story 1 module-architect · `PASS`(공통/Story 단위) → 해당 단위 freeze + 다음 단위 module-architect / 마지막 Story 면 architecture-validator(cross-story 통합) · `PASS`(cross-story 통합) → SKILL.md Step 6 PR · `FAIL` → finding 분류별 재진입([finding 분류 분기](#finding-분류-분기)) · `ESCALATE` → 사용자 |
+| **module-architect** | `PASS` → architecture-validator(현재 공통/Story 단위) · `SPEC_GAP_FOUND` → module-architect 보강([retry 한도](#retry-한도)) · `ESCALATE` → 사용자 · `NEW_DEP_ESCALATE` → 3안([escalate 처리](#escalate-처리)) |
 | **designer** | `PASS` → 사용자 PICK · `ESCALATE` → 사용자. (UX_REFINE 분기 진입 시) |
 
 표만으로 안 풀리는 맥락:
 
-- **module-architect 호출 단위** = 1 Story 또는 공통 task 묶음 → epic 전체에서 `K = Story 수 + 공통 호출` 회 반복. self-check 의 cross-task interface 점검이 PASS 게이트.
-- **architecture-validator 2시점** — 1차(Step 3.5) = system 산출물 기준으로 요구사항 출처, 설계 표준, Contract Ledger 충분성, freeze 가능성 검토. 2차(Step 5) = impl 문서까지 포함해 요구사항 출처 충실도, 계약과 인터페이스, 구현 가능성, drift와 scope, 표현 수준 검토. Must finding 마다 분류(`SYSTEM_BOUNDARY` / `CONTRACT_PROPAGATION` / `TASK_LOCAL`) 동반.
+- **module-architect 호출 단위** = 공통 task 묶음 0~1개 + Story 1개씩. 각 module-architect `PASS` 는 곧장 같은 단위 architecture-validator 로 이어지며, validator `PASS` 전에는 다음 module-architect 를 호출하지 않는다.
+- **architecture-validator 시점** — 1차(Step 3.5) = system 산출물 기준으로 요구사항 출처, 설계 표준, Contract Ledger 충분성, freeze 가능성 검토. 공통/Story 단위 검증(Step 4) = 방금 작성한 impl 문서와 frozen system/이전 단위의 계약 정합성 검토. cross-story 통합(Step 5) = 모든 단위 freeze 뒤 Story 간 compose/wiring, forward-ref 회수, Contract Ledger sweep, Cross-Story Lessons 일관성, cold-seat 구현 가능성 검토. Must finding 마다 분류(`SYSTEM_BOUNDARY` / `CONTRACT_PROPAGATION` / `TASK_LOCAL`) 동반.
+- **교훈 누적 전달** — 단위 검증에서 확정된 횡단 규칙은 SSOT 문서 기록 + 포인터 전달을 기본으로 한다. prompt 직접 전달은 미기록 결정 예외에 한정하고, 큰 본문을 매 Story prompt 에 반복하지 않는다.
 
 ## finding 분류 분기
 
@@ -77,7 +89,7 @@ flowchart TB
 | architecture-validator FAIL → architect 재진입 | 2 cycle | 사용자 위임 |
 | module-architect `SPEC_GAP_FOUND` → 보강 → 신규 케이스 재진입 | 2 cycle | 사용자 위임 |
 
-> **architecture-validator FAIL 재진입 대상 = finding 분류별** ([finding 분류 분기](#finding-분류-분기)) — **1차**는 검증 대상이 system-architect 산출물이라 기본적으로 **system-architect** 재진입이다. **2차**는 분류로 분기한다. `SYSTEM_BOUNDARY`(모듈 경계·의존 그래프 포함) → **system-architect**, `CONTRACT_PROPAGATION` → **module-architect `mode=contract_sweep`**, `TASK_LOCAL` → **module-architect** 보강.
+> **architecture-validator FAIL 재진입 대상 = finding 분류별** ([finding 분류 분기](#finding-분류-분기)) — **1차**는 검증 대상이 system-architect 산출물이라 기본적으로 **system-architect** 재진입이다. **공통/Story 단위 검증과 cross-story 통합 검증**은 분류로 분기한다. `SYSTEM_BOUNDARY`(모듈 경계·의존 그래프 포함) → **system-architect**, `CONTRACT_PROPAGATION` → **module-architect `mode=contract_sweep`**, `TASK_LOCAL` → **module-architect** 보강.
 > cycle 발생 시 **working tree only — commit X.** PASS 후에만 commit (cycle 도중 산출물은 덮어쓰기 전제).
 
 > **finding 수용 자세** (점 패치 X, 근본 재설계) — 같은 영역 finding 이 2회+ 반복되면 점 패치 retry 로 한도를 소진하지 말고 근본 원인을 짚어 그 영역을 재설계한다. 진본 = [`loop-procedure.md` finding 수용 원칙](../../docs/plugin/loop-procedure.md#finding-수용-원칙-점-패치-금지-근본-수정).
