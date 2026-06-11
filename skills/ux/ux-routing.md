@@ -1,16 +1,16 @@
-# ux 라우팅 SSOT
+# ux 분기 규칙 SSOT
 
 > **Status**: ACTIVE
-> **Scope**: `/ux` skill **단일 전용** 라우팅 진본 — 이 skill 안 agent (ux-architect / designer) 의 결론 → 다음 호출 + 모드 전환 (UX_FLOW ↔ UX_REFINE) + cycle 한도 + escalate + 후속. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
-> **Cross-ref**: catastrophic 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) · 권한 경계 = [`agent_boundary.py`](../../harness/agent_boundary.py).
+> **Scope**: `/ux` skill **단일 전용** 분기 규칙 진본 — 이 skill 안 agent (ux-architect / designer) 의 결론 → 다음 호출 + 모드 전환 (UX_FLOW ↔ UX_REFINE) + cycle 한도 + escalate + 후속. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
+> **Cross-ref**: 순서 차단 훅 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) · 권한 경계 = [`agent_boundary.py`](../../harness/agent_boundary.py) · 용어 기준 = [`terms.md`](../../docs/plugin/terms.md).
 
 ## 읽는 법
 
 agent 는 일을 마치면 prose 마지막 단락에 *어떤 결과로 끝났는지 + 사유* 를 자기 언어로 적는다. 메인 Claude 가 그 prose 를 읽고 아래 매핑으로 다음 호출을 정한다. 이 문서는 형식 강제가 아니라 *판단 보조* — 의미만 맞으면 된다. prose 가 모호하면 사용자에게 위임한다.
 
-라우팅은 **skill 이 소유**한다. agent 는 결론(enum)만 내고, "그 결론이면 다음 누구" 는 본 문서가 정한다. 같은 agent (ux-architect / designer) 가 다른 skill (design / impl-loop) 에 나와도 그건 *그 skill 의 라우팅* 이지 본 문서 영역이 아니다.
+분기 규칙은 **skill 이 소유**한다. agent 는 결론(enum)만 내고, "그 결론이면 다음 누구" 는 본 문서가 정한다. 같은 agent (ux-architect / designer) 가 다른 skill (design / impl-loop) 에 나와도 그건 *그 skill 의 분기 규칙* 이지 본 문서 영역이 아니다.
 
-## 라우팅 그래프
+## 분기 그래프
 
 ```mermaid
 flowchart TB

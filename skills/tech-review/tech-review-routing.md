@@ -1,14 +1,14 @@
-# tech-review 라우팅 SSOT
+# tech-review 분기 규칙 SSOT
 
 > **Status**: ACTIVE
-> **Scope**: `/tech-review` skill **단일 전용** 라우팅 진본 — tech-reviewer 의 결론 (PASS / FAIL / ESCALATE) → 다음 호출 + 사용자 2차 OK 분기 + cycle 재진입 + **단방향 관례 (재진입 비권장)** + 비대상 + 후속. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md). tech-reviewer 는 tech-review 전용 agent 라 본 문서가 유일 진본 (맥락 분기 없음).
-> **Cross-ref**: 단방향 관례 (코드 강제 아님) = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) 의 tech-review 자연어 관례 · 강제 영역 = [`../../CLAUDE.md`](../../CLAUDE.md).
+> **Scope**: `/tech-review` skill **단일 전용** 분기 규칙 진본 — tech-reviewer 의 결론 (PASS / FAIL / ESCALATE) → 다음 호출 + 사용자 2차 OK 분기 + cycle 재진입 + **단방향 관례 (재진입 비권장)** + 비대상 + 후속. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md). tech-reviewer 는 tech-review 전용 agent 라 본 문서가 유일 진본 (맥락 분기 없음).
+> **Cross-ref**: 단방향 관례 (코드 강제 아님) = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) 의 tech-review 자연어 관례 · 강제 영역 = [`../../CLAUDE.md`](../../CLAUDE.md) · 용어 기준 = [`terms.md`](../../docs/plugin/terms.md).
 
 ## 읽는 법
 
 tech-reviewer 는 stateless — `docs/prd.md` 의 **기술 검토 필요 영역**을 받아 `docs/tech-review.md`, `docs/tech-review/evidence/**`, `docs/tech-review/report.html` 을 생성/갱신하고 prose 결론 (PASS / FAIL / ESCALATE) 을 낸다. 메인 Claude 가 그 결론을 사용자에게 echo 하고, 사용자 2차 OK 응답 (OK / PRD patch / 검토 범위 추가 / polish) 에 따라 다음을 정한다. cycle 컨텍스트는 메인이 재호출 prompt 에 명시한다.
 
-## 라우팅 그래프
+## 분기 그래프
 
 ```mermaid
 flowchart TB
@@ -45,7 +45,7 @@ flowchart TB
 | **사용자 — 3. 검토 범위 추가** | → 메인 `docs/prd.md` 의 기술 검토 필요 영역 갱신 → Step 1 재진입 |
 | **사용자 — 4. 항목 polish** | → 메인 재호출 prompt 에 polish 요구 명시 → Step 1 재진입 |
 
-> tech-reviewer 는 issue 생성·git mutation 없음 — PRD patch 와 재호출 컨텍스트 정리는 모두 **메인**이 수행한다.
+> tech-reviewer 는 issue 생성·git 외부 상태 변경 없음 — PRD patch 와 재호출 컨텍스트 정리는 모두 **메인**이 수행한다.
 
 ## 단방향 관례 (재진입 비권장)
 

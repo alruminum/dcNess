@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # dcNess post-agent-clear 훅 — PostToolUse Agent
 #
-# 동작 (DCN-CHG-20260501-13 — surface 개선):
+# 동작 (DCN-CHG-20260501-13 — 노출 개선):
 #   1. live.json.active_agent / active_mode clear (메인 복귀)
 #   2. agent-trace 집계 → tool histogram + anomaly 검출
 #   3. additionalContext (hookSpecificOutput) stdout JSON 으로 inject

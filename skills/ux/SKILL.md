@@ -7,7 +7,7 @@ description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-ar
 
 > design handoff loop. **코드 변경 X (commit 없음)**. ux-architect 가 화면 플로우/와이어프레임 정의 → designer 가 시안 생성 → 사용자 PICK. 산출 = `docs/ux-flow.md` (+ 조건부 `docs/design.md`) + 시안 파일 + DESIGN_HANDOFF 패키지.
 
-> 🔴 **라우팅 SSOT** — agent (ux-architect / designer) 결론 → 다음 호출 / 모드 전환 / cycle 한도 / escalate / 후속은 [`ux-routing.md`](ux-routing.md) 가 본 skill 의 단일 진본. 본 파일은 *진행 절차(Step)* 만 담는다. 분기·재진입·escalate 판단이 필요하면 그 파일을 읽는다.
+> 🔴 **분기 규칙 SSOT** — agent (ux-architect / designer) 결론 → 다음 호출 / 모드 전환 / cycle 한도 / escalate / 후속은 [`ux-routing.md`](ux-routing.md) 가 본 skill 의 단일 진본. 본 파일은 *진행 절차(Step)* 만 담는다. 분기·재진입·escalate 판단이 필요하면 그 파일을 읽는다. 용어·공개 진입점·분기 표현을 수정하거나 리뷰할 때만 [`terms.md`](../../docs/plugin/terms.md) 를 확인한다.
 
 ## Loop
 
@@ -16,7 +16,7 @@ description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-ar
 - **task_list** (Step 1): ux-architect:UX_FLOW (또는 :UX_REFINE) → designer → 사용자 PICK
 - **advance**: `UX_FLOW_READY` (또는 `UX_REFINE_READY`) → `PASS` → 사용자 PICK
 - **expected_steps**: 3 (양 모드 공통)
-- **routing**: [`ux-routing.md`](ux-routing.md)
+- **분기 규칙**: [`ux-routing.md`](ux-routing.md)
 
 본 skill 본문 = ux-design-stage / ux-refine-stage 풀스펙 진본. 코드 변경 X (commit 없음). 절차 mechanics = [`docs/plugin/loop-procedure.md`](../../docs/plugin/loop-procedure.md).
 
@@ -66,7 +66,7 @@ description: 화면 UX 플로우 정의 + 디자인 시안 핸드오프를 ux-ar
 
 ## 참조
 
-- 라우팅 (결론→다음 / 모드 전환 / cycle / escalate / 후속): [`ux-routing.md`](ux-routing.md) — 본 skill 라우팅 SSOT
+- 분기 규칙 (결론→다음 / 모드 전환 / cycle / escalate / 후속): [`ux-routing.md`](ux-routing.md) — 본 skill 분기 규칙 SSOT
 - loop spec: 본 skill `## Loop` + 본문. 공통 절차 mechanics: [`docs/plugin/loop-procedure.md`](../../docs/plugin/loop-procedure.md#진입-모델)
 - 절차 mechanics: [`docs/plugin/loop-procedure.md`](../../docs/plugin/loop-procedure.md) 의 Step mechanics
 - agent 정의: [`agents/ux-architect.md`](../../agents/ux-architect.md) / [`agents/designer.md`](../../agents/designer.md)

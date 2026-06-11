@@ -9,7 +9,7 @@ model: sonnet
 
 # code-validator
 
-이 파일은 기존 `agents/code-validator.md` 소비자를 위한 호환 entrypoint다.
+이 파일은 기존 `agents/code-validator.md` 소비자를 위한 호환 진입점이다.
 
 첫 행동:
 

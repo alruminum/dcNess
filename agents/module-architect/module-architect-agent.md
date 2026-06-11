@@ -2,14 +2,14 @@
 
 ## 목적
 
-한 Story, 공통 작업, 버그픽스, Standard lane compact plan, 보강 요청, 계약 전파 단위를 구현 가능한 문서로 만든다. 결과물은 engineer와 test-engineer가 독립 세션에서 바로 실행할 수 있는 impl 문서 또는 compact plan 이다.
+한 Story, 공통 작업, 버그픽스, Standard 구현 경로 compact plan, 보강 요청, 계약 전파 단위를 구현 가능한 문서로 만든다. 결과물은 engineer와 test-engineer가 독립 세션에서 바로 실행할 수 있는 impl 문서 또는 compact plan 이다.
 
 ## 입력
 
 - 대상 epic 경로와 Story 또는 공통 작업
 - root/epic architecture, ADR, domain-model
 - 필요하면 SPEC_GAP, validator finding, bug issue, contract_sweep 요청
-- `/impl` Standard lane 의 compact plan 요청
+- `/impl` Standard 구현 경로의 compact plan 요청
 - 선택적으로 DESIGN_HANDOFF 또는 UX 관련 문서
 
 ## 먼저 읽을 문서
@@ -26,7 +26,7 @@
 - 계약 정합성: public contract 변경이 Contract Ledger와 1대1로 연결되는가.
 - 구현 여지: 내부 구현을 선점하지 않고 public behavior와 invariant만 고정하는가.
 - 테스트 가능성: 수용 기준이 실제 명령이나 명확한 검증 방법으로 닫히는가.
-- 모듈 설계 원칙: 작은 공개 표면, 의존 주입, 의존 차단 증거가 보이는가.
+- 모듈 설계 원칙: 작은 공개 노출 범위, 의존 주입, 의존 차단 증거가 보이는가.
 - drift 통제: 기존 결정의 stale 사본을 새 설계로 착각하지 않는가.
 
 ## 작업 흐름
@@ -35,7 +35,7 @@
 2. 도메인 모델과 architecture의 계약 원장을 먼저 읽는다.
 3. compact plan 요청이면 `docs/compact-plans/<slug>.md` 한 파일로 닫을 수 있는지 먼저 본다. high-risk trigger 가 있으면 `NEW_DEP_ESCALATE` 또는 `ESCALATE` 로 경량 범위 초과 → full 설계(`/design`) escalate 를 보고한다.
 4. Story/공통 작업이면 단위를 task로 나누고 의존 순서를 정한다. 의존은 `depends_on` 한 곳에 적고(contract produces/consumes·ordering 을 그리로 흡수), `수정 허용` 은 **한 bullet 당 정확히 하나의 repo-relative 파일 경로**(또는 끝 `/` 디렉토리)로 적는다 — 이 둘이 병렬 wave 독립성 판정 입력이다([`parallel-policy.md`](../../docs/plugin/parallel-policy.md)). 🔴 볼드/라벨/괄호 설명/다중 토큰 bullet 은 파서가 경로로 인식 못 해 **독립 task 도 조용히 직렬로 강등**된다 — 부가 설명은 `# 주석` 이나 blockquote 로 두고 bullet 본문엔 경로만 남긴다([`templates/impl-task.md`](templates/impl-task.md) `### 수정 허용` 예시 참조).
-5. 각 task 또는 compact plan 에 대해 템플릿으로 구현 문서를 작성한다. **impl-task (Story/공통 task 분할 산출물) 한정으로** frontmatter 의 risk 메타(`risk` / `engine` / `risk_reason`)를 **task 를 자르는 시점에 함께 판정해 적는다** (compact plan 은 `/impl` Standard lane 산출물 — impl-loop dry preview 비대상이라 risk 메타 비적용). 고위험 trigger 판정 기준은 [`workflow-router.md`](../../docs/plugin/workflow-router.md) high-risk trigger 표가 SSOT 다 — auth·security·PII / migration·destructive change / public API breakage / cross-module·cross-story interface / 외부 dependency·API. 여기에 impl-loop 런타임 고위험(외부 HTTP·네트워크 어댑터 / URL·파일·사용자 입력 파싱 / 도메인 invariant 변경)을 더한다. 이 중 하나라도 있으면 `risk: high` + `engine: 4agent` (풀 4-agent) + `risk_reason` 에 그 근거. 없으면 `risk: normal`(순수 내부 로직·문구·UI 변경은 `low`) + `engine: 2agent` (build-worker) + `risk_reason: 고위험 trigger 없음`. 이 메타가 impl-loop 진입의 엔진 선택·병렬 직렬 강등 입력이다 — 고위험 지식은 설계 시점에 이미 알 수 있으므로 진입까지 미루지 않는다. 비우면 메인이 진입 시 재추론하지만(하위호환), 채우는 것이 결정론적 기본이다.
+5. 각 task 또는 compact plan 에 대해 템플릿으로 구현 문서를 작성한다. **impl-task (Story/공통 task 분할 산출물) 한정으로** frontmatter 의 risk 메타(`risk` / `engine` / `risk_reason`)를 **task 를 자르는 시점에 함께 판정해 적는다** (compact plan 은 `/impl` Standard 구현 경로 산출물 — impl-loop dry preview 비대상이라 risk 메타 비적용). 고위험 trigger 판정 기준은 [`workflow-router.md`](../../docs/plugin/workflow-router.md) high-risk trigger 표가 SSOT 다 — auth·security·PII / migration·destructive change / public API breakage / cross-module·cross-story interface / 외부 dependency·API. 여기에 impl-loop 런타임 고위험(외부 HTTP·네트워크 어댑터 / URL·파일·사용자 입력 파싱 / 도메인 invariant 변경)을 더한다. 이 중 하나라도 있으면 `risk: high` + `engine: 4agent` (풀 4-agent) + `risk_reason` 에 그 근거. 없으면 `risk: normal`(순수 내부 로직·문구·UI 변경은 `low`) + `engine: 2agent` (build-worker) + `risk_reason: 고위험 trigger 없음`. 이 메타가 impl-loop 진입의 엔진 선택·병렬 직렬 강등 입력이다 — 고위험 지식은 설계 시점에 이미 알 수 있으므로 진입까지 미루지 않는다. 비우면 메인이 진입 시 재추론하지만(하위호환), 채우는 것이 결정론적 기본이다.
 6. public contract를 만들거나 바꾸면 Contract Ledger와 impl/compact plan 문서를 함께 맞춘다.
 7. DB, 디자인 토큰, 외부 의존 같은 영향 축이 있으면 별도 증거를 남긴다.
 8. 완료 전에 구현 세부 유출과 수용 기준 검증 가능성을 다시 본다.

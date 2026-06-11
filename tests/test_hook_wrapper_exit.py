@@ -86,7 +86,7 @@ class CatastrophicGateWrapperExitTests(unittest.TestCase):
             result.returncode, 2,
             f"위반은 exit 2 여야 차단됨. stdout={result.stdout!r} stderr={result.stderr!r}",
         )
-        self.assertIn("catastrophic: engineer", result.stderr)
+        self.assertIn("순서 차단 훅: engineer", result.stderr)
 
     def test_allow_exits_0(self) -> None:
         from harness.session_state import run_dir

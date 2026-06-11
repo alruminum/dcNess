@@ -1,16 +1,16 @@
-# design 라우팅 SSOT
+# design 분기 규칙 SSOT
 
 > **Status**: ACTIVE
-> **Scope**: `/design` skill **단일 전용** 라우팅 진본 — 이 skill 안 agent (ux-architect / system-architect / architecture-validator / module-architect / designer) 의 결론 → 다음 호출 + retry 한도 + escalate 처리. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
-> **Cross-ref**: catastrophic 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) · 권한 경계 = [`agent_boundary.py`](../../harness/agent_boundary.py).
+> **Scope**: `/design` skill **단일 전용** 분기 규칙 진본 — 이 skill 안 agent (ux-architect / system-architect / architecture-validator / module-architect / designer) 의 결론 → 다음 호출 + retry 한도 + escalate 처리. 진행 절차(Step) 는 [`SKILL.md`](SKILL.md).
+> **Cross-ref**: 순서 차단 훅 보존 = [`hooks.md`](../../docs/plugin/hooks.md#catastrophic-gatesh) · 권한 경계 = [`agent_boundary.py`](../../harness/agent_boundary.py) · 용어 기준 = [`terms.md`](../../docs/plugin/terms.md).
 
 ## 읽는 법
 
 agent 는 일을 마치면 prose 마지막 단락에 *어떤 결과로 끝났는지 + 사유* 를 자기 언어로 적는다. 메인 Claude 가 그 prose 를 읽고 아래 매핑으로 다음 호출을 정한다. 이 문서는 형식 강제가 아니라 *판단 보조* — 의미만 맞으면 된다. prose 가 모호하면 사용자에게 위임한다.
 
-라우팅은 **skill 이 소유**한다. agent 는 결론(enum)만 내고, "그 결론이면 다음 누구" 는 본 문서가 정한다. 같은 agent 가 다른 skill (impl 등) 에 나와도 그건 *그 skill 의 라우팅* 이지 본 문서 영역이 아니다.
+분기 규칙은 **skill 이 소유**한다. agent 는 결론(enum)만 내고, "그 결론이면 다음 누구" 는 본 문서가 정한다. 같은 agent 가 다른 skill (impl 등) 에 나와도 그건 *그 skill 의 분기 규칙* 이지 본 문서 영역이 아니다.
 
-## 라우팅 그래프
+## 분기 그래프
 
 ```mermaid
 flowchart TB
@@ -47,7 +47,7 @@ flowchart TB
 |---|---|
 | **ux-architect** | `UX_FLOW_READY` → system-architect · `UX_REFINE_READY` → designer · `UX_FLOW_ESCALATE` → 사용자. (UI-less epic 이면 메인이 호출 안 함 — [`SKILL.md`](SKILL.md) UI-less 분기) |
 | **system-architect** | `PASS` → architecture-validator(1차) · `ESCALATE` → 사용자(`/spec` 재진입) · `NEW_DEP_ESCALATE` → 3안([escalate 처리](#escalate-처리)) |
-| **architecture-validator** | `PASS`(1차) → module-architect × K · `PASS`(2차) → SKILL.md Step 6 PR · `FAIL` → finding 분류별 재진입([finding 분류 라우팅](#finding-분류-라우팅)) · `ESCALATE` → 사용자 |
+| **architecture-validator** | `PASS`(1차) → module-architect × K · `PASS`(2차) → SKILL.md Step 6 PR · `FAIL` → finding 분류별 재진입([finding 분류 분기](#finding-분류-분기)) · `ESCALATE` → 사용자 |
 | **module-architect** | `PASS` → 다음 단위 module-architect / (마지막이면) architecture-validator 2차 · `SPEC_GAP_FOUND` → module-architect 보강([retry 한도](#retry-한도)) · `ESCALATE` → 사용자 · `NEW_DEP_ESCALATE` → 3안([escalate 처리](#escalate-처리)) |
 | **designer** | `PASS` → 사용자 PICK · `ESCALATE` → 사용자. (UX_REFINE 분기 진입 시) |
 
@@ -56,9 +56,9 @@ flowchart TB
 - **module-architect 호출 단위** = 1 Story 또는 공통 task 묶음 → epic 전체에서 `K = Story 수 + 공통 호출` 회 반복. self-check 의 cross-task interface 점검이 PASS 게이트.
 - **architecture-validator 2시점** — 1차(Step 3.5) = system 산출물 기준으로 요구사항 출처, 설계 표준, Contract Ledger 충분성, freeze 가능성 검토. 2차(Step 5) = impl 문서까지 포함해 요구사항 출처 충실도, 계약과 인터페이스, 구현 가능성, drift와 scope, 표현 수준 검토. Must finding 마다 분류(`SYSTEM_BOUNDARY` / `CONTRACT_PROPAGATION` / `TASK_LOCAL`) 동반.
 
-## finding 분류 라우팅
+## finding 분류 분기
 
-> drift 비용 분리의 핵심 — architecture-validator FAIL 을 "어느 레벨로 rollback?" 이 아니라 **finding 분류** 로 라우팅한다. 같은 FAIL 도 분류에 따라 비용이 크게 갈린다. 분류 진본 = [`agents/architecture-validator.md` finding 분류](../../agents/architecture-validator.md#finding-분류).
+> drift 비용 분리의 핵심 — architecture-validator FAIL 을 "어느 레벨로 rollback?" 이 아니라 **finding 분류** 로 분기한다. 같은 FAIL 도 분류에 따라 비용이 크게 갈린다. 분류 진본 = [`agents/architecture-validator.md` finding 분류](../../agents/architecture-validator.md#finding-분류).
 
 | finding 분류 | 뜻 | 재진입 대상 | 비고 |
 |---|---|---|---|
@@ -67,7 +67,7 @@ flowchart TB
 | `TASK_LOCAL` | 특정 impl task 문서만 틀림 — 예시 / depends_on / 수용기준 / requirements / Implementation Detail Leak | **module-architect** 보강 (해당 task) | 그 task 만 |
 
 - **"system-architect 재진입은 `SYSTEM_BOUNDARY` 일 때만 기본값"** — stale 문구 전파 누락은 `CONTRACT_PROPAGATION` 으로 처리(sweep), system 재설계로 끌어올리지 않는다. system 문서는 1차 PASS 후 freeze ([`SKILL.md`](SKILL.md) system freeze).
-- **`CONTRACT_AMENDMENT` 은 라우팅 enum 이 아니다** — module-architect 가 Step 4 에서 public contract 를 바꿀 때 취하는 자연어 행동 의무 (Contract Ledger 갱신 / "변경 없음" 명시). 라우팅 결정은 위 3 분류로만.
+- **`CONTRACT_AMENDMENT` 은 분기 enum 이 아니다** — module-architect 가 Step 4 에서 public contract 를 바꿀 때 취하는 자연어 행동 의무 (Contract Ledger 갱신 / "변경 없음" 명시). 분기 결정은 위 3 분류로만.
 
 ## retry 한도
 
@@ -77,7 +77,7 @@ flowchart TB
 | architecture-validator FAIL → architect 재진입 | 2 cycle | 사용자 위임 |
 | module-architect `SPEC_GAP_FOUND` → 보강 → 신규 케이스 재진입 | 2 cycle | 사용자 위임 |
 
-> **architecture-validator FAIL 재진입 대상 = finding 분류별** ([finding 분류 라우팅](#finding-분류-라우팅)) — **1차**는 검증 대상이 system-architect 산출물이라 기본적으로 **system-architect** 재진입이다. **2차**는 분류로 분기한다. `SYSTEM_BOUNDARY`(모듈 경계·의존 그래프 포함) → **system-architect**, `CONTRACT_PROPAGATION` → **module-architect `mode=contract_sweep`**, `TASK_LOCAL` → **module-architect** 보강.
+> **architecture-validator FAIL 재진입 대상 = finding 분류별** ([finding 분류 분기](#finding-분류-분기)) — **1차**는 검증 대상이 system-architect 산출물이라 기본적으로 **system-architect** 재진입이다. **2차**는 분류로 분기한다. `SYSTEM_BOUNDARY`(모듈 경계·의존 그래프 포함) → **system-architect**, `CONTRACT_PROPAGATION` → **module-architect `mode=contract_sweep`**, `TASK_LOCAL` → **module-architect** 보강.
 > cycle 발생 시 **working tree only — commit X.** PASS 후에만 commit (cycle 도중 산출물은 덮어쓰기 전제).
 
 > **finding 수용 자세** (점 패치 X, 근본 재설계) — 같은 영역 finding 이 2회+ 반복되면 점 패치 retry 로 한도를 소진하지 말고 근본 원인을 짚어 그 영역을 재설계한다. 진본 = [`loop-procedure.md` finding 수용 원칙](../../docs/plugin/loop-procedure.md#finding-수용-원칙-점-패치-금지-근본-수정).

@@ -2,11 +2,13 @@
 
 agent 문서는 사람이 먼저 읽고, 모델이 그 다음 읽는 문서다. 문서가 오래 살아남으려면 특정 사고를 막는 패치보다 목표, 판단 축, 증거를 분명히 해야 한다.
 
-`agents/<name>.md` entrypoint와 agent별 디렉터리의 링크는 dcNess plug-in root 기준이다. 외부 활성 프로젝트에서는 plug-in 업데이트로 `agents/**` 전체가 함께 배포되는 경로 1 산출물로 본다.
+`agents/<name>.md` 진입점과 agent별 디렉터리의 링크는 dcNess plug-in root 기준이다. 외부 활성 프로젝트에서는 plug-in 업데이트로 `agents/**` 전체가 함께 배포되는 경로 1 산출물로 본다.
 
-`agents/<name>.md` entrypoint에는 frontmatter, 호환 안내, 첫 행동, 필수 routing enum만 남긴다. 판단 축, 산출물 서식, 반복 결함 사례는 agent 디렉터리의 본문, `templates/`, `references/`로 내린다.
+`agents/<name>.md` 진입점에는 frontmatter, 호환 안내, 첫 행동, 필수 분기 enum만 남긴다. 판단 축, 산출물 서식, 반복 결함 사례는 agent 디렉터리의 본문, `templates/`, `references/`로 내린다.
 
-Claude plugin details가 보여주는 on-invoke token은 entrypoint 기준이다. 분리본과 references는 첫 행동 이후 Read로 추가 로드되므로, 이 변경은 always-on description/entrypoint 비용 절감이지 전체 실행 비용의 절대 감소로 해석하지 않는다.
+용어·공개 진입점·분기 표현을 수정하거나 리뷰할 때만 [`docs/plugin/terms.md`](../../docs/plugin/terms.md) 를 확인한다. 모든 agent 에 상시 선독을 추가하지 않는다.
+
+Claude plugin details가 보여주는 on-invoke token은 진입점 기준이다. 분리본과 references는 첫 행동 이후 Read로 추가 로드되므로, 이 변경은 always-on description/진입점 비용 절감이지 전체 실행 비용의 절대 감소로 해석하지 않는다.
 
 ## 기본 목차
 
@@ -27,8 +29,8 @@ Claude plugin details가 보여주는 on-invoke token은 entrypoint 기준이다
 - 달성해야 하는 결과
 - 판단할 품질 축
 - 남겨야 하는 증거
-- 권한 경계와 catastrophic rule
-- 라우팅 enum처럼 skill이 소비하는 결론 단어
+- 권한 경계와 중대 차단 rule
+- 분기 enum처럼 skill이 소비하는 결론 단어
 
 ## 내릴 것
 
@@ -39,6 +41,6 @@ Claude plugin details가 보여주는 on-invoke token은 entrypoint 기준이다
 
 ## 보고 원칙
 
-dcNess는 prose-only다. 보고 형식은 자유지만 마지막 단락에는 skill routing이 읽을 수 있는 결론 단어를 명확히 쓴다. 실패나 보강 요청은 파일 경로, 라인, 확인한 사실을 근거로 쓴다.
+dcNess는 자유서술 방식이다. 보고 형식은 자유지만 마지막 단락에는 skill 분기 규칙이 읽을 수 있는 결론 단어를 명확히 쓴다. 실패나 보강 요청은 파일 경로, 라인, 확인한 사실을 근거로 쓴다.
 
 폐기된 형식 강제는 다시 쓰지 않는다. agent 문서는 의미, 결론, 근거만 요구하고 특정 출력 포맷을 강제하지 않는다.

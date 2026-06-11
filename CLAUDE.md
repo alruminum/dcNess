@@ -56,25 +56,25 @@
 
 ### dcness 강제 원칙 (룰 추가·설계 시 가드레일)
 
-> 🟢 **설계 원칙 (왜 강제를 최소화하나)** — dcNess 는 모델을 불신해 가두는 하네스가 아니라, 사용자의 작업 방식을 보존하는 하네스다. 모델이 좋아질수록 절차를 *없애는* 게 아니라, 절차의 *목적*을 이해하고 더 적은 마찰로 지키게 한다. harness 의 일은 모델의 사고를 대신하는 게 아니라, 모델이 놓치기 쉬운 **되돌릴 수 없는 경계(irreversible boundary)** 만 붙잡는 것. 그래서 기본 경로는 가볍고, 무거운 절차(spec / tech-review / design / consensus)는 항상 켜두지 않고 **위험할 때만 올린다** (lane 판정 SSOT = [`docs/plugin/workflow-router.md`](docs/plugin/workflow-router.md)). 설계 원칙 출처: [#591](https://github.com/alruminum/dcNess/issues/591).
+> 🟢 **설계 원칙 (왜 강제를 최소화하나)** — dcNess 는 모델을 불신해 가두는 하네스가 아니라, 사용자의 작업 방식을 보존하는 하네스다. 모델이 좋아질수록 절차를 *없애는* 게 아니라, 절차의 *목적*을 이해하고 더 적은 마찰로 지키게 한다. harness 의 일은 모델의 사고를 대신하는 게 아니라, 모델이 놓치기 쉬운 **되돌릴 수 없는 경계(irreversible boundary)** 만 붙잡는 것. 그래서 기본 경로는 가볍고, 무거운 절차(spec / tech-review / design / consensus)는 항상 켜두지 않고 **위험할 때만 올린다** (구현 경로 판정 SSOT = [`docs/plugin/workflow-router.md`](docs/plugin/workflow-router.md), 용어 기준 = [`docs/plugin/terms.md`](docs/plugin/terms.md)). 설계 원칙 출처: [#591](https://github.com/alruminum/dcNess/issues/591).
 
 > 🔴 **대 원칙** (외부 활성 프로젝트엔 hook 이 그 자리에서 강제 — SessionStart 는 슬림 활성 안내만 inject, 설계 원칙 전문은 본 SSOT):
 > **harness 가 강제하는 것은 단 2가지 — (1) 작업 순서, (2) 접근 영역. 그 외 모두 agent 자율.**
 > - **작업 순서** = 시퀀스 (code-validator → engineer → pr-reviewer 등) + retry 정책
-> - **접근 영역** = file path 경계 (agent-boundary ALLOW/READ_DENY) + 외부 시스템 mutation 차단 (push, gh issue, plugin 디렉토리)
+> - **접근 영역** = file path 경계 (agent-boundary ALLOW/READ_DENY) + 외부 상태 변경 차단 (push, gh issue, plugin 디렉토리)
 > - **출력 형식 / handoff 형식 / preamble / marker / status JSON / Flag = agent 자율, harness 강제 X.**
 
 **강제 vs 자율 vs 권고**:
-- **강제 (코드)**: catastrophic 시퀀스 ([`docs/plugin/hooks.md`](docs/plugin/hooks.md#catastrophic-gatesh)) + 권한 경계 ([`harness/agent_boundary.py`](harness/agent_boundary.py)). escalate 결론 자동 복구 금지.
+- **강제 (코드)**: 순서 차단 훅의 작업 순서 보호 ([`docs/plugin/hooks.md`](docs/plugin/hooks.md#catastrophic-gatesh)) + 권한 경계 ([`harness/agent_boundary.py`](harness/agent_boundary.py)). escalate 결론 자동 복구 금지.
 - **자율 (agent)**: prose 형식 / handoff 페이로드 / preamble / 도구 순서 (권한 안).
-- **권고 (강제 X)**: 라우팅 (각 skill `<skill>-routing.md` — 예: [`skills/impl-loop/impl-loop-routing.md`](skills/impl-loop/impl-loop-routing.md)) / retry 한도 — 측정 + 사용자 개입.
+- **권고 (강제 X)**: 분기 규칙 (각 skill `<skill>-routing.md` — 예: [`skills/impl-loop/impl-loop-routing.md`](skills/impl-loop/impl-loop-routing.md)) / retry 한도 — 측정 + 사용자 개입.
 
 **안티패턴 (룰 추가 시 피하기)**:
 1. **룰이 룰을 부르는 reactive cycle** — 신규 룰 추가 전 기존 룰 제거 가능성 먼저 검토. 추가→제거 비대칭이 기술 부채.
-2. **강제 vs 권고 혼동** — 강제(block) = catastrophic 만. 권고(warn) = 형식 위반/비용 폭증 등은 측정+경고+사용자 개입. 권고 → 강제 자동 승격 금지.
+2. **강제 vs 권고 혼동** — 강제(block) = 중대 차단만. 권고(warn) = 형식 위반/비용 폭증 등은 측정+경고+사용자 개입. 권고 → 강제 자동 승격 금지.
 3. **에이전트 자율성 침해** — agent prompt 안 강제 형식 박기 금지. 결론+이유 명확히 쓰도록 가이드만 (형식이 아니라 의미).
-4. **불필요한 흐름 강제** — 시퀀스 보존은 catastrophic 만. 시퀀스 내부 행동 = 에이전트 자율.
-5. **신규 surface 무근거 추가** — 새 skill/command/agent/gate 를 추가하기 *전*, 왜 기존 risk router([`workflow-router.md`](docs/plugin/workflow-router.md)) lane + validator/reviewer + public surface 계약([`positioning.md`](docs/plugin/positioning.md))으로 부족한지 먼저 설명한다. 사용자-facing surface 는 작게 유지가 기본 — 추가는 justification 동반 (안티패턴 1 reactive cycle 과 한 쌍, 설계 원칙의 "외부 UX 는 단순하게" 취지).
+4. **불필요한 흐름 강제** — 작업 순서 보호만 중대 차단이다. 시퀀스 내부 행동 = 에이전트 자율.
+5. **신규 공개 진입점 무근거 추가** — 새 skill/command/agent/gate 를 추가하기 *전*, 왜 기존 위험 분기([`workflow-router.md`](docs/plugin/workflow-router.md)) 구현 경로 + validator/reviewer + 공개 진입점 계약([`positioning.md`](docs/plugin/positioning.md))으로 부족한지 먼저 설명한다. 사용자-facing 공개 노출 범위는 작게 유지가 기본 — 추가는 justification 동반 (안티패턴 1 reactive cycle 과 한 쌍, 설계 원칙의 "외부 UX 는 단순하게" 취지).
 
 ## 작업 절차 (모든 변경 공통)
 
@@ -90,7 +90,7 @@
 - **pytest**: `scripts/check_python_tests.sh` — harness/tests/agents 변경 시만
 - **plugin-manifest**: `scripts/check_plugin_manifest.mjs` (CI `plugin-manifest.yml`) — `.claude-plugin/plugin.json` version / manifest 정합 검증
 - **pr-body**: `scripts/check_pr_body.mjs` (CI `pr-body-validation.yml`) — PR 본문 템플릿 충족 검증
-- **public-surface**: `scripts/check_public_surface.mjs` (CI `public-surface-validation.yml`) — 공개 workflow/command/agent 표면 계약 검증
+- **public-surface**: `scripts/check_public_surface.mjs` (CI `public-surface-validation.yml`) — 공개 workflow/command/agent 진입점 계약 검증
 - **cross-ref**: `scripts/check_cross_refs.mjs` (CI `cross-ref-validation.yml`) — markdown link 파일/anchor 실존 + 옛 명칭 deny-list (외부 배포 영역 한정) 회귀 차단
 
 > ⚠️ **금지**: `--no-verify` 등 hook 우회. main 직접 push.
@@ -104,11 +104,12 @@
 
 | 파일 | 언제 읽나 |
 |---|---|
-| [`docs/plugin/positioning.md`](docs/plugin/positioning.md) | public workflow surface 의 기본/고급/유틸리티/내부 agent 분류 수정 시 |
-| [`docs/plugin/workflow-router.md`](docs/plugin/workflow-router.md) | 자유 형식 작업 요청을 어떤 workflow 로 보낼지 (lane — gate 축 × shape 축) 판단 시 |
+| [`docs/plugin/terms.md`](docs/plugin/terms.md) | 용어·공개 진입점·분기 표현·사용자 표시 메시지 수정/리뷰 시 |
+| [`docs/plugin/positioning.md`](docs/plugin/positioning.md) | 공개 workflow 진입점의 기본/고급/유틸리티/내부 agent 분류 수정 시 |
+| [`docs/plugin/workflow-router.md`](docs/plugin/workflow-router.md) | 자유 형식 작업 요청을 어떤 workflow 로 보낼지 (구현 경로 — gate 축 × shape 축) 판단 시 |
 | [`docs/plugin/git-spec.md`](docs/plugin/git-spec.md) | 브랜치·커밋·PR 네이밍 규칙 SSOT — 모든 커밋 작업에 적용 |
-| 각 skill 의 `<skill>-routing.md` ([`impl`](skills/impl/impl-routing.md) / [`design`](skills/design/design-routing.md) / [`impl-loop`](skills/impl-loop/impl-loop-routing.md) 등) | 라우팅 진본 (mermaid + enum 표) + retry 한도 + escalate — agent 결론 → 다음 호출 매핑 수정 시 |
-| [`scripts/check_public_surface.mjs`](scripts/check_public_surface.mjs) | public workflow surface gate 기대값 수정 시 |
+| 각 skill 의 `<skill>-routing.md` ([`impl`](skills/impl/impl-routing.md) / [`design`](skills/design/design-routing.md) / [`impl-loop`](skills/impl-loop/impl-loop-routing.md) 등) | 분기 규칙 진본 (mermaid + enum 표) + retry 한도 + escalate — agent 결론 → 다음 호출 매핑 수정 시 |
+| [`scripts/check_public_surface.mjs`](scripts/check_public_surface.mjs) | 공개 workflow 진입점 gate 기대값 수정 시 |
 | [`docs/plugin/loop-procedure.md`](docs/plugin/loop-procedure.md) | Step 0~8 mechanics (begin-run → begin-step → Agent → end-step → finalize-run) 수정 시 |
 | [`docs/plugin/hooks.md`](docs/plugin/hooks.md) | hook 시스템 (SessionStart / PreToolUse / PostToolUse / SubagentStop / Stop = 8 hook) 수정 시 SSOT. dcness self 작업용 `scripts/hooks/cc-pre-commit.sh` 는 별 항목 |
 | [`docs/plugin/issue-lifecycle.md`](docs/plugin/issue-lifecycle.md) | 외부 활성 프로젝트의 epic / story / impl 흐름 변경 시 SSOT (본 저장소 자체엔 미적용 — [dcness 자체는 init-dcness 미적용](#dcness-자체는-init-dcness-미적용-자기-규격-미얽매임) 참조) |

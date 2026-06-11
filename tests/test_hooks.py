@@ -274,7 +274,7 @@ class CatastrophicEngineerTests(_PreToolBase):
 
     def test_polish_step_mode_ignored_in_nonstrict_run(self) -> None:
         # 게이트 약화 방향 방어 — 비-strict entry_point 에서는 current_step.mode 정합이
-        # strict-conveyor 로 보장되지 않으므로 step_mode fallback 을 쓰지 않는다.
+        # 진행 순서 검사로 보장되지 않으므로 step_mode fallback 을 쓰지 않는다.
         # setUp 의 run 은 entry_point="test"(비-strict). current_step.mode=POLISH 여도
         # 산출물 없으면 차단(POLISH 누수 차단).
         self._begin_step("engineer", "POLISH")
@@ -298,7 +298,7 @@ class CatastrophicEngineerTests(_PreToolBase):
         self.assertEqual(rc, 0)
 
     def test_namespaced_engineer_does_not_bypass_gate(self) -> None:
-        # #700 (codex P1) — strict-conveyor 가 namespaced 를 통과시키므로 engineer 게이트도
+        # #700 (codex P1) — 진행 순서 검사가 namespaced 를 통과시키므로 engineer 게이트도
         # 정규화 비교한다. dcness:engineer 가 module-architect PASS 게이트를 우회하면 안 된다.
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("dcness:engineer", "IMPL"),
@@ -307,7 +307,7 @@ class CatastrophicEngineerTests(_PreToolBase):
         )
         self.assertEqual(rc, 1)
 
-    # -- #701 — design_doc 실존 = module-architect PASS 의 등가 prerequisite --
+    # -- #701 — design_doc 실존 = module-architect PASS 의 등가 사전 조건 --
 
     def _record_run_with_design_doc(self, rid: str, design_doc: str) -> None:
         """design_doc 검증은 cwd(repo root) 기준 — begin-run cwd 를 base 로 모사."""
@@ -324,7 +324,7 @@ class CatastrophicEngineerTests(_PreToolBase):
     def _start_run_with_design_doc(self, design_doc: str) -> None:
         """begin-run --design-doc + begin-step engineer 경로 모사.
 
-        entry_point=impl run 은 strict-conveyor 가 begin-step 을 강제하므로
+        entry_point=impl run 은 진행 순서 검사가 begin-step 을 강제하므로
         실제 풀 4-agent 시퀀스대로 current_step 까지 세팅 — 차단/통과가
         engineer 게이트에서 판정되도록 한다.
         """
@@ -347,7 +347,7 @@ class CatastrophicEngineerTests(_PreToolBase):
     def test_allowed_with_merged_design_doc(self) -> None:
         # #701 — impl-loop 풀 4-agent: 설계(impl 문서)는 별도 run 에서 머지된 뒤
         # 진입하므로, run 에 기록된 design_doc 실존이 같은-run module-architect
-        # PASS 없이도 engineer(IMPL) prerequisite 를 충족해야 한다.
+        # PASS 없이도 engineer(IMPL) 사전 조건을 충족해야 한다.
         doc = self._write_design_doc()
         self._start_run_with_design_doc(str(doc))
         rc = handle_pretooluse_agent(
@@ -359,7 +359,7 @@ class CatastrophicEngineerTests(_PreToolBase):
 
     def test_blocked_when_design_doc_gone_from_disk(self) -> None:
         # 기록 시점엔 실존했지만 게이트 시점에 삭제된 design_doc → fail-strict 차단.
-        # 차단 주체가 strict-conveyor 가 아닌 engineer 게이트임을 stderr 로 확정.
+        # 차단 주체가 진행 순서 검사가 아닌 engineer 게이트임을 stderr 로 확정.
         from io import StringIO
         from contextlib import redirect_stderr
 
@@ -374,10 +374,10 @@ class CatastrophicEngineerTests(_PreToolBase):
                 base_dir=self.base,
             )
         self.assertEqual(rc, 1)
-        self.assertIn("[catastrophic: engineer 게이트]", err.getvalue())
+        self.assertIn("[순서 차단 훅: engineer 게이트]", err.getvalue())
 
     def test_other_run_design_doc_does_not_unlock_current_run(self) -> None:
-        # design_doc 은 *자기 run* 의 prerequisite 만 충족 — design_doc 없는 기존
+        # design_doc 은 *자기 run* 의 사전 조건만 충족 — design_doc 없는 기존
         # run(setUp 의 self.rid)은 종전대로 차단 유지 (회귀 가드).
         doc = self._write_design_doc()
         self._record_run_with_design_doc("run-87654321", str(doc))
@@ -424,7 +424,7 @@ class CatastrophicEngineerTests(_PreToolBase):
 
 
 class CatastrophicEngineerLiteLaneTests(_PreToolBase):
-    """기록된 lane=lite 가 engineer 게이트의 설계 산출물 prerequisite 를 면제한다.
+    """기록된 lane=lite 가 engineer 게이트의 설계 산출물 사전 조건을 면제한다.
 
     Lite lane 은 정의상 설계도가 없어 module-architect PASS / design_doc 둘 다
     없다. 면제 경계는 *명시적으로 기록된* lane=lite 한정 — lane 미기록(impl-loop
@@ -664,7 +664,7 @@ class TechReviewerRecallNotBlockedTests(_DesignLoopBase):
     """
 
     def test_tech_reviewer_allowed_in_design_loop(self) -> None:
-        # strict-conveyor gate(#604) 통과 위해 begin-step 으로 current_step 설정.
+        # 진행 순서 검사(#604) 통과 위해 begin-step 으로 current_step 설정.
         self._begin_step("tech-reviewer")
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("tech-reviewer"),
@@ -697,7 +697,7 @@ class TechReviewerRecallNotBlockedTests(_DesignLoopBase):
 
 
 # ---------------------------------------------------------------------------
-# issue #604 — active conveyor run strict begin-step gate
+# issue #604 — active run 진행 순서 검사 begin-step gate
 # ---------------------------------------------------------------------------
 
 
@@ -783,7 +783,7 @@ class StrictConveyorGateTests(_PreToolBase):
     def test_allows_moded_step_when_agent_omits_mode(self) -> None:
         # #700 Finding B — Agent 도구는 mode 를 실을 수 없어 항상 None. begin-step
         # code-validator VERIFY_ONLY 후 Agent(code-validator, mode 미지정)가 통과해야 한다.
-        # (engineer 대신 catastrophic 게이트 없는 code-validator 로 strict-conveyor 순수 검증.)
+        # (engineer 대신 catastrophic 게이트 없는 code-validator 로 진행 순서 검사 순수 검증.)
         self._begin_step("code-validator", "VERIFY_ONLY")
         rc = handle_pretooluse_agent(
             stdin_data=self._payload("code-validator", ""),
@@ -814,8 +814,8 @@ class StrictConveyorGateTests(_PreToolBase):
         self.assertEqual(rc, 0)
 
     def test_allows_namespaced_moded_agent_full_cycle(self) -> None:
-        # #700 AC3 (strict-conveyor 부분) — namespaced + moded step + mode 미지정 Agent 가
-        # strict-conveyor 를 추가 우회 없이 통과해야 한다. engineer catastrophic 게이트의
+        # #700 AC3 (진행 순서 검사 부분) — namespaced + moded step + mode 미지정 Agent 가
+        # 진행 순서 검사를 추가 우회 없이 통과해야 한다. engineer catastrophic 게이트의
         # lane-aware 화(풀4 engineer:IMPL)는 별개 작업 — Finding C follow-up.
         self._begin_step("code-validator", "VERIFY_ONLY")
         rc = handle_pretooluse_agent(
@@ -827,7 +827,7 @@ class StrictConveyorGateTests(_PreToolBase):
 
     def test_namespaced_agent_passing_strict_does_not_bypass_catastrophic_gate(self) -> None:
         # #700 (codex P1) — active impl run 에서 begin-step engineer 후 dcness:engineer 가
-        # strict-conveyor 를 통과해도 engineer catastrophic 게이트(module-architect PASS)를
+        # 진행 순서 검사를 통과해도 engineer catastrophic 게이트(module-architect PASS)를
         # 우회하면 안 된다 (strict norm 과 게이트 norm 의 연계 검증).
         self._begin_step("engineer", "IMPL")
         rc = handle_pretooluse_agent(
@@ -1295,7 +1295,7 @@ class FileOpHookTests(_PreToolBase):
 
     def test_mcp_tool_passes_boundary_and_records_trace(self) -> None:
         # #255 W5 — mcp__* 도구는 boundary 검사 skip + trace pre append.
-        # designer / code-validator false positive (prose-only 의심) 차단 의도.
+        # designer / code-validator false positive (자유서술 방식 의심) 차단 의도.
         from harness.session_state import (
             start_run, generate_run_id, write_pid_current_run, write_pid_session,
         )
@@ -1758,9 +1758,9 @@ class PostToolUseAgentHistogramTests(_PreToolBase):
         # 시각 진행 보장 — _now_iso 1초 단위라 sleep 1.1s 면 충분
         import time
         time.sleep(1.1)
-        # 이제 메인이 pr-reviewer (prose-only) 호출 — PreToolUse Agent 박음
+        # 이제 메인이 pr-reviewer (자유서술 방식) 호출 — PreToolUse Agent 박음
         self._simulate_pre("pr-reviewer", tool_use_id="toolu_pr1")
-        # pr-reviewer 가 file-op 안 함 (prose-only)
+        # pr-reviewer 가 file-op 안 함 (자유서술 방식)
         rc = handle_posttooluse_agent(
             stdin_data=self._post_payload("pr-reviewer", tool_use_id="toolu_pr1"),
             cc_pid=self.cc_pid,

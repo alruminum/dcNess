@@ -33,5 +33,5 @@ flowchart LR
 ## Module Design Check
 
 - Deep module:
-- 작은 공개 표면:
+- 작은 공개 노출 범위:
 - DI/의존 차단:

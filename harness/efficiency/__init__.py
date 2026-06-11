@@ -11,7 +11,7 @@ dcness 통합:
     - wrapper script = `scripts/dcness-efficiency` (PYTHONPATH 자동 + analyze →
       build_dashboard chain).
     - skill 진입 = dcness conveyor 패턴 (begin-run / end-run, finalize-run 미사용
-      — read-only 분석 도구라 catastrophic 룰 비대상).
+      — read-only 분석 도구라 중대 차단 룰 비대상).
 
 가격 update 시 `analyze_sessions.PRICING` dict 수정.
 """

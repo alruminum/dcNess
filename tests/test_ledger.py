@@ -503,7 +503,7 @@ class AppendStepCompletedTests(unittest.TestCase):
                 _SID, _RID, "product-acceptance", "STORY_ACCEPTANCE",
                 "PROSE_LOGGED", prose, prose_path, base_dir=base,
             )
-            expected = "acceptance gap 후속 라우팅(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상"
+            expected = "acceptance gap 후속 분기(`/impl`/`/design`/`/spec`/`/ux`/`/to-issue`) 예상"
             self.assertEqual(rec["enum"], "PROSE_LOGGED")
             self.assertEqual(rec["next_action"], expected)
             self.assertEqual(

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * dcNess public workflow surface contract.
+ * dcNess public workflow entrypoint contract.
  *
  * Checks that user-facing skill/command inventory and internal agent inventory
- * match the expected product surface documented in docs/plugin/positioning.md.
+ * match the expected product entrypoint inventory documented in docs/plugin/positioning.md.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
@@ -137,7 +137,7 @@ assertDocsMention('default skill', EXPECTED.defaultSkills, '/');
 assertDocsMention('support skill', EXPECTED.supportSkills, '/');
 assertDocsMention('advanced skill', EXPECTED.advancedSkills, '/');
 assertDocsMention('utility command', EXPECTED.utilityCommands, '/');
-// internal skill 은 public command 표면이 아니다 — `/` 진입점이 아닌 내부 skill 로만 명시.
+// internal skill 은 public command 노출 범위가 아니다 — `/` 진입점이 아닌 내부 skill 로만 명시.
 assertDocsMention('internal skill', EXPECTED.internalSkills);
 assertDocsMention('internal agent', EXPECTED.internalAgents);
 

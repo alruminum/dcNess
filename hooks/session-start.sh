@@ -69,7 +69,7 @@ export DCNESS_UPDATE_MSG
 
 # 슬림 inject (#596) — SessionStart 는 *초기화 + 최소 활성 안내* 만 담당.
 # 문서 진입 매트릭스 / 안티패턴 / soft 필수 / cost-aware 항목은 제거: 하네스 모델은
-# "문서 선독 기반 compliance" 가 아니라 "hook 이 차단하고 그 자리에서 복구". 절차·라우팅은
+# "문서 선독 기반 compliance" 가 아니라 "hook 이 차단하고 그 자리에서 복구". 절차·분기는
 # skill 진입 시 해당 skill 이 안내하고, 위반 복구 정보는 각 blocking hook 메시지가 제공한다.
 python3 -c "
 import json, os
@@ -80,12 +80,12 @@ msg = header + '''## [dcness 활성 환경]
 첫 응답 첫 줄에 \`[dcness 활성 확인]\` 토큰 출력 (활성 신호 — 부재 시 사용자가 룰 미적용을 즉시 인지).
 
 코드 hook 이 강제 영역만 차단한다. 위반하면 해당 hook 메시지가 그 자리에서 무엇을 고칠지 안내한다:
-- 시퀀스 (sub-agent 호출 순서): catastrophic-gate
-- 파일 경계 + 외부 mutation: file-guard
+- 시퀀스 (sub-agent 호출 순서): 순서 차단 훅(catastrophic-gate)
+- 파일 경계 + 외부 상태 변경: file-guard
 - 테스트 선행 (구현 전 테스트 먼저): tdd-guard
 - run 종료 자동화: stop-end-run
 
-hook 이 차단할 때만 그 메시지가 가리키는 doc/path 를 읽어 복구한다. SessionStart 에서 dcness 문서를 미리 통독하지 말 것 — 절차·라우팅은 skill 진입 시 해당 skill 이 안내한다.
+hook 이 차단할 때만 그 메시지가 가리키는 doc/path 를 읽어 복구한다. SessionStart 에서 dcness 문서를 미리 통독하지 말 것 — 절차·분기는 skill 진입 시 해당 skill 이 안내한다.
 '''
 print(json.dumps({
     'hookSpecificOutput': {

@@ -24,7 +24,7 @@ epic 단위 구현에 앞서 시스템 그림을 확정한다. 결과물은 root
 
 - 요구사항 출처: PRD의 Must 요구와 설계 결정이 연결되어 있는가.
 - 도메인 경계: entity, value object, aggregate, domain service가 epic 경계 안에서 설명되는가.
-- 모듈 깊이: 공개 표면은 작고, 복잡성은 내부로 숨겨지는가.
+- 모듈 깊이: 공개 노출 범위는 작고, 복잡성은 내부로 숨겨지는가.
 - 의존 방향: 모듈 간 의존 이유와 차단 방법이 설명되는가.
 - 계약 원장: cross-task 계약의 owner, producer, consumer, invariant, ordering, error mode, config, forbidden alternative가 빠지지 않는가.
 - 결정 기록: 기술 스택과 외부 의존 결정이 ADR로 남는가.

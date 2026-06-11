@@ -15,6 +15,7 @@
 - 필수: 계획 파일
 - 필수: 변경된 구현 파일
 - 상황별: domain-model, architecture, design, DB schema
+- 상황별: 용어·공개 진입점·분기 표현을 검증할 때만 [`../../docs/plugin/terms.md`](../../docs/plugin/terms.md)
 - 참고: [`references/finding-examples.md`](references/finding-examples.md)
 
 ## 판단 축
@@ -40,7 +41,7 @@
 - FAIL이면 모든 item이 재현 가능한 파일/라인 근거를 갖는다.
 - ESCALATE이면 어떤 입력이나 권한이 부족한지 명확하다.
 - 테스트 실행 결과가 필요한 경우 호출자가 제공한 증거만 사용한다.
-- Lite lane 처럼 계획 파일이 없는 직접 구현 경로에는 호출되지 않는다.
+- Lite 구현 경로처럼 계획 파일이 없는 직접 구현 경로에는 호출되지 않는다.
 
 ## 권한 경계
 

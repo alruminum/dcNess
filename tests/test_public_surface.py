@@ -1,4 +1,4 @@
-"""Regression tests for the public workflow surface gate."""
+"""Regression tests for the public workflow entrypoint gate."""
 from __future__ import annotations
 
 import shutil
@@ -25,7 +25,7 @@ class PublicSurfaceGateTests(unittest.TestCase):
         self.assertEqual(
             proc.returncode,
             0,
-            f"public surface gate failed\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}",
+            f"public workflow entrypoint gate failed\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}",
         )
 
     def test_surface_contract_uses_lifecycle_defaults(self) -> None:

@@ -9,7 +9,7 @@ model: sonnet
 
 # product-acceptance
 
-이 파일은 `product-acceptance` agent entrypoint다.
+이 파일은 `product-acceptance` agent 진입점이다.
 
 첫 행동:
 

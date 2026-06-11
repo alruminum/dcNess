@@ -1,6 +1,6 @@
 ---
 name: to-issue
-description: 자연어 문제, 작업 후보, 계획 조각을 GitHub issue 로 만들기 위한 public entrypoint. 사용자가 "/to-issue", "이슈로 만들어줘", "티켓 만들어줘", "GitHub issue 등록", "issue 초안", "작업 후보를 issue 로 쪼개줘"처럼 issue draft/publish 를 원할 때 사용한다. 메인 Claude 가 직접 질문하고 dcNess 표준 Issue Brief 초안을 보여준 뒤 사용자 승인 후에만 GitHub issue 와 Project item 을 만든다.
+description: 자연어 문제, 작업 후보, 계획 조각을 GitHub issue 로 만들기 위한 공개 진입점. 사용자가 "/to-issue", "이슈로 만들어줘", "티켓 만들어줘", "GitHub issue 등록", "issue 초안", "작업 후보를 issue 로 쪼개줘"처럼 issue draft/publish 를 원할 때 사용한다. 메인 Claude 가 직접 질문하고 dcNess 표준 Issue Brief 초안을 보여준 뒤 사용자 승인 후에만 GitHub issue 와 Project item 을 만든다.
 ---
 
 # To Issue Skill
@@ -31,6 +31,7 @@ description: 자연어 문제, 작업 후보, 계획 조각을 GitHub issue 로 
 - Project lifecycle 전체 축과 status 전이는 [`../../docs/plugin/github-project.md`](../../docs/plugin/github-project.md)를 SSOT 로 사용한다.
 - Issue Brief 본문 구조는 [`templates/issue-brief.md`](templates/issue-brief.md)를 템플릿으로 사용한다.
 - Issue Brief 생성 직전 형식 검증은 [`../../scripts/check_issue_body.mjs`](../../scripts/check_issue_body.mjs)를 사용한다.
+- 용어·공개 진입점·분기 표현을 수정하거나 리뷰할 때만 [`../../docs/plugin/terms.md`](../../docs/plugin/terms.md)를 확인한다.
 - `SKILL.md` 에 필드 선택지 목록이나 Issue Brief 본문 템플릿을 다시 쓰지 않는다. 선택지나 템플릿을 바꿔야 하면 기준 파일을 먼저 바꾼다.
 
 ## 입력 확인
@@ -40,7 +41,7 @@ description: 자연어 문제, 작업 후보, 계획 조각을 GitHub issue 로 
 - 문제/작업 후보 요약
 - 현재 동작 또는 배경
 - 원하는 동작 또는 만들 결과
-- 사용자가 보게 되는 command, API, 문서 surface, config shape, type/field 이름 같은 안정적인 계약
+- 사용자가 보게 되는 command, API, 문서 공개 노출 범위, config shape, type/field 이름 같은 안정적인 계약
 - 독립적으로 검증 가능한 acceptance criteria
 - IssueType: [`issue-fields.md`](issue-fields.md)의 `IssueType` 값
 - Priority: [`issue-fields.md`](issue-fields.md)의 `Priority` 값. 단발 등록은 기본값 없이 맥락에서 추론한다 ([`issue-fields.md`](issue-fields.md)의 Priority 추론 가이드).
