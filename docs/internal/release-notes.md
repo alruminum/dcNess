@@ -4,6 +4,34 @@
 
 ---
 
+## v0.6.6 (2026-06-11)
+
+**커밋 범위**: `v0.6.5..v0.6.6` (머지 PR 7개)
+**핵심 변경**: v0.6.5 직후 누적된 버그픽스·문서 정합 패치 롤업. GitHub Project lifecycle CI 의 gh 토큰 전달 결함 수정, conveyor 종료·step 재진입 게이트 보강, codex validator mktemp macOS flake 회귀 가드, plugin 용어 SSOT 문서 추가. 기능 변경 없는 trivial patch.
+
+### 무엇이 바뀌나
+
+1. **GitHub Project lifecycle CI 토큰 전달 수정** ([#727](https://github.com/alruminum/dcNess/pull/727) [#726](https://github.com/alruminum/dcNess/issues/726), [#729](https://github.com/alruminum/dcNess/pull/729) [#728](https://github.com/alruminum/dcNess/issues/728)) — github-project-lifecycle composite action 이 `with: gh-token` 으로 토큰을 전달(env 미상속 결함 해소) + owner type 판별 실패 시 graceful degrade. init-dcness 가 배포하는 thin yml 도 동일 토큰 전달 + `read:org` 스코프 안내 추가.
+
+2. **conveyor 종료·step 재진입 게이트 보강** ([#732](https://github.com/alruminum/dcNess/pull/732) [#730](https://github.com/alruminum/dcNess/issues/730), [#733](https://github.com/alruminum/dcNess/pull/733) [#731](https://github.com/alruminum/dcNess/issues/731), [#734](https://github.com/alruminum/dcNess/pull/734) [#722](https://github.com/alruminum/dcNess/issues/722)) — finalized fallback recurrence gap 차단 + step reentry run resolution 수정 + build-worker phase prose write 허용 + acceptance marker 로 Stop hook 종료 판정 보강.
+
+3. **codex validator mktemp macOS 호환 회귀 가드** ([#735](https://github.com/alruminum/dcNess/pull/735) [#723](https://github.com/alruminum/dcNess/issues/723)) — BSD mktemp 의 trailing-X 제약 문서화 + 회귀 가드 테스트(정적+행위) 추가로 `.XXXXXX.md` 형 suffix 재유입 차단(macOS 로컬 pytest flake 해소).
+
+4. **plugin 용어 SSOT 문서** ([#725](https://github.com/alruminum/dcNess/pull/725) [#721](https://github.com/alruminum/dcNess/issues/721)) — `docs/plugin/terms.md` 추가(용어·공개 진입점·분기 표현 기준).
+
+### 사용자 영향
+
+- **`claude plugin update dcness@dcness` 로 자동 반영** — plug-in 본체 경로(`harness/**`, `skills/**`, `scripts/**`, `docs/plugin/**`) + init-dcness 가 배포하는 yml.
+- GitHub Project lifecycle CI 를 쓰는 활성 프로젝트는 토큰 전달 수정으로 머지→Done 자동전이가 안정화된다(기존 활성 프로젝트는 init-dcness yml 재배포 필요 — [#728](https://github.com/alruminum/dcNess/issues/728)).
+
+### 업데이트
+
+```sh
+claude plugin update dcness@dcness
+```
+
+---
+
 ## v0.6.5 (2026-06-11)
 
 **커밋 범위**: `v0.6.1..v0.6.5` (머지 PR 12개)
