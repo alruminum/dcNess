@@ -268,21 +268,24 @@ story/epic 마감마다 제품 검수(`product-acceptance`)를 끼워 **PASS 후
 - **story 마감 task** (`Closes #story` 트레일러 대상) → `product-acceptance:STORY_ACCEPTANCE` 1회
 - **epic 마감 task** (`Closes #story` + `Closes #epic`) → `STORY_ACCEPTANCE` → `EPIC_ACCEPTANCE` 순 2회 (마지막 story 의 AC 와 epic 전체 PRD Must·cross-story 를 각각 닫는다)
 - 중간 task (`Part of`) / 공통 task / verify-only task → 비대상
+- **통합 브랜치 모드 (sub-PR base ≠ main)** — sub-PR 의 `Closes` 는 머지해도 발동하지 않으므로 **sub-PR 단계에서는 acceptance 를 발동하지 않는다**. 검수는 *마지막 main 머지 PR* (`Closes #story×N + #epic` 일괄) 의 머지 전에 story×N → epic 순으로 일괄 수행한다 — 발동 기준은 "task_index" 가 아니라 "이 PR 머지로 issue close 가 실제 발동하는가"다.
 
-**시점 — pr-reviewer PASS 후 · `pr-finalize.sh`(머지) *전***. `Closes #story` auto-close 는 머지 시 발동하므로, 머지 전에 검수해야 (1) story/epic issue close = 검수 통과와 동기화되고 (2) gap 수정이 *열려 있는 같은 PR* 에 commit 추가로 들어간다 (gap fix PR 난립 X). 엔진별 삽입점: 엔진 A 는 `pr-create.sh` 로 PR 생성까지 마친 뒤 pr-finalize 전, 엔진 B 는 pr-reviewer PASS 후 pr-finalize 전 — 두 경우 모두 open PR 번호가 검수 증거에 들어간다. 병렬 peer 세션도 동일 — `pr-finalize.sh` merge lock 진입 *전* 에 수행. 통합 브랜치 모드(sub-PR base ≠ main)는 auto-close 가 마지막 main 머지 PR 에서 일괄 발동하므로, 검수도 같은 원리로 *그 일괄 close 가 걸린 PR* 의 머지 전에 수행한다.
+**시점 — pr-reviewer PASS 후 · `pr-finalize.sh`(머지) *전*, 단 story 구현 증거가 모두 모인 뒤**. `Closes #story` auto-close 는 머지 시 발동하므로, 머지 전에 검수해야 (1) story/epic issue close = 검수 통과와 동기화되고 (2) gap 수정이 *열려 있는 같은 PR* 에 commit 추가로 들어간다 (gap fix PR 난립 X). 엔진별 삽입점: 엔진 A 는 `pr-create.sh` 로 PR 생성까지 마친 뒤 pr-finalize 전, 엔진 B 는 pr-reviewer PASS 후 pr-finalize 전 — 두 경우 모두 open PR 번호가 검수 증거에 들어간다. **병렬 peer 세션의 마감 task 는 같은 story 의 prior sibling task 가 *모두 완료(머지)* 됐음을 `wave-status` 로 먼저 확인한 후** acceptance 를 수행하고, 그 다음 `pr-finalize.sh`(merge lock + order gate) 를 호출한다 — sibling 미완료 상태의 검수는 불완전 증거 검수라 금지. sibling 이 아직 진행 중이면 완료를 기다렸다가 검수한다 (직렬 chain 은 순서상 자동 충족).
 
-**호출** (conveyor step 기록 — harness 는 `product-acceptance` 를 read-only validator 로 이미 인지):
+**호출** (conveyor step 기록 — harness 는 `product-acceptance` 를 read-only validator 로 이미 인지. mode 를 positional 로 기록해 STORY/EPIC step 을 분리한다):
 
 ```
-begin-step product-acceptance
+begin-step product-acceptance STORY_ACCEPTANCE    # epic 마감 2회차 = EPIC_ACCEPTANCE
 Agent(subagent_type="product-acceptance", prompt="""
-mode: STORY_ACCEPTANCE   # epic 마감 2회차는 EPIC_ACCEPTANCE
+mode: STORY_ACCEPTANCE
 검수 단위: <story issue 번호 또는 stories.md story 항목>
 기준 문서: <epic stories.md> + <story 의 impl 파일들>   # EPIC 은 docs/prd.md + architecture 추가
 구현 증거: <story 의 머지된 PR 목록(번호+제목)> + <현재 open 마감 PR 번호 + 변경 파일 목록> + <lint/build/test 결과>
 """)
-end-step product-acceptance <PASS|FAIL|ESCALATE> --prose-file <file>
+end-step product-acceptance STORY_ACCEPTANCE --prose-file <file>
 ```
+
+end-step 의 positional 인자는 **mode** 다 — 결론(`PASS`/`FAIL`/`ESCALATE`)은 end-step 인자가 아니라 **agent prose 마지막 단락**에 적힌다 (본 skill 의 다른 step 과 동일 규약). epic 마감은 `STORY_ACCEPTANCE` step 을 닫은 뒤 `begin-step product-acceptance EPIC_ACCEPTANCE` 로 두 번째 step 을 따로 기록한다 — mode 별 step 분리가 있어야 clean 게이트가 STORY/EPIC 각각의 PASS prose 를 확인할 수 있다.
 
 product-acceptance 는 read-only(Read/Glob/Grep) 라 `gh` 호출 불가 — PR 목록·검증 결과 증거는 **메인이 prompt 에 직접 담는다**. chain 진행 중 메인이 이미 갖고 있는 정보(각 task 의 PR URL·5줄 요약·검증 결과)라 추가 수집 비용은 없다.
 
@@ -364,7 +367,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/dcness-helper" wave-plan --register <impl-gl
 1. `/impl-loop <canonical-impl-path>` single 진입.
 2. 진입 초기 `wave-claim` 으로 task claim. conflict/completed/stale 이면 시작하지 않음.
 3. 기존 single flow 로 build/test/review/PR 생성.
-4. `scripts/pr-finalize.sh` 호출. 스크립트가 repo-level merge lock 을 잡고, 같은 story 의 모든 prior sibling `task_index` 완료 evidence 를 확인한 뒤 merge 한다.
+4. `scripts/pr-finalize.sh` 호출. 스크립트가 repo-level merge lock 을 잡고, 같은 story 의 모든 prior sibling `task_index` 완료 evidence 를 확인한 뒤 merge 한다. story/epic 마감 task 면 pr-finalize *전* 에 sibling 완료 확인(`wave-status`) + 마감 acceptance 를 먼저 수행한다 ([마감 acceptance](#마감-acceptance) 시점).
 5. merge 성공 시 claim board 에 completed 기록이 남는다.
 
 merge lock 이 보존하는 것:
