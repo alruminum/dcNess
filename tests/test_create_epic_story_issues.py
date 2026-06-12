@@ -78,9 +78,13 @@ STORIES_NEW = """**Base Branch:** feature/test_epic
 
 스토리 1 본문.
 
+**완료 시 확인 가능한 동작**: CLI 한 줄 실행으로 입력→결과 골격 동선 확인.
+
 ### Story 2 — 둘째 스토리
 
 스토리 2 본문.
+
+**완료 시 확인 가능한 동작**: Story 1 골격 위에서 둘째 증분 동작 확인.
 """
 
 STORIES_REGISTERED = """**GitHub Epic Issue:** [#100](https://github.com/testowner/testrepo/issues/100)
@@ -95,11 +99,15 @@ STORIES_REGISTERED = """**GitHub Epic Issue:** [#100](https://github.com/testown
 
 스토리 1 본문.
 
+**완료 시 확인 가능한 동작**: CLI 한 줄 실행으로 입력→결과 골격 동선 확인.
+
 ### Story 2 — 둘째 스토리
 
 **GitHub Issue:** [#102](https://github.com/testowner/testrepo/issues/102)
 
 스토리 2 본문.
+
+**완료 시 확인 가능한 동작**: Story 1 골격 위에서 둘째 증분 동작 확인.
 """
 
 
