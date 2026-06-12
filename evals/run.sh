@@ -23,8 +23,9 @@ for case_dir in "$ROOT"/evals/cases/*/; do
     [ -f "$case_path/$f" ] || { echo "[eval] $case_name: $f 없음 — skip"; overall_fail=1; continue 2; }
   done
 
-  # 블라인드 보장 — fixture 만 sandbox 로 복사 (정답표/프롬프트는 검수 agent 가 읽을 수 없는 위치)
-  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/dcness-eval-${case_name}-XXXXXX")"
+  # 블라인드 보장 — fixture 만 sandbox 로 복사 (정답표/프롬프트 제외). sandbox 이름은
+  # 케이스명을 포함하지 않는다 — 검수 agent 가 repo 의 정답표 경로를 역추적하지 못하게.
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/dcness-eval-XXXXXX")"
   for f in "$case_path"/*; do
     base="$(basename "$f")"
     case "$base" in prompt.md | expected.md) continue ;; esac
@@ -36,7 +37,7 @@ for case_dir in "$ROOT"/evals/cases/*/; do
   pass=0
 
   for ((i = 1; i <= RUNS; i++)); do
-    if ! report="$(claude -p "$prompt" --model "$MODEL" --allowedTools "Read" 2>/dev/null)"; then
+    if ! report="$(claude -p "$prompt" --model "$MODEL" --allowedTools "Read" --add-dir "$sandbox" 2>/dev/null)"; then
       echo "[eval] $case_name run $i: 검수 실행 실패"
       continue
     fi
