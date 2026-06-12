@@ -8,6 +8,7 @@
 
 - **기본은 현행 직렬 chain.** impl chain 은 task 한 개씩 진행한다. 한 task 가 PR merge 까지 끝난 뒤 다음 task 에 진입한다.
 - **병렬은 opt-in.** `wave-plan` 이 독립 후보를 계산하고 사용자가 병렬 실행을 명시적으로 선택한 경우에만 peer mode 를 등록한다.
+- **제품 동작 슬라이스가 우선이다.** module-architect 는 Story가 실제로 동작 검증되는 수직 슬라이스를 먼저 설계하고, 그 뒤에 `depends_on` 과 `수정 허용` 으로 병렬 후보를 계산한다. 파일 경계를 맞추기 위해 동작 슬라이스를 레이어별 부품 task로 찢지 않는다. 충돌하면 병렬성을 포기하고 직렬 실행한다.
 - **각 peer 는 동등한 메인 세션이다.** 한 세션 안에서 worker 를 흩뿌리고 모으는 방식이 아니다. 사용자가 터미널 N개에서 독립 interactive Claude Code 세션을 띄우고 각 세션이 기존 `/impl-loop <canonical-impl-path>` single task 를 수행한다.
 - **검증 규칙은 줄이지 않는다.** 각 peer task 는 기존 branch → PR → review → CI → merge 규칙을 그대로 탄다.
 
