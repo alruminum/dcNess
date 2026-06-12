@@ -125,7 +125,8 @@ Part of #N
 - `gh pr checks --watch` (CI 결과 대기)
 - auto-merge 완료 대기 (GitHub 백그라운드 lag)
 - peer claim 이 있으면 completed 기록 (`merge-lock complete`)
-- `git fetch origin main` (origin/main ref 동기화 — worktree 호환)
+- `git fetch origin main` (origin/main ref 동기화 — worktree 호환. 통합 브랜치 sub-PR 이면 origin/<base> 도 fetch)
+- **통합 브랜치 sub-PR (base ≠ default branch) 자동 인지** — CI 체크 0개 정상 처리 + 머지 후 PR body close 선언 기반 issue close 보정 ([통합 브랜치 케이스](#통합-브랜치-케이스-base-main-sub-pr-의-auto-close-한계-must))
 - (예정) Test Plan 종합 — 하위 commit 들의 `## Test Plan` 자동 수집·중복 제거·PR body 갱신
 
 argument 없이 호출 시 current branch 의 open PR 자동 검출. 명시 시 `pr-finalize.sh <PR_NUMBER>`.
@@ -200,6 +201,7 @@ stories.md 상단에 `**Base Branch:** feature/<slug>` 마커 박힌 epic (= 통
 흐름:
 
 1. **각 sub-PR (base = `feature/<slug>`)** — PR body 에 평소대로 `Part of #<story>` / `Closes #<story>` 박되 머지 시 *발동 안 됨* 전제. `Document-Exception-PR-Close: 통합 브랜치 sub-PR — main 머지 시 일괄 close` 박아 `check_pr_body.mjs` 게이트 우회 가능 (자유 선택).
+   - **close 보정 자동화**: sub-PR 머지를 [`scripts/pr-finalize.sh`](../../scripts/pr-finalize.sh) 로 하면 base ≠ default branch 를 감지해 (a) CI 체크 0개를 정상으로 처리하고 (b) PR body 의 `Closes`/`Fixes`/`Resolves` 선언이 가리키는 OPEN issue 를 PR 링크 코멘트와 함께 close 보정한다. 수동 CLOSE 불필요. 이미 close 된 issue 에 대한 마지막 →main 일괄 `Closes` 는 무해 (GitHub 이 무시).
 2. **마지막 통합 → main 머지 PR (base = main)** — PR body 에 **모든 story + epic 을 일괄 close**:
    ```
    Closes #<story1>
@@ -227,6 +229,8 @@ stories.md 상단에 `**Base Branch:** feature/<slug>` 마커 박힌 epic (= 통
    - i < total → `Part of #${STORY_ISSUE}`
    - **공통 task** (`story: 공통`) → `Part of #${EPIC_ISSUE}` (task-index trailer omit). 공통 여부의 진본 신호 = `story: 공통` (task_index 형식 아님).
    - **malformed/누락 가드 (MUST)**: 공통 형식(`—`)은 `story: 공통` 일 때만 유효하다. `story` 가 숫자(공통 아님)인데 `task_index` 가 `i/total` 형식이 아니면 — `—` 포함 무엇이든 (누락/malformed/legacy/version-skew) — **PR 생성 전 정지**. 숫자 story 의 `—` 를 공통으로 오분류해 `Part of #epic` 내보내면 story 이슈가 silent open 으로 남아 story-close 의미가 깨진다. `check_pr_body.mjs` 는 task-index 부재를 fallback(트레일러 1건)으로만 통과시켜 이 오분류를 못 잡으므로, 메인이 PR body 작성 전 본 가드를 직접 적용한다.
+
+**한 명령 구현 = [`scripts/pr-trailer.sh`](../../scripts/pr-trailer.sh)** — `"$PLUGIN_ROOT/scripts/pr-trailer.sh" <impl파일>` 이 위 1~4 판정을 수행해 트레일러 블록을 stdout 으로 출력한다 (`--base` 모드 = stories.md `**Base Branch:**` 마커 기반 PR base 출력). malformed 가드 hit 시 exit 1 로 PR 생성을 정지시킨다. 아래 bash recipe 는 스크립트의 동작 정의이자 수동 폴백이다.
 
 bash recipe (PR body 작성 직전 — 분기 키는 `STORY_NUM`, task_index 형식만으로 공통 판정 금지. 위 분기표를 그대로 PR_BODY 로 구성):
 
@@ -301,6 +305,8 @@ $cur"
 ### API 직접 close 절대금지
 
 `mcp__github__update_issue state:closed` 호출 금지 (epic / story 모두). 반드시 PR body `Closes #N` — [기본 룰](#기본-룰) 참조 (regular merge auto-close 인식 한계).
+
+> **예외 (유일)**: 통합 브랜치 sub-PR 머지 시 `pr-finalize.sh` 의 close 보정. base ≠ default branch 라 GitHub auto-close 가 구조적으로 발동 불가한 케이스에서, *PR body 의 close 선언을 근거로* 스크립트가 기계 보정하는 것이다 — 선언 없는 issue 를 임의로 닫는 직접 close 가 아니므로 본 금지의 취지(close 근거를 PR body 선언으로 일원화)를 유지한다.
 
 ---
 
