@@ -101,6 +101,19 @@ class ProductAcceptanceAgentContractTests(unittest.TestCase):
         self.assertIn("warning 자체만으로 FAIL", text)
         self.assertIn("핵심 AC의 wiring/contract 동작을 증명할 수 없으면 FAIL gap", text)
 
+    def test_prompt_classifies_user_flow_fit_and_internal_contract_exposure(self) -> None:
+        text = self.prompt.read_text(encoding="utf-8")
+        for needle in (
+            "사용자 동선 적합성 판정",
+            "대상 사용자가 제품의 언어와 자연스러운 진행 흐름",
+            "금지어 체크리스트가 아니다",
+            "내부 schema, DB shape, API payload, prompt/config shape, 내부 ID",
+            "개발자용 CLI/API",
+            "안정된 공개 계약",
+            "핵심 AC가 대상 사용자에게 부적합한 입력/진행 동선",
+        ):
+            self.assertIn(needle, text)
+
     def test_pipeline_assigns_cross_pr_story_behavior_to_product_acceptance(self) -> None:
         text = self.impl_loop_routing.read_text(encoding="utf-8")
         self.assertIn("code-validator 는 계획 대비 구현 정합", text)

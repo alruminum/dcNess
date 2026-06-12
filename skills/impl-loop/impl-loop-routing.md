@@ -96,7 +96,7 @@ flowchart TB
 | **build-worker** | `PASS` → 메인 git/PR → pr-reviewer · `SPEC_GAP_FOUND` → 분량 메타 분기(아래) · `TESTS_FAIL` → engineer(마저 구현) → **`IMPL_DONE` → code-validator → `PASS` 후 메인 git/PR** (self-validate 미통과분을 code-validator 가 복원 — 검증 없이 PR 금지) 또는 attempt 한도 초과 시 사용자 · `VALIDATION_BLOCKED` → **메인이 worker 가 남긴 검증 명령을 직접 실행(게이트 대행)** — exit 0 → 메인 git/PR → pr-reviewer · 게이트 FAIL → engineer 재시도(TESTS_FAIL 경로 합류, ≤3) · 메인도 실행 불가 → 사용자 · `IMPLEMENTATION_ESCALATE` → 사용자 |
 | **module-architect** | `PASS` → (impl 파일 생성·보강 후) build-worker 또는 test-engineer · `ESCALATE` → 사용자 |
 | **designer** | `PASS` → 사용자 PICK → test-engineer · `ESCALATE` → 사용자. 환경 = `docs/design.md` frontmatter `medium`. 재호출 한도 X |
-| **product-acceptance** | 마감 task 한정 (pr-reviewer PASS 후 · pr-finalize 전, [마감 acceptance 분기](#마감-acceptance-분기)). `PASS` → 메인 pr-finalize 머지 (epic 마감은 STORY → EPIC 2회 모두 PASS 후) · `FAIL` (auto-fixable gap: PRD/AC 미충족, 검수 증거 부족, 스모크 실패, mock-only green / 동작 증거 부족) → engineer:IMPL 재진입(gap 수정 — POLISH 아님, run 의 `--design-doc` 사전 조건 사용) → code-validator → 메인 commit/push to PR branch → pr-reviewer 재리뷰 → product-acceptance 재검수 (round ≤3) · `FAIL` (설계 결함·범위 재정의·보안/권한/데이터 gap) 또는 round 초과 → 정지 + 사용자 위임 · `ESCALATE` → 정지 + 사용자 위임 |
+| **product-acceptance** | 마감 task 한정 (pr-reviewer PASS 후 · pr-finalize 전, [마감 acceptance 분기](#마감-acceptance-분기)). `PASS` → 메인 pr-finalize 머지 (epic 마감은 STORY → EPIC 2회 모두 PASS 후) · `FAIL` (auto-fixable gap: PRD/AC 미충족, 검수 증거 부족, 스모크 실패, mock-only green / 동작 증거 부족, 명확한 구현 보강으로 닫히는 사용자 동선 부적합) → engineer:IMPL 재진입(gap 수정 — POLISH 아님, run 의 `--design-doc` 사전 조건 사용) → code-validator → 메인 commit/push to PR branch → pr-reviewer 재리뷰 → product-acceptance 재검수 (round ≤3) · `FAIL` (설계 결함·범위 재정의·사용자/UX 선택 필요·보안/권한/데이터 gap) 또는 round 초과 → 정지 + 사용자 위임 · `ESCALATE` → 정지 + 사용자 위임 |
 
 **build-worker `SPEC_GAP_FOUND` 분량 메타 분기** (외부 사용자 [F4 실측](https://github.com/alruminum/dcNess/issues/506)):
 - **small** (1 enum 값 / 1 필드 / 1 메서드 시그니처) → 메인이 직접 Edit (`docs/impl/NN-*.md` / `docs/domain-model.md`) + build-worker 재호출. **cycle 카운트 불포함** (경량 예외).
@@ -126,7 +126,7 @@ flowchart TB
 
 story/epic 마감 task (PR 트레일러 `Closes #story` / `Closes #epic` 대상) 의 pr-reviewer `PASS` 후 · pr-finalize(머지) *전* 에 product-acceptance 검수를 끼운다 (절차·경계 판정·시점 전제조건 = [`SKILL.md` 마감 acceptance](SKILL.md#마감-acceptance) — 병렬 peer 는 같은 story sibling 완료 확인 후, 통합 브랜치 모드는 sub-PR 이 아니라 마지막 main 머지 PR 전). 기본 ON, `--no-acceptance` 명시 run 만 비대상. epic 마감 task 는 `STORY_ACCEPTANCE` → `EPIC_ACCEPTANCE` 직렬 2회 — 앞이 PASS 못 닫으면 뒤로 진행하지 않는다.
 
-책임 소재: code-validator 는 계획 대비 구현 정합, pr-reviewer 는 이번 PR diff 위험을 본다. 여러 PR 이 합쳐진 story 동작과 여러 story 가 합쳐진 epic 동작은 마감 product-acceptance 가 맡는다. 핵심 AC 가 mock-only green 으로만 뒷받침되고 실제 제품 경계(API/CLI/UI/통합 wiring/compile-time contract)가 확인되지 않았으면 gap 이다.
+책임 소재: code-validator 는 계획 대비 구현 정합, pr-reviewer 는 이번 PR diff 위험을 본다. 여러 PR 이 합쳐진 story 동작과 여러 story 가 합쳐진 epic 동작·사용자 동선은 마감 product-acceptance 가 맡는다. 핵심 AC 가 mock-only green 으로만 뒷받침되고 실제 제품 경계(API/CLI/UI/통합 wiring/compile-time contract)가 확인되지 않았으면 gap 이다. 핵심 AC 가 실행되더라도 non-developer 대상 사용자가 내부 schema/payload/config shape 를 조립해야만 수행할 수 있으면 사용자 동선 부적합 gap 이다.
 
 마감 acceptance 대상 run 은 `begin-run impl --acceptance-required` 또는 `next-task --acceptance-required` marker 를 기록한다. 이 marker 가 있어야 Stop hook 이 pr-reviewer 를 종료 agent 로 보지 않고 product-acceptance 분기 turn 을 재발화한다. 비대상 run / `--no-acceptance` / verify-only 는 marker 를 기록하지 않아 기존 종료 동작을 유지한다.
 
@@ -138,6 +138,8 @@ standalone `/acceptance` 의 분기 규칙([`acceptance-routing.md`](../acceptan
 |---|---|
 | PRD / AC 미충족 · 검수 증거 부족 · 스모크 실패 (auto-fixable) | engineer:IMPL 재진입(gap 수정 — POLISH 아님: POLISH 는 pr-reviewer finding 전용·로직 변경 금지 모드, [`engineer-agent.md`](../../agents/engineer/engineer-agent.md) 정합). build-worker 엔진도 run 시작 시 `--design-doc <task impl 문서>` 를 기록하므로 engineer gate 를 통과한다. → `IMPL_DONE` → code-validator `PASS` → lint/build/test green → 메인 commit/push to PR branch → pr-reviewer 재리뷰 → product-acceptance 재검수 (round ≤3) |
 | mock-only green / 동작 증거 부족 (auto-fixable) | engineer:IMPL 재진입. 핵심 AC 를 닫을 수 있는 자동 동작 증거를 추가한다. 사람 E2E 만 요구하지 않고 정적 타입검사/compile, 실데이터(non-mock) 통합 테스트, UI 자동화, API/CLI smoke 중 AC 성격에 맞는 증거를 보강한다. |
+| 사용자 동선 부적합 / 내부 계약 노출 (명확한 구현 보강) | engineer:IMPL 재진입. 대상 사용자에게 맞는 제품 언어의 입력/진행 동선을 추가하고, 내부 schema/payload/config shape 조립을 사용자 흐름 밖으로 숨기거나 공개 계약으로 정리한다. |
+| 사용자 동선 부적합 / 내부 계약 노출 (사용자/UX 선택 필요) | 정지 + 사용자 위임 (`/ux`·`/design`·`/spec` 회수 후보 제시) |
 | 설계 결함 / 범위 재정의 필요 | 정지 + 사용자 위임 (`/design`·`compact-design` 회수 후보 제시) |
 | 성능 병목 / 리팩토링 필요 | 정지 + 사용자 위임 (마감 PR 범위 초과 가능성 — follow-up `/to-issue` 후보 제시. 사용자가 본 PR 범위 내 수정을 지시한 경우에만 auto-fixable 루프 재사용) |
 | 보안 / 권한 / 데이터 리스크 | 정지 + 사용자 위임 |
@@ -145,6 +147,7 @@ standalone `/acceptance` 의 분기 규칙([`acceptance-routing.md`](../acceptan
 
 - gap 수정도 [finding 수용 자세](#retry-한도) 를 따른다 — 같은 클래스 gap 이 반복되면 점 패치 대신 root cause 를 의심한다.
 - 정적 타입검사나 compile gate 가 의미 있는 stack 인데 증거에 없으면 product-acceptance 가 품질 게이트 warning 으로 남긴다. warning 자체는 자동 FAIL 이 아니지만, 핵심 AC wiring/contract 검증 부재와 결합하면 `mock-only green / 동작 증거 부족` gap 으로 승격한다.
+- 개발자용 CLI/API 의 JSON/config 입력은 대상 사용자에게 자연스러운 공개 계약이면 허용한다. 단 예제·필드 의미·오류 메시지 없이 내부 shape 만 노출되면 warning 또는 `사용자 동선 부적합 / 내부 계약 노출` gap 으로 승격한다.
 - **gap 수정 commit 후 재검수는 마감 시퀀스 처음부터** — epic 마감에서 STORY PASS → EPIC FAIL 로 수정 commit 이 생겼으면, 그 commit 이 마지막 story 의 동작을 바꿀 수 있으므로 이전 STORY PASS 는 stale 다. `STORY_ACCEPTANCE` 부터 다시 돌린다. clean 게이트가 인정하는 STORY/EPIC PASS 흔적은 *마지막 acceptance gap 수정 commit 이후* 의 PASS 만이다.
 - round 카운트는 story 경계와 epic 경계가 독립이다 (STORY round ≤3, EPIC round ≤3). round = "FAIL → gap 수정 → 재검수" 사이클 기준 — epic fix 에 따른 확인용 STORY 재검수(수정 없음)는 STORY round 를 소비하지 않는다.
 - round 초과 → 정지 + 사용자 위임: 남은 gap 목록 + follow-up 분리 후보 + 머지/보류 판단 지점을 보고한다. 사용자 결정(머지 강행 / gap 수정 계속 / follow-up 분리) 전 pr-finalize 금지.
