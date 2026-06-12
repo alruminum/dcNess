@@ -32,6 +32,7 @@ import os
 import re
 import secrets
 import select
+import shutil
 import subprocess
 import sys
 import uuid
@@ -43,6 +44,7 @@ __all__ = [
     "SESSION_ID_RE",
     "DEFAULT_RUN_TTL_SEC",
     "DEFAULT_PID_TTL_SEC",
+    "DEFAULT_RUN_DIR_TTL_SEC",
     "LIVE_JSON_VERSION",
     "STDIN_TIMEOUT_SEC",
     "valid_cc_pid",
@@ -76,6 +78,7 @@ __all__ = [
     "clear_pending_agent",
     "complete_run",
     "cleanup_stale_runs",
+    "cleanup_stale_run_dirs",
     "is_project_active",
     "enable_project",
     "disable_project",
@@ -89,6 +92,7 @@ RUN_ID_RE = re.compile(r"^run-[a-z0-9]{8}$")
 
 DEFAULT_RUN_TTL_SEC = 24 * 60 * 60        # 24h — completed slot 보관 후 cleanup
 DEFAULT_PID_TTL_SEC = 24 * 60 * 60        # 24h — by-pid 파일 stale 기준 (PID 재사용 보호)
+DEFAULT_RUN_DIR_TTL_SEC = 7 * 24 * 60 * 60  # 7d — run 디렉토리(prose/ledger) 보관. /run-review 원자료라 슬롯(24h)보다 길게
 STALE_STEP_TTL_SEC = 30 * 60              # 30min — current_step heartbeat stale 기준 (DCN-30-30)
 LIVE_JSON_VERSION = 1                      # 스키마 진화 추적
 STDIN_TIMEOUT_SEC = 2.0                    # 훅 stdin 읽기 hang 방지
@@ -900,6 +904,59 @@ def cleanup_stale_runs(
 
     if removed:
         update_live(session_id, base_dir=base_dir, active_runs=survivors)
+    return removed
+
+
+def cleanup_stale_run_dirs(
+    *,
+    ttl_sec: int = DEFAULT_RUN_DIR_TTL_SEC,
+    base_dir: Optional[Path] = None,
+) -> int:
+    """오래된 run 디렉토리(prose/ledger) 삭제 — 모든 세션 공통.
+
+    `.sessions/*/runs/<rid>/` 중 디렉토리·직계 파일의 최신 mtime 이 ttl_sec
+    (기본 7일)을 초과한 run 디렉토리를 통째로 제거한다.
+
+    run 슬롯(24h)·by-pid(24h)와 달리 prose 는 `/run-review` 사후 분석의
+    원자료라 더 길게 보관한다. heartbeat TTL(24h)의 7배 여유 + 최신 mtime
+    기준이라 7일 안에 쓰기가 한 번이라도 있던 run 은 보존된다 — 살아있는
+    run 을 지울 일은 없다.
+
+    Returns: 삭제된 run 디렉토리 수. 개별 실패는 건너뛴다 (best-effort).
+    """
+    base = _resolve_base(base_dir)
+    sessions = base / ".sessions"
+    if not sessions.exists():
+        return 0
+    now = datetime.now(timezone.utc).timestamp()
+    removed = 0
+    try:
+        session_dirs = list(sessions.iterdir())
+    except OSError:
+        return 0
+    for sdir in session_dirs:
+        runs = sdir / "runs"
+        if not runs.is_dir():
+            continue
+        try:
+            run_dirs = list(runs.iterdir())
+        except OSError:
+            continue
+        for rdir in run_dirs:
+            if not rdir.is_dir():
+                continue
+            try:
+                newest = rdir.stat().st_mtime
+                for child in rdir.iterdir():
+                    newest = max(newest, child.stat().st_mtime)
+            except OSError:
+                continue
+            if now - newest > ttl_sec:
+                try:
+                    shutil.rmtree(rdir)
+                    removed += 1
+                except OSError:
+                    pass
     return removed
 
 
