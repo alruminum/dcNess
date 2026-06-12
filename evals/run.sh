@@ -23,12 +23,20 @@ for case_dir in "$ROOT"/evals/cases/*/; do
     [ -f "$case_path/$f" ] || { echo "[eval] $case_name: $f 없음 — skip"; overall_fail=1; continue 2; }
   done
 
-  prompt="$(sed -e "s|{{REPO_ROOT}}|$ROOT|g" -e "s|{{CASE_DIR}}|$case_path|g" "$case_path/prompt.md")"
+  # 블라인드 보장 — fixture 만 sandbox 로 복사 (정답표/프롬프트는 검수 agent 가 읽을 수 없는 위치)
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/dcness-eval-${case_name}-XXXXXX")"
+  for f in "$case_path"/*; do
+    base="$(basename "$f")"
+    case "$base" in prompt.md | expected.md) continue ;; esac
+    cp -R "$f" "$sandbox/"
+  done
+
+  prompt="$(sed -e "s|{{REPO_ROOT}}|$ROOT|g" -e "s|{{CASE_DIR}}|$sandbox|g" "$case_path/prompt.md")"
   expected="$(cat "$case_path/expected.md")"
   pass=0
 
   for ((i = 1; i <= RUNS; i++)); do
-    if ! report="$(claude -p "$prompt" --model "$MODEL" --allowedTools "Read" "Glob" "Grep" 2>/dev/null)"; then
+    if ! report="$(claude -p "$prompt" --model "$MODEL" --allowedTools "Read" 2>/dev/null)"; then
       echo "[eval] $case_name run $i: 검수 실행 실패"
       continue
     fi
@@ -59,6 +67,7 @@ $report"
     fi
   done
 
+  rm -rf "$sandbox"
   echo "[eval] $case_name — 정답 $pass/$RUNS"
   [ "$pass" -gt 0 ] || overall_fail=1
 done
