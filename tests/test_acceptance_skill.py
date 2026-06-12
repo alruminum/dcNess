@@ -64,12 +64,25 @@ class AcceptanceSkillContractTests(unittest.TestCase):
             self.assertIn("사람 E2E", text)
             self.assertIn("mock-only green", text)
 
+    def test_acceptance_recognizes_user_flow_fit_as_separate_axis(self) -> None:
+        skill = self.skill.read_text(encoding="utf-8")
+        routing = self.routing.read_text(encoding="utf-8")
+
+        for text in (skill, routing):
+            self.assertIn("사용자 동선", text)
+            self.assertIn("대상 사용자", text)
+            self.assertIn("입력/진행 동선", text)
+            self.assertIn("내부 schema", text)
+            self.assertIn("체크리스트가 아니라", text)
+            self.assertIn("개발자용 CLI/API", text)
+
     def test_inline_acceptance_owns_cross_pr_story_behavior(self) -> None:
         text = self.impl_loop.read_text(encoding="utf-8")
         self.assertIn("여러 PR 이 합쳐진 story 동작", text)
         self.assertIn("여러 story 가 합쳐진 epic 동작", text)
         self.assertIn("product-acceptance 가 맡는다", text)
         self.assertIn("mock-only green / 동작 증거 부족", text)
+        self.assertIn("사용자 동선 부적합 / 내부 계약 노출", text)
 
     def test_lite_impl_is_not_forced_into_acceptance(self) -> None:
         text = self.skill.read_text(encoding="utf-8")
@@ -88,6 +101,7 @@ class AcceptanceSkillContractTests(unittest.TestCase):
 
         self.assertIn("성능 병목 / 리팩토링 필요 | `/to-issue` 후보 + `/impl` 또는 `/design`", routing)
         self.assertIn("보안 / 권한 / 데이터 리스크 | `/to-issue` 후보 + `/design` 또는 사용자 위임", routing)
+        self.assertIn("사용자 동선 부적합 / 내부 계약 노출", routing)
         self.assertNotIn("performance improvement loop", routing)
         self.assertNotIn("security deep-dive", routing)
 
