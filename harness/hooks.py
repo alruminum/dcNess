@@ -33,6 +33,9 @@ from typing import Any, Dict, Optional
 from harness.agent_names import normalize_agent_type
 from harness.session_state import (
     _read_steps_jsonl,
+    cleanup_stale_pid_files,
+    cleanup_stale_run_dirs,
+    cleanup_stale_runs,
     read_live,
     read_pid_current_run,
     run_dir,
@@ -343,6 +346,8 @@ def handle_session_start(
     2. regex 검증
     3. `.by-pid/{cc_pid}` ← sid 작성
     4. `.sessions/{sid}/live.json` 초기화 (없으면)
+    5. 상태 위생 청소 — stale by-pid 파일(24h) + 본 세션 run 슬롯(24h)
+       + 전 세션 run 디렉토리(7d). 실패해도 세션 시작을 막지 않는다.
 
     실패 시 silent (exit 0).
     """
@@ -369,6 +374,21 @@ def handle_session_start(
             update_live(sid, base_dir=base_dir)
     except (OSError, ValueError):
         return 0
+
+    # 상태 위생 청소 — 세션 시작마다 1회. TTL 상수는 session_state 가 SSOT.
+    # 청소 실패가 세션 시작을 막으면 안 되므로 fail-open.
+    try:
+        removed_pids = cleanup_stale_pid_files(base_dir=base_dir)
+        removed_slots = cleanup_stale_runs(sid, base_dir=base_dir)
+        removed_dirs = cleanup_stale_run_dirs(base_dir=base_dir)
+        if removed_pids or removed_slots or removed_dirs:
+            print(
+                f"[session-start] 상태 청소 — by-pid {removed_pids}건, "
+                f"run 슬롯 {removed_slots}건, run 디렉토리 {removed_dirs}건 제거",
+                file=sys.stderr,
+            )
+    except Exception:
+        pass
     return 0
 
 
