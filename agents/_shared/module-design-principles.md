@@ -2,7 +2,7 @@
 
 > 모듈 설계 시 system-architect / module-architect / engineer / test-engineer / build-worker / architecture-validator 가 공유하는 agent 내부 기준. 호출 시 본 문서 read 의무.
 
-본 문서는 세 가지 영역의 원칙을 한 곳에 모은 SSOT 다. 각 agent 본문에서 같은 룰을 반복해 박지 않고, 본 문서를 참조한다.
+본 문서는 네 가지 영역의 원칙을 한 곳에 모은 SSOT 다. 각 agent 본문에서 같은 룰을 반복해 박지 않고, 본 문서를 참조한다.
 
 ## Deep Modules — 깊은 모듈
 
@@ -96,6 +96,23 @@ function applyDiscount(cart): void {
 - engineer 의 인터페이스 구현 시
 - test-engineer 의 테스트 작성 시 — 인터페이스가 위 세 룰 위반이면 SPEC_GAP_FOUND emit
 
+## Product Behavior Slices — 제품 동작 수직 슬라이스
+
+Story 설계의 기본 단위는 레이어나 파일 묶음이 아니라 사용자가 약속받은 동작이다. task 분할은 가능한 한 작은 수직 슬라이스가 실제 제품 경계(UI/API/CLI/worker entrypoint/통합 wiring)에서 관찰되도록 만든다.
+
+### 설계 시 자문
+
+1. 이 Story가 끝나면 사용자가 실제로 무엇을 실행하거나 확인할 수 있는가?
+2. 각 task 또는 task 묶음이 그 동작의 어느 경계를 연결하는가?
+3. 첫 제품 경계 동작 증거가 마지막 task까지 밀리지 않는가?
+4. 파일 경계와 병렬 독립성을 위해 동작 슬라이스를 레이어별 부품으로 찢고 있지 않은가?
+
+### 적용 영역
+
+- module-architect — Story 완료 시 검증되는 동작과 첫 동작 증거 지점을 impl 문서에 남긴다.
+- architecture-validator — impl 문서가 레이어별 부품 task만 만들고 실제 Story 동작 책임을 비워두면 finding 으로 드러낸다.
+- engineer / build-worker — 핵심 AC를 mock-only green 이 아니라 제품 경계의 동작 증거로 연결한다.
+
 ## 의존성 강제 — 빌드 시점 차단
 
 모듈 간 의존을 *명시 선언* 하고, 빌드 시점에 규칙 위반을 차단한다. *코드 작성 후 회귀 검증* 영역이 아니라 *작성 시점에 차단* 영역.
@@ -153,7 +170,7 @@ system-architect 가 architecture.md 의 *기술 스택* 영역에 DI 패턴 명
 | Agent | evidence |
 |---|---|
 | [`system-architect`](../system-architect.md) | architecture 템플릿의 `Module Design Check`, 의존성 차단 도구, DI 패턴, Contract Ledger |
-| [`module-architect`](../module-architect.md) | impl 템플릿의 `Module Design Check`, 작은 공개 노출 범위, contract/interface, 검증 가능한 수용 기준 |
+| [`module-architect`](../module-architect.md) | impl 템플릿의 `Module Design Check`, 작은 공개 노출 범위, contract/interface, Story 동작 수직 슬라이스, 검증 가능한 수용 기준 |
 | [`engineer`](../engineer.md) | 구현 보고의 계약 준수, 의존 주입 또는 wrapper 사용, 검증 결과 |
 | [`test-engineer`](../test-engineer.md) | 테스트 보고의 REQ 연결, 의존 mock 경계, 구현 독립성 |
 | [`build-worker`](../build-worker.md) | phase 보고의 RED/GREEN/self-validate 증거 |
@@ -167,6 +184,7 @@ system-architect 가 architecture.md 의 *기술 스택* 영역에 DI 패턴 명
 - **설계 표준**: 모듈 공개 노출 범위, 의존 방향, DI 판단, 차단 도구가 산출물에 남았는가.
 - **계약과 인터페이스**: Contract Ledger 가 signature 뿐 아니라 invariant, ordering, error mode, config, consumer, forbidden alternative 를 담는가.
 - **구현 가능성**: engineer 와 test-engineer 가 의존을 주입하고 결과를 관찰할 수 있는가.
+- **제품 동작 슬라이스**: Story 완료 시 실제로 검증되는 동작과 첫 제품 경계 증거가 산출물에 남았는가.
 - **drift 통제**: 같은 계약의 사본이 서로 다른 의미로 남지 않았는가.
 
 자동으로 확인 가능한 신호는 적극 활용하되, grep 으로 잡히는 패턴만 검증 범위로 축소하지 않는다. 질적 판단이 필요한 영역은 finding 이 아니라 수동 review 권고로 분리해 사용자에게 보여준다.

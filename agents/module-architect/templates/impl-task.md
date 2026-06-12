@@ -29,6 +29,15 @@ contract:
 
 -
 
+## Story 동작 슬라이스
+
+> 파일이나 레이어가 아니라 사용자가 약속받은 동작을 적는다. 이 task 단독으로 제품 경계 동작이 열리지 않으면, 어느 선행/후속 task 묶음에서 처음 동작하는지와 그 이유를 쓴다. 첫 동작 증거가 Story 마지막 task까지 밀리면 여기와 module-architect 보고에 warning 을 남긴다.
+
+- Story 완료 시 실제로 검증되는 동작:
+- 이 task가 연결하는 제품 경계(UI/API/CLI/worker entrypoint/통합 wiring):
+- 첫 동작 증거 지점:
+- 병렬성보다 동작 슬라이스를 우선한 결정:
+
 ## Scope
 
 ### 수정 허용
