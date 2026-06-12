@@ -13,6 +13,12 @@
 
 -
 
+## 동작 증거
+
+- 핵심 AC별 증거:
+- mock/stub/fake 경계:
+- typecheck/compile warning:
+
 ## PR 본문 초안
 
 ### 관련 이슈 번호
@@ -32,6 +38,8 @@ task-index: <i>/<total>
 ### Test Plan
 
 - [ ] 새 테스트 RED->GREEN 확인
+- [ ] 핵심 AC 동작 증거 확인
+- [ ] typecheck/compile 필요 시 확인
 - [ ] 회귀 검증
 
 ## phase prose 파일

@@ -42,6 +42,9 @@ class SkillScenarioRegressionTests(unittest.TestCase):
         self.build_worker = (
             ROOT / "agents" / "build-worker" / "build-worker-agent.md"
         ).read_text(encoding="utf-8")
+        self.test_engineer = (
+            ROOT / "agents" / "test-engineer" / "test-engineer-agent.md"
+        ).read_text(encoding="utf-8")
         self.init_doc = (ROOT / "commands" / "init-dcness.md").read_text(
             encoding="utf-8"
         )
@@ -96,6 +99,13 @@ class SkillScenarioRegressionTests(unittest.TestCase):
         ):
             self.assertIn(enum, self.build_worker)
             self.assertIn(enum, template)
+
+    def test_test_agents_do_not_close_core_ac_with_mock_only_green(self) -> None:
+        """테스트 생성/경량 구현 단계가 mock-only green 을 핵심 AC 증거로 남기지 않도록 닻을 둔다."""
+        for text in (self.test_engineer, self.build_worker):
+            self.assertIn("동작 증거", text)
+            self.assertIn("mock-only", text)
+            self.assertIn("핵심 AC", text)
 
     # ----- 시나리오 2b — /impl-loop chain review 5줄 echo -----
     def test_impl_loop_chain_review_echo_is_five_line(self) -> None:

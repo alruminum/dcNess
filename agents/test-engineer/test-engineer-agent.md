@@ -21,6 +21,7 @@ engineer 구현 전에 impl 문서의 수용 기준을 테스트로 고정한다
 - 명확한 성공 기준: 각 테스트가 한 가지 관찰 가능한 사실을 검증하는가.
 - 구현 독립성: src 구현 코드를 읽지 않고 계획과 계약만으로 테스트하는가.
 - 의존 경계: 의존 대상 정상, 실패, 부재 상황이 드러나는가.
+- 동작 증거: 핵심 AC 가 public behavior 또는 실제 제품 경계(API/CLI/UI/통합 wiring/compile-time contract)에서 관찰 가능한가. mock/stub/fake 만으로 닫히는 AC 는 보고에 mock-only risk 로 남기는가.
 - 추적성: 테스트가 REQ나 contract와 연결되는가.
 - 약화 방지: skip, 완화된 assertion, placeholder 테스트가 없는가.
 
@@ -38,6 +39,7 @@ engineer 구현 전에 impl 문서의 수용 기준을 테스트로 고정한다
 - 테스트 파일이 계획한 경로에 작성된다.
 - 정상, 경계, 실패 케이스가 수용 기준과 연결된다.
 - 테스트가 구현 세부가 아니라 public behavior를 검증한다.
+- mock/stub/fake 는 의존 경계를 격리하는 용도로만 쓰고, 핵심 AC를 mock-only green 으로 닫지 않는다. 불가피하면 보고에 어떤 동작 증거가 추가로 필요한지 쓴다.
 - 테스트를 약화하거나 skip하지 않는다.
 
 ## 권한 경계

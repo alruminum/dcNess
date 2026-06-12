@@ -21,6 +21,7 @@ class AcceptanceGapRoutingContractTests(unittest.TestCase):
             "PRD / AC 미충족": "`/to-issue` 후보 + `/impl`",
             "설계 결함 / 범위 재정의 필요": "`/design` 또는 `/spec`",
             "검수 증거 부족 / 스모크 실패": "gap 또는 bug `/to-issue` 후보 + `/impl`",
+            "mock-only green / 동작 증거 부족": "gap 또는 bug `/to-issue` 후보 + `/impl`",
             "UX 미완성": "`/ux`",
             "성능 병목 / 리팩토링 필요": "`/to-issue` 후보 + `/impl` 또는 `/design`",
             "보안 / 권한 / 데이터 리스크": "`/to-issue` 후보 + `/design` 또는 사용자 위임",
@@ -40,8 +41,21 @@ class AcceptanceGapRoutingContractTests(unittest.TestCase):
         self.assertIn("명시 옵션", text)
         self.assertIn("GitHub issue", text)
         self.assertIn("story/epic sub-issue", text)
-        self.assertIn("E2E gap loop", text)
+        self.assertIn("사람 full E2E gap loop", text)
         self.assertIn("MVP 범위 밖", text)
+
+    def test_acceptance_distinguishes_behavior_evidence_from_mock_only(self) -> None:
+        text = self.acceptance_routing.read_text(encoding="utf-8")
+        for needle in (
+            "동작 증거 판정",
+            "정적 타입검사/compile",
+            "실데이터(non-mock) 통합 테스트",
+            "UI 자동화",
+            "API/CLI smoke",
+            "mock-only green",
+            "품질 게이트 warning",
+        ):
+            self.assertIn(needle, text)
 
     def test_acceptance_gap_uses_to_issue_not_removed_issue_report(self) -> None:
         acceptance = self.acceptance_routing.read_text(encoding="utf-8")

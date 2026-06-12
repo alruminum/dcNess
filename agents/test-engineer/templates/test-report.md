@@ -13,6 +13,12 @@
 | 경계 |  |  |
 | 실패 |  |  |
 
+## 동작 증거
+
+- 핵심 AC별 public behavior:
+- mock/stub/fake 경계:
+- 추가로 필요한 non-mock 증거:
+
 ## SPEC_GAP
 
 -

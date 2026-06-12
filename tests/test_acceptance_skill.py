@@ -13,6 +13,7 @@ class AcceptanceSkillContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.skill = ROOT / "skills" / "acceptance" / "SKILL.md"
         self.routing = ROOT / "skills" / "acceptance" / "acceptance-routing.md"
+        self.impl_loop = ROOT / "skills" / "impl-loop" / "impl-loop-routing.md"
 
     def test_acceptance_skill_exists_as_story_epic_mvp(self) -> None:
         text = self.skill.read_text(encoding="utf-8")
@@ -26,6 +27,7 @@ class AcceptanceSkillContractTests(unittest.TestCase):
         self.assertNotIn("SPEC_ACCEPTANCE", text)
         self.assertIn("full E2E", text)
         self.assertIn("MVP 범위", text)
+        self.assertIn("mock-only green", text)
 
     def test_acceptance_routing_defines_pass_fail_without_auto_mutation(self) -> None:
         text = self.routing.read_text(encoding="utf-8")
@@ -43,9 +45,31 @@ class AcceptanceSkillContractTests(unittest.TestCase):
         routing = self.routing.read_text(encoding="utf-8")
         for text in (skill, routing):
             self.assertIn("AC / PR / test evidence", text)
+            self.assertIn("동작 증거", text)
+            self.assertIn("mock-only green", text)
             self.assertIn("PRD Must", text)
             self.assertIn("cross-story gap", text)
             self.assertIn("security/ops risk", text)
+
+    def test_acceptance_recognizes_automated_behavior_evidence(self) -> None:
+        skill = self.skill.read_text(encoding="utf-8")
+        routing = self.routing.read_text(encoding="utf-8")
+
+        for text in (skill, routing):
+            self.assertIn("동작 증거", text)
+            self.assertIn("정적 타입검사", text)
+            self.assertIn("실데이터(non-mock) 통합 테스트", text)
+            self.assertIn("UI 자동화", text)
+            self.assertIn("API/CLI smoke", text)
+            self.assertIn("사람 E2E", text)
+            self.assertIn("mock-only green", text)
+
+    def test_inline_acceptance_owns_cross_pr_story_behavior(self) -> None:
+        text = self.impl_loop.read_text(encoding="utf-8")
+        self.assertIn("여러 PR 이 합쳐진 story 동작", text)
+        self.assertIn("여러 story 가 합쳐진 epic 동작", text)
+        self.assertIn("product-acceptance 가 맡는다", text)
+        self.assertIn("mock-only green / 동작 증거 부족", text)
 
     def test_lite_impl_is_not_forced_into_acceptance(self) -> None:
         text = self.skill.read_text(encoding="utf-8")
