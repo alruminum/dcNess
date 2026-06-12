@@ -6,6 +6,13 @@
 #   2. gh pr checks --watch (CI 결과 대기)
 #   3. auto-merge 완료 대기 (GitHub 백그라운드 lag)
 #   4. git fetch origin main (origin/main remote-tracking 만 갱신, refspec 없이)
+#   5. (통합 브랜치 sub-PR 만) PR body 의 close 선언 기반 issue close 보정
+#
+# 통합 브랜치 sub-PR (base ≠ default branch) 인지:
+#   - CI 체크 0개를 정상으로 처리 — 검증 워크플로는 default branch 대상 PR 만 발동.
+#   - GitHub auto-close 는 default branch 머지만 인식 → PR body 의 Closes/Fixes/Resolves
+#     선언을 근거로 머지 후 gh issue close 보정 (git-spec "통합 브랜치 케이스" 절).
+#     임의 직접 close 가 아니라 PR body 선언의 기계 보정이다.
 #
 # 사용:
 #   pr-finalize.sh                # current branch 의 open PR 자동 검출
@@ -77,6 +84,21 @@ if [ -z "$BRANCH" ]; then
   BRANCH=$(git rev-parse --abbrev-ref HEAD)
 fi
 
+# 통합 브랜치 sub-PR 판정 — base ≠ default branch
+DEFAULT_REF=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || true)
+if [ -z "$DEFAULT_REF" ]; then
+  DEFAULT_REF=main
+fi
+BASE_REF=$(gh pr view "$PR" --json baseRefName -q .baseRefName 2>/dev/null || true)
+if [ -z "$BASE_REF" ]; then
+  BASE_REF="$DEFAULT_REF"
+fi
+INTEGRATION=false
+if [ "$BASE_REF" != "$DEFAULT_REF" ]; then
+  INTEGRATION=true
+  echo "[pr-finalize] base=$BASE_REF ≠ default=$DEFAULT_REF — 통합 브랜치 sub-PR 모드" >&2
+fi
+
 # working tree dirty check
 if [ -n "$(git status --porcelain)" ]; then
   echo "[pr-finalize] WARN: working tree dirty — fetch sync 영향은 없지만 다음 작업 시 충돌 위험" >&2
@@ -131,10 +153,23 @@ MERGE_ERR=$(gh pr merge "$PR" --auto --merge 2>&1 >/dev/null) || {
 }
 
 # Step 2: CI 결과 대기
+# 통합 브랜치 sub-PR 은 CI 체크 0개가 정상 (검증 워크플로는 default branch 대상 PR 만
+# 발동) — watch 가 "no checks reported" 로 실패하면 check-run 수를 재확인해 0개면 통과.
 echo "[pr-finalize] CI 결과 대기 (gh pr checks --watch)" >&2
 if ! gh pr checks "$PR" --watch >&2; then
-  echo "[pr-finalize] ERROR: CI FAIL — 머지 안 됨. sync skip" >&2
-  exit 1
+  CHECKS_OK=false
+  if [ "$INTEGRATION" = "true" ]; then
+    HEAD_OID=$(gh pr view "$PR" --json headRefOid -q .headRefOid 2>/dev/null || true)
+    CHECK_COUNT=$(gh api "repos/{owner}/{repo}/commits/${HEAD_OID}/check-runs" -q '.total_count' 2>/dev/null || true)
+    if [ "$CHECK_COUNT" = "0" ]; then
+      echo "[pr-finalize] 통합 브랜치 sub-PR 에 CI 체크 없음 — 정상, 계속 진행" >&2
+      CHECKS_OK=true
+    fi
+  fi
+  if [ "$CHECKS_OK" != "true" ]; then
+    echo "[pr-finalize] ERROR: CI FAIL — 머지 안 됨. sync skip" >&2
+    exit 1
+  fi
 fi
 
 # Step 3: auto-merge 완료 대기 (GitHub 백그라운드)
@@ -167,16 +202,42 @@ if [ -n "$MERGE_LOCK_TOKEN" ]; then
   MERGE_CLAIM_KEY=""
 fi
 
+# Step 5: 통합 브랜치 sub-PR issue close 보정
+# GitHub auto-close 는 base = default branch 인 PR 머지만 인식 — base ≠ default 인
+# sub-PR 의 PR body close 선언(Closes/Fixes/Resolves #N)은 머지돼도 발동하지 않는다.
+# 선언이 있는 OPEN issue 를 PR 링크 코멘트와 함께 close 보정한다 (선언 없는 issue 는
+# 건드리지 않음). epic→main 일괄 머지 PR 의 중복 Closes 는 이미 closed issue 에 무해.
+if [ "$INTEGRATION" = "true" ]; then
+  CLOSE_NUMS=$(gh pr view "$PR" --json body -q .body 2>/dev/null \
+    | grep -ioE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' \
+    | grep -oE '[0-9]+' | sort -un || true)
+  for N in $CLOSE_NUMS; do
+    ISSUE_STATE=$(gh issue view "$N" --json state -q .state 2>/dev/null || true)
+    if [ "$ISSUE_STATE" = "OPEN" ]; then
+      if gh issue close "$N" --comment "[pr-finalize] PR #${PR} 가 통합 브랜치 '${BASE_REF}' 에 머지됨 — base 가 default branch 가 아니어서 GitHub auto-close 미발동. PR body 의 close 선언을 근거로 보정 close. $PR_URL" >&2; then
+        echo "[pr-finalize] issue #$N close 보정 (통합 브랜치 — auto-close 미발동)" >&2
+      else
+        echo "[pr-finalize] WARN: issue #$N close 실패 — 수동 확인 필요: gh issue view $N" >&2
+      fi
+    fi
+  done
+fi
+
 if [ "${SKIP_SYNC:-}" = "true" ]; then
-  echo "[pr-finalize] origin/main 동기화 skip (working tree dirty)" >&2
+  echo "[pr-finalize] origin/$DEFAULT_REF 동기화 skip (working tree dirty)" >&2
   echo "[pr-finalize] PR #$PR merged · $PR_URL"
   exit 0
 fi
 
-echo "[pr-finalize] origin/main ref 동기화" >&2
-if ! git fetch origin main --quiet; then
-  echo "[pr-finalize] ERROR: git fetch origin main 실패 (네트워크 / 권한)" >&2
+echo "[pr-finalize] origin/$DEFAULT_REF ref 동기화" >&2
+if ! git fetch origin "$DEFAULT_REF" --quiet; then
+  echo "[pr-finalize] ERROR: git fetch origin $DEFAULT_REF 실패 (네트워크 / 권한)" >&2
   exit 1
+fi
+if [ "$INTEGRATION" = "true" ]; then
+  if ! git fetch origin "$BASE_REF" --quiet; then
+    echo "[pr-finalize] WARN: git fetch origin $BASE_REF 실패 — 다음 sub-PR branch 생성 전 수동 fetch 권장" >&2
+  fi
 fi
 
 echo "[pr-finalize] PR #$PR merged · $PR_URL"
