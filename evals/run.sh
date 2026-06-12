@@ -49,7 +49,8 @@ $report"
       continue
     fi
 
-    if printf '%s' "$grade" | grep -q "RESULT: PASS"; then
+    verdict="$(printf '%s\n' "$grade" | grep -E '^RESULT: (PASS|FAIL)$' | tail -1 || true)"
+    if [ "$verdict" = "RESULT: PASS" ]; then
       pass=$((pass + 1))
       echo "[eval] $case_name run $i: 정답"
     else
