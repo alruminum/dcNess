@@ -160,7 +160,7 @@ argument 없이 호출 시 current branch 의 open PR 자동 검출. 명시 시 
 - **레이블**: `story` + `v0N` + `epic-NN-<slug>` (3중, epic 과 `epic-NN-<slug>` 공유)
 - **마일스톤**: `Story`
 - **제목**: `[story] <story 한 줄 요약>`
-- **본문**: `As a / I want / So that` 만 (user story). 수용 기준 (Story 단위) / 대상 화면 / 동작 명세 박지 않음 — architecture.md + impl 파일 영역. 태스크 체크리스트 X (stories.md 가 SSOT)
+- **본문**: `As a / I want / So that` + `**완료 시 확인 가능한 동작**:` 한 줄 (user story — 줄이 없는 구양식 stories.md 는 그대로 허용). 수용 기준 (Story 단위) / 대상 화면 / 동작 명세 박지 않음 — architecture.md + impl 파일 영역. 태스크 체크리스트 X (stories.md 가 SSOT)
 - **순서**: epic 생성 완료 후 story 1, 2, … 순차
 - **stories.md 기록**:
   - 각 story 헤더 직하: `**GitHub Issue:** [#MMM](url)`
