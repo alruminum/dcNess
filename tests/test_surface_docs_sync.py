@@ -80,6 +80,12 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.hooks_doc = (ROOT / "docs" / "plugin" / "hooks.md").read_text(
             encoding="utf-8"
         )
+        self.terms_doc = (ROOT / "docs" / "plugin" / "terms.md").read_text(
+            encoding="utf-8"
+        )
+        self.pr_reviewer = (
+            ROOT / "agents" / "pr-reviewer" / "pr-reviewer-agent.md"
+        ).read_text(encoding="utf-8")
         self.cross_ref_script = (ROOT / "scripts" / "check_cross_refs.mjs").read_text(
             encoding="utf-8"
         )
@@ -121,6 +127,24 @@ class SurfaceDocsSyncTests(unittest.TestCase):
 
         self.assertIn("운영 원칙", self.router)
         self.assertIn("운영 원칙", self.positioning)
+
+    def test_user_surface_and_doc_delta_review_guidance_exists(self) -> None:
+        for needle in (
+            "사용자-facing 표현 원칙",
+            "내부 실행 토큰은 필요할 때만",
+            "하네스 내부 배관 설명은 링크나 상세 로그로 내린다",
+            "검증·장애 복구·감사 맥락에서는 근거가 우선",
+        ):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, self.terms_doc)
+
+        for needle in (
+            "문서 영향",
+            "PRD / stories / architecture / ADR / Contract Ledger",
+            "이번 diff 가 기존 장기 문서를 무효화했는지",
+        ):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, self.pr_reviewer)
 
     def test_readme_uses_lifecycle_defaults_without_compat_aliases(self) -> None:
         basic_table = self._section(self.readme, r"\| 기본 진입점 \|", r"\n`/impl`")
