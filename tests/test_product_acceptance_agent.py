@@ -30,6 +30,9 @@ class ProductAcceptanceAgentContractTests(unittest.TestCase):
         self.acceptance_routing = (
             ROOT / "skills" / "acceptance" / "acceptance-routing.md"
         )
+        self.impl_loop_routing = (
+            ROOT / "skills" / "impl-loop" / "impl-loop-routing.md"
+        )
 
     def test_agent_entrypoint_exists_and_points_to_prompt(self) -> None:
         text = self.entry.read_text(encoding="utf-8")
@@ -75,9 +78,36 @@ class ProductAcceptanceAgentContractTests(unittest.TestCase):
 
     def test_prompt_keeps_full_e2e_out_of_mvp(self) -> None:
         text = self.prompt.read_text(encoding="utf-8")
-        self.assertIn("full E2E", text)
+        self.assertIn("사람 full E2E", text)
         self.assertIn("MVP", text)
         self.assertIn("범위 밖", text)
+
+    def test_prompt_classifies_behavior_evidence_and_mock_only_gap(self) -> None:
+        text = self.prompt.read_text(encoding="utf-8")
+        for needle in (
+            "동작 증거 판정",
+            "정적 타입검사/compile",
+            "실데이터(non-mock) 통합 테스트",
+            "UI 자동화",
+            "API/CLI smoke",
+            "mock-only green",
+            "핵심 AC가 mock-only green으로만 닫혔으면 PASS 하지 않는다",
+        ):
+            self.assertIn(needle, text)
+
+    def test_prompt_reports_typecheck_gap_as_warning_unless_core_ac_unproven(self) -> None:
+        text = self.prompt.read_text(encoding="utf-8")
+        self.assertIn("품질 게이트 warning", text)
+        self.assertIn("warning 자체만으로 FAIL", text)
+        self.assertIn("핵심 AC의 wiring/contract 동작을 증명할 수 없으면 FAIL gap", text)
+
+    def test_pipeline_assigns_cross_pr_story_behavior_to_product_acceptance(self) -> None:
+        text = self.impl_loop_routing.read_text(encoding="utf-8")
+        self.assertIn("code-validator 는 계획 대비 구현 정합", text)
+        self.assertIn("pr-reviewer 는 이번 PR diff 위험", text)
+        self.assertIn("여러 PR 이 합쳐진 story 동작", text)
+        self.assertIn("여러 story 가 합쳐진 epic 동작", text)
+        self.assertIn("마감 product-acceptance 가 맡는다", text)
 
     def test_read_only_boundary_and_no_codex_route(self) -> None:
         self.assertEqual(ALLOW_MATRIX["product-acceptance"], ())
