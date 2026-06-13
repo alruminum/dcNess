@@ -4,6 +4,39 @@
 
 ---
 
+## v0.7.0 (2026-06-13)
+
+**커밋 범위**: `v0.6.6..v0.7.0` (머지 PR 13개)
+**핵심 변경**: 제품 검수·설계 파이프라인이 "동작하는 수직 슬라이스"를 강제하도록 상·하류 양쪽을 보강. 검수가 mock-green·비사용자 동선을 걸러내고(하류), `/spec` story 분할·순서와 architecture-validator 구현 순서가 "사용자 검증 가능한 동작 증분"을 요구하며(상류), 이 지침이 실제로 작동하는지 검사하는 행동 eval 하네스(`evals/`)를 신규 도입.
+
+### 무엇이 바뀌나
+
+1. **검수 동작 증거·사용자 동선 판정 강화** ([#739](https://github.com/alruminum/dcNess/pull/739) [#738](https://github.com/alruminum/dcNess/issues/738), [#741](https://github.com/alruminum/dcNess/pull/741) [#740](https://github.com/alruminum/dcNess/issues/740)) — product-acceptance 가 mock-only green 을 동작 증거와 구분(정적 타입검사·실데이터 통합테스트·UI 자동화 등 자동 층 인정), 비개발자 flow 에 내부 schema/JSON 직접 입력을 요구하는 동선을 gap 으로 분리.
+
+2. **task 분할 수직 슬라이스 기준** ([#743](https://github.com/alruminum/dcNess/pull/743) [#744](https://github.com/alruminum/dcNess/pull/744) [#742](https://github.com/alruminum/dcNess/issues/742)) — module-architect 가 파일 경계·병렬성보다 "Story 완료 시 검증되는 동작"을 우선해 task 를 자르고, architecture-validator(Claude/Codex)가 레이어별 부품 분할·첫 동작 지연을 finding 으로 잡는다.
+
+3. **`/spec` story 분할·순서 동작 증분 기준** ([#746](https://github.com/alruminum/dcNess/pull/746) [#745](https://github.com/alruminum/dcNess/issues/745)) — story 분할의 1차 목표를 "사용자가 제품 경계에서 직접 확인 가능한 동작 증분"으로, 순서는 "얇은 end-to-end 골격(walking skeleton) 우선"으로 고정. SPEC_ACCEPTANCE 가 부품-먼저 backlog·동작 지연 순서를 기획 단계에서 gap 으로 식별.
+
+4. **architecture-validator 구현 순서 검증 축** ([#748](https://github.com/alruminum/dcNess/pull/748) [#747](https://github.com/alruminum/dcNess/issues/747)) — epic architecture 의 구현 순서가 첫 제품 경계 동작을 앞당기는지 system 단위 검증 시점에 확인(사유 없는 부품-먼저 순서 = SYSTEM_BOUNDARY). system-architect 산출물 템플릿에 `구현 순서` 슬롯 추가.
+
+5. **행동 eval 하네스 신규** ([#750](https://github.com/alruminum/dcNess/pull/750) [#749](https://github.com/alruminum/dcNess/issues/749), [#756](https://github.com/alruminum/dcNess/pull/756) [#618](https://github.com/alruminum/dcNess/issues/618)) — `bash evals/run.sh` 로 agent 가 기준대로 실제 판정하는지 사고 기반 fixture 로 확인. 계약 수준 정답표(agent 이름/문구 미포함, 회귀 테스트가 강제) + youTubeGenerator v03 쇼츠 실사고 L3 케이스 포함. dcness 자체 QA 도구이며 외부 배포 대상 아님.
+
+6. **설계 검증 interleave 정리 + 하네스 정합 패치** ([#737](https://github.com/alruminum/dcNess/pull/737) [#691](https://github.com/alruminum/dcNess/issues/691), [#751](https://github.com/alruminum/dcNess/pull/751), [#752](https://github.com/alruminum/dcNess/pull/752), [#753](https://github.com/alruminum/dcNess/pull/753), [#754](https://github.com/alruminum/dcNess/pull/754)) — design validation interleave 절차 정리 + conveyor state cleanup·PR trailer finalize·user 메시지 문서 정합 등 운영 패치.
+
+### 사용자 영향
+
+- **`claude plugin update dcness@dcness` 로 자동 반영** — plug-in 본체 경로(`agents/**`, `skills/**`, `docs/plugin/**`). `/spec → /design → /impl → /acceptance` 흐름에서 "다 만들고 나서 안 돌더라"가 **기획·설계 단계에서** 걸리게 된다.
+- **Codex opt-in 사용 프로젝트**는 `codex/skills/dcness-architecture-validator` 갱신을 받으려면 plugin update 후 `/init-dcness` 재실행 필요.
+- `evals/` 는 dcness 자체 QA 도구라 외부 활성 프로젝트로 배포되지 않는다.
+
+### 업데이트
+
+```sh
+claude plugin update dcness@dcness
+```
+
+---
+
 ## v0.6.6 (2026-06-11)
 
 **커밋 범위**: `v0.6.5..v0.6.6` (머지 PR 7개)
