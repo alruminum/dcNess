@@ -26,6 +26,8 @@
 | Project coordinates | repo variables `DCNESS_PROJECT_NUMBER`, `DCNESS_PROJECT_OWNER` | `gh variable set` | Project bootstrap 선택 | 값 갱신 | X |
 | CC hooks | Claude Code plugin hook registry | `hooks/hooks.json` | 활성 프로젝트 새 세션 | 사용자 repo 쓰기 없음 | X |
 
+> 🔴 **진단 동기화 의무**: 위 inventory 에 새 복사/배포 대상(git hook · CI workflow · 권한 등)을 추가하면, `dcness-helper status` 진단표(`harness/session_state.py` 의 `collect_status_diagnostics`)에도 해당 검사 항목을 함께 추가한다. 그렇지 않으면 사용자가 설치 누락을 한눈에 확인할 수 없다.
+
 ## Already Automatic
 
 `/init-dcness` 가 whitelist 를 활성화하면 새 Claude Code 세션부터 [`hooks/hooks.json`](../../hooks/hooks.json) 의 CC hooks 가 자동 등록된다. 사용자가 따로 설치할 파일은 없다.
