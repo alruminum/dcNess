@@ -313,6 +313,16 @@ class TestTransitionOperations(unittest.TestCase):
         # 마감 경계는 재생성 경로 → create_header 존재.
         self.assertTrue(any(o["op"] == "create_header" for o in ops))
 
+    def test_non_adjacent_transition_rejected(self):
+        # 비인접 prev/current 는 view ≡ operations 위반 → 거부 (임의 점프는 initial).
+        tasks = self._tasks(5)
+        with self.assertRaises(ValueError):
+            transition_operations(tasks, prev=0, current=2)
+        with self.assertRaises(ValueError):
+            transition_operations(tasks, prev=0, current=5)  # terminal 점프
+        with self.assertRaises(ValueError):
+            transition_operations(tasks, prev=2, current=2)  # 동일
+
     def test_terminal_transition_completes_last(self):
         tasks = self._tasks(3)
         ops = transition_operations(tasks, prev=2, current=3)
@@ -421,6 +431,25 @@ class TestBuildChainViewAndParse(unittest.TestCase):
         tasks = parse_tasks(self.SAMPLE["tasks"])
         with self.assertRaises(ValueError):
             build_chain_view(tasks, current=99)
+
+    def test_non_adjacent_prev_rejected_in_payload(self):
+        tasks = parse_tasks(self.SAMPLE["tasks"])
+        with self.assertRaises(ValueError):
+            build_chain_view(tasks, current=2, prev=0)
+
+    def test_initial_handles_arbitrary_current_jump(self):
+        # 임의 current 점프는 initial 로 — 이전 전부 completed + 전체 재생성.
+        tasks = parse_tasks(self.SAMPLE["tasks"])
+        payload = build_chain_view(tasks, current=2, initial=True)
+        self.assertEqual(payload["operation_mode"], "initial")
+        creates = {
+            o["index"]: o["status"]
+            for o in payload["operations"]
+            if o["op"] == "create_header"
+        }
+        self.assertEqual(creates[0], "completed")
+        self.assertEqual(creates[1], "completed")
+        self.assertEqual(creates[2], "in_progress")
 
     def test_empty_tasks_rejected(self):
         with self.assertRaises(ValueError):

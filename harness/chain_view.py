@@ -315,6 +315,15 @@ def transition_operations(
         raise ValueError(f"prev 범위 밖: {prev} (0~{total - 1})")
     if not (0 <= current <= total):
         raise ValueError(f"current 범위 밖: {current} (0~{total})")
+    # chain 은 경계마다 task 1개씩 전진 — prev 는 반드시 current 직전.
+    # 비인접 jump 은 transition 으로 표현 불가(view ≡ operations 위반:
+    # view 는 current 미만 전부 ✓ 인데 operations 는 prev 만 완료). 임의
+    # current 로의 점프(resume 등)는 --initial(전체 재생성)을 쓴다.
+    if current != prev + 1:
+        raise ValueError(
+            f"비인접 transition: prev={prev}, current={current} "
+            f"(prev+1 != current). 임의 current 점프는 initial 모드를 쓸 것."
+        )
     strategy = redraw_strategy(total)
     terminal = current >= total
 
@@ -507,12 +516,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--prev",
         type=int,
         default=None,
-        help="직전 완료 task 0-based index (transition). 미지정 시 current-1.",
+        help="직전 완료 task 0-based index (transition). 반드시 current-1(인접). "
+        "미지정 시 current-1. 임의 current 점프는 --initial 을 쓸 것.",
     )
     parser.add_argument(
         "--initial",
         action="store_true",
-        help="전체 task list 최초 생성 operation 산출 (transition 대신).",
+        help="전체 task list 최초 생성/재생성 operation 산출 (임의 current 점프 포함).",
     )
     args = parser.parse_args(argv)
 

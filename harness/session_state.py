@@ -3077,7 +3077,7 @@ def _build_arg_parser() -> Any:
         "--prev",
         type=int,
         default=None,
-        help="직전 완료 task 0-based index (transition). 미지정 시 current-1.",
+        help="직전 완료 task 0-based index (transition, 반드시 current-1 인접). 미지정 시 current-1. 임의 점프는 --initial.",
     )
     p_cv.add_argument(
         "--initial",
