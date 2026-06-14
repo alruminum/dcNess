@@ -31,6 +31,7 @@ from harness.session_state import (
     _check_read_permission,
     _installed_plugin_version,
     _is_self_repo,
+    _plugin_root,
     _resolve_git_hooks_dir,
     collect_status_diagnostics,
     format_status_report,
@@ -76,6 +77,24 @@ class InstalledVersionTests(unittest.TestCase):
     def test_missing_returns_none(self) -> None:
         with TemporaryDirectory() as td:
             self.assertIsNone(_installed_plugin_version(Path(td)))
+
+
+class PluginRootTests(unittest.TestCase):
+    def tearDown(self) -> None:
+        os.environ.pop("CLAUDE_PLUGIN_ROOT", None)
+
+    def test_invalid_env_falls_back(self) -> None:
+        with TemporaryDirectory() as td:
+            os.environ["CLAUDE_PLUGIN_ROOT"] = td  # no .claude-plugin/plugin.json
+            # 잘못된 env 는 무시하고 본 파일 기준 폴백 → td 가 아니어야 한다
+            self.assertNotEqual(_plugin_root().resolve(), Path(td).resolve())
+
+    def test_valid_env_used(self) -> None:
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            _write(root / ".claude-plugin" / "plugin.json", '{"name":"dcness"}')
+            os.environ["CLAUDE_PLUGIN_ROOT"] = str(root)
+            self.assertEqual(_plugin_root().resolve(), root.resolve())
 
 
 class ReadPermissionTests(unittest.TestCase):

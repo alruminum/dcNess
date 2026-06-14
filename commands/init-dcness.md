@@ -61,7 +61,7 @@ HELPER="$PLUGIN_ROOT/scripts/dcness-helper"
 - `Read 권한` FAIL → Step 3.
 - `git hook shim 3종` FAIL → Step 4.
 - `선택형 CI workflow` (INFO) → 필요 시 Step 5 / Step 8.
-- 전부 PASS 면 나머지 bootstrap 갱신 여부만 확인하고 마친다.
+- FAIL 이 0 이면 (INFO·NA 행과 선택 WARN 은 정상) 나머지 bootstrap 갱신 여부만 확인하고 마친다.
 
 ### Step 2 - 활성화
 
@@ -399,7 +399,7 @@ support:
 - "$HELPER" disable
 
 마지막 점검 (권장):
-- "$HELPER" status 를 재실행해 진단표가 전부 PASS 인지 확인한다.
+- "$HELPER" status 를 재실행해 FAIL 항목이 0 인지 확인한다 (INFO·NA 행과 선택 WARN 은 정상).
 
 Claude Code 세션 재시작 권장:
 - SessionStart 훅은 현재 세션에는 소급 적용되지 않는다.

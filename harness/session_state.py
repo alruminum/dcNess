@@ -2908,10 +2908,16 @@ def _is_self_repo(project_root: Path) -> bool:
 
 
 def _plugin_root() -> Path:
-    """설치된 plugin root. CLAUDE_PLUGIN_ROOT env 우선, 없으면 본 파일 기준."""
+    """설치된 plugin root.
+
+    CLAUDE_PLUGIN_ROOT env 우선 — 단 그 경로가 실제 plugin manifest 를 들고 있을
+    때만 신뢰한다. env 가 비었거나 잘못된 경로면 본 파일 기준(harness 의 부모)으로 폴백.
+    """
     env = os.environ.get("CLAUDE_PLUGIN_ROOT")
     if env:
-        return Path(env)
+        cand = Path(env)
+        if (cand / ".claude-plugin" / "plugin.json").exists():
+            return cand
     return Path(__file__).resolve().parent.parent
 
 
@@ -3084,16 +3090,26 @@ def collect_status_diagnostics(
         hooks_dir = _resolve_git_hooks_dir(project_root)
         hooks = _check_git_hooks(hooks_dir)
         all_ok = all(v == "ok" for v in hooks.values())
-        custom_path = hooks_dir != (project_root / ".git" / "hooks")
+        custom_path = hooks_dir.resolve() != (project_root / ".git" / "hooks").resolve()
         hook_detail = ", ".join(f"{k}={v}" for k, v in hooks.items())
         if custom_path:
             hook_detail += f" (core.hooksPath={hooks_dir})"
+        if all_ok:
+            hook_fix = None
+        elif custom_path:
+            # init-dcness Step 4 는 .git/hooks 로 복사 → core.hooksPath 환경에선 무효.
+            hook_fix = (
+                f"core.hooksPath={hooks_dir} 설정됨 — Step 4(.git/hooks 복사)로는 해결 안 됨. "
+                f"shim 을 {hooks_dir} 로 설치(chmod +x)하거나 core.hooksPath 를 해제하세요."
+            )
+        else:
+            hook_fix = "init-dcness Step 4 로 thin shim 재설치 (chmod +x 포함)"
         add(
             "git_hooks",
             "git hook shim 3종",
             "PASS" if all_ok else "FAIL",
             hook_detail,
-            None if all_ok else "init-dcness Step 4 로 thin shim 재설치 (chmod +x 포함)",
+            hook_fix,
         )
         # 선택형 CI workflow (선택 — INFO)
         ci = _check_ci_workflows(project_root)
