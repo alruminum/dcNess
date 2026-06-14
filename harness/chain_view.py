@@ -20,9 +20,14 @@
     build-worker 2 / build-worker-deep 3 / full-4 4 / advanced 5.
     story 마감 task +1 (`product-acceptance`),
     epic 마감 task +2 (`product-acceptance:STORY` / `product-acceptance:EPIC`).
-- task 완료 → 다음 다시그리기 (SKILL lines 438-444):
-    ≤10 full(4단계) / 11~20 partial(3단계) / >20 minimal(2단계).
-- 완료 task 한 줄(✓) / 현재 task sub-step 펼침(▾) / 예정 task 대기 줄(○).
+- task 완료 → 다음 다시그리기 (SKILL 비용 분기): ≤10 full / 11~20 partial /
+    >20 minimal. prev 헤더 완료(✓)는 **모든 tier 공통 불변식**(O(1), 생략 시
+    in_progress 누적). 비용 분기가 제어하는 비싼 부분은 tail 재생성뿐이고,
+    sub-step 펼침은 재생성 경로(full tier 또는 마감 task)에서만 가능하다
+    (flat 리스트 nesting 제약).
+- 완료 task 한 줄(✓) / 현재 task sub-step 펼침(▾, 재생성 tier 한정) /
+    예정 task 대기 줄(○). `view ≡ operations` — 진행 뷰는 operation 적용
+    결과와 항상 일치한다.
 """
 from __future__ import annotations
 
@@ -151,8 +156,32 @@ def _substep_subject(label: str) -> str:
     return f"{_SUBSTEP_PREFIX}{label}"
 
 
-def render_view(tasks: Sequence[ChainTask], current: int) -> str:
-    """사용자 가시용 ASCII 진행 뷰 (완료 ✓ / 현재 ▾+펼침 / 예정 ○).
+def _expands_substeps(strategy: str, task: Optional[ChainTask]) -> bool:
+    """현재 task 의 sub-step 을 펼치는가 (= 작업 적용 시 sub-step 이 보이는가).
+
+    flat Task 리스트는 중간삽입이 안 돼 sub-step nesting 에 tail 재생성이
+    필요하다(SKILL line 444). 따라서 sub-step 펼침은 재생성을 수행하는
+    경로에서만 가능하다:
+
+    - full(≤10): 매 경계 재생성 → 펼침.
+    - 마감 task(story/epic close): chain 크기와 무관하게 펼침 — `product-acceptance`
+      sub-step 가시성이 마감 게이트에 중요하므로 그 경계만 재생성한다(AC).
+    - partial/minimal 의 비-마감 task: 재생성 skip → 미펼침(SKILL 비용 분기).
+    """
+    if task is None:
+        return False
+    return strategy == "full" or task.closes is not None
+
+
+def render_view(
+    tasks: Sequence[ChainTask], current: int, *, show_substeps: Optional[bool] = None
+) -> str:
+    """사용자 가시용 ASCII 진행 뷰 (완료 ✓ / 현재 ▾(+펼침) / 예정 ○).
+
+    `view ≡ operations` 불변식 — 진행 뷰는 operation 적용 결과와 일치해야 한다.
+    그래서 sub-step 펼침 여부(`show_substeps`)는 [`_expands_substeps`](#) 가 정하는
+    operation 의 sub-step 생성 여부와 동일하게 맞춘다. 미지정 시 현재 task 의
+    전략 기반 기본값을 쓴다.
 
     current == len(tasks) 면 전체 완료(터미널) — 모두 ✓ 한 줄.
     """
@@ -162,14 +191,18 @@ def render_view(tasks: Sequence[ChainTask], current: int) -> str:
         raise ValueError(
             f"current 범위 밖: {current} (0~{len(tasks)})"
         )
+    if show_substeps is None:
+        cur_task = tasks[current] if current < len(tasks) else None
+        show_substeps = _expands_substeps(redraw_strategy(len(tasks)), cur_task)
     lines: List[str] = []
     for i, task in enumerate(tasks):
         if i < current:
             lines.append(f"{_GLYPH_DONE} {_header_subject(i, task)}")
         elif i == current:
             lines.append(f"{_GLYPH_CURRENT} {_header_subject(i, task)}")
-            for label in substeps_for(task):
-                lines.append(_substep_subject(label))
+            if show_substeps:
+                for label in substeps_for(task):
+                    lines.append(_substep_subject(label))
         else:
             lines.append(f"{_GLYPH_PENDING} {_header_subject(i, task)}")
     return "\n".join(lines)
@@ -217,14 +250,18 @@ def transition_operations(
 ) -> List[Dict[str, Any]]:
     """task `prev` 완료 → `current` 진입 시 다시그리기 operation 시퀀스.
 
-    비용 분기(SKILL line 444):
+    불변식 — prev 헤더는 **모든 전략에서 완료(✓) 마킹**한다. "완료 task = ✓
+    한 줄"(SKILL line 425)은 비용 분기보다 상위 불변식이고, prev 완료는 O(1)
+    이라 비용 절감 대상이 아니다. 이를 생략하면 경계마다 in_progress 가 누적돼
+    진행 뷰가 깨진다. 비용 분기가 제어하는 비싼 부분은 **tail 재생성**뿐이다.
 
-    - full   (≤10): ① prev sub-step delete ② prev header complete
-                    ③ current~end header delete
-                    ④ current header(in_progress)+sub-step+남은 헤더(pending) 재생성
-    - partial(11~20): ① prev sub-step delete ② prev header complete
-                      ③ current header in_progress (재생성 skip)
-    - minimal(>20): ① prev sub-step delete ② current header in_progress
+    sub-step nesting 은 flat 리스트라 tail 재생성을 해야만 부모 밑에 온다
+    (SKILL line 444). 그래서 sub-step 펼침 = 재생성 경로 = [`_expands_substeps`]:
+
+    - full(≤10) **또는 마감 task**: ① prev sub-step delete ② prev header complete
+      ③ current~end header delete ④ current(in_progress)+sub-step+남은(pending) 재생성
+    - partial/minimal 의 비-마감 task: ① prev sub-step delete ② prev header complete
+      ③ current header in_progress (재생성 skip → sub-step 미펼침)
 
     current == len(tasks) (마지막 task 완료, 다음 없음) 면 prev 정리만 한다.
     """
@@ -236,31 +273,22 @@ def transition_operations(
     strategy = redraw_strategy(total)
     terminal = current >= total
 
+    # ① prev sub-step delete ② prev header complete (모든 전략 공통 불변식).
     ops: List[Dict[str, Any]] = [
         {"op": "delete_substeps", "index": prev},
+        {"op": "complete_header", "index": prev},
     ]
-
-    if strategy == "minimal":
-        # 최소 갱신 — prev 완료 마킹 생략(비용 절감), 다음 헤더만 in_progress.
-        if not terminal:
-            ops.append({"op": "set_in_progress", "index": current})
-        else:
-            # 마지막 완료는 가시성 위해 헤더 완료 마킹 1회.
-            ops.append({"op": "complete_header", "index": prev})
-        return ops
-
-    # full / partial 공통 — prev 헤더 완료 마킹.
-    ops.append({"op": "complete_header", "index": prev})
 
     if terminal:
         return ops
 
-    if strategy == "partial":
-        # 재생성 skip — 다음 헤더만 in_progress.
+    cur_task = tasks[current]
+    if not _expands_substeps(strategy, cur_task):
+        # 재생성 skip — 다음 헤더만 in_progress (sub-step 미펼침).
         ops.append({"op": "set_in_progress", "index": current})
         return ops
 
-    # strategy == "full" — 완전 다시 그리기 (4단계).
+    # 재생성 경로 — current~end 헤더 삭제 후 sub-step nesting 되게 다시 그린다.
     for k in range(current, total):
         ops.append({"op": "delete_header", "index": k})
     for k in range(current, total):
@@ -307,12 +335,8 @@ def build_chain_view(
     if not (0 <= current <= total):
         raise ValueError(f"current 범위 밖: {current} (0~{total})")
 
-    view = render_view(tasks, current)
     strategy = redraw_strategy(total)
-    # current==total(전체 완료)이면 펼칠 현재 task 없음 → 빈 sub-step.
-    current_substeps = (
-        substeps_for(tasks[current]) if current < total else []
-    )
+    cur_task = tasks[current] if current < total else None
 
     effective_prev = prev if prev is not None else current - 1
     use_initial = initial or effective_prev < 0
@@ -320,15 +344,23 @@ def build_chain_view(
     if use_initial:
         ops = initial_operations(tasks, current)
         mode = "initial"
+        # initial 은 최초 1회 전체 생성 — 현재 task sub-step 을 항상 펼친다.
+        expands = cur_task is not None
     else:
         ops = transition_operations(tasks, effective_prev, current)
         mode = "transition"
+        expands = _expands_substeps(strategy, cur_task)
+
+    # view ≡ operations 불변식 — 펼침 여부를 operation 의 sub-step 생성과 일치.
+    view = render_view(tasks, current, show_substeps=expands)
+    current_substeps = substeps_for(cur_task) if (expands and cur_task) else []
 
     return {
         "task_total": total,
         "current_index": current,
         "strategy": strategy,
         "operation_mode": mode,
+        "substeps_expanded": expands,
         "view": view,
         "current_substeps": current_substeps,
         "operations": ops,

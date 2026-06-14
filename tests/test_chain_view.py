@@ -223,13 +223,44 @@ class TestTransitionOperations(unittest.TestCase):
         self.assertNotIn("create_header", kinds)
         self.assertEqual(ops[2]["index"], 1)
 
-    def test_minimal_two_steps(self):
+    def test_minimal_completes_prev_no_accumulation(self):
+        # 최소 갱신도 prev 를 완료(✓) 마킹한다 — 생략 시 경계마다 in_progress 누적.
         tasks = self._tasks(25)  # total 25 → minimal
         ops = transition_operations(tasks, prev=0, current=1)
         kinds = [o["op"] for o in ops]
-        self.assertEqual(kinds, ["delete_substeps", "set_in_progress"])
-        self.assertEqual(ops[0]["index"], 0)
-        self.assertEqual(ops[1]["index"], 1)
+        self.assertEqual(
+            kinds, ["delete_substeps", "complete_header", "set_in_progress"]
+        )
+        self.assertEqual(ops[1]["op"], "complete_header")
+        self.assertEqual(ops[1]["index"], 0)
+        # 비-마감 minimal 은 sub-step 미펼침.
+        self.assertFalse(any(o["op"] == "create_substep" for o in ops))
+
+    def test_no_accumulation_across_boundaries(self):
+        # 연속 경계 — 매번 직전 task 가 완료 마킹되는지 (누적 in_progress 차단).
+        tasks = self._tasks(30)  # minimal
+        for i in range(1, 30):
+            ops = transition_operations(tasks, prev=i - 1, current=i)
+            self.assertTrue(
+                any(
+                    o["op"] == "complete_header" and o["index"] == i - 1
+                    for o in ops
+                ),
+                f"경계 {i - 1}→{i} 에서 prev 완료 마킹 누락",
+            )
+
+    def test_closing_task_expands_substeps_even_in_large_chain(self):
+        # 마감 task 는 chain 크기와 무관하게 sub-step(product-acceptance 포함) 펼침.
+        tasks = [_task(f"m{i}", "build-worker") for i in range(24)]
+        tasks.append(
+            _task("final", "build-worker", closes="epic")
+        )  # total 25 → minimal
+        ops = transition_operations(tasks, prev=23, current=24)
+        labels = [o["label"] for o in ops if o["op"] == "create_substep"]
+        self.assertIn("product-acceptance:STORY", labels)
+        self.assertIn("product-acceptance:EPIC", labels)
+        # 마감 경계는 재생성 경로 → create_header 존재.
+        self.assertTrue(any(o["op"] == "create_header" for o in ops))
 
     def test_terminal_transition_completes_last(self):
         tasks = self._tasks(3)
@@ -351,6 +382,68 @@ class TestBuildChainViewAndParse(unittest.TestCase):
     def test_parse_rejects_bad_closes(self):
         with self.assertRaises(ValueError):
             parse_tasks([{"name": "x", "engine": "2agent", "closes": "release"}])
+
+
+class TestViewOperationsConsistency(unittest.TestCase):
+    """view ≡ operations 불변식 — 진행 뷰는 operation 적용 결과와 일치해야 한다.
+
+    codex 리뷰 finding 근본원인: 비용 분기 tier 에서 view 와 operations 가
+    서로 다른 end-state 를 가리키면 메인이 어느 쪽도 신뢰 못 한다.
+    """
+
+    def _tasks(self, n, closing_last=False):
+        ts = [_task(f"m{i}", "build-worker") for i in range(n)]
+        if closing_last and ts:
+            ts[-1] = _task(ts[-1].name, "build-worker", closes="story")
+        return ts
+
+    def test_substeps_in_view_iff_created_by_operations(self):
+        # 모든 tier × (마감/비마감) 조합에서 view 의 sub-step 노출 ⟺ operation 의
+        # create_substep 존재.
+        for total in (5, 15, 25):  # full / partial / minimal
+            for closing in (False, True):
+                tasks = self._tasks(total, closing_last=closing)
+                # 마감 task 를 current 로 두려면 마지막 경계를 본다.
+                current = total - 1
+                payload = build_chain_view(tasks, current=current, prev=current - 1)
+                has_substep_op = any(
+                    o["op"] == "create_substep" for o in payload["operations"]
+                )
+                view_has_substep = "   ㄴ " in payload["view"]
+                self.assertEqual(
+                    has_substep_op,
+                    view_has_substep,
+                    f"total={total} closing={closing}: view↔ops sub-step 불일치",
+                )
+                self.assertEqual(
+                    has_substep_op,
+                    bool(payload["current_substeps"]),
+                    f"total={total} closing={closing}: current_substeps↔ops 불일치",
+                )
+                self.assertEqual(payload["substeps_expanded"], has_substep_op)
+
+    def test_prev_completed_in_view_and_ops_all_tiers(self):
+        # 어느 tier 든 prev 는 view 에서 ✓, operations 에서 complete_header.
+        for total in (5, 15, 25):
+            tasks = self._tasks(total)
+            payload = build_chain_view(tasks, current=1, prev=0)
+            self.assertIn("✓ task1 · m0", payload["view"])
+            self.assertTrue(
+                any(
+                    o["op"] == "complete_header" and o["index"] == 0
+                    for o in payload["operations"]
+                ),
+                f"total={total}: prev complete_header 누락",
+            )
+
+    def test_partial_minimal_nonclosing_hide_substeps(self):
+        # 비-마감 partial/minimal 은 view 에 sub-step 줄이 없다 (재생성 skip).
+        for total in (15, 25):
+            tasks = self._tasks(total)
+            payload = build_chain_view(tasks, current=1, prev=0)
+            self.assertFalse(payload["substeps_expanded"])
+            self.assertNotIn("   ㄴ ", payload["view"])
+            self.assertEqual(payload["current_substeps"], [])
 
 
 if __name__ == "__main__":

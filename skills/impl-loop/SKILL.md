@@ -435,15 +435,19 @@ next: <다음 task slug 진입 | 정지 사유>
 - sub-step 수 = 엔진별. build-worker: 2 (`build-worker` / `pr-reviewer`), deep task 보강 시 3 (`module-architect` 선두). 풀 4-agent: 4 (`test-engineer` / `engineer:IMPL` / `code-validator` / `pr-reviewer`), advanced fallback 5. story 마감 task 는 `product-acceptance` sub-step +1, epic 마감 task 는 +2 (`product-acceptance:STORY` / `product-acceptance:EPIC` — [마감 acceptance](#마감-acceptance)).
 - **task 완료 → 다음 (다시 그리기 — task 수 별 분기)**:
 
-| 총 task 수 | 절차 | 비용 |
-|---|---|---|
-| **≤ 10** | 4 단계 완전 다시 그리기 — 가시성 우선 | 매 task ~N 호출 |
-| **11~20** | 3 단계 부분 (재생성 skip) — 다음 헤더만 in_progress | 매 task ~3 호출 |
-| **> 20** | 최소 갱신 — sub-step deleted + 다음 헤더 in_progress | 매 task ~2 호출 |
+| 총 task 수 | 절차 | sub-step 펼침 | 비용 |
+|---|---|---|---|
+| **≤ 10** | 완전 다시 그리기 — 가시성 우선 | O (tail 재생성) | 매 task ~N 호출 |
+| **11~20** | 부분 (재생성 skip) — prev 완료 + 다음 헤더 in_progress | X | 매 task ~3 호출 |
+| **> 20** | 최소 갱신 — prev 완료 + 다음 헤더 in_progress | X | 매 task ~3 호출 |
 
-4 단계 (완전 다시 그리기): ① task i sub-step 전부 `deleted` ② task i 헤더 `completed` ③ task i+1~N 헤더 `deleted` ④ TaskCreate `task(i+1) 헤더(in_progress)` → sub-step → 남은 헤더. 생성순 = 표시순 + 중간삽입 불가라 다시 그려야 sub-step 이 부모 밑에 옴. (trade-off 근거: 외부 사용자 [F9 실측](https://github.com/alruminum/dcNess/issues/507).)
+**불변식 (모든 tier)**: ① task i sub-step `deleted` ② task i 헤더 `completed`(✓). prev 완료 마킹은 "완료 task = ✓ 한 줄"의 상위 불변식이라 비용 분기와 무관하게 항상 한다 — 생략하면 경계마다 in_progress 가 누적돼 진행 뷰가 깨진다(O(1) 라 절감 대상 아님).
 
-**자동 렌더 helper (권장 — 도구이지 게이트 아님, #755)**: 위 규칙(엔진별 sub-step / 마감 acceptance / task 수별 다시그리기)을 메인이 task 경계마다 손으로 계산하는 대신 `dcness-helper chain-view` 가 산출한다. 입력은 task list JSON `{tasks:[{name, engine, closes?}], current}` (stdin `--tasks -` 또는 파일), 출력은 `{view, strategy, current_substeps, operations[]}`. 메인은 `operations` 를 Task 시스템에 *적용만* 하고 들여쓰기·완료/현재/예정 마킹·sub-step 펼침을 직접 계산하지 않는다 — `engine` 은 frontmatter `engine`(2agent/4agent) 또는 `build-worker-deep`/`advanced`, `closes` 는 `story`/`epic`(마감 task) / 생략(중간). 진입 시 최초 전체 생성은 `--initial`, 이후 경계는 `--prev <완료 index> --current <진입 index>`(기본 `current-1`). **본 규칙 SSOT 는 본 절이며 helper 는 코드 사본일 뿐** — 미사용해도 chain 은 정상 동작하고 메인이 위 단계로 수동 rebuild 한다(폴백 보장, run state 불변).
+완전 다시 그리기 (≤10): 위 ①② 후 ③ task i+1~N 헤더 `deleted` ④ TaskCreate `task(i+1) 헤더(in_progress)` → sub-step → 남은 헤더. 생성순 = 표시순 + 중간삽입 불가라 다시 그려야 sub-step 이 부모 밑에 옴 — 이게 비용 분기가 제어하는 비싼 부분이다. (trade-off 근거: 외부 사용자 [F9 실측](https://github.com/alruminum/dcNess/issues/507).)
+
+**sub-step 펼침 = 재생성 경로 한정**: flat Task 리스트는 중간삽입이 안 돼 sub-step nesting 에 tail 재생성이 필요하다. 그래서 현재 task sub-step 펼침은 **full tier(≤10)** 또는 **마감 task(story/epic close)** 의 경계에서만 한다 — 마감 task 는 `product-acceptance` sub-step 가시성이 중요해 chain 크기와 무관하게 그 경계만 재생성한다. partial/minimal 의 비-마감 task 는 sub-step 을 펼치지 않는다(헤더 status 만 갱신).
+
+**자동 렌더 helper (권장 — 도구이지 게이트 아님, #755)**: 위 규칙(엔진별 sub-step / 마감 acceptance / task 수별 다시그리기)을 메인이 task 경계마다 손으로 계산하는 대신 `dcness-helper chain-view` 가 산출한다. 입력은 task list JSON `{tasks:[{name, engine, closes?}], current}` (stdin `--tasks -` 또는 파일), 출력은 `{view, strategy, operation_mode, substeps_expanded, current_substeps, operations[]}`. `view ≡ operations` — 진행 뷰는 operation 적용 결과와 항상 일치하고, `substeps_expanded` 가 그 경계에서 sub-step 이 펼쳐지는지(full tier 또는 마감 task) 알려준다. 메인은 `operations` 를 Task 시스템에 *적용만* 하고 들여쓰기·완료/현재/예정 마킹·sub-step 펼침을 직접 계산하지 않는다 — `engine` 은 frontmatter `engine`(2agent/4agent) 또는 `build-worker-deep`/`advanced`, `closes` 는 `story`/`epic`(마감 task) / 생략(중간). 진입 시 최초 전체 생성은 `--initial`, 이후 경계는 `--prev <완료 index> --current <진입 index>`(기본 `current-1`). **본 규칙 SSOT 는 본 절이며 helper 는 코드 사본일 뿐** — 미사용해도 chain 은 정상 동작하고 메인이 위 단계로 수동 rebuild 한다(폴백 보장, run state 불변).
 
 ### compaction 중 진행 (안전망) + 세션 분할 권장
 
