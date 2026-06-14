@@ -2946,9 +2946,40 @@ def _check_read_permission(settings_path: Path) -> bool:
     return isinstance(allow, list) and _READ_PERM in allow
 
 
-def _check_git_hooks(project_root: Path) -> Dict[str, str]:
-    """각 git hook 의 상태: 'ok' (thin shim) / 'missing' / 'foreign' (dcness shim 아님)."""
-    hooks_dir = project_root / ".git" / "hooks"
+def _resolve_git_hooks_dir(project_root: Path) -> Path:
+    """git 이 실제로 실행하는 hooks 디렉토리.
+
+    `core.hooksPath` (Husky 등) 가 설정되면 git 은 `.git/hooks` 를 무시한다. 진단이
+    "git 이 정말 이 hook 을 실행하는가" 를 보려면 git 이 보는 경로를 따라야 한다.
+    git 호출 실패 시 `.git/hooks` 폴백.
+    """
+    try:
+        proc = subprocess.run(
+            [
+                "git", "-C", str(project_root),
+                "rev-parse", "--path-format=absolute", "--git-path", "hooks",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            text=True,
+        )
+        if proc.returncode == 0:
+            out = proc.stdout.strip()
+            if out:
+                return Path(out)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return project_root / ".git" / "hooks"
+
+
+def _check_git_hooks(hooks_dir: Path) -> Dict[str, str]:
+    """각 git hook 의 상태.
+
+    git 이 그 hook 을 실제로 실행할 조건까지 본다:
+    'ok' (thin shim + 실행권한) / 'missing' / 'foreign' (dcness shim 아님)
+    / 'not-exec' (dcness shim 이지만 실행권한 없어 git 이 무시 — POSIX).
+    """
     result: Dict[str, str] = {}
     for name in _GIT_HOOK_SHIMS:
         p = hooks_dir / name
@@ -2960,7 +2991,13 @@ def _check_git_hooks(project_root: Path) -> Dict[str, str]:
         except OSError:
             result[name] = "foreign"
             continue
-        result[name] = "ok" if any(m in content for m in _SHIM_MARKERS) else "foreign"
+        if not any(m in content for m in _SHIM_MARKERS):
+            result[name] = "foreign"
+            continue
+        if not os.access(p, os.X_OK):
+            result[name] = "not-exec"
+            continue
+        result[name] = "ok"
     return result
 
 
@@ -3043,16 +3080,20 @@ def collect_status_diagnostics(
             f"{_READ_PERM} {'존재' if has_perm else '없음'}",
             None if has_perm else f"init-dcness Step 3 으로 {_READ_PERM} 추가",
         )
-        # git hook shim 3종
-        hooks = _check_git_hooks(project_root)
+        # git hook shim 3종 (git 이 실제 실행하는 경로 + 실행권한까지 검사)
+        hooks_dir = _resolve_git_hooks_dir(project_root)
+        hooks = _check_git_hooks(hooks_dir)
         all_ok = all(v == "ok" for v in hooks.values())
+        custom_path = hooks_dir != (project_root / ".git" / "hooks")
         hook_detail = ", ".join(f"{k}={v}" for k, v in hooks.items())
+        if custom_path:
+            hook_detail += f" (core.hooksPath={hooks_dir})"
         add(
             "git_hooks",
             "git hook shim 3종",
             "PASS" if all_ok else "FAIL",
             hook_detail,
-            None if all_ok else "init-dcness Step 4 로 thin shim 재설치",
+            None if all_ok else "init-dcness Step 4 로 thin shim 재설치 (chmod +x 포함)",
         )
         # 선택형 CI workflow (선택 — INFO)
         ci = _check_ci_workflows(project_root)

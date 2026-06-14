@@ -23,12 +23,15 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import subprocess
+
 from harness.session_state import (
     _check_ci_workflows,
     _check_git_hooks,
     _check_read_permission,
     _installed_plugin_version,
     _is_self_repo,
+    _resolve_git_hooks_dir,
     collect_status_diagnostics,
     format_status_report,
 )
@@ -96,34 +99,76 @@ class ReadPermissionTests(unittest.TestCase):
 
 
 class GitHooksTests(unittest.TestCase):
-    def _hooks_dir(self, root: Path) -> Path:
-        d = root / ".git" / "hooks"
-        d.mkdir(parents=True, exist_ok=True)
-        return d
+    def _shim(self, hd: Path, name: str, *, executable: bool = True) -> None:
+        p = hd / name
+        _write(p, "#!/bin/sh\n# uses ~/.claude/plugins/cache/dcness/dcness\n")
+        p.chmod(0o755 if executable else 0o644)
 
     def test_thin_shim_ok(self) -> None:
         with TemporaryDirectory() as td:
-            root = Path(td)
-            hd = self._hooks_dir(root)
+            hd = Path(td)
             for name in ("commit-msg", "post-checkout", "pre-push"):
-                _write(hd / name, "#!/bin/sh\n# uses ~/.claude/plugins/cache/dcness/dcness\n")
-            result = _check_git_hooks(root)
+                self._shim(hd, name)
+            result = _check_git_hooks(hd)
             self.assertEqual(set(result.values()), {"ok"})
 
     def test_missing_hook(self) -> None:
         with TemporaryDirectory() as td:
-            root = Path(td)
-            self._hooks_dir(root)
-            result = _check_git_hooks(root)
+            result = _check_git_hooks(Path(td))
             self.assertEqual(result["commit-msg"], "missing")
 
     def test_foreign_hook(self) -> None:
         with TemporaryDirectory() as td:
-            root = Path(td)
-            hd = self._hooks_dir(root)
-            _write(hd / "commit-msg", "#!/bin/sh\necho hello\n")
-            result = _check_git_hooks(root)
+            hd = Path(td)
+            p = hd / "commit-msg"
+            _write(p, "#!/bin/sh\necho hello\n")
+            p.chmod(0o755)
+            result = _check_git_hooks(hd)
             self.assertEqual(result["commit-msg"], "foreign")
+
+    def test_shim_without_exec_bit_flagged(self) -> None:
+        # dcNess shim 이지만 실행권한 없음 → git 이 무시하므로 'ok' 아님 (codex P2)
+        with TemporaryDirectory() as td:
+            hd = Path(td)
+            self._shim(hd, "commit-msg", executable=False)
+            result = _check_git_hooks(hd)
+            self.assertEqual(result["commit-msg"], "not-exec")
+
+
+class ResolveGitHooksDirTests(unittest.TestCase):
+    def _git(self, root: Path, *args: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(root), *args],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
+
+    def test_default_hooks_dir(self) -> None:
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            self._git(root, "init")
+            self.assertEqual(
+                _resolve_git_hooks_dir(root).resolve(),
+                (root / ".git" / "hooks").resolve(),
+            )
+
+    def test_custom_hooks_path_honored(self) -> None:
+        # core.hooksPath 설정 시 .git/hooks 가 아닌 그 경로를 따라야 한다 (codex P2)
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            self._git(root, "init")
+            self._git(root, "config", "core.hooksPath", "myhooks")
+            resolved = _resolve_git_hooks_dir(root).resolve()
+            self.assertEqual(resolved, (root / "myhooks").resolve())
+
+    def test_non_git_dir_fallback(self) -> None:
+        with TemporaryDirectory() as td:
+            root = Path(td)  # not a git repo
+            self.assertEqual(
+                _resolve_git_hooks_dir(root),
+                root / ".git" / "hooks",
+            )
 
 
 class CiWorkflowTests(unittest.TestCase):
