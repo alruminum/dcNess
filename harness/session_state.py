@@ -1973,6 +1973,31 @@ def _cli_run_status(args: Any) -> int:
     return 0
 
 
+def _cli_chain_view(args: Any) -> int:
+    """impl-loop chain 진행 뷰 자동 렌더 → JSON stdout (#755).
+
+    chain 모드에서 task 경계마다 메인이 진행 뷰를 손으로 다시 그리는 대신,
+    task list + current index 를 입력받아 진행 뷰 표현 + Task operation
+    시퀀스 + 비용 분기를 산출한다. 진행 뷰 규칙 SSOT = impl-loop SKILL 의
+    "진행 뷰" 절 (본 helper 는 그 규칙을 코드로 옮길 뿐).
+
+    **도구이지 게이트 아님** — run state 를 읽거나 쓰지 않는 순수 변환이라,
+    미사용해도 chain 진행을 막지 않고 메인이 수동 rebuild 로 폴백할 수 있다.
+    내부 helper (run-dir / run-status / wave-plan 류) — 새 공개 진입점 아님.
+    """
+    from harness import chain_view
+
+    return chain_view.main(
+        [
+            "--tasks",
+            args.tasks,
+        ]
+        + (["--current", str(args.current)] if args.current is not None else [])
+        + (["--prev", str(args.prev)] if args.prev is not None else [])
+        + (["--initial"] if getattr(args, "initial", False) else [])
+    )
+
+
 def _cli_wave_plan(args: Any) -> int:
     """impl task 들의 opt-in 병렬 wave 계획 계산 → JSON stdout (#636).
 
@@ -3032,6 +3057,34 @@ def _build_arg_parser() -> Any:
     )
     p_rs.add_argument("--run-id", default=None, dest="run_id")
     p_rs.set_defaults(func=_cli_run_status)
+
+    p_cv = sub.add_parser(
+        "chain-view",
+        help="impl-loop chain 진행 뷰 자동 렌더 JSON (task list + current → view/operations/strategy — #755)",
+    )
+    p_cv.add_argument(
+        "--tasks",
+        required=True,
+        help="task list JSON 경로 ('-' = stdin). {tasks:[{name,engine,closes?}], current?}",
+    )
+    p_cv.add_argument(
+        "--current",
+        type=int,
+        default=None,
+        help="현재(in_progress) task 0-based index. 미지정 시 입력 JSON 의 current.",
+    )
+    p_cv.add_argument(
+        "--prev",
+        type=int,
+        default=None,
+        help="직전 완료 task 0-based index (transition, 반드시 current-1 인접). 미지정 시 current-1. 임의 점프는 --initial.",
+    )
+    p_cv.add_argument(
+        "--initial",
+        action="store_true",
+        help="전체 task list 최초 생성 operation 산출 (transition 대신).",
+    )
+    p_cv.set_defaults(func=_cli_chain_view)
 
     p_wp = sub.add_parser(
         "wave-plan",
