@@ -85,8 +85,59 @@ class TestSubsteps(unittest.TestCase):
         self.assertEqual(normalize_engine("4agent"), "full-4")
         self.assertEqual(normalize_engine("3agent"), "build-worker-deep")
         self.assertEqual(normalize_engine("advanced-fallback"), "advanced")
+        self.assertEqual(normalize_engine("impl-ui-design-loop"), "ui")
+        self.assertEqual(normalize_engine("ui-advanced"), "ui-advanced")
         # case-insensitive + whitespace
         self.assertEqual(normalize_engine("  Build-Worker "), "build-worker")
+
+    def test_ui_loop_substeps(self):
+        # impl-ui-design-loop — designer + 사용자 PICK 선두 + full-4 (SKILL line 16-18).
+        self.assertEqual(
+            substeps_for(_task("m", "ui")),
+            [
+                "designer",
+                "사용자 PICK",
+                "test-engineer",
+                "engineer:IMPL",
+                "code-validator",
+                "pr-reviewer",
+            ],
+        )
+
+    def test_ui_advanced_substeps(self):
+        # UI + deep 보강 — designer 앞 module-architect (7 step).
+        self.assertEqual(
+            substeps_for(_task("m", "ui-advanced")),
+            [
+                "module-architect",
+                "designer",
+                "사용자 PICK",
+                "test-engineer",
+                "engineer:IMPL",
+                "code-validator",
+                "pr-reviewer",
+            ],
+        )
+
+    def test_explicit_substeps_override(self):
+        # engine preset 이 enum 하지 않은 변종을 명시 라벨로 표현 (escape hatch).
+        t = ChainTask(name="m", substeps=("designer", "사용자 PICK", "engineer:IMPL"))
+        self.assertEqual(
+            substeps_for(t), ["designer", "사용자 PICK", "engineer:IMPL"]
+        )
+
+    def test_explicit_substeps_with_closing_appends_acceptance(self):
+        t = ChainTask(
+            name="m", substeps=("designer", "engineer:IMPL"), closes="story"
+        )
+        self.assertEqual(
+            substeps_for(t),
+            ["designer", "engineer:IMPL", "product-acceptance"],
+        )
+
+    def test_empty_substeps_override_rejected(self):
+        with self.assertRaises(ValueError):
+            ChainTask(name="m", substeps=())
 
     def test_unknown_engine_rejected(self):
         with self.assertRaises(ValueError):
@@ -382,6 +433,39 @@ class TestBuildChainViewAndParse(unittest.TestCase):
     def test_parse_rejects_bad_closes(self):
         with self.assertRaises(ValueError):
             parse_tasks([{"name": "x", "engine": "2agent", "closes": "release"}])
+
+    def test_parse_ui_engine(self):
+        tasks = parse_tasks([{"name": "screen", "engine": "impl-ui-design-loop"}])
+        self.assertEqual(tasks[0].engine, "ui")
+        self.assertIn("designer", substeps_for(tasks[0]))
+        self.assertIn("사용자 PICK", substeps_for(tasks[0]))
+
+    def test_parse_substeps_override_without_engine(self):
+        tasks = parse_tasks(
+            [{"name": "screen", "substeps": ["designer", "engineer:IMPL"]}]
+        )
+        self.assertIsNone(tasks[0].engine)
+        self.assertEqual(substeps_for(tasks[0]), ["designer", "engineer:IMPL"])
+
+    def test_parse_rejects_neither_engine_nor_substeps(self):
+        with self.assertRaises(ValueError):
+            parse_tasks([{"name": "x"}])
+
+    def test_parse_rejects_bad_substeps(self):
+        with self.assertRaises(ValueError):
+            parse_tasks([{"name": "x", "substeps": ["ok", ""]}])
+
+    def test_ui_task_renders_substeps_in_full_tier(self):
+        tasks = parse_tasks(
+            [
+                {"name": "a", "engine": "2agent"},
+                {"name": "screen", "engine": "ui"},
+            ]
+        )
+        payload = build_chain_view(tasks, current=1, prev=0)
+        self.assertIn("   ㄴ designer", payload["view"])
+        self.assertIn("   ㄴ 사용자 PICK", payload["view"])
+        self.assertIn("designer", payload["current_substeps"])
 
 
 class TestViewOperationsConsistency(unittest.TestCase):

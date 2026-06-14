@@ -49,13 +49,37 @@ __all__ = [
     "build_chain_view",
 ]
 
-# ── 엔진별 base sub-step (SKILL line 435 진본) ───────────────────
+# ── 엔진별 base sub-step (SKILL line 435 + impl-ui-design-loop 진본) ──
+#
+# impl-task-loop 엔진(build-worker/deep/full-4/advanced)은 SKILL line 435,
+# impl-ui-design-loop(UI 감지 → designer + 사용자 PICK 선두)는 SKILL line 16-18
+# `expected_steps` 가 진본. 모두 그대로 옮긴다(새 라벨 발명 X). 여기에 없는
+# 변종은 task 입력의 `substeps` 명시 override 로 표현한다([`substeps_for`]).
 ENGINE_SUBSTEPS: Dict[str, List[str]] = {
     "build-worker": ["build-worker", "pr-reviewer"],
     "build-worker-deep": ["module-architect", "build-worker", "pr-reviewer"],
     "full-4": ["test-engineer", "engineer:IMPL", "code-validator", "pr-reviewer"],
     "advanced": [
         "module-architect",
+        "test-engineer",
+        "engineer:IMPL",
+        "code-validator",
+        "pr-reviewer",
+    ],
+    # impl-ui-design-loop (풀 4-agent 한정, 선두 designer + 사용자 PICK) — 6 step.
+    "ui": [
+        "designer",
+        "사용자 PICK",
+        "test-engineer",
+        "engineer:IMPL",
+        "code-validator",
+        "pr-reviewer",
+    ],
+    # UI + deep task 보강 (designer 앞 module-architect) — 7 step.
+    "ui-advanced": [
+        "module-architect",
+        "designer",
+        "사용자 PICK",
         "test-engineer",
         "engineer:IMPL",
         "code-validator",
@@ -77,6 +101,11 @@ _ENGINE_ALIASES: Dict[str, str] = {
     "advanced": "advanced",
     "advanced-fallback": "advanced",
     "5agent": "advanced",
+    "ui": "ui",
+    "ui-design-loop": "ui",
+    "impl-ui-design-loop": "ui",
+    "ui-advanced": "ui-advanced",
+    "ui-design-loop-advanced": "ui-advanced",
 }
 
 # 마감 task 의 추가 sub-step (SKILL line 435 + 마감 acceptance 절).
@@ -108,18 +137,31 @@ def normalize_engine(engine: Any) -> str:
 class ChainTask:
     """chain task 한 개의 진행 뷰 입력 (정규화 결과).
 
-    name   — 모듈명 (진행 뷰 헤더 `task{n} · {name}`).
-    engine — 정규 엔진 키 (ENGINE_SUBSTEPS 키).
-    closes — 마감 단위. None(중간) / "story" / "epic".
+    name     — 모듈명 (진행 뷰 헤더 `task{n} · {name}`).
+    engine   — 정규 엔진 키 (ENGINE_SUBSTEPS 키). substeps 명시 시 None 허용.
+    closes   — 마감 단위. None(중간) / "story" / "epic".
+    substeps — base sub-step 명시 override (tuple). 지정 시 engine preset 대신
+               이 라벨들을 base 로 쓴다 — SKILL 진행 뷰 절이 enum 하지 않은
+               변종(미래 flow 등)을 메인이 직접 라벨로 표현하는 escape hatch.
+               마감 acceptance 는 override 여부와 무관하게 append.
     """
 
     name: str
-    engine: str
+    engine: Optional[str] = None
     closes: Optional[str] = None
+    substeps: Optional[tuple] = None
 
     def __post_init__(self) -> None:  # 방어 — 직접 생성 시에도 불변식 보장
-        if self.engine not in ENGINE_SUBSTEPS:
-            raise ValueError(f"미지원 engine 키: {self.engine!r}")
+        if self.substeps is None:
+            if self.engine not in ENGINE_SUBSTEPS:
+                raise ValueError(f"미지원 engine 키: {self.engine!r}")
+        else:
+            if not self.substeps or not all(
+                isinstance(s, str) and s.strip() for s in self.substeps
+            ):
+                raise ValueError("substeps override 는 비지 않은 문자열 목록이어야 한다")
+            if self.engine is not None and self.engine not in ENGINE_SUBSTEPS:
+                raise ValueError(f"미지원 engine 키: {self.engine!r}")
         if self.closes is not None and self.closes not in _CLOSE_ACCEPTANCE:
             raise ValueError(
                 f"closes 는 None/story/epic 만: {self.closes!r}"
@@ -127,8 +169,11 @@ class ChainTask:
 
 
 def substeps_for(task: ChainTask) -> List[str]:
-    """현재 task 의 sub-step 라벨 = 엔진 base + 마감 acceptance."""
-    steps = list(ENGINE_SUBSTEPS[task.engine])
+    """현재 task 의 sub-step 라벨 = (명시 substeps 또는 엔진 base) + 마감 acceptance."""
+    if task.substeps is not None:
+        steps = list(task.substeps)
+    else:
+        steps = list(ENGINE_SUBSTEPS[task.engine])
     if task.closes:
         steps.extend(_CLOSE_ACCEPTANCE[task.closes])
     return steps
@@ -373,7 +418,8 @@ def build_chain_view(
 def parse_tasks(raw: Any) -> List[ChainTask]:
     """task list (dict 목록) → ChainTask 목록.
 
-    각 항목 필수 키: name, engine. 선택: closes (None/story/epic).
+    각 항목 필수 키: name + (engine 또는 substeps 중 하나).
+    선택: closes (None/story/epic), substeps (base 라벨 명시 override).
     """
     if not isinstance(raw, list):
         raise ValueError("tasks 는 리스트여야 한다")
@@ -384,7 +430,28 @@ def parse_tasks(raw: Any) -> List[ChainTask]:
         name = item.get("name")
         if not isinstance(name, str) or not name.strip():
             raise ValueError(f"tasks[{i}].name 누락/빈값")
-        engine = normalize_engine(item.get("engine"))
+
+        raw_substeps = item.get("substeps")
+        substeps = None
+        if raw_substeps not in ("", None, []):
+            if not isinstance(raw_substeps, list) or not all(
+                isinstance(s, str) and s.strip() for s in raw_substeps
+            ):
+                raise ValueError(
+                    f"tasks[{i}].substeps 는 비지 않은 문자열 목록이어야 한다"
+                )
+            substeps = tuple(s.strip() for s in raw_substeps)
+
+        raw_engine = item.get("engine")
+        if raw_engine in ("", None):
+            if substeps is None:
+                raise ValueError(
+                    f"tasks[{i}] 는 engine 또는 substeps 중 하나가 필요하다"
+                )
+            engine = None
+        else:
+            engine = normalize_engine(raw_engine)
+
         closes = item.get("closes")
         if closes in ("", None):
             closes = None
@@ -392,7 +459,11 @@ def parse_tasks(raw: Any) -> List[ChainTask]:
             raise ValueError(
                 f"tasks[{i}].closes 는 None/story/epic 만: {closes!r}"
             )
-        tasks.append(ChainTask(name=name.strip(), engine=engine, closes=closes))
+        tasks.append(
+            ChainTask(
+                name=name.strip(), engine=engine, closes=closes, substeps=substeps
+            )
+        )
     return tasks
 
 
