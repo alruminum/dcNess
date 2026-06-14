@@ -47,13 +47,21 @@ HELPER="$PLUGIN_ROOT/scripts/dcness-helper"
 
 ## 절차
 
-### Step 1 - 현재 상태 확인
+### Step 1 - 상태 진단
 
 ```bash
 "$HELPER" status
 ```
 
-이미 활성(`active: YES`)이면 Step 2 는 skip 하고 나머지 bootstrap 갱신 여부만 확인한다.
+`status` 는 현재 설치 상태를 PASS / WARN / FAIL / INFO / NA 진단표로 출력한다. 각 FAIL 항목은 해결 명령을 함께 보여주므로, 별도 doctor 명령 없이 셋업과 점검을 겸한다. self repo(dcNess 본체)에서는 외부 활성 항목이 `NA` 로 표기되어 self 작업 규칙과 섞이지 않는다.
+
+진단표 기준 분기:
+
+- `whitelist 활성` 이 PASS 면 Step 2 skip. FAIL 이면 Step 2.
+- `Read 권한` FAIL → Step 3.
+- `git hook shim 3종` FAIL → Step 4.
+- `선택형 CI workflow` (INFO) → 필요 시 Step 5 / Step 8.
+- 전부 PASS 면 나머지 bootstrap 갱신 여부만 확인하고 마친다.
 
 ### Step 2 - 활성화
 
@@ -389,6 +397,9 @@ support:
 
 비활성화:
 - "$HELPER" disable
+
+마지막 점검 (권장):
+- "$HELPER" status 를 재실행해 진단표가 전부 PASS 인지 확인한다.
 
 Claude Code 세션 재시작 권장:
 - SessionStart 훅은 현재 세션에는 소급 적용되지 않는다.

@@ -2872,21 +2872,267 @@ def _cli_is_active(args: Any) -> int:
     return 0 if is_project_active() else 1
 
 
-def _cli_status(args: Any) -> int:
-    """whitelist + 현재 cwd 활성 상태 출력."""
-    active = is_project_active()
-    cwd_root = _resolve_project_root().resolve()
-    print(f"[dcness] cwd project root: {cwd_root}")
-    print(f"[dcness] active: {'YES' if active else 'NO'}")
-    print(f"[dcness] whitelist file: {whitelist_path()}")
-    projects = list_active_projects()
-    if projects:
-        print(f"[dcness] {len(projects)} active project(s):")
-        for p in projects:
-            mark = "*" if p == str(cwd_root) else " "
-            print(f"  {mark} {p}")
+# ── status 진단표 (#520) ────────────────────────────────────────────
+#
+# `dcness-helper status` 를 PASS/WARN/FAIL/INFO/NA 진단표로 확장한다. 별도 doctor
+# 진입점을 추가하지 않고 (사용자가 외울 표면 최소화), init-dcness 가 셋업과 상태 점검을
+# 겸하게 한다. 진단 수집은 deterministic 코드 (추측 누락 차단), 출력 종합/권유는
+# init-dcness skill prose 가 담당. routing doctor 의 PASS/FAIL 관용구를 따른다.
+#
+# 배포 항목을 새로 추가할 때 (init-dcness 의 git hook / CI workflow / Read 권한 등)
+# 아래 검사 항목도 함께 갱신해야 한다 (docs/plugin/init-dcness.md 의무 명시).
+
+_READ_PERM = "Read(~/.claude/plugins/cache/dcness/**)"
+_GIT_HOOK_SHIMS = ("commit-msg", "post-checkout", "pre-push")
+# thin-shim 식별: 세 hook 모두 plugin cache 경로를 동적 resolve 한다.
+_SHIM_MARKERS = ("plugins/cache/dcness", "CLAUDE_PLUGIN_ROOT")
+_CI_WORKFLOWS = (
+    "git-naming-validation.yml",
+    "pr-body-validation.yml",
+    "github-project-lifecycle.yml",
+)
+
+
+def _is_self_repo(project_root: Path) -> bool:
+    """dcNess plugin 본체 repo 판정 — `.claude-plugin/plugin.json` name == dcness.
+
+    외부 활성 프로젝트엔 이 파일이 없다. self repo 는 init-dcness 미적용이라
+    외부 활성 규칙(whitelist/Read권한/hook/CI)을 검사 대상에서 제외한다 (#520 AC 5).
+    """
+    pj = project_root / ".claude-plugin" / "plugin.json"
+    try:
+        data = json.loads(pj.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return isinstance(data, dict) and data.get("name") == "dcness"
+
+
+def _plugin_root() -> Path:
+    """설치된 plugin root. CLAUDE_PLUGIN_ROOT env 우선, 없으면 본 파일 기준."""
+    env = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if env:
+        return Path(env)
+    return Path(__file__).resolve().parent.parent
+
+
+def _installed_plugin_version(plugin_root: Path) -> Optional[str]:
+    """설치된 plugin 의 manifest version. 읽기 실패 시 None."""
+    pj = plugin_root / ".claude-plugin" / "plugin.json"
+    try:
+        data = json.loads(pj.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    v = data.get("version")
+    return v if isinstance(v, str) else None
+
+
+def _settings_path() -> Path:
+    """CC 사용자 settings.json 경로."""
+    return Path.home() / ".claude" / "settings.json"
+
+
+def _check_read_permission(settings_path: Path) -> bool:
+    """SessionStart 가 plugin SSOT 문서를 inject 하려면 필요한 Read allow 존재 여부."""
+    try:
+        data = json.loads(settings_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(data, dict):
+        return False
+    perms = data.get("permissions")
+    allow = perms.get("allow") if isinstance(perms, dict) else None
+    return isinstance(allow, list) and _READ_PERM in allow
+
+
+def _check_git_hooks(project_root: Path) -> Dict[str, str]:
+    """각 git hook 의 상태: 'ok' (thin shim) / 'missing' / 'foreign' (dcness shim 아님)."""
+    hooks_dir = project_root / ".git" / "hooks"
+    result: Dict[str, str] = {}
+    for name in _GIT_HOOK_SHIMS:
+        p = hooks_dir / name
+        if not p.exists():
+            result[name] = "missing"
+            continue
+        try:
+            content = p.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            result[name] = "foreign"
+            continue
+        result[name] = "ok" if any(m in content for m in _SHIM_MARKERS) else "foreign"
+    return result
+
+
+def _check_ci_workflows(project_root: Path) -> Dict[str, bool]:
+    """선택형 CI workflow yml 존재 여부 (선택이라 부재해도 FAIL 아님)."""
+    wf_dir = project_root / ".github" / "workflows"
+    return {name: (wf_dir / name).exists() for name in _CI_WORKFLOWS}
+
+
+def _check_gh_auth() -> bool:
+    """gh CLI 인증 여부 (read-only). gh 미설치/미인증 시 False."""
+    try:
+        proc = subprocess.run(
+            ["gh", "auth", "status"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0
+
+
+def collect_status_diagnostics(
+    cwd: Optional[Path] = None,
+    *,
+    settings_path: Optional[Path] = None,
+    plugin_root: Optional[Path] = None,
+    check_gh: bool = True,
+    check_routing: bool = True,
+) -> Dict[str, Any]:
+    """현재 프로젝트 설치 상태를 검사해 진단 결과를 모은다 (read-only, deterministic).
+
+    반환: {project_root, self_repo, checks: [{key,label,status,detail,fix}], summary}.
+    status ∈ {PASS, FAIL, WARN, INFO, NA}. 외부 의존(gh / routing)은 toggle 로 분리해
+    단위 테스트에서 부수효과를 끈다.
+    """
+    project_root = _resolve_project_root(cwd).resolve()
+    self_repo = _is_self_repo(project_root)
+    settings_path = settings_path or _settings_path()
+    plugin_root = plugin_root or _plugin_root()
+
+    checks: list = []
+
+    def add(key: str, label: str, status: str, detail: str, fix: Optional[str] = None) -> None:
+        checks.append(
+            {"key": key, "label": label, "status": status, "detail": detail, "fix": fix}
+        )
+
+    # 정보 항목 (self / 외부 공통)
+    add("project_root", "cwd project root", "INFO", str(project_root))
+    version = _installed_plugin_version(plugin_root)
+    add("plugin_version", "installed plugin version", "INFO", version or "unknown")
+
+    if self_repo:
+        na_detail = "self repo — init-dcness 미적용 (CLAUDE.md + git-spec 만 적용)"
+        for key, label in (
+            ("whitelist", "whitelist 활성"),
+            ("read_perm", "Read 권한 (~/.claude/settings.json)"),
+            ("git_hooks", "git hook shim 3종"),
+            ("ci_workflows", "선택형 CI workflow"),
+        ):
+            add(key, label, "NA", na_detail)
     else:
-        print("[dcness] no active projects (whitelist empty)")
+        # whitelist 활성
+        active = is_project_active(cwd)
+        add(
+            "whitelist",
+            "whitelist 활성",
+            "PASS" if active else "FAIL",
+            "활성" if active else "비활성 (이 프로젝트가 whitelist 에 없음)",
+            None if active else 'dcness-helper enable',
+        )
+        # Read 권한
+        has_perm = _check_read_permission(settings_path)
+        add(
+            "read_perm",
+            "Read 권한 (~/.claude/settings.json)",
+            "PASS" if has_perm else "FAIL",
+            f"{_READ_PERM} {'존재' if has_perm else '없음'}",
+            None if has_perm else f"init-dcness Step 3 으로 {_READ_PERM} 추가",
+        )
+        # git hook shim 3종
+        hooks = _check_git_hooks(project_root)
+        all_ok = all(v == "ok" for v in hooks.values())
+        hook_detail = ", ".join(f"{k}={v}" for k, v in hooks.items())
+        add(
+            "git_hooks",
+            "git hook shim 3종",
+            "PASS" if all_ok else "FAIL",
+            hook_detail,
+            None if all_ok else "init-dcness Step 4 로 thin shim 재설치",
+        )
+        # 선택형 CI workflow (선택 — INFO)
+        ci = _check_ci_workflows(project_root)
+        installed = [k for k, present in ci.items() if present]
+        add(
+            "ci_workflows",
+            "선택형 CI workflow",
+            "INFO",
+            f"설치됨: {', '.join(installed)}" if installed else "없음 (선택 사항)",
+        )
+
+    # Codex validation routing (self / 외부 공통 — INFO)
+    if check_routing:
+        try:
+            from harness import agent_routing
+
+            routing_detail = agent_routing.format_status().strip().replace("\n", " | ")
+        except Exception:
+            routing_detail = "조회 실패"
+        add("routing", "Codex validation routing", "INFO", routing_detail)
+
+    # gh CLI 인증 (self / 외부 공통 — WARN)
+    if check_gh:
+        gh_ok = _check_gh_auth()
+        add(
+            "gh_auth",
+            "GitHub CLI 인증",
+            "PASS" if gh_ok else "WARN",
+            "인증됨" if gh_ok else "미인증/미설치 — PR·issue 자동화 제한",
+            None if gh_ok else "gh auth login",
+        )
+
+    summary = {"PASS": 0, "WARN": 0, "FAIL": 0}
+    for c in checks:
+        if c["status"] in summary:
+            summary[c["status"]] += 1
+
+    return {
+        "project_root": str(project_root),
+        "self_repo": self_repo,
+        "checks": checks,
+        "summary": summary,
+    }
+
+
+def format_status_report(diag: Dict[str, Any]) -> str:
+    """진단 결과를 사람이 읽는 PASS/WARN/FAIL prose 로 포맷한다."""
+    lines: list = []
+    if diag["self_repo"]:
+        lines.append("[dcness] === self repo (dcNess plugin 본체) 진단 ===")
+        lines.append(
+            "[dcness] init-dcness 미적용 — CLAUDE.md + docs/plugin/git-spec.md 만 적용"
+        )
+        lines.append("[dcness] 외부 활성 항목은 self repo 에 해당 없음 (N/A)")
+    else:
+        lines.append("[dcness] === 외부 활성 프로젝트 진단 ===")
+
+    for c in diag["checks"]:
+        line = f"  [{c['status']}] {c['label']}: {c['detail']}"
+        lines.append(line)
+        if c["status"] in ("FAIL", "WARN") and c["fix"]:
+            lines.append(f"        → 해결: {c['fix']}")
+
+    s = diag["summary"]
+    lines.append(
+        f"[dcness] 요약: {s['PASS']} PASS / {s['WARN']} WARN / {s['FAIL']} FAIL"
+    )
+    if s["FAIL"]:
+        lines.append("[dcness] FAIL 항목을 위 해결 명령으로 처리한 뒤 status 를 재실행하세요.")
+    elif s["WARN"]:
+        lines.append("[dcness] WARN 항목은 선택 — 필요 시 해결 명령을 실행하세요.")
+    elif not diag["self_repo"]:
+        lines.append("[dcness] 모든 필수 항목 PASS — 활성화 정상.")
+    return "\n".join(lines)
+
+
+def _cli_status(args: Any) -> int:
+    """whitelist + 현재 cwd 활성 상태를 진단표로 출력 (#520)."""
+    diag = collect_status_diagnostics()
+    print(format_status_report(diag))
     return 0
 
 
