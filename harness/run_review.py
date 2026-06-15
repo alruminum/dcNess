@@ -406,19 +406,21 @@ _ANY_VERDICT_RE = re.compile(
 
 
 def _prose_final_verdict_is_fail(prose: str) -> bool:
-    """prose 를 아래에서 위로 스캔해 *위치상 마지막* verdict 가 fail-class 인지.
+    """prose 를 아래에서 위로 스캔해 *결론줄* 이 fail-class 결론인지.
 
-    마지막 결론줄이 진짜 결론 (dcness agent 규약 = 마지막 단락에 결론). pass 단어가
-    부정문이면 건너뛴다.
+    dcness agent 규약 = 마지막 단락에 결론. verdict 토큰을 가진 첫 줄(아래에서)이 결론줄.
+    혼합줄("PASS / FAIL 중 FAIL", "PASS 아님 — FAIL")은 **fail 우선** — fail-class 토큰이
+    하나라도 있으면 실패로 본다 (incidental pass 단어보다 fail 이 이김, issue #771).
     """
     for line in reversed([l for l in prose.splitlines() if l.strip()]):
-        m = _ANY_VERDICT_RE.search(line)
-        if not m:
-            continue
-        tok = m.group(1)
-        if tok in _PASS_CLASS_VERDICTS and _NEGATION_RE.search(line):
-            continue  # 부정된 pass — 결론 아님
-        return tok in _FAIL_CLASS_VERDICTS
+        toks = {m.group(1) for m in _ANY_VERDICT_RE.finditer(line)}
+        if not toks:
+            continue  # verdict 없는 줄 — 위로
+        if toks & _FAIL_CLASS_VERDICTS:
+            return True  # fail 토큰 존재 → fail 우선
+        # pass 토큰만 있는 줄: 부정 아니면 pass 결론(=fail 아님), 부정이면 불명 → 위로
+        if not _NEGATION_RE.search(line):
+            return False
     return False
 
 
