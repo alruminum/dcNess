@@ -134,7 +134,10 @@ def aggregate_runs(run_dirs: list, *, top: int = 10, repo_override=None) -> Flee
 
     run_count = 0
     for run_dir in run_dirs:
-        run_dir = Path(run_dir)
+        # 절대경로화 — 상대 sessions-root 로 호출되면 run_dir 도 상대라
+        # _repo_path_for_run 이 "." 를 반환, build_report→find_session_jsonls 의
+        # Claude project key 인코딩이 어긋나 cost/invocation waste 가 누락된다.
+        run_dir = Path(run_dir).resolve()
         run_count += 1
 
         ep = _run_entry_point(run_dir)
