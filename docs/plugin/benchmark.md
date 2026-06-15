@@ -17,13 +17,16 @@ dcNess 는 측정 인프라를 plug-in 본체에 같이 배포한다.
 
 > **스크립트 위치** — `scripts/` · `harness/` 는 plug-in 본체로 배포된다. 외부 활성
 > 프로젝트는 이 파일들이 repo 안이 아니라 **plug-in 캐시**에 있으므로, 아래 명령은
-> 먼저 그 루트를 변수로 잡고 prefix 한다 (dcNess 저장소 체크아웃이면 그 루트를 쓴다).
-> `/run-review` 는 skill 이 경로 해석을 대신하므로 prefix 불필요.
+> 먼저 그 루트를 변수로 잡고 prefix 한다. `/run-review` 는 skill 이 경로 해석을
+> 대신하므로 prefix 불필요.
 >
 > ```sh
-> DCN="$(ls -d ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/dcness/dcness/*} 2>/dev/null | tail -1)"
+> # Claude Code 세션 안: 활성 plug-in 경로가 환경변수로 주어진다 (가장 정확).
+> DCN="$CLAUDE_PLUGIN_ROOT"
 > # dcNess 저장소 체크아웃에서 돌릴 땐: DCN=.
-> # (ls 기본 lexical 정렬 — macOS/BSD 에 없는 GNU 전용 `sort -V` 회피)
+> # 세션 밖 수동 실행이고 캐시에 여러 버전이 깔려 있으면 버전 디렉토리를 직접 지정한다:
+> #   DCN=~/.claude/plugins/cache/dcness/dcness/<버전>   (예: .../0.7.1)
+> # (lexical `tail`/GNU `sort -V`/mtime 어느 것도 버전 선택을 보장 못 함 — 명시가 안전.)
 > ```
 
 핵심 가설은 단순하다. dcNess 의 무거운 절차(검증·구현·리뷰 시퀀스)를 sub-agent 가
