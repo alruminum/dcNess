@@ -413,14 +413,15 @@ def _prose_final_verdict_is_fail(prose: str) -> bool:
     하나라도 있으면 실패로 본다 (incidental pass 단어보다 fail 이 이김, issue #771).
     """
     for line in reversed([l for l in prose.splitlines() if l.strip()]):
-        toks = {m.group(1) for m in _ANY_VERDICT_RE.finditer(line)}
-        if not toks:
+        matches = list(_ANY_VERDICT_RE.finditer(line))
+        if not matches:
             continue  # verdict 없는 줄 — 위로
-        if toks & _FAIL_CLASS_VERDICTS:
-            return True  # fail 토큰 존재 → fail 우선
-        # pass 토큰만 있는 줄: 부정 아니면 pass 결론(=fail 아님), 부정이면 불명 → 위로
-        if not _NEGATION_RE.search(line):
-            return False
+        # 위치상 *마지막*(rightmost) 토큰이 결론. 혼합줄 "PASS / FAIL 중 FAIL" → FAIL,
+        # "PASS / FAIL 중 PASS" → PASS (round4↔round5 진동 종결, issue #771).
+        last = matches[-1].group(1)
+        if last in _PASS_CLASS_VERDICTS and _NEGATION_RE.search(line):
+            continue  # 마지막 토큰이 부정된 pass — 결론 불명, 위로
+        return last in _FAIL_CLASS_VERDICTS
     return False
 
 
