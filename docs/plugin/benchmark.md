@@ -12,7 +12,15 @@ dcNess 는 측정 인프라를 plug-in 본체에 같이 배포한다.
 | 측정 도구 | 무엇을 보나 | 진입점 |
 |---|---|---|
 | [`scripts/measure_main_turns.py`](../../scripts/measure_main_turns.py) | Claude Code 세션의 메인 assistant turn 분포 (tool / text-only / thinking-only) + tool histogram + sub-agent 호출 분포 | 직접 실행 |
-| [`harness/run_review.py`](../../harness/run_review.py) | run 1개의 step별 비용·토큰 + 잘한 점/낭비(waste) finding | `/run-review` skill |
+| [`harness/run_review.py`](../../harness/run_review.py) | run 1개의 step별 비용·토큰 + 낭비(waste) finding | `/run-review` skill |
+| [`harness/benchmark_aggregate.py`](../../harness/benchmark_aggregate.py) | 여러 run 가로질러 fleet 집계 (FAIL 비율 / escalate / blocked / waste top-N) | 직접 실행 |
+
+> **스크립트 위치** — `scripts/` · `harness/` 는 plug-in 본체로 배포된다. dcNess
+> 저장소 체크아웃이 있으면 그 루트에서 그대로 실행한다. 외부 활성 프로젝트는 이
+> 파일들이 repo 안이 아니라 **plug-in 캐시**(`~/.claude/plugins/cache/dcness/dcness/`)
+> 에 있으므로 아래 명령의 `python3 scripts/...` / `python3 harness/...` 앞에 그
+> 캐시 경로(또는 `$CLAUDE_PLUGIN_ROOT`)를 붙인다. `/run-review` 는 skill 이 이
+> 경로 해석을 대신한다.
 
 핵심 가설은 단순하다. dcNess 의 무거운 절차(검증·구현·리뷰 시퀀스)를 sub-agent 가
 흡수하면 **메인 Claude 의 turn 누적이 줄어든다**. 그게 사실인지 숫자로 본다.

@@ -261,9 +261,11 @@ def main(argv: Optional[list] = None) -> int:
                   file=sys.stderr)
             return 2
 
+    # --repo 는 절대경로로 resolve — find_session_jsonls 가 Claude project key 를
+    # 절대 cwd 기준으로 인코딩하므로 `--repo .` 같은 상대경로는 키가 어긋난다.
+    repo_override = Path(args.repo).resolve() if args.repo else None
     report = aggregate_sessions(sessions_root, entry_point=args.entry_point,
-                                top=args.top,
-                                repo_override=Path(args.repo) if args.repo else None)
+                                top=args.top, repo_override=repo_override)
 
     if args.json:
         print(json.dumps({
