@@ -333,15 +333,44 @@ class WasteDetectionTests(unittest.TestCase):
         wastes = detect_wastes(steps)  # run_dir 미전달
         self.assertIn("INFRA_READ", {w.pattern for w in wastes})
 
-    def test_must_fix_ghost(self):
+    def test_must_fix_ghost_gate_pass_with_must_fix(self):
+        # #770 — 게이트(reviewer)가 PASS/LGTM 결론인데 must_fix 남김 = 진짜 모순 → GHOST.
         steps = [
-            StepRecord(idx=0, ts="t1", agent="validator", mode="CODE_VALIDATION",
-                       enum="FAIL", must_fix=True, prose_excerpt="a\nb\nc\nd\ne"),
-            StepRecord(idx=1, ts="t2", agent="engineer", mode="IMPL",
-                       enum="IMPL_DONE", must_fix=False, prose_excerpt="a\nb\nc\nd\ne"),
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="LGTM",
+                       prose_excerpt="a"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="b"),
         ]
         wastes = detect_wastes(steps)
         self.assertTrue(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_not_fired_on_normal_fix_loop(self):
+        # #770 — reviewer FAIL + must_fix → 다음 step(fix)은 정상 conveyor, GHOST 아님.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="FAIL",
+                       prose_excerpt="MUST FIX: x"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="fixed"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_not_fired_on_producer_restatement(self):
+        # #770 — engineer POLISH_DONE 가 고친 MUST FIX 항목 재진술 = producer, GHOST 아님.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="## MUST FIX 1 (전면 예외 래핑)"),
+            StepRecord(idx=1, ts="t2", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="PASS",
+                       prose_excerpt="ok"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
 
     def test_spec_gap_loop(self):
         steps = [

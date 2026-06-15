@@ -109,6 +109,11 @@ from harness.agent_names import LEGACY_AGENT_ALIASES  # noqa: E402,F401
 # 첫 step metric 매번 누락. ±60s 여유로 jajang 실측 8s off-by-N 흡수.
 WINDOW_TS_PADDING = timedelta(seconds=60)
 
+# issue #770 — MUST_FIX_GHOST 는 *게이트* agent 가 advance 결론을 내면서 미해결
+# MUST FIX 를 남긴 모순만 검출한다 (producer 의 must_fix·reviewer FAIL 은 정상 흐름).
+MUST_FIX_GATE_AGENTS = {"pr-reviewer", "code-validator", "architecture-validator"}
+MUST_FIX_GHOST_PASS_ENUMS = {"PASS", "LGTM"}
+
 # DCN-CHG-20260430-38: engineer self-verify echo anchor 옵션 (DCN-30-34 강제 → DCN-30-38 자율화).
 # prose 끝에 *어느 한 anchor* 라도 있으면 통과. 형식 자율 + substance 의무.
 # heading 라인에 검증 / verification / self-verify 단어가 *포함* 되면 매칭 (issue #249 — `## 수용 기준 검증` 같은 변형 허용).
@@ -603,17 +608,30 @@ def detect_wastes(
                 fix=f"agents/{s.agent}.md 디렉토리명 정확 인지 룰 보강 또는 사용자 환경 검증",
             ))
 
-    # MUST_FIX_GHOST — must_fix=true 이후 다음 step 진행
+    # MUST_FIX_GHOST — 게이트(리뷰어/검증자)가 PASS/LGTM 결론을 내면서 prose 에 미해결
+    # MUST FIX 를 남긴 모순 (= 통과시키면 안 되는데 통과). issue #770: 옛 룰은
+    # `must_fix and 다음 step 존재` 만으로 위반 판정 → conveyor 의 정상 흐름
+    # (reviewer FAIL → engineer fix → 재리뷰) + producer 의 고친-항목 재진술
+    # (engineer POLISH 가 "## MUST FIX 1 …" 헤더로 처방 내역 기재) 을 전수 오탐.
+    # 실측 41/41 false positive. 진짜 신호는 *게이트가 advance(PASS/LGTM)하면서
+    # blocker 를 남긴* 경우뿐 — producer(engineer/build-worker/test-engineer)의 must_fix
+    # 와 reviewer 의 FAIL 은 정상. 마지막 step 미해결은 MUST_FIX_LEAK 담당이라 제외.
     for i, s in enumerate(steps):
-        if s.must_fix and i + 1 < len(steps):
-            findings.append(WasteFinding(
-                pattern="MUST_FIX_GHOST",
-                severity="HIGH",
-                step_idx=i,
-                agent=s.agent,
-                detail=f"step {i} ({s.agent}) MUST_FIX 발견됐는데 step {i+1} 진행 — 멈춤 위반",
-                fix="commands/{skill}.md caveat 멈춤 룰 강화",
-            ))
+        if not (s.must_fix and i + 1 < len(steps)):
+            continue
+        if s.agent not in MUST_FIX_GATE_AGENTS:
+            continue
+        verdict = s.conclusion_enum or s.enum
+        if verdict not in MUST_FIX_GHOST_PASS_ENUMS:
+            continue
+        findings.append(WasteFinding(
+            pattern="MUST_FIX_GHOST",
+            severity="HIGH",
+            step_idx=i,
+            agent=s.agent,
+            detail=f"step {i} ({s.agent}) {verdict} 결론인데 prose 에 미해결 MUST FIX — 게이트 통과 모순",
+            fix=f"agents/{s.agent}.md 결론 일관성 — MUST FIX 가 있으면 PASS/LGTM 이 아니라 FAIL",
+        ))
 
     # issue #383 B3 — MUST_FIX_LEAK. 마지막 step 의 must_fix=True (= caveat 신호)
     # 는 MUST_FIX_GHOST 룰이 *다음 step 없음* 으로 skip → wastes 비어있는
