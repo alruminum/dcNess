@@ -399,6 +399,28 @@ class WasteDetectionTests(unittest.TestCase):
         wastes = detect_wastes(steps)
         self.assertTrue(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
 
+    def test_must_fix_ghost_fires_on_tech_reviewer_gate(self):
+        # #771 — tech-reviewer 도 PASS/FAIL 게이트 (agents/tech-reviewer 결론 규약).
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="tech-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="PASS",
+                       prose_excerpt="MUST FIX: 외부 API 미검증"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="IMPL",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="IMPL_DONE",
+                       prose_excerpt="x"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertTrue(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_ghost_gate_set_covers_ledger_validators(self):
+        # #771 drift 가드 — conveyor 검증 게이트가 늘면 GHOST 게이트도 같이 커져야 함.
+        from harness.run_review import MUST_FIX_GATE_AGENTS
+        from harness import ledger
+        self.assertTrue(
+            ledger._VALIDATOR_AGENTS <= MUST_FIX_GATE_AGENTS,
+            "ledger._VALIDATOR_AGENTS 의 모든 게이트가 MUST_FIX_GATE_AGENTS 에 있어야 함",
+        )
+
     def test_spec_gap_loop(self):
         steps = [
             StepRecord(idx=i, ts=f"t{i}", agent="architect", mode="SPEC_GAP",

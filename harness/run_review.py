@@ -109,11 +109,18 @@ from harness.agent_names import LEGACY_AGENT_ALIASES  # noqa: E402,F401
 # 첫 step metric 매번 누락. ±60s 여유로 jajang 실측 8s off-by-N 흡수.
 WINDOW_TS_PADDING = timedelta(seconds=60)
 
-# issue #770 — MUST_FIX_GHOST 는 *게이트* agent 가 advance 결론을 내면서 미해결
+# issue #770/#771 — MUST_FIX_GHOST 는 *게이트* agent 가 advance 결론을 내면서 미해결
 # MUST FIX 를 남긴 모순만 검출한다 (producer 의 must_fix·reviewer FAIL 은 정상 흐름).
-# product-acceptance 도 PASS/FAIL 게이트 (acceptance gate) 라 포함.
+# 게이트 = PASS/FAIL/(LGTM) 결론으로 진행을 막는 read-only 검증/리뷰/검수 agent.
+#   - conveyor 검증 게이트: code-validator / pr-reviewer / architecture-validator
+#     / product-acceptance  (= ledger._VALIDATOR_AGENTS)
+#   - tech-reviewer: /tech-review preflight 게이트 — PASS/FAIL/ESCALATE 결론
+#     (conveyor validator set 엔 없지만 게이트 성격 동일, agents/tech-reviewer 결론 규약).
+# drift 가드: tests 가 ledger._VALIDATOR_AGENTS ⊆ 본 집합을 강제 (검증 게이트 추가 시
+# 본 집합도 같이 커지도록).
 MUST_FIX_GATE_AGENTS = {
-    "pr-reviewer", "code-validator", "architecture-validator", "product-acceptance",
+    "pr-reviewer", "code-validator", "architecture-validator",
+    "product-acceptance", "tech-reviewer",
 }
 MUST_FIX_GHOST_PASS_ENUMS = {"PASS", "LGTM"}
 # stored enum 이 실제 verdict 면 그것을 우선 (legacy .steps.jsonl row). PROSE_LOGGED /
