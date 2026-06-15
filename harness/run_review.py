@@ -109,6 +109,41 @@ from harness.agent_names import LEGACY_AGENT_ALIASES  # noqa: E402,F401
 # 첫 step metric 매번 누락. ±60s 여유로 jajang 실측 8s off-by-N 흡수.
 WINDOW_TS_PADDING = timedelta(seconds=60)
 
+# issue #770/#771 — MUST_FIX_GHOST 는 *게이트* agent 가 advance 결론을 내면서 미해결
+# MUST FIX 를 남긴 모순만 검출한다 (producer 의 must_fix·reviewer FAIL 은 정상 흐름).
+# 게이트 = PASS/FAIL/(LGTM) 결론으로 진행을 막는 read-only 검증/리뷰/검수 agent.
+# hardcode 대신 권한 metadata 에서 *파생* — agent_boundary.ALLOW_MATRIX 의 *빈 허용*
+# (Write 권한 0 = read-only) agent 가 곧 게이트다 (code/architecture-validator,
+# pr-reviewer, product-acceptance, plan-reviewer 자동 포함). tech-reviewer 는 자기
+# 보고서를 쓰므로 빈 허용은 아니지만 PASS/FAIL/ESCALATE 게이트라 명시 추가.
+# 이렇게 단일 SSOT 에서 파생하면 게이트가 늘어도 본 집합이 자동으로 따라간다 (#771
+# whack-a-mole 종료 — 게이트 하나씩 누락되던 hardcode 회귀 차단).
+def _derive_gate_agents() -> set[str]:
+    try:
+        from harness.agent_boundary import ALLOW_MATRIX
+        read_only = {a for a, paths in ALLOW_MATRIX.items() if not paths}
+    except Exception:
+        read_only = {
+            "code-validator", "architecture-validator", "pr-reviewer",
+            "product-acceptance", "plan-reviewer",
+        }
+    return read_only | {"tech-reviewer"}
+
+
+MUST_FIX_GATE_AGENTS = _derive_gate_agents()
+MUST_FIX_GHOST_PASS_ENUMS = {"PASS", "LGTM"}
+# stored enum 이 실제 verdict 면 그것을 우선 (legacy .steps.jsonl row). PROSE_LOGGED /
+# AMBIGUOUS 같은 sentinel 일 때만 prose 파싱 결론을 쓴다 — prose 오파싱(예 "LGTM 후보 X")
+# 이 stored verdict(CHANGES_REQUESTED 등)를 덮어써 거짓 GHOST 를 내는 회귀 차단 (#770).
+_VERDICT_SENTINELS = {"PROSE_LOGGED", "AMBIGUOUS", ""}
+
+
+def _resolved_verdict(step) -> str:
+    """step 의 verdict — stored enum 우선, sentinel 이면 prose 결론."""
+    if step.enum and step.enum not in _VERDICT_SENTINELS:
+        return step.enum
+    return step.conclusion_enum or ""
+
 # DCN-CHG-20260430-38: engineer self-verify echo anchor 옵션 (DCN-30-34 강제 → DCN-30-38 자율화).
 # prose 끝에 *어느 한 anchor* 라도 있으면 통과. 형식 자율 + substance 의무.
 # heading 라인에 검증 / verification / self-verify 단어가 *포함* 되면 매칭 (issue #249 — `## 수용 기준 검증` 같은 변형 허용).
@@ -353,6 +388,41 @@ _NEGATION_RE = re.compile(
     r"없음)",
     re.IGNORECASE,
 )
+
+
+# issue #771 — GHOST 가드용. _extract_conclusion_enum 은 라벨 우선순위(PASS/LGTM 먼저)
+# 로 끝 15줄을 스캔해 "tests PASS" 같은 incidental pass 단어를 결론으로 잡을 수 있다.
+# GHOST 는 게이트가 *진짜* 통과했을 때만 모순이므로, prose 의 *위치상 마지막* 결론이
+# fail-class 면(= 실제 실패) pass 단어가 섞였어도 GHOST 에서 제외한다 (fail wins).
+_FAIL_CLASS_VERDICTS = frozenset({
+    "FAIL", "CHANGES_REQUESTED", "TESTS_FAIL", "ESCALATE",
+    "IMPLEMENTATION_ESCALATE", "UX_FLOW_ESCALATE", "VALIDATION_BLOCKED",
+})
+_PASS_CLASS_VERDICTS = frozenset({"PASS", "LGTM"})
+_ANY_VERDICT_RE = re.compile(
+    r"\b(LGTM|PASS|CHANGES_REQUESTED|TESTS_FAIL|IMPLEMENTATION_ESCALATE|"
+    r"UX_FLOW_ESCALATE|VALIDATION_BLOCKED|FAIL|ESCALATE)\b"
+)
+
+
+def _prose_final_verdict_is_fail(prose: str) -> bool:
+    """prose 를 아래에서 위로 스캔해 *결론줄* 이 fail-class 결론인지.
+
+    dcness agent 규약 = 마지막 단락에 결론. verdict 토큰을 가진 첫 줄(아래에서)이 결론줄.
+    혼합줄("PASS / FAIL 중 FAIL", "PASS 아님 — FAIL")은 **fail 우선** — fail-class 토큰이
+    하나라도 있으면 실패로 본다 (incidental pass 단어보다 fail 이 이김, issue #771).
+    """
+    for line in reversed([l for l in prose.splitlines() if l.strip()]):
+        matches = list(_ANY_VERDICT_RE.finditer(line))
+        if not matches:
+            continue  # verdict 없는 줄 — 위로
+        # 위치상 *마지막*(rightmost) 토큰이 결론. 혼합줄 "PASS / FAIL 중 FAIL" → FAIL,
+        # "PASS / FAIL 중 PASS" → PASS (round4↔round5 진동 종결, issue #771).
+        last = matches[-1].group(1)
+        if last in _PASS_CLASS_VERDICTS and _NEGATION_RE.search(line):
+            continue  # 마지막 토큰이 부정된 pass — 결론 불명, 위로
+        return last in _FAIL_CLASS_VERDICTS
+    return False
 
 
 def _extract_conclusion_enum(prose: str) -> str:
@@ -603,17 +673,37 @@ def detect_wastes(
                 fix=f"agents/{s.agent}.md 디렉토리명 정확 인지 룰 보강 또는 사용자 환경 검증",
             ))
 
-    # MUST_FIX_GHOST — must_fix=true 이후 다음 step 진행
+    # MUST_FIX_GHOST — 게이트(리뷰어/검증자)가 PASS/LGTM 결론을 내면서 prose 에 미해결
+    # MUST FIX 를 남긴 모순 (= 통과시키면 안 되는데 통과). issue #770: 옛 룰은
+    # `must_fix and 다음 step 존재` 만으로 위반 판정 → conveyor 의 정상 흐름
+    # (reviewer FAIL → engineer fix → 재리뷰) + producer 의 고친-항목 재진술
+    # (engineer POLISH 가 "## MUST FIX 1 …" 헤더로 처방 내역 기재) 을 전수 오탐.
+    # 실측 41/41 false positive. 진짜 신호는 *게이트가 advance(PASS/LGTM)하면서
+    # blocker 를 남긴* 경우뿐 — producer(engineer/build-worker/test-engineer)의 must_fix
+    # 와 reviewer 의 FAIL 은 정상. 마지막 step 미해결은 MUST_FIX_LEAK 담당이라 제외.
     for i, s in enumerate(steps):
-        if s.must_fix and i + 1 < len(steps):
-            findings.append(WasteFinding(
-                pattern="MUST_FIX_GHOST",
-                severity="HIGH",
-                step_idx=i,
-                agent=s.agent,
-                detail=f"step {i} ({s.agent}) MUST_FIX 발견됐는데 step {i+1} 진행 — 멈춤 위반",
-                fix="commands/{skill}.md caveat 멈춤 룰 강화",
-            ))
+        if not (s.must_fix and i + 1 < len(steps)):
+            continue
+        if s.agent not in MUST_FIX_GATE_AGENTS:
+            continue
+        verdict = _resolved_verdict(s)
+        if verdict not in MUST_FIX_GHOST_PASS_ENUMS:
+            continue
+        # issue #771 — prose 의 위치상 마지막 결론이 fail-class 면, conclusion_enum 이
+        # LGTM/PASS-first 스캔으로 incidental pass 단어("tests PASS")를 잘못 집은 것.
+        # 실제로는 실패(정상 fail→fix 루프)이므로 GHOST 아님 (fail wins over pass words).
+        if not (s.enum and s.enum not in _VERDICT_SENTINELS):
+            # stored enum 이 sentinel(=prose 의존)일 때만 prose 최종결론으로 교차검증.
+            if _prose_final_verdict_is_fail(s.prose_full or s.prose_excerpt):
+                continue
+        findings.append(WasteFinding(
+            pattern="MUST_FIX_GHOST",
+            severity="HIGH",
+            step_idx=i,
+            agent=s.agent,
+            detail=f"step {i} ({s.agent}) {verdict} 결론인데 prose 에 미해결 MUST FIX — 게이트 통과 모순",
+            fix=f"agents/{s.agent}.md 결론 일관성 — MUST FIX 가 있으면 PASS/LGTM 이 아니라 FAIL",
+        ))
 
     # issue #383 B3 — MUST_FIX_LEAK. 마지막 step 의 must_fix=True (= caveat 신호)
     # 는 MUST_FIX_GHOST 룰이 *다음 step 없음* 으로 skip → wastes 비어있는

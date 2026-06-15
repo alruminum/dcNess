@@ -333,15 +333,142 @@ class WasteDetectionTests(unittest.TestCase):
         wastes = detect_wastes(steps)  # run_dir 미전달
         self.assertIn("INFRA_READ", {w.pattern for w in wastes})
 
-    def test_must_fix_ghost(self):
+    def test_must_fix_ghost_gate_pass_with_must_fix(self):
+        # #770 — 게이트(reviewer)가 PASS/LGTM 결론인데 must_fix 남김 = 진짜 모순 → GHOST.
         steps = [
-            StepRecord(idx=0, ts="t1", agent="validator", mode="CODE_VALIDATION",
-                       enum="FAIL", must_fix=True, prose_excerpt="a\nb\nc\nd\ne"),
-            StepRecord(idx=1, ts="t2", agent="engineer", mode="IMPL",
-                       enum="IMPL_DONE", must_fix=False, prose_excerpt="a\nb\nc\nd\ne"),
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="LGTM",
+                       prose_excerpt="a"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="b"),
         ]
         wastes = detect_wastes(steps)
         self.assertTrue(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_not_fired_on_normal_fix_loop(self):
+        # #770 — reviewer FAIL + must_fix → 다음 step(fix)은 정상 conveyor, GHOST 아님.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="FAIL",
+                       prose_excerpt="MUST FIX: x"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="fixed"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_not_fired_on_producer_restatement(self):
+        # #770 — engineer POLISH_DONE 가 고친 MUST FIX 항목 재진술 = producer, GHOST 아님.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="## MUST FIX 1 (전면 예외 래핑)"),
+            StepRecord(idx=1, ts="t2", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="PASS",
+                       prose_excerpt="ok"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_prose_final_fail_beats_incidental_pass(self):
+        # #771 — PROSE_LOGGED 게이트의 prose 가 "tests PASS … FAIL" 로 끝나면 실제 실패.
+        # conclusion_enum 이 PASS 로 오파싱돼도 위치상 마지막 결론(FAIL)이 이겨 GHOST 아님.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="PASS",
+                       prose_excerpt="",
+                       prose_full="검토함.\ntests PASS 증거 참고.\n\nMUST FIX: x\n\nFAIL"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="fixed"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_mixed_conclusion_line_fail_wins(self):
+        # #771 — 혼합 결론줄 "PASS / FAIL 중 FAIL" 도 fail 우선 → GHOST 아님.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="PASS",
+                       prose_excerpt="",
+                       prose_full="tests PASS 참고.\nMUST FIX: x\n\nPASS / FAIL 중 FAIL"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="fixed"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_mixed_line_trailing_pass_still_fires(self):
+        # #771 — 혼합줄이 PASS 로 *끝나면* 진짜 PASS 결론 → must_fix 와 모순이라 GHOST 유지
+        # (round5: fail 토큰 존재만으로 over-suppress 하지 않음 — 위치상 마지막 토큰이 결론).
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="PASS",
+                       prose_excerpt="",
+                       prose_full="검토.\nMUST FIX: x\n\nPASS / FAIL 중 PASS"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="y"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertTrue(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_stored_verdict_beats_misparsed_prose(self):
+        # #770/#771 — legacy stored enum(CHANGES_REQUESTED)이 prose 오파싱(LGTM)을 이김
+        # → 거부된 리뷰가 PASS-class 로 오인돼 거짓 GHOST 나는 회귀 차단.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="CHANGES_REQUESTED", must_fix=True, conclusion_enum="LGTM",
+                       prose_excerpt="MUST FIX: x\nLGTM 후보 X"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="fixed"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_fires_on_product_acceptance_gate(self):
+        # #771 — product-acceptance 도 게이트 — PASS + must_fix 모순이면 GHOST.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="product-acceptance", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="PASS",
+                       prose_excerpt="MUST FIX: 누락 AC"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="x"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertTrue(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_fires_on_tech_reviewer_gate(self):
+        # #771 — tech-reviewer 도 PASS/FAIL 게이트 (agents/tech-reviewer 결론 규약).
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="tech-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="PASS",
+                       prose_excerpt="MUST FIX: 외부 API 미검증"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="IMPL",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="IMPL_DONE",
+                       prose_excerpt="x"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertTrue(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_ghost_gate_set_derived_from_allow_matrix(self):
+        # #771 — 게이트셋은 ALLOW_MATRIX 빈 허용(read-only)에서 파생 — hardcode 누락
+        # whack-a-mole 차단. read-only 게이트 전부 + tech-reviewer 포함.
+        from harness.run_review import MUST_FIX_GATE_AGENTS
+        from harness.agent_boundary import ALLOW_MATRIX
+        from harness import ledger
+        read_only = {a for a, paths in ALLOW_MATRIX.items() if not paths}
+        self.assertTrue(read_only <= MUST_FIX_GATE_AGENTS,
+                        "ALLOW_MATRIX 의 모든 read-only 게이트 포함 필수")
+        self.assertTrue(ledger._VALIDATOR_AGENTS <= MUST_FIX_GATE_AGENTS)
+        # 폐기됐지만 legacy 트레이스용 plan-reviewer 자동 포함 + tech-reviewer 명시
+        self.assertIn("plan-reviewer", MUST_FIX_GATE_AGENTS)
+        self.assertIn("tech-reviewer", MUST_FIX_GATE_AGENTS)
 
     def test_spec_gap_loop(self):
         steps = [
