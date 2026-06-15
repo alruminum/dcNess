@@ -111,8 +111,22 @@ WINDOW_TS_PADDING = timedelta(seconds=60)
 
 # issue #770 — MUST_FIX_GHOST 는 *게이트* agent 가 advance 결론을 내면서 미해결
 # MUST FIX 를 남긴 모순만 검출한다 (producer 의 must_fix·reviewer FAIL 은 정상 흐름).
-MUST_FIX_GATE_AGENTS = {"pr-reviewer", "code-validator", "architecture-validator"}
+# product-acceptance 도 PASS/FAIL 게이트 (acceptance gate) 라 포함.
+MUST_FIX_GATE_AGENTS = {
+    "pr-reviewer", "code-validator", "architecture-validator", "product-acceptance",
+}
 MUST_FIX_GHOST_PASS_ENUMS = {"PASS", "LGTM"}
+# stored enum 이 실제 verdict 면 그것을 우선 (legacy .steps.jsonl row). PROSE_LOGGED /
+# AMBIGUOUS 같은 sentinel 일 때만 prose 파싱 결론을 쓴다 — prose 오파싱(예 "LGTM 후보 X")
+# 이 stored verdict(CHANGES_REQUESTED 등)를 덮어써 거짓 GHOST 를 내는 회귀 차단 (#770).
+_VERDICT_SENTINELS = {"PROSE_LOGGED", "AMBIGUOUS", ""}
+
+
+def _resolved_verdict(step) -> str:
+    """step 의 verdict — stored enum 우선, sentinel 이면 prose 결론."""
+    if step.enum and step.enum not in _VERDICT_SENTINELS:
+        return step.enum
+    return step.conclusion_enum or ""
 
 # DCN-CHG-20260430-38: engineer self-verify echo anchor 옵션 (DCN-30-34 강제 → DCN-30-38 자율화).
 # prose 끝에 *어느 한 anchor* 라도 있으면 통과. 형식 자율 + substance 의무.
@@ -621,7 +635,7 @@ def detect_wastes(
             continue
         if s.agent not in MUST_FIX_GATE_AGENTS:
             continue
-        verdict = s.conclusion_enum or s.enum
+        verdict = _resolved_verdict(s)
         if verdict not in MUST_FIX_GHOST_PASS_ENUMS:
             continue
         findings.append(WasteFinding(

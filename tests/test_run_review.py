@@ -372,6 +372,33 @@ class WasteDetectionTests(unittest.TestCase):
         wastes = detect_wastes(steps)
         self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
 
+    def test_must_fix_ghost_stored_verdict_beats_misparsed_prose(self):
+        # #770/#771 — legacy stored enum(CHANGES_REQUESTED)이 prose 오파싱(LGTM)을 이김
+        # → 거부된 리뷰가 PASS-class 로 오인돼 거짓 GHOST 나는 회귀 차단.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="CHANGES_REQUESTED", must_fix=True, conclusion_enum="LGTM",
+                       prose_excerpt="MUST FIX: x\nLGTM 후보 X"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="fixed"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
+    def test_must_fix_ghost_fires_on_product_acceptance_gate(self):
+        # #771 — product-acceptance 도 게이트 — PASS + must_fix 모순이면 GHOST.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="product-acceptance", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="PASS",
+                       prose_excerpt="MUST FIX: 누락 AC"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="x"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertTrue(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
     def test_spec_gap_loop(self):
         steps = [
             StepRecord(idx=i, ts=f"t{i}", agent="architect", mode="SPEC_GAP",
