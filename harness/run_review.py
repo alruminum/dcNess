@@ -390,6 +390,38 @@ _NEGATION_RE = re.compile(
 )
 
 
+# issue #771 — GHOST 가드용. _extract_conclusion_enum 은 라벨 우선순위(PASS/LGTM 먼저)
+# 로 끝 15줄을 스캔해 "tests PASS" 같은 incidental pass 단어를 결론으로 잡을 수 있다.
+# GHOST 는 게이트가 *진짜* 통과했을 때만 모순이므로, prose 의 *위치상 마지막* 결론이
+# fail-class 면(= 실제 실패) pass 단어가 섞였어도 GHOST 에서 제외한다 (fail wins).
+_FAIL_CLASS_VERDICTS = frozenset({
+    "FAIL", "CHANGES_REQUESTED", "TESTS_FAIL", "ESCALATE",
+    "IMPLEMENTATION_ESCALATE", "UX_FLOW_ESCALATE", "VALIDATION_BLOCKED",
+})
+_PASS_CLASS_VERDICTS = frozenset({"PASS", "LGTM"})
+_ANY_VERDICT_RE = re.compile(
+    r"\b(LGTM|PASS|CHANGES_REQUESTED|TESTS_FAIL|IMPLEMENTATION_ESCALATE|"
+    r"UX_FLOW_ESCALATE|VALIDATION_BLOCKED|FAIL|ESCALATE)\b"
+)
+
+
+def _prose_final_verdict_is_fail(prose: str) -> bool:
+    """prose 를 아래에서 위로 스캔해 *위치상 마지막* verdict 가 fail-class 인지.
+
+    마지막 결론줄이 진짜 결론 (dcness agent 규약 = 마지막 단락에 결론). pass 단어가
+    부정문이면 건너뛴다.
+    """
+    for line in reversed([l for l in prose.splitlines() if l.strip()]):
+        m = _ANY_VERDICT_RE.search(line)
+        if not m:
+            continue
+        tok = m.group(1)
+        if tok in _PASS_CLASS_VERDICTS and _NEGATION_RE.search(line):
+            continue  # 부정된 pass — 결론 아님
+        return tok in _FAIL_CLASS_VERDICTS
+    return False
+
+
 def _extract_conclusion_enum(prose: str) -> str:
     """prose 본문 끝 ~15줄에서 positive 결론 enum 추출.
 
@@ -654,6 +686,13 @@ def detect_wastes(
         verdict = _resolved_verdict(s)
         if verdict not in MUST_FIX_GHOST_PASS_ENUMS:
             continue
+        # issue #771 — prose 의 위치상 마지막 결론이 fail-class 면, conclusion_enum 이
+        # LGTM/PASS-first 스캔으로 incidental pass 단어("tests PASS")를 잘못 집은 것.
+        # 실제로는 실패(정상 fail→fix 루프)이므로 GHOST 아님 (fail wins over pass words).
+        if not (s.enum and s.enum not in _VERDICT_SENTINELS):
+            # stored enum 이 sentinel(=prose 의존)일 때만 prose 최종결론으로 교차검증.
+            if _prose_final_verdict_is_fail(s.prose_full or s.prose_excerpt):
+                continue
         findings.append(WasteFinding(
             pattern="MUST_FIX_GHOST",
             severity="HIGH",

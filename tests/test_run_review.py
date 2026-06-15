@@ -372,6 +372,21 @@ class WasteDetectionTests(unittest.TestCase):
         wastes = detect_wastes(steps)
         self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
 
+    def test_must_fix_ghost_prose_final_fail_beats_incidental_pass(self):
+        # #771 — PROSE_LOGGED 게이트의 prose 가 "tests PASS … FAIL" 로 끝나면 실제 실패.
+        # conclusion_enum 이 PASS 로 오파싱돼도 위치상 마지막 결론(FAIL)이 이겨 GHOST 아님.
+        steps = [
+            StepRecord(idx=0, ts="t1", agent="pr-reviewer", mode=None,
+                       enum="PROSE_LOGGED", must_fix=True, conclusion_enum="PASS",
+                       prose_excerpt="",
+                       prose_full="검토함.\ntests PASS 증거 참고.\n\nMUST FIX: x\n\nFAIL"),
+            StepRecord(idx=1, ts="t2", agent="engineer", mode="POLISH",
+                       enum="PROSE_LOGGED", must_fix=False, conclusion_enum="POLISH_DONE",
+                       prose_excerpt="fixed"),
+        ]
+        wastes = detect_wastes(steps)
+        self.assertFalse(any(w.pattern == "MUST_FIX_GHOST" for w in wastes))
+
     def test_must_fix_ghost_stored_verdict_beats_misparsed_prose(self):
         # #770/#771 — legacy stored enum(CHANGES_REQUESTED)이 prose 오파싱(LGTM)을 이김
         # → 거부된 리뷰가 PASS-class 로 오인돼 거짓 GHOST 나는 회귀 차단.
