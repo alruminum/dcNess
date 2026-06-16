@@ -1892,5 +1892,181 @@ class RootCodeFileAllowTests(unittest.TestCase):
             )
 
 
+class ProjectBoundaryOverrideTests(unittest.TestCase):
+    """#696 — 프로젝트별 ALLOW_MATRIX override (`.dcness/boundary.json`).
+
+    외부 활성 프로젝트가 자기 사정을 직접 선언해 sub-agent write 경계를 양방향으로
+    커스텀한다 (add = 허용 확장, remove = 코어 기본값 제거). 코어는 합리적 기본값만,
+    예외는 프로젝트가 SSOT. 외부 프로젝트 시뮬레이션(DCNESS_INFRA="" + tempdir).
+    """
+
+    def setUp(self):
+        self._patcher = patch.dict(
+            os.environ, {"DCNESS_INFRA": "", "CLAUDE_PLUGIN_ROOT": ""}, clear=False
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+
+    @staticmethod
+    def _write_boundary(root: Path, mapping: dict) -> None:
+        cfg_dir = root / ".dcness"
+        cfg_dir.mkdir(parents=True, exist_ok=True)
+        (cfg_dir / "boundary.json").write_text(
+            json.dumps(mapping), encoding="utf-8"
+        )
+
+    # ── add: 허용 확장 ──
+    def test_add_extends_allow_for_nonstandard_layout(self):
+        # 코어에 없는 비표준 소스 레이아웃을 add 로 허용.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # add 전 — 차단 확인.
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "custom-pkg/widget.go", cwd=cwd)
+            )
+            self._write_boundary(cwd, {"engineer": {"add": [r"(^|/)custom-pkg/"]}})
+            self.assertIsNone(
+                check_write_allowed("engineer", "custom-pkg/widget.go", cwd=cwd)
+            )
+
+    def test_add_opens_default_excluded_tests_for_engineer(self):
+        # engineer 의 tests/ 기본 제외(self-grading 방어)를 프로젝트가 add 로 완화.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "tests/test_widget.py", cwd=cwd)
+            )
+            self._write_boundary(cwd, {"engineer": {"add": [r"(^|/)tests?/"]}})
+            self.assertIsNone(
+                check_write_allowed("engineer", "tests/test_widget.py", cwd=cwd)
+            )
+
+    # ── remove: 코어 기본값 제거 ──
+    def test_remove_blocks_core_default(self):
+        # 코어 기본 허용 경로(^app/)를 프로젝트가 remove 로 제거.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self.assertIsNone(
+                check_write_allowed("engineer", "app/models.rb", cwd=cwd)
+            )
+            self._write_boundary(cwd, {"engineer": {"remove": [r"^app/"]}})
+            reason = check_write_allowed("engineer", "app/models.rb", cwd=cwd)
+            self.assertIsNotNone(reason)
+
+    def test_remove_overrides_add_on_conflict(self):
+        # 같은 경로에 add+remove 동시 → remove 우선(보수적 차단).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self._write_boundary(
+                cwd,
+                {"engineer": {"add": [r"(^|/)zone/"], "remove": [r"(^|/)zone/"]}},
+            )
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "zone/x.go", cwd=cwd)
+            )
+
+    # ── 가드: 되돌릴 수 없는 경계는 override 가 못 뚫는다 ──
+    def test_add_cannot_open_infra_path(self):
+        # add 로 INFRA 경로(hooks/)를 열려 해도 INFRA 검사가 먼저라 차단.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self._write_boundary(cwd, {"engineer": {"add": [r"(^|/)hooks/"]}})
+            reason = check_write_allowed("engineer", "hooks/evil.py", cwd=cwd)
+            self.assertIsNotNone(reason)
+            self.assertIn("인프라", reason)
+
+    def test_boundary_file_itself_blocked_for_subagent(self):
+        # 위조 방지 — 설정 파일 자신은 어떤 sub-agent 도 write 못 함 (self 확장/축소 금지).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for agent in ("engineer", "test-engineer", "build-worker", "architect"):
+                reason = check_write_allowed(
+                    agent, ".dcness/boundary.json", cwd=cwd
+                )
+                self.assertIsNotNone(reason, f"{agent} 가 boundary.json 쓰면 안 됨")
+                self.assertIn("인프라", reason)
+
+    def test_add_cannot_open_boundary_file(self):
+        # add 로 .dcness/ 를 열려 해도 boundary.json 은 INFRA 라 차단.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self._write_boundary(cwd, {"engineer": {"add": [r"(^|/)\.dcness/"]}})
+            reason = check_write_allowed(
+                "engineer", ".dcness/boundary.json", cwd=cwd
+            )
+            self.assertIsNotNone(reason)
+            self.assertIn("인프라", reason)
+
+    def test_remove_cannot_unprotect_boundary_file(self):
+        # remove 로 boundary.json INFRA 보호를 풀 수 없다.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self._write_boundary(
+                cwd, {"engineer": {"remove": [r"(^|/)\.dcness/boundary\.json$"]}}
+            )
+            reason = check_write_allowed(
+                "engineer", ".dcness/boundary.json", cwd=cwd
+            )
+            self.assertIsNotNone(reason)
+            self.assertIn("인프라", reason)
+
+    # ── 회귀/안전 ──
+    def test_no_boundary_file_core_defaults_intact(self):
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            # 코어 기본값 그대로 — src 허용, random 차단.
+            self.assertIsNone(check_write_allowed("engineer", "src/x.ts", cwd=cwd))
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "README.md", cwd=cwd)
+            )
+
+    def test_malformed_boundary_ignored(self):
+        # 깨진 JSON → 무시하고 코어 기본값 유지 (안전 degrade).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            cfg_dir = cwd / ".dcness"
+            cfg_dir.mkdir()
+            (cfg_dir / "boundary.json").write_text("{not json", encoding="utf-8")
+            self.assertIsNone(check_write_allowed("engineer", "src/x.ts", cwd=cwd))
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "custom-pkg/x.go", cwd=cwd)
+            )
+
+    def test_invalid_regex_pattern_skipped(self):
+        # 컴파일 불가 정규식은 그 패턴만 skip — 나머지 add 는 유효.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self._write_boundary(
+                cwd, {"engineer": {"add": [r"(unclosed", r"(^|/)okdir/"]}}
+            )
+            self.assertIsNone(
+                check_write_allowed("engineer", "okdir/x.go", cwd=cwd)
+            )
+
+    def test_boundary_found_in_ancestor(self):
+        # cwd 가 하위 디렉토리여도 조상의 boundary.json 적용.
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self._write_boundary(root, {"engineer": {"add": [r"(^|/)custom-pkg/"]}})
+            sub = root / "services" / "api"
+            sub.mkdir(parents=True)
+            self.assertIsNone(
+                check_write_allowed("engineer", "custom-pkg/x.go", cwd=sub)
+            )
+
+    def test_override_ignored_in_infra_project(self):
+        # dcness self / infra project 는 어차피 통과 — override 무관, 메인 SSOT 편집 보존.
+        with patch.dict(os.environ, {"DCNESS_INFRA": "1"}, clear=False):
+            with tempfile.TemporaryDirectory() as td:
+                cwd = Path(td)
+                self._write_boundary(cwd, {"engineer": {"remove": [r"(^|/)src/"]}})
+                # remove 했어도 infra project 는 통과.
+                self.assertIsNone(
+                    check_write_allowed("engineer", "src/x.ts", cwd=cwd)
+                )
+
+
 if __name__ == "__main__":
     unittest.main()

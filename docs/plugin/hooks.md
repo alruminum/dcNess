@@ -100,10 +100,35 @@ Stop hook 은 tool 호출을 막는 hook 이 아니다. 필요할 때 `decision:
 | `DCNESS_INFRA_PATTERNS` | sub-agent 의 `.claude/`, `hooks/`, `harness/*.py`, `docs/plugin/*.md`, `scripts/*.mjs` 등 infra path 접근 차단 |
 | `RUN_DIR_PROSE_ALLOW` | build-worker 가 자기 run dir 의 `build-{test,impl,validate,polish}.md` prose 를 쓰는 좁은 예외 |
 | `ALLOW_MATRIX` | agent 별 Write 허용 path 제한 |
+| `.dcness/boundary.json` | **프로젝트별 override** — agent 별 `add`(허용 확장) / `remove`(코어 기본 제거)로 코어 `ALLOW_MATRIX` 를 양방향 커스텀 (아래 참조) |
 | `READ_DENY_MATRIX` | agent 별 Read 금지 path 제한 |
 | 외부 변경 차단 목록 | sub-agent 의 `git push`, Bash `gh pr create/merge/review`, Bash `gh issue create/edit/close/comment`, 상태 변경 `gh api`, GitHub MCP PR/repo 외부 상태 변경 차단 |
 
 메인 Claude turn 은 file boundary 를 통과한다.
+
+#### 프로젝트별 write 경계 override — `.dcness/boundary.json`
+
+코어 `ALLOW_MATRIX` 는 흔한 언어·레이아웃의 합리적 기본값만 잡는다. 프로젝트 사정은 무한하므로(비표준 소스 디렉토리, 또는 코어 기본 제외를 의도적으로 완화하고 싶은 경우 — 예: engineer 의 `tests/` 제외를 "구현·테스트 한 호흡" 워크플로에서 열기), 프로젝트가 **루트의 `.dcness/boundary.json`** 으로 자기 사정을 직접 선언한다. 코어는 건드리지 않고, 예외는 프로젝트가 SSOT 로 가진다.
+
+```json
+{
+  "engineer":      { "add": ["(^|/)remotion/", "(^|/)tests?/"], "remove": ["^app/"] },
+  "test-engineer": { "add": ["(^|/)custom-e2e/"] }
+}
+```
+
+- **형식**: agent 별 `add` / `remove` 정규식(코어 `ALLOW_MATRIX` 와 동일한 `re.search` 패턴) 배열.
+- **`add`**: 코어 `ALLOW_MATRIX` 에 없는 경로를 그 agent 에 허용 (비표준 레이아웃 / 의도적 기본 제외 완화).
+- **`remove`**: 코어 기본 허용 경로를 이 프로젝트에서 제거 (ALLOW 보다 우선하는 DENY 오버레이).
+- **탐색**: `harness/agent_boundary.py` 가 cwd 조상에서 이 파일을 찾는다. worktree·하위 디렉토리에서도 프로젝트 루트 설정이 적용된다.
+- **안전 degrade**: 파일 부재·깨진 JSON·형식 위반·컴파일 불가 정규식은 조용히 무시하고 코어 기본값을 유지한다 (잘못된 설정이 경계를 깨뜨리지 않는다).
+- **배포**: 읽는 로직은 plugin 본체(`harness/`)라 plugin 버전업으로 자동 적용 (cp 0). 설정 파일은 프로젝트가 직접 작성한다.
+
+**override 가 뚫지 못하는 가드 (되돌릴 수 없는 경계만)**:
+
+- **INFRA 경로** (`DCNESS_INFRA_PATTERNS` — `hooks/`, `harness/*.py` 등) 는 `add` 로 열 수 없다. INFRA 검사가 ALLOW(코어+add) 검사보다 *먼저* 발화하기 때문.
+- **`.dcness/boundary.json` 자신** 은 sub-agent write 차단 영역 (자기 경계 셀프 확장/축소 금지). INFRA 로 보호되며 `remove` 로도 풀 수 없다.
+- 그 외 기본값(예: engineer 의 `tests/` 제외 = self-grading 방어)은 **강제 가드가 아니라 권고** 다. 프로젝트가 `add` 로 풀 수 있고, 그 경우 self-grading drift(구현자가 자기 코드를 통과시키도록 테스트를 편향) 위험은 프로젝트가 감수한다.
 
 GitHub issue 외부 상태 변경은 경로에 따라 다르게 처리한다 — 같은 "issue 변경"이라도 차단 여부가 갈린다.
 

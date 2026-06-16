@@ -41,6 +41,7 @@ __all__ = [
     "READ_DENY_MATRIX",
     "is_infra_project",
     "is_opt_out",
+    "load_project_boundary_overrides",
     "check_write_allowed",
     "check_read_allowed",
     "extract_bash_paths",
@@ -60,6 +61,11 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
     r'(^|/)docs/internal/governance\.md$',
     r'(^|/)scripts/(check_document_sync|check_task_id|setup_branch_protection)\.mjs$',
     r'^CLAUDE\.md$',
+    # 프로젝트별 boundary override 설정 파일 자신 (#696) — 위조 방지. sub-agent 가
+    # 자기 write 경계를 셀프 확장/축소하지 못하도록 INFRA 로 보호한다. INFRA 검사는
+    # ALLOW(코어+add) 검사보다 *먼저* 발화하므로 add 로 못 열고, remove 는 ALLOW 에서만
+    # 빼는 DENY 오버레이라 INFRA 보호를 못 푼다 (가드 = 검사 순서로 자동 보장).
+    r'(^|/)\.dcness/boundary\.json$',
 )
 
 
@@ -296,6 +302,73 @@ def is_opt_out(cwd: Optional[Path] = None) -> bool:
     return (cwd / ".no-dcness-guard").exists()
 
 
+# ── 프로젝트별 boundary override (#696) ────────────────────────────────
+def load_project_boundary_overrides(
+    cwd: Optional[Path] = None,
+) -> dict[str, dict[str, tuple[str, ...]]]:
+    """cwd 조상에서 `.dcness/boundary.json` 을 찾아 agent별 add/remove 패턴을 반환한다.
+
+    #696 — 외부 활성 프로젝트가 자기 레이아웃·정책을 직접 선언해 sub-agent write 경계를
+    양방향으로 커스텀하는 메커니즘. 코어 ALLOW_MATRIX 는 합리적 기본값만 잡고, 무한한
+    프로젝트별 예외는 프로젝트가 SSOT (reactive cycle 을 코어 밖으로 이관).
+
+    형식: `{"<agent>": {"add": [regex...], "remove": [regex...]}}`.
+    - add  — 코어 ALLOW 에 없는 경로 허용 (비표준 레이아웃 / 의도적 기본 제외 완화).
+    - remove — 코어 기본 허용 경로를 이 프로젝트에서 제거 (DENY 오버레이).
+
+    되돌릴 수 없는 경계(INFRA / boundary.json 자기보호)는 호출부(check_write_allowed)가
+    ALLOW 검사보다 *먼저* 강제하므로 여기서 거르지 않는다 — add 로 INFRA 를 못 열고,
+    remove 는 ALLOW 에서만 빼므로 INFRA 보호를 못 푼다 (가드 = 검사 순서로 자동 보장).
+
+    안전 degrade: 파일 부재·파싱 실패·형식 위반·컴파일 불가 정규식은 조용히 무시하고
+    해당 부분만 제외한다 (잘못된 설정이 코어 기본값을 깨뜨리지 않는다).
+    """
+    if cwd is None:
+        cwd = Path.cwd()
+    try:
+        cur = cwd.resolve()
+    except (OSError, RuntimeError):
+        return {}
+    cfg_path: Optional[Path] = None
+    for d in (cur, *cur.parents):
+        candidate = d / ".dcness" / "boundary.json"
+        if candidate.is_file():
+            cfg_path = candidate
+            break
+    if cfg_path is None:
+        return {}
+    try:
+        data = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+
+    result: dict[str, dict[str, tuple[str, ...]]] = {}
+    for agent, spec in data.items():
+        if not isinstance(agent, str) or not isinstance(spec, dict):
+            continue
+        entry: dict[str, tuple[str, ...]] = {}
+        for key in ("add", "remove"):
+            raw = spec.get(key, [])
+            if not isinstance(raw, list):
+                continue
+            valid: list[str] = []
+            for pat in raw:
+                if not isinstance(pat, str):
+                    continue
+                try:
+                    re.compile(pat)
+                except re.error:
+                    continue
+                valid.append(pat)
+            if valid:
+                entry[key] = tuple(valid)
+        if entry:
+            result[agent] = entry
+    return result
+
+
 # ── path 정규화 ───────────────────────────────────────────────────────
 
 
@@ -444,15 +517,31 @@ def check_write_allowed(
                 f"docs/ 는 architect, design-variants/ 는 designer 전용 (코드 agent write 금지)."
             )
 
-    # 3. ALLOW_MATRIX 미매칭 → 차단.
+    # 3. 프로젝트별 boundary override (#696) — 코어 ALLOW 검사 직전에 적용.
+    #    INFRA(1)·코드 agent 전용 deny(2) 를 모두 통과한 뒤이므로, override 는 되돌릴 수
+    #    없는 경계를 건드리지 못한다 (가드 = 검사 순서). remove 는 ALLOW 보다 우선하는
+    #    DENY 오버레이, add 는 코어 ALLOW 확장.
+    ov = load_project_boundary_overrides(cwd).get(agent)
+
+    # 3a. remove 오버레이 — 코어 기본 허용 경로를 이 프로젝트에서 제거.
+    if ov and ov.get("remove"):
+        matched = _matches_any(norm, ov["remove"])
+        if matched:
+            return (
+                f"{agent} 프로젝트 boundary remove: `{norm}` matched `{matched}` "
+                f"(.dcness/boundary.json — 코어 기본값에서 제거)"
+            )
+
+    # 3b. ALLOW_MATRIX (코어 + 프로젝트 add) 미매칭 → 차단.
     allowed = ALLOW_MATRIX.get(agent)
     if allowed is None:
         # 미정의 agent — false positive 회피로 통과.
         return None
-    if not _matches_any(norm, allowed):
+    effective = allowed + (ov.get("add", ()) if ov else ())
+    if not _matches_any(norm, effective):
         return (
             f"{agent} ALLOW_MATRIX 미매칭: `{norm}` "
-            f"(ALLOW_MATRIX — 허용 = {list(allowed)})"
+            f"(ALLOW_MATRIX — 허용 = {list(effective)})"
         )
     return None
 
