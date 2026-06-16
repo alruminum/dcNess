@@ -29,6 +29,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -41,6 +42,7 @@ __all__ = [
     "READ_DENY_MATRIX",
     "is_infra_project",
     "is_opt_out",
+    "load_project_boundary_overrides",
     "check_write_allowed",
     "check_read_allowed",
     "extract_bash_paths",
@@ -60,6 +62,26 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
     r'(^|/)docs/internal/governance\.md$',
     r'(^|/)scripts/(check_document_sync|check_task_id|setup_branch_protection)\.mjs$',
     r'^CLAUDE\.md$',
+    # 프로젝트별 boundary override 설정 디렉토리 `.dcness/` 전체 (#696) — 위조 방지.
+    # sub-agent 가 자기 write 경계를 셀프 확장/축소하지 못하도록 INFRA 로 보호한다.
+    # 파일 단위(`boundary\.json$`)만 막으면, 프로젝트가 add 로 `.dcness/` 를 연 뒤
+    # 디렉토리 타깃 Bash write(`cp x .dcness/`)로 boundary.json 을 *교체* 해 보호를 우회할
+    # 수 있다 (codex P2). 디렉토리 자체(`.dcness`)·하위(`.dcness/...`) 를 모두 매칭해
+    # 디렉토리 타깃 우회를 닫는다. `.dcness` 는 dcness 제어 영역이라 sub-agent write 가
+    # 정당하지 않다 (메인 Claude 는 INFRA 통과로 boundary.json 작성). INFRA 검사는
+    # ALLOW(코어+add) 검사보다 *먼저* 발화하므로 add 로 못 열고, remove 는 ALLOW 에서만
+    # 빼는 DENY 오버레이라 INFRA 보호를 못 푼다 (가드 = 검사 순서로 자동 보장).
+    r'(^|/)\.dcness(/|$)',
+    # guard self-disable 마커 (#696 codex P1) — boundary override 의 broad add(예 `.*`)로
+    # sub-agent 가 file guard 자체를 끄는 통제 파일을 쓰지 못하도록 INFRA 로 보호한다.
+    #   - `.no-dcness-guard` — is_opt_out() 마커. 쓰면 다음 검사부터 file guard 전면 우회.
+    #   - `.claude-plugin/` — plugin.json name=dcness 가 _is_dcness_self_repo() 신호라,
+    #     쓰면 is_infra_project() True 로 모든 sub-agent 경계가 무력화된다. `(^|/)\.claude/`
+    #     는 `.claude-plugin/`(≠`.claude/`)에 미매칭이라 별도 보호 필요. 디렉토리 타깃 우회
+    #     방지로 디렉토리 자체·하위를 모두 매칭. (`~/.claude/.dcness-infra` 는 home 이라
+    #     cwd-밖 가드가 이미 차단 — sub-agent 가 경계 밖 write 불가.)
+    r'(^|/)\.no-dcness-guard(/|$)',
+    r'(^|/)\.claude-plugin(/|$)',
 )
 
 
@@ -186,6 +208,12 @@ ALLOW_MATRIX: dict[str, tuple[str, ...]] = {
 # 경계가 무력화되던 결함(#597) 수정. (run_dir prose self-write 는 RUN_DIR_PROSE_ALLOW carve-out.)
 ALLOW_MATRIX["build-worker"] = ALLOW_MATRIX["engineer"] + ALLOW_MATRIX["test-engineer"]
 
+# build-worker 의 합집합 구성 역할 — 프로젝트 override(#696) 전파 대상. 코어 ALLOW 가
+# engineer ∪ test-engineer 인 것과 동일 원리로, `.dcness/boundary.json` 의 engineer /
+# test-engineer add·remove 도 build-worker 에 합쳐 전파해야 한다 (안 그러면 /impl-loop 의
+# 실제 mutation agent 인 build-worker 가 engineer.remove 를 우회하고 engineer.add 를 무효화).
+_BUILD_WORKER_UNION_ROLES: tuple[str, ...] = ("engineer", "test-engineer", "build-worker")
+
 
 # ── 코드 agent 전용영역 deny (#694 codex P2) ───────────────────────
 # engineer / test-engineer / build-worker 의 언어 중립 ALLOW 패턴(lib/·internal/·cmd/·
@@ -294,6 +322,147 @@ def is_opt_out(cwd: Optional[Path] = None) -> bool:
     if cwd is None:
         cwd = Path.cwd()
     return (cwd / ".no-dcness-guard").exists()
+
+
+# ── 프로젝트별 boundary override (#696) ────────────────────────────────
+_BOUNDARY_ROOT_CACHE: dict[str, Optional[str]] = {}
+
+
+def _git_worktree_toplevel(cwd: Path) -> Optional[Path]:
+    """현재 working tree 의 top-level (`git rev-parse --show-toplevel`) — boundary 탐색 상한.
+
+    `_resolve_project_root` 는 state 공유 목적으로 git common-dir parent(= main repo
+    루트)를 돌려주는데, linked worktree(메인 체크아웃 밖에 둔 worktree)에선 그 루트가
+    worktree cwd 의 조상이 아니라 boundary.json 탐색 경계로 부적합하다 (#696 codex P2).
+    boundary.json 은 worktree-local 체크아웃 파일이므로, 현재 working tree top-level 까지
+    탐색해야 nested·linked worktree 양쪽에서 정확하고, 그 *위* 상위 워크스페이스·home 은
+    무시된다. git 아님·실패 시 None (호출부가 cwd 폴백).
+    """
+    key = str(cwd)
+    if key in _BOUNDARY_ROOT_CACHE:
+        cached = _BOUNDARY_ROOT_CACHE[key]
+        return Path(cached) if cached else None
+    top: Optional[Path] = None
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=str(cwd),
+            timeout=2,
+        )
+        out = result.stdout.strip()
+        if out:
+            top = Path(out).resolve()
+    except (subprocess.SubprocessError, OSError, ValueError):
+        top = None
+    _BOUNDARY_ROOT_CACHE[key] = str(top) if top else None
+    return top
+
+
+def load_project_boundary_overrides(
+    cwd: Optional[Path] = None,
+) -> dict[str, dict[str, tuple[str, ...]]]:
+    """cwd 조상에서 `.dcness/boundary.json` 을 찾아 agent별 add/remove 패턴을 반환한다.
+
+    #696 — 외부 활성 프로젝트가 자기 레이아웃·정책을 직접 선언해 sub-agent write 경계를
+    양방향으로 커스텀하는 메커니즘. 코어 ALLOW_MATRIX 는 합리적 기본값만 잡고, 무한한
+    프로젝트별 예외는 프로젝트가 SSOT (reactive cycle 을 코어 밖으로 이관).
+
+    형식: `{"<agent>": {"add": [regex...], "remove": [regex...]}}`.
+    - add  — 코어 ALLOW 에 없는 경로 허용 (비표준 레이아웃 / 의도적 기본 제외 완화).
+    - remove — 코어 기본 허용 경로를 이 프로젝트에서 제거 (DENY 오버레이).
+
+    되돌릴 수 없는 경계(INFRA / boundary.json 자기보호)는 호출부(check_write_allowed)가
+    ALLOW 검사보다 *먼저* 강제하므로 여기서 거르지 않는다 — add 로 INFRA 를 못 열고,
+    remove 는 ALLOW 에서만 빼므로 INFRA 보호를 못 푼다 (가드 = 검사 순서로 자동 보장).
+
+    안전 degrade: 파일 부재·파싱 실패·형식 위반·컴파일 불가 정규식은 조용히 무시하고
+    해당 부분만 제외한다 (잘못된 설정이 코어 기본값을 깨뜨리지 않는다).
+    """
+    if cwd is None:
+        cwd = Path.cwd()
+    try:
+        cur = cwd.resolve()
+    except (OSError, RuntimeError):
+        return {}
+    # 탐색 범위를 현재 working tree top-level 까지로 제한 (#696 codex P2). 무한정 상위로
+    # 올라가면 현재 프로젝트 밖(상위 워크스페이스 / home)의 boundary.json 이 무관한 하위
+    # 프로젝트의 sub-agent write 경계를 silently 확장/축소해 file guard 를 약화한다.
+    # top-level 은 nested·linked worktree 양쪽에서 worktree-local 루트로 해소되므로, 하위
+    # 디렉토리에서도 worktree 루트 boundary.json 을 찾되 그 위는 무시한다. top-level 이
+    # cwd 조상이 아니면(git 아님·폴백·예외) cwd 자신만 검사한다.
+    root = _git_worktree_toplevel(cur)
+    if root is None:
+        root = cur
+    search_dirs: list[Path] = []
+    for d in (cur, *cur.parents):
+        search_dirs.append(d)
+        if d == root:
+            break
+    else:
+        search_dirs = [cur]
+    cfg_path: Optional[Path] = None
+    for d in search_dirs:
+        candidate = d / ".dcness" / "boundary.json"
+        if candidate.is_file():
+            cfg_path = candidate
+            break
+    if cfg_path is None:
+        return {}
+    try:
+        data = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+
+    result: dict[str, dict[str, tuple[str, ...]]] = {}
+    for agent, spec in data.items():
+        if not isinstance(agent, str) or not isinstance(spec, dict):
+            continue
+        entry: dict[str, tuple[str, ...]] = {}
+        for key in ("add", "remove"):
+            raw = spec.get(key, [])
+            if not isinstance(raw, list):
+                continue
+            valid: list[str] = []
+            for pat in raw:
+                if not isinstance(pat, str):
+                    continue
+                try:
+                    re.compile(pat)
+                except re.error:
+                    continue
+                valid.append(pat)
+            if valid:
+                entry[key] = tuple(valid)
+        if entry:
+            result[agent] = entry
+    return result
+
+
+def _effective_overrides(
+    overrides: dict[str, dict[str, tuple[str, ...]]], agent: str
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """agent 에 적용할 (add, remove) 패턴을 반환한다.
+
+    build-worker 는 코어 ALLOW 가 engineer ∪ test-engineer 합집합이므로(#597), 프로젝트
+    override 도 구성 역할(engineer / test-engineer)의 add·remove 를 합쳐 전파한다 (codex
+    P1 #696). 안 그러면 /impl-loop 의 실제 mutation agent 인 build-worker 가 engineer.remove
+    를 우회하고 engineer.add 를 무효화한다. 그 외 agent 는 자기 키만 본다.
+    """
+    roles = _BUILD_WORKER_UNION_ROLES if agent == "build-worker" else (agent,)
+    add: list[str] = []
+    remove: list[str] = []
+    for role in roles:
+        ov = overrides.get(role)
+        if not ov:
+            continue
+        add.extend(ov.get("add", ()))
+        remove.extend(ov.get("remove", ()))
+    return tuple(add), tuple(remove)
 
 
 # ── path 정규화 ───────────────────────────────────────────────────────
@@ -444,15 +613,44 @@ def check_write_allowed(
                 f"docs/ 는 architect, design-variants/ 는 designer 전용 (코드 agent write 금지)."
             )
 
-    # 3. ALLOW_MATRIX 미매칭 → 차단.
+    # 3. 프로젝트별 boundary override (#696) — 코어 ALLOW 검사 직전에 적용.
+    #    INFRA(1)·코드 agent 전용 deny(2) 를 모두 통과한 뒤이므로, override 는 되돌릴 수
+    #    없는 경계를 건드리지 못한다 (가드 = 검사 순서). remove 는 ALLOW 보다 우선하는
+    #    DENY 오버레이, add 는 코어 ALLOW 확장.
+    add_patterns, remove_patterns = _effective_overrides(
+        load_project_boundary_overrides(cwd), agent
+    )
+
+    # 3a. remove 오버레이 — 코어 기본 허용 경로를 이 프로젝트에서 제거.
+    if remove_patterns:
+        matched = _matches_any(norm, remove_patterns)
+        if matched:
+            return (
+                f"{agent} 프로젝트 boundary remove: `{norm}` matched `{matched}` "
+                f"(.dcness/boundary.json — 코어 기본값에서 제거)"
+            )
+
+    # 3b. ALLOW_MATRIX (코어 + 프로젝트 add) 미매칭 → 차단.
     allowed = ALLOW_MATRIX.get(agent)
     if allowed is None:
         # 미정의 agent — false positive 회피로 통과.
         return None
-    if not _matches_any(norm, allowed):
+    # write-zero agent (판정/검증 전용 — code-validator / pr-reviewer /
+    # architecture-validator / product-acceptance / plan-reviewer 의 빈 ALLOW) 는
+    # 프로젝트 add 로도 write 를 열 수 없다 (#696 codex P2). "검증자는 자기가 검증하는
+    # 것을 못 고친다" 는 역할 격리는 catastrophic gate 신뢰의 근간이라 되돌릴 수 없는
+    # 경계다 — add 로 mutation agent 로 승격시키면 gate forge 위험. 이슈가 "프로젝트
+    # 감수" 로 연 것은 mutation agent 내부 경계(engineer 의 tests/)이지 검증자 승격이 아니다.
+    if allowed == ():
+        return (
+            f"{agent} 는 write-zero(판정/검증 전용) — 프로젝트 boundary add 로도 "
+            f"write 를 열 수 없다 (`{norm}`): 검증자 역할 격리는 되돌릴 수 없는 경계."
+        )
+    effective = allowed + add_patterns
+    if not _matches_any(norm, effective):
         return (
             f"{agent} ALLOW_MATRIX 미매칭: `{norm}` "
-            f"(ALLOW_MATRIX — 허용 = {list(allowed)})"
+            f"(ALLOW_MATRIX — 허용 = {list(effective)})"
         )
     return None
 
