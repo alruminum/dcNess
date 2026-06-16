@@ -2010,6 +2010,19 @@ class ProjectBoundaryOverrideTests(unittest.TestCase):
             self.assertIsNotNone(reason)
             self.assertIn("인프라", reason)
 
+    def test_add_dcness_dir_target_write_still_blocked(self):
+        # #696 codex P2 — add 로 .dcness/ 를 열어도 디렉토리 타깃 write(cp x .dcness/)로
+        # boundary.json 을 교체하는 우회를 차단. .dcness 디렉토리 자체·하위 모두 INFRA.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self._write_boundary(cwd, {"engineer": {"add": [r"(^|/)\.dcness/"]}})
+            for target in (".dcness/", ".dcness", ".dcness/other.json"):
+                reason = check_write_allowed(
+                    "engineer", target, cwd=cwd, shell_context=True
+                )
+                self.assertIsNotNone(reason, f"{target} 우회 가능하면 안 됨")
+                self.assertIn("인프라", reason)
+
     def test_remove_cannot_unprotect_boundary_file(self):
         # remove 로 boundary.json INFRA 보호를 풀 수 없다.
         with tempfile.TemporaryDirectory() as td:

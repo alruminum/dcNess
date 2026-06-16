@@ -61,11 +61,16 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
     r'(^|/)docs/internal/governance\.md$',
     r'(^|/)scripts/(check_document_sync|check_task_id|setup_branch_protection)\.mjs$',
     r'^CLAUDE\.md$',
-    # 프로젝트별 boundary override 설정 파일 자신 (#696) — 위조 방지. sub-agent 가
-    # 자기 write 경계를 셀프 확장/축소하지 못하도록 INFRA 로 보호한다. INFRA 검사는
+    # 프로젝트별 boundary override 설정 디렉토리 `.dcness/` 전체 (#696) — 위조 방지.
+    # sub-agent 가 자기 write 경계를 셀프 확장/축소하지 못하도록 INFRA 로 보호한다.
+    # 파일 단위(`boundary\.json$`)만 막으면, 프로젝트가 add 로 `.dcness/` 를 연 뒤
+    # 디렉토리 타깃 Bash write(`cp x .dcness/`)로 boundary.json 을 *교체* 해 보호를 우회할
+    # 수 있다 (codex P2). 디렉토리 자체(`.dcness`)·하위(`.dcness/...`) 를 모두 매칭해
+    # 디렉토리 타깃 우회를 닫는다. `.dcness` 는 dcness 제어 영역이라 sub-agent write 가
+    # 정당하지 않다 (메인 Claude 는 INFRA 통과로 boundary.json 작성). INFRA 검사는
     # ALLOW(코어+add) 검사보다 *먼저* 발화하므로 add 로 못 열고, remove 는 ALLOW 에서만
     # 빼는 DENY 오버레이라 INFRA 보호를 못 푼다 (가드 = 검사 순서로 자동 보장).
-    r'(^|/)\.dcness/boundary\.json$',
+    r'(^|/)\.dcness(/|$)',
 )
 
 
