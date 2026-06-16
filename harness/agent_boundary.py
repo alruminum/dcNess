@@ -72,6 +72,16 @@ DCNESS_INFRA_PATTERNS: tuple[str, ...] = (
     # ALLOW(코어+add) 검사보다 *먼저* 발화하므로 add 로 못 열고, remove 는 ALLOW 에서만
     # 빼는 DENY 오버레이라 INFRA 보호를 못 푼다 (가드 = 검사 순서로 자동 보장).
     r'(^|/)\.dcness(/|$)',
+    # guard self-disable 마커 (#696 codex P1) — boundary override 의 broad add(예 `.*`)로
+    # sub-agent 가 file guard 자체를 끄는 통제 파일을 쓰지 못하도록 INFRA 로 보호한다.
+    #   - `.no-dcness-guard` — is_opt_out() 마커. 쓰면 다음 검사부터 file guard 전면 우회.
+    #   - `.claude-plugin/` — plugin.json name=dcness 가 _is_dcness_self_repo() 신호라,
+    #     쓰면 is_infra_project() True 로 모든 sub-agent 경계가 무력화된다. `(^|/)\.claude/`
+    #     는 `.claude-plugin/`(≠`.claude/`)에 미매칭이라 별도 보호 필요. 디렉토리 타깃 우회
+    #     방지로 디렉토리 자체·하위를 모두 매칭. (`~/.claude/.dcness-infra` 는 home 이라
+    #     cwd-밖 가드가 이미 차단 — sub-agent 가 경계 밖 write 불가.)
+    r'(^|/)\.no-dcness-guard(/|$)',
+    r'(^|/)\.claude-plugin(/|$)',
 )
 
 

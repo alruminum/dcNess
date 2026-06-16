@@ -2192,6 +2192,22 @@ class ProjectBoundaryOverrideTests(unittest.TestCase):
                 self.assertIsNotNone(reason, f"{agent} 가 add 로 write 열리면 안 됨")
                 self.assertIn("write-zero", reason)
 
+    def test_add_cannot_write_guard_disable_markers(self):
+        # #696 codex P1 — broad add(.*)로도 file guard self-disable 마커는 못 쓴다.
+        # .no-dcness-guard(is_opt_out) / .claude-plugin/plugin.json(is_infra_project).
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            self._write_boundary(cwd, {"engineer": {"add": [r".*"]}})
+            for target in (
+                ".no-dcness-guard", ".no-dcness-guard/",
+                ".claude-plugin/plugin.json", ".claude-plugin/", ".claude-plugin",
+            ):
+                reason = check_write_allowed(
+                    "engineer", target, cwd=cwd, shell_context=True
+                )
+                self.assertIsNotNone(reason, f"{target} self-disable 가능하면 안 됨")
+                self.assertIn("인프라", reason)
+
     def test_override_ignored_in_infra_project(self):
         # dcness self / infra project 는 어차피 통과 — override 무관, 메인 SSOT 편집 보존.
         with patch.dict(os.environ, {"DCNESS_INFRA": "1"}, clear=False):
