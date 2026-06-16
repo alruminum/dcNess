@@ -335,8 +335,24 @@ def load_project_boundary_overrides(
         cur = cwd.resolve()
     except (OSError, RuntimeError):
         return {}
-    cfg_path: Optional[Path] = None
+    # 탐색 범위를 active project root 까지로 제한 (#696 codex P2). 무한정 상위로 올라가면
+    # 현재 프로젝트 밖(상위 워크스페이스 / home)의 boundary.json 이 무관한 하위 프로젝트의
+    # sub-agent write 경계를 silently 확장/축소해 file guard 를 약화한다. project root 는
+    # git common-dir 기준(worktree·하위 디렉토리에서도 main repo 루트로 해소)이라, 그 위
+    # 조상은 검사하지 않는다. root 가 cwd 조상이 아니면(폴백·예외) cwd 자신만 검사한다.
+    try:
+        root = _resolve_project_root(cwd).resolve()
+    except (OSError, RuntimeError, ValueError):
+        root = cur
+    search_dirs: list[Path] = []
     for d in (cur, *cur.parents):
+        search_dirs.append(d)
+        if d == root:
+            break
+    else:
+        search_dirs = [cur]
+    cfg_path: Optional[Path] = None
+    for d in search_dirs:
         candidate = d / ".dcness" / "boundary.json"
         if candidate.is_file():
             cfg_path = candidate

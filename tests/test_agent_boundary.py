@@ -1917,6 +1917,17 @@ class ProjectBoundaryOverrideTests(unittest.TestCase):
             json.dumps(mapping), encoding="utf-8"
         )
 
+    @staticmethod
+    def _git_init(root: Path) -> None:
+        # 외부 활성 프로젝트는 git repo — project-root 경계(#696 P2)가 git common-dir
+        # 기준으로 동작하므로, 조상 탐색 테스트는 실제 repo 로 시뮬레이션한다.
+        import subprocess
+
+        subprocess.run(
+            ["git", "init", "-q"], cwd=str(root), check=True,
+            capture_output=True,
+        )
+
     # ── add: 허용 확장 ──
     def test_add_extends_allow_for_nonstandard_layout(self):
         # 코어에 없는 비표준 소스 레이아웃을 add 로 허용.
@@ -2046,14 +2057,31 @@ class ProjectBoundaryOverrideTests(unittest.TestCase):
             )
 
     def test_boundary_found_in_ancestor(self):
-        # cwd 가 하위 디렉토리여도 조상의 boundary.json 적용.
+        # cwd 가 하위 디렉토리여도 *프로젝트 루트* 의 boundary.json 적용.
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
+            root = Path(td).resolve()
+            self._git_init(root)
             self._write_boundary(root, {"engineer": {"add": [r"(^|/)custom-pkg/"]}})
             sub = root / "services" / "api"
             sub.mkdir(parents=True)
             self.assertIsNone(
                 check_write_allowed("engineer", "custom-pkg/x.go", cwd=sub)
+            )
+
+    def test_boundary_outside_project_root_ignored(self):
+        # #696 codex P2 — 프로젝트 루트 밖(상위 워크스페이스)의 boundary.json 은 무시.
+        # 상위 디렉토리의 override 가 무관한 하위 프로젝트의 경계를 약화하면 안 된다.
+        with tempfile.TemporaryDirectory() as td:
+            outer = Path(td).resolve()
+            # 상위 워크스페이스에 boundary (engineer 에 custom-pkg 허용).
+            self._write_boundary(outer, {"engineer": {"add": [r"(^|/)custom-pkg/"]}})
+            # 하위에 독립 프로젝트(git repo) — 자기 boundary 없음.
+            proj = outer / "child-project"
+            proj.mkdir()
+            self._git_init(proj)
+            # 상위 boundary 가 새지 않아 여전히 차단되어야 한다.
+            self.assertIsNotNone(
+                check_write_allowed("engineer", "custom-pkg/x.go", cwd=proj)
             )
 
     # ── build-worker 합집합 전파 (codex P1) ──
