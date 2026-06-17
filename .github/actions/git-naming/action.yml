@@ -13,16 +13,20 @@ runs:
   using: composite
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: '20'
 
     - name: Validate branch name
       if: inputs.branch != ''
       shell: bash
-      run: node "${{ github.action_path }}/../../../scripts/check_git_naming.mjs" --branch "${{ inputs.branch }}"
+      env:
+        INPUT_BRANCH: ${{ inputs.branch }}
+      run: node "${{ github.action_path }}/../../../scripts/check_git_naming.mjs" --branch "$INPUT_BRANCH"
 
     - name: Validate title
       if: inputs.title != ''
       shell: bash
-      run: node "${{ github.action_path }}/../../../scripts/check_git_naming.mjs" --title "${{ inputs.title }}"
+      env:
+        INPUT_TITLE: ${{ inputs.title }}
+      run: node "${{ github.action_path }}/../../../scripts/check_git_naming.mjs" --title "$INPUT_TITLE"
