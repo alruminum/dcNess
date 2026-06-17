@@ -417,9 +417,16 @@ review 리포트의 must-fix / waste finding / per-Agent metric 즉시 인지 + 
 
 `ledger.jsonl` 의 `step_completed` receipt 는 read 시점에 primary ledger 한정으로 `prose_file` 실존 + `sha256` digest match 를 strict 검증한다. 검증 실패 step 은 위조/손상으로 보고 소비처(`run-status` / `run-review` / finalize gate)에서 제외한다. 옛 `.steps.jsonl` 폴백은 마이그레이션 호환 경로라 같은 검증을 걸지 않는다.
 
-**선택 기록 event** (메인/skill 이 `ledger-event` 로 — 강제 X): `pr_created` / `pr_merged` / `task_completed` / `blocked` / `validator_passed` / `validator_failed`.
+**PR lifecycle event**: `scripts/pr-create.sh` 는 PR 생성 성공 뒤 `pr_created`,
+`scripts/pr-finalize.sh` 는 merge 완료 확인 뒤 `pr_merged` 를 자동 기록한다. active
+dcNess run 밖에서 호출되면 ledger 기록은 경고만 내고 PR 작업 자체는 계속된다.
+
+**수동 checkpoint event** (메인/skill 이 `ledger-event` 로 — 강제 X):
+`task_completed` / `blocked` / `validator_passed` / `validator_failed`.
+`pr_created` / `pr_merged` 도 수동 보정이 필요할 때만 직접 기록한다.
 
 ```bash
+"$HELPER" ledger-event pr_created --pr 588 --url <PR_URL>   # pr-create.sh 사용 시 자동
 "$HELPER" ledger-event pr_merged --pr 588 --url <PR_URL>
 "$HELPER" ledger-event blocked --reason "<사유>"
 ```

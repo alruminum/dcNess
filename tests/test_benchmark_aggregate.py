@@ -223,7 +223,7 @@ class TestEscalateAndBlocked(unittest.TestCase):
 
 
 class TestSuccessMeasurable(unittest.TestCase):
-    def test_not_measurable_without_pr_merged(self):
+    def test_not_measurable_without_pr_created(self):
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
             r = _make_run_dir_ledger(
@@ -233,8 +233,13 @@ class TestSuccessMeasurable(unittest.TestCase):
             )
             rep = aggregate_runs([r])
             self.assertFalse(rep.success_measurable)
+            self.assertIsNone(rep.pr_merge_success_ratio)
+            self.assertEqual(rep.pr_created_count, 0)
+            self.assertEqual(rep.pr_merged_count, 0)
 
-    def test_measurable_when_pr_merged_present(self):
+    def test_not_measurable_from_orphan_pr_merged_only(self):
+        # legacy/manual pr_merged 만 있으면 denominator(pr_created)가 없어 성공률을
+        # 합성하지 않는다. merged event count 는 노출하되 ratio 는 None.
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
             r = _make_run_dir_ledger(
@@ -244,7 +249,77 @@ class TestSuccessMeasurable(unittest.TestCase):
                 {"e.md": "구현\nIMPL_DONE\n"},
             )
             rep = aggregate_runs([r])
+            self.assertFalse(rep.success_measurable)
+            self.assertIsNone(rep.pr_merge_success_ratio)
+            self.assertEqual(rep.pr_created_count, 0)
+            self.assertEqual(rep.pr_merged_count, 1)
+            self.assertEqual(rep.pr_merge_orphan_count, 1)
+
+    def test_pr_merge_success_ratio_from_created_and_merged_events(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            r1 = _make_run_dir_ledger(
+                tmp, "s1", "run-h1000001",
+                _run_events("impl", [_step("engineer", "e.md")],
+                            extra=[
+                                {"event": "pr_created", "pr_number": 10,
+                                 "url": "https://github.com/o/r/pull/10",
+                                 "ts": "2026-06-01T00:04:00Z"},
+                                {"event": "pr_merged", "pr_number": 10,
+                                 "url": "https://github.com/o/r/pull/10",
+                                 "ts": "2026-06-01T00:08:00Z"},
+                            ]),
+                {"e.md": "구현\nIMPL_DONE\n"},
+            )
+            r2 = _make_run_dir_ledger(
+                tmp, "s1", "run-h2000002",
+                _run_events("impl", [_step("engineer", "e.md")],
+                            extra=[
+                                {"event": "pr_created", "pr_number": 11,
+                                 "url": "https://github.com/o/r/pull/11",
+                                 "ts": "2026-06-01T00:04:00Z"},
+                            ]),
+                {"e.md": "구현\nIMPL_DONE\n"},
+            )
+            rep = aggregate_runs([r1, r2])
             self.assertTrue(rep.success_measurable)
+            self.assertEqual(rep.pr_created_count, 2)
+            self.assertEqual(rep.pr_merged_count, 1)
+            self.assertEqual(rep.pr_merge_success_count, 1)
+            self.assertEqual(rep.pr_merge_orphan_count, 0)
+            self.assertAlmostEqual(rep.pr_merge_success_ratio, 0.5)
+
+    def test_pr_number_keys_do_not_collide_across_projects(self):
+        # URL 없는 manual events 도 repo path 를 key 에 포함해 project A #1 과
+        # project B #1 을 서로 다른 PR 로 센다.
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            repo_a = tmp / "repo-a"
+            repo_b = tmp / "repo-b"
+            r1 = _make_run_dir_ledger(
+                repo_a, "s1", "run-ha000001",
+                _run_events("impl", [_step("engineer", "e.md")],
+                            extra=[
+                                {"event": "pr_created", "pr_number": 1,
+                                 "ts": "2026-06-01T00:04:00Z"},
+                                {"event": "pr_merged", "pr_number": 1,
+                                 "ts": "2026-06-01T00:08:00Z"},
+                            ]),
+                {"e.md": "구현\nIMPL_DONE\n"},
+            )
+            r2 = _make_run_dir_ledger(
+                repo_b, "s1", "run-hb000002",
+                _run_events("impl", [_step("engineer", "e.md")],
+                            extra=[
+                                {"event": "pr_created", "pr_number": 1,
+                                 "ts": "2026-06-01T00:04:00Z"},
+                            ]),
+                {"e.md": "구현\nIMPL_DONE\n"},
+            )
+            rep = aggregate_runs([r1, r2])
+            self.assertEqual(rep.pr_created_count, 2)
+            self.assertEqual(rep.pr_merge_success_count, 1)
+            self.assertAlmostEqual(rep.pr_merge_success_ratio, 0.5)
 
 
 class TestWasteTop(unittest.TestCase):
@@ -316,8 +391,29 @@ class TestRenderAndCli(unittest.TestCase):
             md = render_markdown(aggregate_runs([r]))
             self.assertIn("pr-reviewer", md)
             self.assertIn("1", md)  # run count
-            # 성공률 미측정 정직 표기
+            # 성공률 미측정 정직 표기 — 합성 placeholder 금지.
             self.assertRegex(md, r"(측정 불가|미측정|이벤트)")
+            self.assertIn("review rejection", md)
+
+    def test_render_markdown_contains_measured_pr_success(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            r = _make_run_dir_ledger(
+                tmp, "s1", "run-k1000001",
+                _run_events("impl", [_step("pr-reviewer", "pr.md")],
+                            extra=[
+                                {"event": "pr_created", "pr_number": 7,
+                                 "url": "https://github.com/o/r/pull/7",
+                                 "ts": "2026-06-01T00:04:00Z"},
+                                {"event": "pr_merged", "pr_number": 7,
+                                 "url": "https://github.com/o/r/pull/7",
+                                 "ts": "2026-06-01T00:08:00Z"},
+                            ]),
+                {"pr.md": "리뷰\nPASS\n"},
+            )
+            md = render_markdown(aggregate_runs([r]))
+            self.assertIn("PR 머지 성공률: **100.0%**", md)
+            self.assertIn("1/1", md)
 
     def test_main_runs_on_sessions_root(self):
         with tempfile.TemporaryDirectory() as d:

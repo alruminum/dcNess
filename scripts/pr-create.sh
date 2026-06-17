@@ -29,11 +29,32 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HELPER="$SCRIPT_DIR/dcness-helper"
+
 BRANCH=""
 BASE=""
 TITLE=""
 BODY_FILE=""
 COMMIT_MSG_FILE=""
+
+extract_pr_number() {
+  printf '%s\n' "$1" | sed -nE 's#^.*/pull/([0-9]+).*$#\1#p' | head -1
+}
+
+record_pr_created() {
+  local pr_number="$1"
+  local pr_url="$2"
+  if [ -n "$pr_number" ]; then
+    if ! "$HELPER" ledger-event pr_created --pr "$pr_number" --url "$pr_url" >/dev/null 2>&1; then
+      echo "[pr-create] WARN: ledger pr_created 기록 실패 — active dcNess run 밖이면 정상" >&2
+    fi
+  else
+    if ! "$HELPER" ledger-event pr_created --url "$pr_url" >/dev/null 2>&1; then
+      echo "[pr-create] WARN: ledger pr_created 기록 실패 — active dcNess run 밖이면 정상" >&2
+    fi
+  fi
+}
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -107,6 +128,8 @@ git push -u origin "$BRANCH" >&2
 # Step 5: PR 생성
 echo "[pr-create] gh pr create --base $BASE" >&2
 PR_URL=$(gh pr create --base "$BASE" --title "$TITLE" --body-file "$BODY_FILE")
+PR_NUMBER=$(extract_pr_number "$PR_URL")
+record_pr_created "$PR_NUMBER" "$PR_URL"
 
 echo "[pr-create] 완료 — PR 생성: $PR_URL" >&2
 echo "$PR_URL"

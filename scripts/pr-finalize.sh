@@ -46,6 +46,14 @@ json_field() {
   python3 -c 'import json,sys; print(json.load(sys.stdin).get(sys.argv[1], ""))' "$1"
 }
 
+record_pr_merged() {
+  local pr_number="$1"
+  local pr_url="$2"
+  if ! "$HELPER" ledger-event pr_merged --pr "$pr_number" --url "$pr_url" >/dev/null 2>&1; then
+    echo "[pr-finalize] WARN: ledger pr_merged 기록 실패 — active dcNess run 밖이면 정상" >&2
+  fi
+}
+
 cleanup_merge_lock() {
   rc=$?
   if [ -n "$MERGE_LOCK_TOKEN" ]; then
@@ -191,6 +199,7 @@ fi
 
 # Step 4: origin/main ref 동기화 (refspec 없이 fetch — worktree 호환)
 PR_URL=$(gh pr view "$PR" --json url -q .url 2>/dev/null)
+record_pr_merged "$PR" "$PR_URL"
 
 if [ -n "$MERGE_LOCK_TOKEN" ]; then
   "$HELPER" merge-lock complete \
