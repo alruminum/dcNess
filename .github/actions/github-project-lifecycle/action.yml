@@ -45,40 +45,49 @@ runs:
   using: composite
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: '20'
 
     - name: Run Project lifecycle guard
       shell: bash
       env:
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_REPO: ${{ inputs.repo }}
+        INPUT_PROJECT_OWNER: ${{ inputs.project-owner }}
+        INPUT_PROJECT_NUMBER: ${{ inputs.project-number }}
+        INPUT_ISSUE_NUMBER: ${{ inputs.issue-number }}
+        INPUT_EXPECTED_STATUS: ${{ inputs.expected-status }}
+        INPUT_EXPECTED_ISSUE_TYPE: ${{ inputs.expected-issue-type }}
+        INPUT_EXPECTED_PRIORITY: ${{ inputs.expected-priority }}
+        INPUT_APPLY: ${{ inputs.apply }}
         PR_BODY: ${{ inputs.pr-body }}
         # composite action 은 부모 step 의 env 를 상속하지 않으므로 GH_TOKEN 을 input 으로 받아 명시 매핑.
         GH_TOKEN: ${{ inputs.gh-token }}
       run: |
         set -euo pipefail
         ARGS=(
-          "${{ inputs.mode }}"
-          --repo "${{ inputs.repo }}"
-          --owner "${{ inputs.project-owner }}"
-          --project "${{ inputs.project-number }}"
+          "$INPUT_MODE"
+          --repo "$INPUT_REPO"
+          --owner "$INPUT_PROJECT_OWNER"
+          --project "$INPUT_PROJECT_NUMBER"
         )
-        if [ -n "${{ inputs.issue-number }}" ]; then
-          ARGS+=(--issue "${{ inputs.issue-number }}")
+        if [ -n "$INPUT_ISSUE_NUMBER" ]; then
+          ARGS+=(--issue "$INPUT_ISSUE_NUMBER")
         fi
-        if [ -n "${{ inputs.expected-status }}" ]; then
-          ARGS+=(--expected-status "${{ inputs.expected-status }}")
+        if [ -n "$INPUT_EXPECTED_STATUS" ]; then
+          ARGS+=(--expected-status "$INPUT_EXPECTED_STATUS")
         fi
-        if [ -n "${{ inputs.expected-issue-type }}" ]; then
-          ARGS+=(--expected-issue-type "${{ inputs.expected-issue-type }}")
+        if [ -n "$INPUT_EXPECTED_ISSUE_TYPE" ]; then
+          ARGS+=(--expected-issue-type "$INPUT_EXPECTED_ISSUE_TYPE")
         fi
-        if [ -n "${{ inputs.expected-priority }}" ]; then
-          ARGS+=(--expected-priority "${{ inputs.expected-priority }}")
+        if [ -n "$INPUT_EXPECTED_PRIORITY" ]; then
+          ARGS+=(--expected-priority "$INPUT_EXPECTED_PRIORITY")
         fi
-        if [ "${{ inputs.mode }}" = "pr-merged" ]; then
+        if [ "$INPUT_MODE" = "pr-merged" ]; then
           ARGS+=(--body-env PR_BODY)
         fi
-        if [ "${{ inputs.apply }}" = "true" ]; then
+        if [ "$INPUT_APPLY" = "true" ]; then
           ARGS+=(--apply)
         fi
         node "${{ github.action_path }}/../../../scripts/github_project_lifecycle.mjs" "${ARGS[@]}"

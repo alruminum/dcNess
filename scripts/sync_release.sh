@@ -24,6 +24,19 @@ EXCLUDE_PATHS=(
 
 ORIG_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 
+git_with_token() {
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        local auth_header
+        auth_header=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 | tr -d '\n')
+        GIT_CONFIG_COUNT=1 \
+        GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
+        GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${auth_header}" \
+            git "$@"
+    else
+        git "$@"
+    fi
+}
+
 restore_branch() {
     local current
     current=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
@@ -51,7 +64,7 @@ confirm() {
 }
 
 # 위험 경고: release 위 직접 commit 체크
-git fetch origin --quiet
+git_with_token fetch origin --quiet
 if git show-ref --verify --quiet refs/remotes/origin/release; then
     DIVERGED=$(git log origin/release ^origin/main --oneline 2>/dev/null | wc -l | tr -d ' ')
     if [ "$DIVERGED" -gt 0 ]; then
@@ -104,5 +117,5 @@ if ! confirm "release 브랜치를 origin 에 force-with-lease push"; then
     exit 0
 fi
 
-git push --force-with-lease origin release
+git_with_token push --force-with-lease origin release
 echo "✓ release 브랜치 sync 완료 — main@${SHORT_SHA}"
