@@ -10,14 +10,11 @@ N run 을 한 번에 집계한다 — public benchmark (성공률/FAIL/escalate/
 --------
 - run 수 (entry_point 별 분포)
 - agent 별 결론(conclusion enum) 분포
-- pr-reviewer FAIL 비율 (= FAIL / (PASS+FAIL+LGTM))
+- pr-reviewer FAIL 비율 (= review rejection = FAIL / (PASS+FAIL+LGTM))
 - escalate 결론 수 (전 agent)
 - `blocked` 이벤트 수
+- PR 머지 성공률 (= pr_created 중 pr_merged 로 확인된 PR 비율, 이벤트 있을 때만)
 - waste finding top-N (detect_wastes 합산)
-
-PR 머지 **성공률**은 ledger 의 `pr_merged` 이벤트가 *선택 기록* 이라 대부분 비어있다.
-따라서 본 집계기는 성공률을 산출하지 않고 "측정 불가(이벤트 미계측)" 로 정직 표기한다
-(#766 작업② — GitHub PR 파생 — 별도 범위).
 
 사용
 ----
@@ -32,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -89,8 +87,15 @@ class FleetReport:
     by_entry_point: dict
     agent_conclusions: dict  # agent -> {enum: count}
     pr_reviewer_fail_ratio: Optional[float]
+    pr_reviewer_rejection_count: int
+    pr_reviewer_review_count: int
     escalate_count: int
     blocked_event_count: int
+    pr_created_count: int
+    pr_merged_count: int
+    pr_merge_success_count: int
+    pr_merge_orphan_count: int
+    pr_merge_success_ratio: Optional[float]
     waste_top: list  # [(pattern, count), ...] count desc
     success_measurable: bool
     waste_limit: int = 10
@@ -104,17 +109,45 @@ def _run_entry_point(run_dir: Path) -> Optional[str]:
     return None
 
 
-def _run_event_counts(run_dir: Path) -> tuple[int, bool]:
-    """(blocked 이벤트 수, pr_merged 존재 여부) — 1회 스캔."""
+_PR_URL_NUMBER_RE = re.compile(r"/pull/([0-9]+)(?:\b|$)")
+
+
+def _pr_event_key(event: dict, run_dir: Path, index: int) -> str:
+    """PR lifecycle event dedupe/match key.
+
+    `pr_number` 가 있으면 repo 경로와 조합해 cross-project #1 충돌을 피한다.
+    URL 이 있으면 repo slug 가 이미 들어 있으므로 URL 또는 URL 의 PR 번호를 쓴다.
+    둘 다 없으면 ratio 매칭에 쓸 수 없는 orphan event 로 고유화한다.
+    """
+    url = event.get("url")
+    if isinstance(url, str) and url:
+        m = _PR_URL_NUMBER_RE.search(url)
+        if m:
+            return f"url-pr:{url[:url.index('/pull/')]}#pr:{m.group(1)}"
+        return f"url:{url}"
+
+    pr_number = event.get("pr_number")
+    if pr_number is not None and str(pr_number).strip():
+        repo = _repo_path_for_run(run_dir) or run_dir
+        return f"repo:{Path(repo).resolve()}#pr:{pr_number}"
+
+    return f"event:{run_dir}:{index}"
+
+
+def _run_event_counts(run_dir: Path) -> tuple[int, set[str], set[str]]:
+    """(blocked 이벤트 수, pr_created keys, pr_merged keys) — 1회 스캔."""
     blocked = 0
-    pr_merged = False
-    for ev in ledger.read_events_at(run_dir):
+    pr_created: set[str] = set()
+    pr_merged: set[str] = set()
+    for idx, ev in enumerate(ledger.read_events_at(run_dir)):
         e = ev.get("event")
         if e == "blocked":
             blocked += 1
+        elif e == "pr_created":
+            pr_created.add(_pr_event_key(ev, run_dir, idx))
         elif e == "pr_merged":
-            pr_merged = True
-    return blocked, pr_merged
+            pr_merged.add(_pr_event_key(ev, run_dir, idx))
+    return blocked, pr_created, pr_merged
 
 
 def aggregate_runs(run_dirs: list, *, top: int = 10, repo_override=None) -> FleetReport:
@@ -133,8 +166,9 @@ def aggregate_runs(run_dirs: list, *, top: int = 10, repo_override=None) -> Flee
     agent_conclusions: dict = defaultdict(Counter)
     escalate_count = 0
     blocked_event_count = 0
+    pr_created_keys: set[str] = set()
+    pr_merged_keys: set[str] = set()
     waste_counter: Counter = Counter()
-    success_measurable = False
 
     run_count = 0
     for run_dir in run_dirs:
@@ -148,10 +182,10 @@ def aggregate_runs(run_dirs: list, *, top: int = 10, repo_override=None) -> Flee
         if ep:
             by_entry_point[ep] += 1
 
-        blocked, pr_merged = _run_event_counts(run_dir)
+        blocked, created, merged = _run_event_counts(run_dir)
         blocked_event_count += blocked
-        if pr_merged:
-            success_measurable = True
+        pr_created_keys.update(created)
+        pr_merged_keys.update(merged)
 
         # build_report 재사용 — parse_steps + invocation 조립(window/repo_path) +
         # detect_wastes 를 per-run review 와 동일하게 수행. 수동 parse_steps +
@@ -175,15 +209,31 @@ def aggregate_runs(run_dirs: list, *, top: int = 10, repo_override=None) -> Flee
     fail_n = sum(c for v, c in pr.items() if v in _PR_REVIEWER_FAIL)
     fail_ratio = (fail_n / denom) if denom else None
 
+    pr_success_keys = pr_created_keys & pr_merged_keys
+    pr_created_count = len(pr_created_keys)
+    pr_merged_count = len(pr_merged_keys)
+    pr_merge_success_count = len(pr_success_keys)
+    pr_merge_orphan_count = len(pr_merged_keys - pr_created_keys)
+    pr_merge_success_ratio = (
+        pr_merge_success_count / pr_created_count if pr_created_count else None
+    )
+
     return FleetReport(
         run_count=run_count,
         by_entry_point=dict(by_entry_point),
         agent_conclusions={a: dict(c) for a, c in agent_conclusions.items()},
         pr_reviewer_fail_ratio=fail_ratio,
+        pr_reviewer_rejection_count=fail_n,
+        pr_reviewer_review_count=denom,
         escalate_count=escalate_count,
         blocked_event_count=blocked_event_count,
+        pr_created_count=pr_created_count,
+        pr_merged_count=pr_merged_count,
+        pr_merge_success_count=pr_merge_success_count,
+        pr_merge_orphan_count=pr_merge_orphan_count,
+        pr_merge_success_ratio=pr_merge_success_ratio,
         waste_top=waste_counter.most_common(top),
-        success_measurable=success_measurable,
+        success_measurable=pr_merge_success_ratio is not None,
         waste_limit=top,
     )
 
@@ -212,11 +262,30 @@ def render_markdown(report: FleetReport) -> str:
                         sorted(report.by_entry_point.items(),
                                key=lambda kv: -kv[1]))
         lines.append(f"- entry_point 분포: {ep}")
-    lines.append(f"- pr-reviewer FAIL 비율: "
-                 f"**{_fmt_ratio(report.pr_reviewer_fail_ratio)}**")
+    lines.append(
+        f"- review rejection(pr-reviewer FAIL) 비율: "
+        f"**{_fmt_ratio(report.pr_reviewer_fail_ratio)}** "
+        f"({report.pr_reviewer_rejection_count}/{report.pr_reviewer_review_count})"
+    )
     lines.append(f"- escalate 결론 수: {report.escalate_count}")
     lines.append(f"- blocked 이벤트 수: {report.blocked_event_count}")
-    lines.append("- PR 머지 성공률: 측정 불가 (pr_merged 이벤트 미계측 — #766 작업②)")
+    if report.pr_merge_success_ratio is None:
+        lines.append(
+            "- PR 머지 성공률: 측정 불가 "
+            f"(pr_created 이벤트 0, pr_merged 이벤트 {report.pr_merged_count}; "
+            "synthetic 추정 없음)"
+        )
+    else:
+        lines.append(
+            f"- PR 머지 성공률: **{_fmt_ratio(report.pr_merge_success_ratio)}** "
+            f"({report.pr_merge_success_count}/{report.pr_created_count}; "
+            f"pr_merged 이벤트 {report.pr_merged_count})"
+        )
+    if report.pr_merge_orphan_count:
+        lines.append(
+            f"- PR 머지 orphan 이벤트: {report.pr_merge_orphan_count} "
+            "(matching pr_created 없음 — 성공률 분자에서 제외)"
+        )
     lines.append("")
 
     lines.append("## agent 별 결론 분포")
@@ -281,8 +350,15 @@ def main(argv: Optional[list] = None) -> int:
             "by_entry_point": report.by_entry_point,
             "agent_conclusions": report.agent_conclusions,
             "pr_reviewer_fail_ratio": report.pr_reviewer_fail_ratio,
+            "pr_reviewer_rejection_count": report.pr_reviewer_rejection_count,
+            "pr_reviewer_review_count": report.pr_reviewer_review_count,
             "escalate_count": report.escalate_count,
             "blocked_event_count": report.blocked_event_count,
+            "pr_created_count": report.pr_created_count,
+            "pr_merged_count": report.pr_merged_count,
+            "pr_merge_success_count": report.pr_merge_success_count,
+            "pr_merge_orphan_count": report.pr_merge_orphan_count,
+            "pr_merge_success_ratio": report.pr_merge_success_ratio,
             "waste_top": report.waste_top,
             "success_measurable": report.success_measurable,
         }, ensure_ascii=False, indent=2))

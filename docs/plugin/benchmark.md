@@ -2,8 +2,8 @@
 
 > 이 문서는 "화려한 성능 자랑" 이 아니다. dcNess 가 실제로 어디서 비용을 줄이는지,
 > 그 수치를 **누구나 자기 프로젝트에서 직접 재현**할 수 있게 하는 것이 목적이다.
-> 공개된 표본은 작고(아래 한계 참조), 일부 정량 지표(PR 머지 성공률)는 아직 측정
-> 불가다([`#766`](https://github.com/alruminum/dcNess/issues/766) 참조). 과장 없이 있는 그대로 적는다.
+> 공개된 표본은 작다. headline 숫자는 항상 표본 수, 출처 수, 한계를 같은 단락에 둔다.
+> 표본이 작으면 일반 성능 주장이 아니라 pilot / anecdote 로만 다룬다.
 
 ## 무엇을 측정하나
 
@@ -13,7 +13,7 @@ dcNess 는 측정 인프라를 plug-in 본체에 같이 배포한다.
 |---|---|---|
 | [`scripts/measure_main_turns.py`](../../scripts/measure_main_turns.py) | Claude Code 세션의 메인 assistant turn 분포 (tool / text-only / thinking-only) + tool histogram + sub-agent 호출 분포 | 직접 실행 |
 | [`harness/run_review.py`](../../harness/run_review.py) | run 1개의 step별 비용·토큰 + 낭비(waste) finding | `/run-review` skill |
-| [`harness/benchmark_aggregate.py`](../../harness/benchmark_aggregate.py) | 여러 run 가로질러 fleet 집계 (FAIL 비율 / escalate / blocked / waste top-N) | 직접 실행 |
+| [`harness/benchmark_aggregate.py`](../../harness/benchmark_aggregate.py) | 여러 run 가로질러 fleet 집계 (PR 머지 성공률 / review rejection / escalate / blocked / waste top-N) | 직접 실행 |
 
 guard 효능 재현은 별도다. dcNess 소스 checkout 에서만 제공되는
 `evals/guard_efficacy.py` 는 LLM 없이 hook/function 진입점을 직접 호출해 file boundary,
@@ -50,6 +50,32 @@ denylist 의 best-effort 범위 밖)를 숨기지 않고 측정 표면에 올려
 LLM 행동 eval 은 또 다른 범위다. [`evals/run.sh`](../../evals/run.sh) 는 실제 agent 를
 호출해 지침이 story slicing 같은 판단을 계속 하게 만드는지 보는 회귀 도구이며, guard
 hook/function 의 결정적 allow/block 성능을 대신하지 않는다.
+
+## 지표 구분
+
+한 표에 서로 다른 지표를 섞어 "좋아졌다"로 뭉개지 않는다.
+
+| 지표 | 의미 | 산출 근거 |
+|---|---|---|
+| cost / turn reduction | 메인 turn, token, cost 가 얼마나 줄었는가 | Claude Code session JSONL + `measure_main_turns.py` / `run_review.py` |
+| review rejection | `pr-reviewer` 가 실제로 반려한 비율 | `pr-reviewer` verdict: `FAIL / (PASS + LGTM + FAIL)` |
+| blocked events | run 이 안전하게 멈춘 횟수 | `ledger.jsonl` 의 `blocked` event |
+| escalate | agent 가 자동 진행을 거부하고 사용자/상위 설계로 올린 횟수 | step verdict 에 `ESCALATE` 포함 |
+| waste | 반복 실패, 도구 반복, placeholder 누수 등 비용 낭비 finding | `run_review.py` 의 waste detector |
+| PR merge success | 생성된 PR 중 실제 merge 완료로 확인된 비율 | `pr_created` denominator 중 matching `pr_merged` event |
+
+`pr_merged` 만 있고 matching `pr_created` 가 없으면 성공률을 만들지 않는다. 이 경우
+집계기는 merged event count 와 orphan count 는 보여주지만 ratio 는 `측정 불가`로 둔다.
+빈칸을 synthetic 추정값으로 채우지 않는다.
+
+### 공개 숫자 최소 기준
+
+- **단일 run / n=1**: anecdote. headline 성능 주장 금지.
+- **한 프로젝트만 있는 fleet**: single-project snapshot. 다른 프로젝트 일반화 금지.
+- **cross-project claim**: 최소 2개 프로젝트, 총 20개 이상 finished run, 지표별 denominator
+  명시. cost/turn 비교는 작업 종류가 다른 run 을 섞지 말고 variant 별 n 을 따로 쓴다.
+- 모든 표는 `n`, source count, 측정 날짜 또는 run 범위, 재현 명령, 주요 한계를 표 바로
+  옆에 적는다.
 
 ## 재현 1 — 메인 turn 측정
 
@@ -91,13 +117,14 @@ placeholder 누수 등) finding, 수정 제안을 리포트로 출력한다. 실
 
 ## 실측 샘플 (turn 절감)
 
-아래는 현재 공개 가능한 **단일 표본**이다. 표본이 작다는 점을 먼저 밝힌다.
+아래는 현재 공개 가능한 **단일 표본**이다. n=1 이므로 일반 성능 주장이 아니라
+재현 절차를 보여주는 anecdote 다.
 
 | 지표 | 값 | 비고 |
 |---|---|---|
 | baseline (옛 4-agent 모델) | ~280 turn/task | 외부 활성 프로젝트 impl 1-task 세션 3개 평균 (n=3) |
 | Hybrid A (build-worker 2-step) | 121 turn/task | impl 1-task 측정 (n=1) |
-| 절감 | ~57% | 121 / 280 기준 |
+| 절감 | ~57% | 121 / 280 기준, anecdote |
 
 turn 구성 분석 (Hybrid A 샘플): thinking-only + text-only = 50.7% / sub-agent
 호출 = 3.1% / git+gh 분리 호출 = 13.8%. 즉 sub-agent 가 작업을 흡수해도 메인의
@@ -121,9 +148,9 @@ notes 기록). 측정 스크립트의 재현 정확성은 알려진 두 세션(t
 ## 재현 3 — fleet 집계 (여러 run 가로질러)
 
 위 두 도구가 run 1개를 보는 반면, [`harness/benchmark_aggregate.py`](../../harness/benchmark_aggregate.py)
-는 한 프로젝트의 **모든 run 의 `ledger.jsonl` 을 가로질러** 집계한다 — pr-reviewer
-FAIL 비율 / escalate 수 / blocked 수 / waste top-N. `run_review.py` 의 검증된 파서를
-재사용한다.
+는 한 프로젝트의 **모든 run 의 `ledger.jsonl` 을 가로질러** 집계한다 — PR 머지 성공률,
+review rejection, escalate 수, blocked 수, waste top-N. `run_review.py` 의 검증된
+파서를 재사용한다.
 
 ```sh
 # 활성 프로젝트 안에서 (sessions-root 자동 탐색) — $DCN 은 위 "스크립트 위치" 참조
@@ -133,6 +160,40 @@ python3 "$DCN"/harness/benchmark_aggregate.py
 python3 "$DCN"/harness/benchmark_aggregate.py <repo>/.claude/harness-state/.sessions --entry-point impl
 python3 "$DCN"/harness/benchmark_aggregate.py <sessions-root> --json
 ```
+
+### multi-run 측정 recipe
+
+1. 같은 프로젝트에서 `/impl` 또는 `/impl-loop` 로 여러 task 를 처리한다. PR 생성은
+   `scripts/pr-create.sh`, 머지는 `scripts/pr-finalize.sh` 경로를 타야 `pr_created` /
+   `pr_merged` ledger event 가 자동으로 남는다.
+2. 각 run 을 정상 종료한 뒤 프로젝트별 fleet JSON 을 저장한다.
+
+```sh
+cd <activated-project>
+python3 "$DCN"/harness/benchmark_aggregate.py \
+  .claude/harness-state/.sessions \
+  --entry-point impl \
+  --json > /tmp/dcness-fleet-$(basename "$PWD").json
+```
+
+3. 여러 프로젝트를 비교할 때는 프로젝트별 JSON 을 분리 보관하고, 표에는 source count 를
+   직접 적는다.
+
+```sh
+for repo in <project-a> <project-b>; do
+  (
+    cd "$repo"
+    python3 "$DCN"/harness/benchmark_aggregate.py \
+      .claude/harness-state/.sessions \
+      --entry-point impl \
+      --json > "/tmp/dcness-fleet-$(basename "$repo").json"
+  )
+done
+```
+
+4. publish 가능한 표는 다음 항목을 같이 적는다: `run_count`, `pr_created_count`,
+   `pr_merge_success_ratio`, `pr_reviewer_rejection_count/review_count`,
+   `blocked_event_count`, `escalate_count`, `waste_top`, source count, 한계.
 
 ### fleet 실측 (외부 활성 프로젝트 1곳)
 
@@ -148,6 +209,7 @@ python3 "$DCN"/harness/benchmark_aggregate.py <sessions-root> --json
 | escalate 결론 | 2 | 주로 architecture-validator |
 | blocked 이벤트 | 1 | |
 | waste top | TOOL_REPEAT_HIGH 39 / MUST_FIX_LEAK 11 / MISSING_CONCLUSION_ENUM 2 | `/run-review` 가 잡는 낭비 패턴 |
+| PR 머지 성공률 | 측정 불가 | legacy snapshot: `pr_created` denominator 없음 |
 
 해석: pr-reviewer 의 ~42% FAIL 은 "리뷰가 형식적으로 통과만 시키지 않고 실제로
 반려한다"는 뜻이다 — 가드가 동작한다는 신호. waste top 은 어디를 개선하면 비용이
@@ -163,13 +225,14 @@ python3 "$DCN"/harness/benchmark_aggregate.py <sessions-root> --json
   필요하면 `--repo <cwd>` 로 보정한다. 자동 복구(begin-run cwd 기록)는
   [`#766`](https://github.com/alruminum/dcNess/issues/766) 잔여.
 
-### 아직 측정 불가 — PR 머지 성공률 (#766 작업②)
+### PR 머지 성공률 해석
 
-PR 생성/머지까지의 **성공률**은 ledger 의 `pr_merged` 이벤트가 *선택 기록* 이라
-대부분 비어 있어 산출하지 못한다. 집계기도 이 지표는 "측정 불가"로 출력한다.
-GitHub PR 에서 파생하거나 이벤트 계측을 보강하는 작업은
-[`#766`](https://github.com/alruminum/dcNess/issues/766) 에 남아 있다. **synthetic
-추정값으로 빈칸을 채우지 않는다** — 정직한 빈칸이 가짜 숫자보다 낫다.
+신규 run 은 `pr-create.sh` 성공 시 `pr_created`, `pr-finalize.sh` 가 merge 완료를
+확인한 뒤 `pr_merged` 를 기록한다. 집계기는 `pr_created` 를 denominator 로 삼고,
+같은 PR 의 `pr_merged` 가 있을 때만 성공으로 센다.
+
+기존 run 처럼 `pr_created` 가 없으면 PR 성공률은 측정 불가다. `pr_merged` 만 남은
+수동/legacy event 는 orphan 으로 표시하고 성공률 분자에 넣지 않는다.
 
 ## 언제 유리하고 언제 과한가
 
