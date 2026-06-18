@@ -52,7 +52,7 @@ class GuardEfficacyEvalContractTests(unittest.TestCase):
             "mcp_mutation_blocks_pr_merge",
             "order_gate_blocks_missing_begin_step",
             "tdd_guard_blocks_impl_without_test",
-            "known_boundary_tdd_bash_write_not_enforced",
+            "tdd_guard_blocks_bash_write_without_test",
         ):
             with self.subTest(case_id=case_id):
                 self.assertIn(case_id, case_ids)

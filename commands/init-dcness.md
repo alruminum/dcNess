@@ -356,7 +356,7 @@ EOF
 - SessionStart: sid/live state 초기화와 활성 안내 inject.
 - 순서 차단 훅: Agent 호출 전 작업 순서 보호.
 - file-guard: agent 별 파일 경계와 외부 상태 변경 차단.
-- TDD Guard: `Edit` / `Write` / `NotebookEdit` 직전 TS/JS 구현 파일의 매칭 test 존재 확인. 세부 skip/한계는 [`docs/plugin/hooks.md#tdd-guardsh`](../docs/plugin/hooks.md#tdd-guardsh).
+- TDD Guard: `Edit` / `Write` / `NotebookEdit` / `Bash` write target 의 TS/JS 구현 파일 매칭 test 존재 확인. 세부 skip/한계는 [`docs/plugin/hooks.md#tdd-guardsh`](../docs/plugin/hooks.md#tdd-guardsh).
 - Stop hook: run 종료와 continuation signal.
 
 ## 완료 안내

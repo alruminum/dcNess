@@ -52,6 +52,25 @@ def run_hook(
     )
 
 
+def run_bash_hook(command: str, cwd: str) -> subprocess.CompletedProcess:
+    """tdd-guard.sh 를 Bash payload 로 호출한다."""
+    payload = {
+        "tool_name": "Bash",
+        "tool_input": {"command": command},
+    }
+    return subprocess.run(
+        ["bash", str(HOOK_PATH)],
+        input=json.dumps(payload),
+        capture_output=True, text=True, cwd=cwd, timeout=10,
+        env={
+            **os.environ,
+            "PYTHONPATH": str(ROOT),
+            "CLAUDE_PLUGIN_ROOT": str(ROOT),
+            "DCNESS_FORCE_ENABLE": "1",
+        },
+    )
+
+
 def run_hook_raw(
     stdin_text: str, cwd: str, *, force_enable: bool = True
 ) -> subprocess.CompletedProcess:
@@ -216,6 +235,85 @@ class TestRegressionPreserved(unittest.TestCase):
         self._touch("src/biz.test.ts", "test('ok', () => {})\n")
         path = str(Path(self._tmp) / "src/biz.ts")
         self.assertEqual(decision(run_hook(path, self._tmp)), "allow")
+
+
+class TestBashWriteTargets(unittest.TestCase):
+    """issue #786 — Bash write target 도 직접 파일 tool 과 같은 TDD 정책을 탄다."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        subprocess.run(["git", "init"], cwd=self._tmp, capture_output=True)
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _touch(self, rel: str, content: str = "// stub\n") -> str:
+        p = Path(self._tmp) / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return str(p)
+
+    def test_bash_redirect_impl_without_test_denied(self):
+        result = run_bash_hook(
+            "printf 'export const value = 1;' > src/generated.ts",
+            self._tmp,
+        )
+        self.assertEqual(decision(result), "deny")
+        self.assertIn("TDD GUARD", result.stderr)
+        self.assertIn("generated", result.stderr)
+
+    def test_bash_redirect_impl_with_matching_test_allowed(self):
+        self._touch("src/generated.test.ts", "test('ok', () => {})\n")
+        result = run_bash_hook(
+            "printf 'export const value = 1;' > src/generated.ts",
+            self._tmp,
+        )
+        self.assertEqual(decision(result), "allow")
+
+    def test_bash_write_to_test_file_allowed(self):
+        result = run_bash_hook(
+            "printf 'test(\\'ok\\', () => {})' > src/generated.test.ts",
+            self._tmp,
+        )
+        self.assertEqual(decision(result), "allow")
+
+    def test_bash_readonly_command_allowed(self):
+        result = run_bash_hook("npm test 2>&1 | tail -20", self._tmp)
+        self.assertEqual(decision(result), "allow")
+
+    def test_bash_tee_impl_without_test_denied(self):
+        result = run_bash_hook(
+            "printf 'export const value = 1;' | tee src/from-tee.ts",
+            self._tmp,
+        )
+        self.assertEqual(decision(result), "deny")
+        self.assertIn("from-tee", result.stderr)
+
+    def test_bash_heredoc_impl_without_test_denied(self):
+        result = run_bash_hook(
+            "cat <<'EOF' > src/from-heredoc.ts\n"
+            "export const value = 1;\n"
+            "EOF",
+            self._tmp,
+        )
+        self.assertEqual(decision(result), "deny")
+        self.assertIn("from-heredoc", result.stderr)
+
+    def test_hooks_json_registers_tdd_guard_for_bash(self):
+        hooks_json = json.loads(
+            (ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8")
+        )
+        matchers = []
+        for entry in hooks_json["hooks"]["PreToolUse"]:
+            for hook in entry.get("hooks", []):
+                if "tdd-guard.sh" in hook.get("command", ""):
+                    matchers.append(entry.get("matcher", ""))
+
+        self.assertTrue(matchers, "tdd-guard.sh PreToolUse registration missing")
+        self.assertTrue(
+            any("Bash" in matcher.split("|") for matcher in matchers),
+            f"tdd-guard.sh matcher must include Bash, got {matchers!r}",
+        )
 
 
 class TestFailOpenDiagnostics(unittest.TestCase):

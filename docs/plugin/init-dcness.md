@@ -37,7 +37,7 @@
 - `session-start.sh`: 세션 상태 초기화와 활성 안내.
 - `catastrophic-gate.sh`: Agent 호출 전 작업 순서 보호.
 - `file-guard.sh`: file/bash/MCP 경계와 외부 상태 변경 차단.
-- `tdd-guard.sh`: TS/JS 구현 파일 수정 직전 매칭 test 존재 확인. 상세 범위와 한계는 [`hooks.md#tdd-guardsh`](hooks.md#tdd-guardsh) 가 SSOT.
+- `tdd-guard.sh`: TS/JS 구현 파일 및 Bash write target 수정 직전 매칭 test 존재 확인. 상세 범위와 한계는 [`hooks.md#tdd-guardsh`](hooks.md#tdd-guardsh) 가 SSOT.
 - `post-agent-clear.sh`, `post-file-op-trace.sh`, `subagent-stop-clear.sh`, `stop-end-run.sh`: run state 보존과 종료 처리.
 
 과거 TDD 관련 CI/commit-msg 방식의 폐기 이력은 release note 기록이며, `/init-dcness` 실행 절차가 아니다. 현행 TDD Guard 계약은 [`hooks.md#tdd-guardsh`](hooks.md#tdd-guardsh) 만 따른다.

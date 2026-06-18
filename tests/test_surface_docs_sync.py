@@ -439,10 +439,11 @@ class SurfaceDocsSyncTests(unittest.TestCase):
         self.assertIn("per-agent `tools:` 권한", self.hooks_doc)
 
     def test_hooks_doc_tdd_guard_scope_is_accurate(self) -> None:
-        """#681 AC#2/#3 — tdd-guard 문서가 존재-검사·entry-file·Bash 범위 밖을 명시한다."""
+        """#681/#786 — tdd-guard 문서가 존재-검사·entry-file·Bash write target 정책을 명시한다."""
         self.assertIn("test 의 존재만 검사하고, test 를 실행하지는 않는다", self.hooks_doc)
         self.assertIn("registerRootComponent(", self.hooks_doc)
-        self.assertIn("Bash write 는 범위 밖", self.hooks_doc)
+        self.assertIn("Bash write target 정책", self.hooks_doc)
+        self.assertIn("TDD GUARD[Bash]", self.hooks_doc)
         self.assertIn("contest.ts", self.hooks_doc)
 
     def test_backpressure_loop_is_first_class_across_stages(self) -> None:
