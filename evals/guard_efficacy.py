@@ -28,7 +28,6 @@ from harness.agent_boundary import (  # noqa: E402
     check_bash_mutation,
     check_github_mcp_mutation,
     check_write_allowed,
-    extract_bash_paths,
 )
 from harness.hooks import handle_pretooluse_agent  # noqa: E402
 from harness.session_state import (  # noqa: E402
@@ -179,23 +178,42 @@ def _tdd_guard(rel_path: str, *, matching_test: bool = False) -> Probe:
     return probe
 
 
-def _bash_write_tdd_boundary() -> tuple[Decision, str]:
-    command = "printf 'export const value = 1' > src/untested.ts"
-    with tempfile.TemporaryDirectory() as td, _external_project_boundary():
-        cwd = Path(td)
-        targets = extract_bash_paths(command)
-        reasons = [
-            check_write_allowed("engineer", target, cwd=cwd, shell_context=True)
-            for target in targets
-        ]
-        blocked = [reason for reason in reasons if reason]
-        if blocked:
-            return ("block", "\n".join(blocked))
-        return (
-            "allow",
-            "Bash write path is boundary-checked, but matching-test existence is "
-            "outside tdd-guard scope.",
+def _tdd_guard_bash_write_without_test() -> tuple[Decision, str]:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        subprocess.run(
+            ["git", "init"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
+        payload = {
+            "tool_name": "Bash",
+            "tool_input": {
+                "command": "printf 'export const value = 1' > src/untested.ts",
+            },
+        }
+        result = subprocess.run(
+            ["bash", str(ROOT / "hooks" / "tdd-guard.sh")],
+            cwd=root,
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env={
+                **os.environ,
+                "PYTHONPATH": str(ROOT),
+                "CLAUDE_PLUGIN_ROOT": str(ROOT),
+                "DCNESS_FORCE_ENABLE": "1",
+            },
+        )
+        if result.returncode == 0:
+            return ("allow", result.stdout.strip())
+        if result.returncode == 2:
+            return ("block", result.stderr.strip())
+        return ("block", f"unexpected exit {result.returncode}: {result.stderr}")
 
 
 def build_cases() -> list[GuardCase]:
@@ -320,11 +338,11 @@ def build_cases() -> list[GuardCase]:
             _tdd_guard("babel.config.js"),
         ),
         GuardCase(
-            "known_boundary_tdd_bash_write_not_enforced",
-            "known-bypass-boundary",
-            "allow",
-            "Bash-created implementation files are file-boundary checked, not TDD checked.",
-            _bash_write_tdd_boundary,
+            "tdd_guard_blocks_bash_write_without_test",
+            "tdd-guard",
+            "block",
+            "Bash write target for a TS/JS implementation file is TDD checked.",
+            _tdd_guard_bash_write_without_test,
         ),
         GuardCase(
             "known_boundary_command_substitution_not_scanned",

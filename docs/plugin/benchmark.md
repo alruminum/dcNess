@@ -27,8 +27,8 @@ python3 evals/guard_efficacy.py --json
 
 이 결정적 suite 의 PASS 는 "fixture 로 박은 guard 계약이 재현된다"는 뜻이다. 보안 증명이나
 악의적 agent 완전 차단 주장이 아니다. `known-bypass-boundary` 범주는 문서화된 한계
-(예: Bash 경유 구현 파일은 TDD 존재 검사를 받지 않음, command substitution 은 외부 변경
-denylist 의 best-effort 범위 밖)를 숨기지 않고 측정 표면에 올려둔다.
+(예: command substitution 은 외부 변경 denylist 의 best-effort 범위 밖)를 숨기지 않고
+측정 표면에 올려둔다.
 
 > **스크립트 위치** — `scripts/` · `harness/` 는 plug-in 본체로 배포된다. 외부 활성
 > 프로젝트는 이 파일들이 repo 안이 아니라 **plug-in 캐시**에 있으므로, 아래 명령은

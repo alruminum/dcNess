@@ -30,7 +30,7 @@ dcNess 의 강제 영역은 두 가지뿐이다.
 | `session-start.sh` | `SessionStart` | 새 세션, resume, `/clear` 직후 | sid/live state 초기화 + 활성 안내 inject | X |
 | `catastrophic-gate.sh` | `PreToolUse / Agent` | sub-agent 호출 직전 | 작업 순서 보호 + 진행 순서 검사 | O |
 | `file-guard.sh` | `PreToolUse / Edit|Write|NotebookEdit|Read|Bash|mcp__.*` | file/bash/MCP tool 호출 직전 | agent 별 파일 경계 + 외부 변경 차단 목록 검사 | O |
-| `tdd-guard.sh` | `PreToolUse / Edit|Write|NotebookEdit` | 파일 수정 직전 | TS/JS 구현 파일에 매칭 test 존재 확인 | O |
+| `tdd-guard.sh` | `PreToolUse / Edit|Write|NotebookEdit|Bash` | 파일 수정 직전 | TS/JS 구현 파일에 매칭 test 존재 확인 | O |
 | `post-agent-clear.sh` | `PostToolUse / Agent` | sub-agent 호출 직후 | active agent clear, prose 자동 staging, histogram inject | X |
 | `post-file-op-trace.sh` | `PostToolUse / Edit|Write|NotebookEdit|Read|Bash|mcp__.*` | file/bash/MCP tool 호출 직후 | agent trace append | X |
 | `subagent-stop-clear.sh` | `SubagentStop` | sub-agent 컨텍스트 종료 직후 | active agent clear 보강 | X |
@@ -148,7 +148,7 @@ PR/repo 외부 상태 변경 (`gh pr ...` / `merge_pull_request` / `push_files` 
 
 ### tdd-guard.sh
 
-**시점**: `Edit`, `Write`, `NotebookEdit` 로 파일을 수정하기 직전. **`Bash` 로 만든 파일에는 발화하지 않는다** (아래 한계 참조).
+**시점**: `Edit`, `Write`, `NotebookEdit` 로 파일을 수정하기 직전. `Bash` 는 명시적 write target 추출 직후, 각 target 에 같은 검사를 적용한다.
 
 **지원 언어**: TS/JS 만 (`*.ts`, `*.tsx`, `*.js`, `*.jsx`). 그 외 확장자는 silent skip — Python·Rust·Go 등 다른 ecosystem 의 TDD 강제는 현재 범위 밖이다.
 
@@ -168,9 +168,9 @@ PR/repo 외부 상태 변경 (`gh pr ...` / `merge_pull_request` / `push_files` 
 
 **매칭 위치**: 같은 디렉터리, 같은 디렉터리의 `__tests__`, 부모/조부모 `__tests__`, monorepo `src_root/__tests__`, 프로젝트 root `src/__tests__`.
 
-**차단**: test 부재 시 `exit 2` + 한국어 안내.
+**Bash write target 정책**: `Bash` payload 는 [`harness.agent_boundary.extract_bash_paths`](../../harness/agent_boundary.py) 가 추출하는 명시적 write target 에 한해 검사한다. 예: redirect(`>`, `>>`), `tee`, in-place edit(`sed/perl/awk -i`), `cp`/`mv`/`rm` target. 추출된 target 이 TS/JS 구현 파일이면 직접 `Edit`/`Write`/`NotebookEdit` 와 동일한 skip 규칙 및 6-tier matching-test 존재 검사를 탄다. write target 이 없거나 TS/JS 구현 파일이 아니면 silent skip 한다.
 
-**한계 (Bash write 는 범위 밖)**: TDD guard 는 `Edit`/`Write`/`NotebookEdit` 직접 파일 도구에서만 발화한다. `Bash` 로 작성한 구현 파일(`echo > foo.ts`, `cat <<EOF` 등)은 [file-guard.sh](#file-guardsh) 가 검사하지만, file-guard 는 *경로 경계*(agent 가 그 path 를 쓸 수 있는가)만 보고 *매칭 test 존재*는 보지 않는다. 즉 Bash 경유 구현 파일은 현재 TDD 강제가 닿지 않으며, 이 동작을 명시적으로 추가하지 않는 한 그대로다.
+**차단**: test 부재 시 `exit 2` + 한국어 안내. Bash write target 차단 메시지는 `TDD GUARD[Bash]` 로 시작해 어떤 target 이 matching-test enforcement 에 실패했는지 함께 표시한다.
 
 ### post-agent-clear.sh
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# dcness TDD Guard Hook — PreToolUse[Edit|Write|NotebookEdit]
+# dcness TDD Guard Hook — PreToolUse[Edit|Write|NotebookEdit|Bash]
 # agent 가 src 파일 작성/편집 시도 시 매칭 test 파일 존재 검사.
 # 없으면 deny + 한국어 안내. 진짜 TDD 강제 (코드 작성 *전* 테스트 먼저).
 #
 # 영감: jha0313/codex-live-demo/.codex/hooks/tdd-guard.sh
 # 차이: dcness 환경 (Claude Code plug-in hook) 매처 정합 + 한국어 메시지 보강
 #
-# 시점: agent Edit/Write tool_use 직전. tool_input.file_path 추출 + 검증.
+# 시점: agent Edit/Write tool_use 직전 또는 Bash write target 추출 직후.
 # 차단 시 stderr 로 reason 출력 + exit 2.
 #   — CC docs: PreToolUse 는 exit 2 라야 차단 + stderr 가 Claude 에 피드백.
 #     (deny JSON + exit 0 은 CC 본체 버그 anthropics/claude-code#37210 영향 가변 →
@@ -46,6 +46,73 @@ deny() {
   # reason 을 stderr 로 — exit 2 (호출부) 와 짝지어 CC 가 Claude 에 피드백.
   printf '%s\n' "$1" >&2
 }
+
+TOOL_NAME=$(python3 - "$INPUT" <<'PY'
+import json, sys
+try:
+    payload = json.loads(sys.argv[1])
+except Exception:
+    sys.exit(0)
+tool_name = payload.get("tool_name")
+if isinstance(tool_name, str):
+    print(tool_name)
+PY
+)
+
+if [ "$TOOL_NAME" = "Bash" ]; then
+  BASH_TARGETS=$(python3 - "$INPUT" 2>/dev/null <<'PY'
+import json, sys
+try:
+    payload = json.loads(sys.argv[1])
+    tool_input = payload.get("tool_input") or {}
+    command = tool_input.get("command") or ""
+    if not isinstance(command, str) or not command:
+        sys.exit(0)
+    from harness.agent_boundary import extract_bash_paths
+    for path in extract_bash_paths(command):
+        print(path)
+except Exception as exc:
+    print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+    sys.exit(1)
+PY
+  )
+  _tdd_extract_rc=$?
+  if [ "$_tdd_extract_rc" -ne 0 ]; then
+    record_fail_open "bash_target_extract_error" "Bash write targets could not be extracted"
+    allow
+  fi
+  if [ -z "$BASH_TARGETS" ]; then
+    allow
+  fi
+
+  while IFS= read -r BASH_TARGET; do
+    [ -z "$BASH_TARGET" ] && continue
+    TARGET_PAYLOAD=$(python3 - "$BASH_TARGET" <<'PY'
+import json, sys
+print(json.dumps({
+    "tool_name": "Edit",
+    "tool_input": {"file_path": sys.argv[1]},
+}))
+PY
+    )
+    TARGET_ERR=$(printf '%s' "$TARGET_PAYLOAD" | bash "$0" 2>&1 >/dev/null)
+    _tdd_target_rc=$?
+    if [ "$_tdd_target_rc" -eq 2 ]; then
+      deny "TDD GUARD[Bash]: Bash write target '${BASH_TARGET}' failed matching-test enforcement.
+
+${TARGET_ERR}"
+      exit 2
+    fi
+    if [ "$_tdd_target_rc" -ne 0 ]; then
+      record_fail_open "bash_target_check_error" "unexpected rc=${_tdd_target_rc} for ${BASH_TARGET}"
+      allow
+    fi
+  done <<EOF
+$BASH_TARGETS
+EOF
+
+  allow
+fi
 
 # tool_input.file_path 추출
 FILE_PATH=$(python3 - "$INPUT" <<'PY'
