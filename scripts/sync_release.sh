@@ -19,6 +19,10 @@ EXCLUDE_PATHS=(
     ".claude-plugin/marketplace.json"
     ".github/workflows/python-tests.yml"
     ".github/workflows/release-sync.yml"
+    ".github/workflows/static-quality.yml"
+    "scripts/check_static_quality.sh"
+    "requirements-quality.txt"
+    "pyproject.toml"
     ".claude"
 )
 
