@@ -26,6 +26,7 @@ from tempfile import TemporaryDirectory
 import subprocess
 
 from harness.session_state import (
+    collect_fail_open_summary,
     _check_ci_workflows,
     _check_git_hooks,
     _check_read_permission,
@@ -35,6 +36,8 @@ from harness.session_state import (
     _resolve_git_hooks_dir,
     collect_status_diagnostics,
     format_status_report,
+    read_fail_open_events,
+    record_fail_open_event,
 )
 
 
@@ -243,6 +246,53 @@ class CollectExternalRepoTests(unittest.TestCase):
             by_key = {c["key"]: c for c in diag["checks"]}
             self.assertEqual(by_key["whitelist"]["status"], "FAIL")
             self.assertIn("enable", (by_key["whitelist"]["fix"] or ""))
+
+
+class FailOpenDiagnosticsTests(unittest.TestCase):
+    def test_no_recent_events_is_pass(self) -> None:
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            diag = collect_status_diagnostics(
+                cwd=root, check_gh=False, check_routing=False
+            )
+            by_key = {c["key"]: c for c in diag["checks"]}
+            self.assertEqual(by_key["hook_fail_open"]["status"], "PASS")
+            self.assertIn("0건", by_key["hook_fail_open"]["detail"])
+
+    def test_recent_event_is_status_warn_with_reason_category(self) -> None:
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            record_fail_open_event(
+                hook="file-guard",
+                category="payload_missing_session",
+                detail="session id missing; enforcement skipped",
+                cwd=root,
+            )
+
+            summary = collect_fail_open_summary(cwd=root)
+            self.assertEqual(summary["total"], 1)
+            self.assertEqual(summary["by_category"]["payload_missing_session"], 1)
+
+            diag = collect_status_diagnostics(
+                cwd=root, check_gh=False, check_routing=False
+            )
+            by_key = {c["key"]: c for c in diag["checks"]}
+            check = by_key["hook_fail_open"]
+            self.assertEqual(check["status"], "WARN")
+            self.assertIn("payload_missing_session=1", check["detail"])
+            self.assertIn("file-guard/payload_missing_session", check["detail"])
+            self.assertIn("hook", check["fix"] or "")
+
+    def test_read_events_limit_zero_returns_empty(self) -> None:
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            record_fail_open_event(
+                hook="tdd-guard",
+                category="payload_empty",
+                detail="empty stdin",
+                cwd=root,
+            )
+            self.assertEqual(read_fail_open_events(cwd=root, limit=0), [])
 
 
 class FormatReportTests(unittest.TestCase):

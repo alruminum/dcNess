@@ -23,12 +23,22 @@ allow() {
 # plugin root 를 PYTHONPATH 에 prepend — cross-project 시나리오 대응 (다른 wrapper 정합).
 export PYTHONPATH="${CLAUDE_PLUGIN_ROOT:-.}:${PYTHONPATH:-}"
 
+record_fail_open() {
+  python3 -m harness.session_state hook-fail-open \
+    --hook tdd-guard \
+    --category "$1" \
+    --detail "$2" >/dev/null 2>&1 || true
+}
+
 # 활성화 게이트 (#597 커밋3) — 미활성 프로젝트는 즉시 allow (no-op).
 # 나머지 6 wrapper 는 이미 보유. tdd-guard 만 누락이라 비활성 프로젝트서도 deny 발동하던 결함 수정.
 python3 -m harness.session_state is-active >/dev/null 2>&1 || allow
 
 INPUT=$(cat)
-[ -z "$INPUT" ] && allow
+if [ -z "$INPUT" ]; then
+  record_fail_open "payload_empty" "empty stdin; TDD enforcement skipped"
+  allow
+fi
 
 PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 
@@ -45,7 +55,7 @@ try:
 except Exception:
     sys.exit(0)
 ti = payload.get("tool_input") or {}
-for key in ("file_path", "path", "filename"):
+for key in ("file_path", "path", "filename", "notebook_path"):
     v = ti.get(key)
     if isinstance(v, str) and v:
         print(v)
@@ -53,7 +63,10 @@ for key in ("file_path", "path", "filename"):
 PY
 )
 
-[ -z "$FILE_PATH" ] && allow
+if [ -z "$FILE_PATH" ]; then
+  record_fail_open "payload_missing_path" "file path not found in hook payload"
+  allow
+fi
 
 # 자동 skip — test/spec 파일 자체 + 표준 test 디렉터리 (#681)
 # 주의: 단순 *test* / *spec* 광역 glob 은 contest.ts / spectrum.ts / latest.ts 같은

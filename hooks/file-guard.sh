@@ -25,6 +25,13 @@ set -uo pipefail
 # plugin root 를 PYTHONPATH 에 prepend — cross-project 시나리오 대응.
 export PYTHONPATH="${CLAUDE_PLUGIN_ROOT:-.}:${PYTHONPATH:-}"
 
+record_fail_open() {
+  python3 -m harness.session_state hook-fail-open \
+    --hook file-guard \
+    --category "$1" \
+    --detail "$2" >/dev/null 2>&1 || true
+}
+
 # 활성화 게이트 — 미활성 프로젝트는 즉시 통과 + suppressOutput.
 if ! python3 -m harness.session_state is-active >/dev/null 2>&1; then
   echo '{"suppressOutput": true, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
@@ -45,5 +52,8 @@ fi
 # 그 외 전부 fail-open(allow): RC=0(정상 통과) / RC=1·기타(import·문법 오류 등 파이썬 크래시).
 # 크래시를 exit 2 로 매핑하면 hook 버그가 *모든* 도구 호출을 과차단하므로 반드시 fail-open.
 # (#404 — suppressOutput: true 로 transcript attachment 숨김 시도. CC 버그 anthropics/claude-code#34859 회피 가설.)
+if [ "$RC" != "0" ]; then
+  record_fail_open "handler_nonzero" "harness.hooks pretooluse-file-op exited ${RC}; allowed"
+fi
 echo '{"suppressOutput": true, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
 exit 0

@@ -25,6 +25,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from harness.session_state import read_fail_open_events
+
 ROOT = Path(__file__).resolve().parent.parent
 HOOK_PATH = ROOT / "hooks" / "tdd-guard.sh"
 
@@ -47,6 +49,26 @@ def run_hook(
             # temp cwd 는 whitelist 미등록 → is-active 게이트 우회 강제 활성화 (커밋3)
             "DCNESS_FORCE_ENABLE": "1",
         },
+    )
+
+
+def run_hook_raw(
+    stdin_text: str, cwd: str, *, force_enable: bool = True
+) -> subprocess.CompletedProcess:
+    """tdd-guard.sh raw stdin 호출 — malformed payload/fail-open 진단 검증용."""
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(ROOT),
+    }
+    if force_enable:
+        env["DCNESS_FORCE_ENABLE"] = "1"
+    else:
+        env.pop("DCNESS_FORCE_ENABLE", None)
+    return subprocess.run(
+        ["bash", str(HOOK_PATH)],
+        input=stdin_text,
+        capture_output=True, text=True, cwd=cwd, timeout=10,
+        env=env,
     )
 
 
@@ -194,6 +216,44 @@ class TestRegressionPreserved(unittest.TestCase):
         self._touch("src/biz.test.ts", "test('ok', () => {})\n")
         path = str(Path(self._tmp) / "src/biz.ts")
         self.assertEqual(decision(run_hook(path, self._tmp)), "allow")
+
+
+class TestFailOpenDiagnostics(unittest.TestCase):
+    """issue #784 — suspicious tdd-guard fail-open 은 기록, inactive no-op 은 조용히 통과."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        subprocess.run(["git", "init"], cwd=self._tmp, capture_output=True)
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_active_empty_payload_records_fail_open_event(self):
+        result = run_hook_raw("", self._tmp, force_enable=True)
+        self.assertEqual(decision(result), "allow")
+
+        events = read_fail_open_events(cwd=Path(self._tmp))
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["hook"], "tdd-guard")
+        self.assertEqual(events[0]["category"], "payload_empty")
+
+    def test_inactive_empty_payload_does_not_record_event(self):
+        result = run_hook_raw("", self._tmp, force_enable=False)
+        self.assertEqual(decision(result), "allow")
+
+        events = read_fail_open_events(cwd=Path(self._tmp))
+        self.assertEqual(events, [])
+
+    def test_notebook_path_payload_is_not_missing_path(self):
+        payload = {
+            "tool_name": "NotebookEdit",
+            "tool_input": {"notebook_path": "analysis.ipynb"},
+        }
+        result = run_hook_raw(json.dumps(payload), self._tmp, force_enable=True)
+        self.assertEqual(decision(result), "allow")
+
+        events = read_fail_open_events(cwd=Path(self._tmp))
+        self.assertEqual(events, [])
 
 
 class TestBasenameSubstringFalseNegative(unittest.TestCase):
