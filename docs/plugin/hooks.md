@@ -48,6 +48,8 @@ python3 -m harness.hooks <handler> --cc-pid "$CC_PID"
 
 PreToolUse 차단 hook 은 정책 위반만 `exit 2` 로 내보낸다. Claude Code 에서 `exit 2` 는 tool 호출을 막고 stderr 를 모델에게 보여준다. import 오류나 hook 자체 오류는 fail-open 쪽으로 처리해 hook 버그가 전체 작업을 과차단하지 않게 한다.
 
+Fail-open 관측성: 미활성 프로젝트 no-op, main Claude turn, active run 밖 Agent 호출처럼 예상된 benign skip 은 조용히 통과한다. 반대로 활성 프로젝트에서 enforcement hook 이 payload 파싱 실패, session id 부재, state read/write 오류, handler 비정상 종료 때문에 검사를 평가하지 못하고 allow 한 경우는 `<project>/.claude/harness-state/fail-open-events.jsonl` 에 structured event 로 남긴다. `dcness-helper status` 의 `hook fail-open 진단` 항목은 최근 24시간 count 와 reason category 를 WARN 으로 보여준다.
+
 Stop hook 은 tool 호출을 막는 hook 이 아니다. 필요할 때 `decision: "block"` JSON 을 stdout 으로 내보내 메인 turn 을 재발화시킨다.
 
 ### session-start.sh

@@ -51,6 +51,7 @@ from harness.agent_trace import read_all as read_trace
 # issue #392 — redo_log 폐기
 from harness.session_state import (
     read_live,
+    read_fail_open_events,
     read_pid_session,
     run_dir,
     session_dir,
@@ -1043,6 +1044,9 @@ class SilentAllowWithoutSessionTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
+        events = read_fail_open_events(base_dir=self.base)
+        self.assertEqual(events[-1]["hook"], "catastrophic-gate")
+        self.assertEqual(events[-1]["category"], "payload_missing_session")
 
 
 # ---------------------------------------------------------------------------
@@ -1058,6 +1062,9 @@ class SilentAllowMalformedInputTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
+        events = read_fail_open_events(base_dir=self.base)
+        self.assertEqual(events[-1]["hook"], "catastrophic-gate")
+        self.assertEqual(events[-1]["category"], "payload_invalid")
 
     def test_non_dict_stdin_silent(self) -> None:
         rc = handle_pretooluse_agent(
@@ -1066,6 +1073,9 @@ class SilentAllowMalformedInputTests(_PreToolBase):
             base_dir=self.base,
         )
         self.assertEqual(rc, 0)
+        events = read_fail_open_events(base_dir=self.base)
+        self.assertEqual(events[-1]["hook"], "catastrophic-gate")
+        self.assertEqual(events[-1]["category"], "payload_invalid")
 
 
 # ---------------------------------------------------------------------------

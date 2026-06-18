@@ -36,8 +36,10 @@ from harness.session_state import (
     cleanup_stale_pid_files,
     cleanup_stale_run_dirs,
     cleanup_stale_runs,
+    is_project_active,
     read_live,
     read_pid_current_run,
+    record_fail_open_event,
     run_dir,
     session_dir,
     update_live,
@@ -63,6 +65,21 @@ _STRICT_CONVEYOR_ENTRY_POINTS = frozenset({
     "impl",
     "ux",
 })
+
+
+def _record_fail_open_safe(
+    hook: str,
+    category: str,
+    detail: str = "",
+    *,
+    base_dir: Optional[Path] = None,
+) -> None:
+    record_fail_open_event(
+        hook=hook,
+        category=category,
+        detail=detail,
+        base_dir=base_dir,
+    )
 
 
 # ── DCN-CHG-20260501-11 — agent-trace.jsonl 헬퍼 ──────────────────────
@@ -410,18 +427,42 @@ def handle_pretooluse_agent(
         try:
             raw = sys.stdin.read()
             stdin_data = json.loads(raw) if raw.strip() else {}
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            _record_fail_open_safe(
+                "catastrophic-gate",
+                "payload_unreadable",
+                f"{type(exc).__name__}: {exc}",
+                base_dir=base_dir,
+            )
             return 0  # parse 실패 → silent allow
 
     if not isinstance(stdin_data, dict):
+        _record_fail_open_safe(
+            "catastrophic-gate",
+            "payload_invalid",
+            f"payload type={type(stdin_data).__name__}",
+            base_dir=base_dir,
+        )
         return 0
 
     sid = _extract_sid(stdin_data)
     if not valid_session_id(sid):
+        _record_fail_open_safe(
+            "catastrophic-gate",
+            "payload_missing_session",
+            "missing or invalid session id",
+            base_dir=base_dir,
+        )
         return 0  # sid 없음 → 검사 불가, allow
 
     tool_input = stdin_data.get("tool_input")
     if not isinstance(tool_input, dict):
+        _record_fail_open_safe(
+            "catastrophic-gate",
+            "payload_invalid",
+            "tool_input is not an object",
+            base_dir=base_dir,
+        )
         return 0
     subagent = tool_input.get("subagent_type", "") or ""
     mode = tool_input.get("mode", "") or ""
@@ -470,7 +511,13 @@ def handle_pretooluse_agent(
             if strict_msg:
                 print(strict_msg, file=sys.stderr)
                 return 1
-    except (OSError, ValueError):
+    except (OSError, ValueError) as exc:
+        _record_fail_open_safe(
+            "catastrophic-gate",
+            "state_read_error",
+            f"{type(exc).__name__}: {exc}",
+            base_dir=base_dir,
+        )
         pass  # state 읽기 실패는 fail-open — hook 버그발 과차단 회피.
 
     # engineer 게이트 — engineer 직전 설계 산출물 필수 (effective mode != POLISH).
@@ -557,7 +604,13 @@ def handle_pretooluse_agent(
     if subagent:
         try:
             update_live(sid, base_dir=base_dir, active_agent=subagent, active_mode=(mode or None))
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
+            _record_fail_open_safe(
+                "catastrophic-gate",
+                "state_write_error",
+                f"active_agent update failed: {type(exc).__name__}: {exc}",
+                base_dir=base_dir,
+            )
             pass  # 실패해도 Agent 호출은 통과 — 식별만 누락.
 
     # #272 W3 진짜 fix — PreToolUse Agent 의 tool_use_id + 시작 시각을 써
@@ -646,17 +699,44 @@ def handle_pretooluse_file_op(
         try:
             raw = sys.stdin.read()
             stdin_data = json.loads(raw) if raw.strip() else {}
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            _record_fail_open_safe(
+                "file-guard",
+                "payload_unreadable",
+                f"{type(exc).__name__}: {exc}",
+                base_dir=base_dir,
+            )
             return 0
 
     if not isinstance(stdin_data, dict):
+        _record_fail_open_safe(
+            "file-guard",
+            "payload_invalid",
+            f"payload type={type(stdin_data).__name__}",
+            base_dir=base_dir,
+        )
         return 0
 
     sid = _extract_sid(stdin_data)
     if not valid_session_id(sid):
+        _record_fail_open_safe(
+            "file-guard",
+            "payload_missing_session",
+            "missing or invalid session id",
+            base_dir=base_dir,
+        )
         return 0
 
-    live = read_live(sid, base_dir=base_dir) or {}
+    try:
+        live = read_live(sid, base_dir=base_dir) or {}
+    except (OSError, ValueError) as exc:
+        _record_fail_open_safe(
+            "file-guard",
+            "state_read_error",
+            f"{type(exc).__name__}: {exc}",
+            base_dir=base_dir,
+        )
+        return 0
     # issue #598 — acting agent 는 payload agent_type(자기 식별, 동시 sub 안전) 우선,
     # 없으면 live.active_agent 단일 슬롯 폴백 (_resolve_acting_agent).
     acting_agent = _resolve_acting_agent(stdin_data, live)
@@ -666,6 +746,12 @@ def handle_pretooluse_file_op(
     tool_name = stdin_data.get("tool_name", "") or ""
     tool_input = stdin_data.get("tool_input") or {}
     if not isinstance(tool_input, dict):
+        _record_fail_open_safe(
+            "file-guard",
+            "payload_invalid",
+            "tool_input is not an object",
+            base_dir=base_dir,
+        )
         return 0
 
     cwd = Path.cwd()
@@ -1558,9 +1644,15 @@ def _main(argv: Optional[list] = None) -> int:
             rc = handle_subagent_stop()
         else:
             rc = 0
-    except Exception:  # noqa: BLE001 — hook 버그가 도구 호출을 과차단하지 않게 fail-open
+    except Exception as exc:  # noqa: BLE001 — hook 버그가 도구 호출을 과차단하지 않게 fail-open
         import traceback
         traceback.print_exc()
+        if is_project_active():
+            _record_fail_open_safe(
+                args.cmd,
+                "handler_exception",
+                f"{type(exc).__name__}: {exc}",
+            )
         return 0
     # 정책 위반(rc==1)은 blocking hook 에서만 exit 2. 그 외(비-blocking / allow) 는 0.
     if blocking and rc == 1:
