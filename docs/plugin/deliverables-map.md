@@ -18,6 +18,40 @@
 
 epic 폴더 슬러그 규약은 [`issue-lifecycle.md`](issue-lifecycle.md#이슈-계층) 의 epic 단위 정의와 같다 (`docs/milestones/vNN/epics/epic-NN-<slug>/`).
 
+## 한눈에 보기
+
+다중 epic 프로젝트의 `docs/` 전체 구조다. 아래 트리가 "어디 가서 찾는가" 의 공간 지도이고, 각 칸의 생성 주체·양식 detail 은 이어지는 표가 진본이다.
+
+```text
+docs/
+├── prd.md                      # PRD (제품 요구사항)            ← /spec [전역]
+├── tech-review.md              # 기술 검토 결론                 ← tech-reviewer [전역]
+├── tech-review/                #  ├ evidence/**  (증거 파일)
+│                               #  └ report.html  (통합 HTML 리포트)
+├── architecture.md             # 루트 아키텍처 (cross-epic 시스템 뷰) ← system-architect [전역]
+├── adr.md                      # 루트 ADR (전역 결정 기록)       ← system-architect [전역]
+├── design.md                   # 디자인 시스템 토큰              ← ux-architect [전역]
+├── db-schema.md                # DB 스키마 (있으면)              ← 상황별 [전역]
+│
+├── compact-plans/<slug>.md     # 경량 설계 (impl 사전조건)       ← module-architect [작업용]
+├── bugfix/**                   # 버그픽스 계획                  ← module-architect [작업용]
+│
+└── milestones/
+    └── vNN/
+        └── epics/
+            └── epic-NN-<slug>/   # ◀── epic 1개당 폴더 1개 (epic 늘수록 증식) [epic 단위]
+                ├── stories.md       # 스토리 정의              ← /spec
+                ├── ux-flow.md       # 화면 플로우 (canonical) ← ux-architect
+                ├── architecture.md  # epic 국소 아키텍처       ← system/module-architect
+                ├── adr.md           # epic ADR
+                ├── domain-model.md  # 도메인 모델
+                └── impl/
+                    └── NN-*.md      # impl task (PR 1개 = task 1개) ← module-architect
+```
+
+- `[전역]` = 프로젝트당 1벌 (root `docs/`). `[epic 단위]` = epic 폴더 안, epic 늘수록 증식. `[작업용]` = epic 비종속.
+- 단일-epic 초기 프로젝트는 `milestones/` 없이 root flat 형태(`docs/stories.md`·`docs/ux-flow.md`·`docs/impl/NN-*.md`·`docs/domain-model.md`)로 시작할 수 있다. 이는 legacy 폴백이며 canonical 위치는 위 epic 폴더 안이다 ([공존 vs legacy](#공존-vs-legacy)).
+
 ## 프로젝트 전역 산출물 (root)
 
 | 산출물 | 경로 | 생성 주체 | 양식 템플릿 |
