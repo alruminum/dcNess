@@ -1202,11 +1202,14 @@ def _has_pass(rd: Path, agent: str) -> bool:
     """`<agent>.md` 또는 `<agent>-N.md` (occurrence) 안 PASS 마커 확인.
 
     8 agent enum 통일 (PR B-3) 후 모든 catastrophic 검사가 PASS 단일 마커.
-    occurrence 카운터 — `<agent>-2.md` / `-3.md` ... 까지 가장 최근 호출.
+    occurrence 명명 규약(signal_io.signal_path): 첫 호출 = `<agent>.md`,
+    2번째 호출(첫 재호출) = `<agent>-1.md`, 3번째 = `-2.md` ... 이므로 재호출
+    PASS 탐색은 `-1.md` 부터 빠짐없이 봐야 한다. 첫 재호출(`-1.md`)을 건너뛰면
+    "1차 FAIL → 재검증 PASS" 흐름의 게이트가 오차단된다(#797 off-by-one).
     """
     if "PASS" in _read_or_empty(rd / f"{agent}.md"):
         return True
-    for n in range(2, 10):
+    for n in range(1, 10):
         if "PASS" in _read_or_empty(rd / f"{agent}-{n}.md"):
             return True
     return False

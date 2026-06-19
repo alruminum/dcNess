@@ -39,6 +39,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, Optional
 
 from harness.hooks import (
+    _has_pass,
     handle_posttooluse_agent,
     handle_posttooluse_file_op,
     handle_pretooluse_agent,
@@ -592,6 +593,45 @@ class _DesignLoopBase(unittest.TestCase):
         update_live(self.sid, base_dir=self.base, active_runs=active)
 
 
+class HasPassOccurrenceTests(unittest.TestCase):
+    """#797 — `_has_pass` 의 occurrence PASS 탐색이 첫 재호출(`-1.md`)부터
+    빠짐없이 포함하는지 헬퍼 단위로 고정.
+
+    이 헬퍼는 module-architect 게이트(architecture-validator PASS)와
+    pr-reviewer 게이트(code-validator PASS)가 공유하므로, occurrence off-by-one
+    회귀는 여러 게이트를 동시에 오염시킨다.
+    """
+
+    def setUp(self) -> None:
+        self._td = TemporaryDirectory()
+        self.rd = Path(self._td.name)
+
+    def tearDown(self) -> None:
+        self._td.cleanup()
+
+    def test_pass_in_base_md(self) -> None:
+        # 1번째 호출(한 번에 PASS) — 회귀 없음.
+        (self.rd / "architecture-validator.md").write_text("PASS", encoding="utf-8")
+        self.assertTrue(_has_pass(self.rd, "architecture-validator"))
+
+    def test_pass_in_first_recall_md(self) -> None:
+        # 2번째 호출 = `-1.md` (첫 재호출). 1차는 FAIL → 재검증 PASS 인식 필수.
+        (self.rd / "architecture-validator.md").write_text("FAIL", encoding="utf-8")
+        (self.rd / "architecture-validator-1.md").write_text("PASS", encoding="utf-8")
+        self.assertTrue(_has_pass(self.rd, "architecture-validator"))
+
+    def test_pass_in_later_occurrence_md(self) -> None:
+        # `-2.md` 등 후속 occurrence 도 그대로 인정 — 공유 헬퍼 회귀 방지.
+        (self.rd / "code-validator-2.md").write_text("PASS", encoding="utf-8")
+        self.assertTrue(_has_pass(self.rd, "code-validator"))
+
+    def test_no_pass_when_all_occurrences_fail(self) -> None:
+        # 모든 호출 FAIL 이면 False — 통과 누수 없음.
+        (self.rd / "architecture-validator.md").write_text("FAIL", encoding="utf-8")
+        (self.rd / "architecture-validator-1.md").write_text("FAIL", encoding="utf-8")
+        self.assertFalse(_has_pass(self.rd, "architecture-validator"))
+
+
 class CatastrophicArchitectureValidatorTests(_DesignLoopBase):
     def test_module_architect_first_call_blocked_without_arch_validator(self) -> None:
         self._begin_step("module-architect")
@@ -605,6 +645,27 @@ class CatastrophicArchitectureValidatorTests(_DesignLoopBase):
     def test_module_architect_first_call_allowed_with_arch_validator_pass(self) -> None:
         self._begin_step("module-architect")
         (self.run_path / "architecture-validator.md").write_text(
+            "## 결론\nPASS\n", encoding="utf-8",
+        )
+        rc = handle_pretooluse_agent(
+            stdin_data=self._payload("module-architect"),
+            cc_pid=self.cc_pid,
+            base_dir=self.base,
+        )
+        self.assertEqual(rc, 0)
+
+    def test_module_architect_first_call_allowed_after_arch_validator_revalidation_pass(
+        self,
+    ) -> None:
+        # #797 — 1차 검증 FAIL(`.md`) → 재검증 PASS(`-1.md`, 첫 재호출) 흐름.
+        # occurrence 명명상 2번째 호출 = `-1.md` 이므로, 게이트가 `-1.md` 를
+        # 건너뛰면(옛 range(2,10)) "FAIL → 재검증 PASS" 라는 design 루프의 정상
+        # 분기를 오차단했다(off-by-one). 재검증 PASS 를 인식해 통과해야 한다.
+        self._begin_step("module-architect")
+        (self.run_path / "architecture-validator.md").write_text(
+            "## 결론\nFAIL\n", encoding="utf-8",
+        )
+        (self.run_path / "architecture-validator-1.md").write_text(
             "## 결론\nPASS\n", encoding="utf-8",
         )
         rc = handle_pretooluse_agent(
