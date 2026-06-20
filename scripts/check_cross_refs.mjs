@@ -17,9 +17,9 @@
  *   - 예외 파일: commands/smart-compact.md (sample 코드블록 안 historical 인용 — M1/N 동일 사유)
  *
  * 검증 C — 고아 문서 탐지 (#805 — link 검증의 역방향)
- *   - docs/plugin/ · docs/internal/ 의 .md 가 어디서도 참조 안 되면 FAIL
- *   - 참조 판정: (1) markdown 링크를 실제 resolve 한 타겟 집합 + (2) repo-상대 전체 경로 인용
- *     (정확 매칭 — basename substring 오탐 회피). corpus = 검사 대상 = 모든 .md (워크플로 트리거와 동일 집합)
+ *   - docs/plugin/ · docs/internal/ 의 .md 가 레포 어느 md 에서도 링크 안 되면 FAIL
+ *   - 참조 = 레포 전체 md (트리거와 동일 집합) 의 실제 markdown 링크를 resolve 한 타겟.
+ *     링크만 인정 — substring 오탐 / changelog full-path name-drop / 자기참조 제외.
  *   - 진입점 예외는 ORPHAN_ALLOWLIST (현재 비어 있음 — 추가 시 사유 주석)
  *
  * 사용:
@@ -45,10 +45,9 @@ const SCAN_ROOTS = ['README.md', 'AGENTS.md', 'PROGRESS.md', 'CLAUDE.md', '.gith
 const ORPHAN_TARGET_DIRS = ['docs/plugin', 'docs/internal'];
 // 참조 없이도 정당한 docs (진입점/인덱스). 추가 시 반드시 사유 주석.
 const ORPHAN_ALLOWLIST = new Set([]);
-// 참조 corpus = 검사 대상(collectFiles) 그대로 — 워크플로 트리거(`**/*.md`)와 동일 집합이라
-// corpus 변경이 항상 본 게이트를 발화시킨다. 참조 판정은 (1) markdown 링크를 실제 resolve 한
-// 타겟 집합, (2) repo-상대 전체 경로 인용 — 둘 다 정확 매칭이라 basename substring 오탐
-// (`design.md` ⊂ `conveyor-design.md` / 활성프로젝트 `docs/design.md`) 을 피한다.
+// 참조 판정 = 레포 전체 md(트리거 `**/*.md` 와 동일 집합)의 실제 markdown 링크를 resolve 한
+// 타겟에 포함되나. 링크만 인정(정확 매칭) — basename substring 오탐(`design.md` ⊂
+// `conveyor-design.md`)·changelog full-path name-drop·자기참조는 모두 제외한다.
 
 // ─── 옛 명칭 deny-list ────────────────────────────────────────
 // historical annotation (navigation hint) 은 통과:
@@ -164,11 +163,30 @@ function getContent(filePath) {
 }
 
 // ─── 고아 탐지 헬퍼 ───────────────────────────────────────────
-// 모든 markdown 링크를 실제 resolve 한 repo-상대 타겟 경로 집합.
+// 참조 corpus = 레포 전체의 tracked .md (워크플로 트리거 `**/*.md` 와 동일 집합).
+// codex/·evals/ 등 collectFiles 밖 md 의 링크도 포함해야 오탐(valid PR 차단)이 없다.
+const MD_SKIP_DIRS = new Set(['.git', 'node_modules', '.mypy_cache', '.pytest_cache']);
+function allMdFiles(dir = '.') {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (MD_SKIP_DIRS.has(entry.name)) continue;
+    const p = dir === '.' ? entry.name : join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...allMdFiles(p));
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+// 모든 md 의 markdown 링크를 실제 resolve 한 repo-상대 타겟 경로 집합.
 // 상대 링크(`[x](deliverables-map.md)`)도 source dir 기준으로 정확히 풀린다.
+// 참조 = 실제 markdown 링크만 — full-path prose 인용(changelog name-drop 등)은 발견
+// 경로가 아니므로 제외한다 (#805 codex P2).
 function collectLinkTargets() {
   const targets = new Set();
-  for (const f of collectFiles()) {
+  for (const f of allMdFiles()) {
     const sourceDir = dirname(f);
     for (const { url } of extractLinks(f)) {
       if (isExternalUrl(url)) continue;
@@ -183,35 +201,16 @@ function collectLinkTargets() {
   return targets;
 }
 
-// repo-상대 전체 경로 t 가 corpus 어딘가에 *경계 포함* 인용됐나.
-// 전체 경로라 `docs/plugin/design.md` 는 `docs/design.md`·`conveyor-design.md` 에 안 걸린다.
-// 뒤 문자 boundary 로 `design.md` ⊂ `design.markdown` prefix 충돌만 추가 차단.
-function pathReferencedInCorpus(t, corpus) {
-  for (const f of corpus) {
-    if (f === t) continue;
-    const content = getContent(f);
-    let idx = content.indexOf(t);
-    while (idx !== -1) {
-      const after = content[idx + t.length];
-      if (after === undefined || !/[A-Za-z0-9]/.test(after)) return true;
-      idx = content.indexOf(t, idx + 1);
-    }
-  }
-  return false;
-}
-
 function findOrphans() {
   const targets = [];
   for (const d of ORPHAN_TARGET_DIRS) {
     if (existsSync(d)) targets.push(...walkMd(d));
   }
-  const corpus = collectFiles();
   const linkTargets = collectLinkTargets();
   const orphans = [];
   for (const t of targets) {
     if (ORPHAN_ALLOWLIST.has(t)) continue;
-    if (linkTargets.has(t)) continue; // 정확히 resolve 된 markdown 링크 타겟
-    if (pathReferencedInCorpus(t, corpus)) continue; // repo-상대 전체 경로 인용
+    if (linkTargets.has(t)) continue; // 레포 어느 md 든 실제 링크로 가리키면 OK
     orphans.push(t);
   }
   return orphans;
