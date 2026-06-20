@@ -16,20 +16,39 @@
  *   - 외부 배포 영역: docs/plugin/, commands/, agents/, hooks/, .claude-plugin/
  *   - 예외 파일: commands/smart-compact.md (sample 코드블록 안 historical 인용 — M1/N 동일 사유)
  *
+ * 검증 C — 고아 문서 탐지 (#805 — link 검증의 역방향)
+ *   - docs/plugin/ · docs/internal/ 의 .md 가 레포 어느 md 에서도 링크 안 되면 FAIL
+ *   - 참조 = git tracked 전체 md 의 실제 markdown 링크를 resolve 한 타겟 (CI checkout 과
+ *     parity). 링크만 인정 — substring 오탐 / changelog name-drop / 자기참조 / untracked 제외.
+ *   - 진입점 예외는 ORPHAN_ALLOWLIST (현재 비어 있음 — 추가 시 사유 주석)
+ *
  * 사용:
  *   node scripts/check_cross_refs.mjs
  *
  * exit 0: PASS
- * exit 1: FAIL — dead link / dead anchor / 옛 명칭 매치
+ * exit 1: FAIL — dead link / dead anchor / 옛 명칭 매치 / 고아 문서
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, resolve, join, relative } from 'node:path';
+import { execSync } from 'node:child_process';
 
 const REPO_ROOT = process.cwd();
 
 // ─── 검사 대상 ─────────────────────────────────────────────────
 const SCAN_DIRS = ['docs/plugin', 'docs/internal', 'commands', 'skills', 'agents'];
 const SCAN_ROOTS = ['README.md', 'AGENTS.md', 'PROGRESS.md', 'CLAUDE.md', '.github/PULL_REQUEST_TEMPLATE.md'];
+
+// ─── 고아 문서 탐지 (#805) ──────────────────────────────────────
+// link 검증이 "가리키는 곳이 실존하나"를 본다면, 고아 탐지는 그 반대 — "가리켜지고
+// 있나"를 본다. docs/plugin · docs/internal 의 .md 는 SSOT/참조 문서라 어딘가에서
+// 반드시 참조돼야 한다. 어느 파일에서도 basename/경로가 안 보이면 고아 (link CI 의
+// 사각 — 옛 enum-roi-baseline 같은 미참조 문서가 조용히 쌓이던 회귀 차단).
+const ORPHAN_TARGET_DIRS = ['docs/plugin', 'docs/internal'];
+// 참조 없이도 정당한 docs (진입점/인덱스). 추가 시 반드시 사유 주석.
+const ORPHAN_ALLOWLIST = new Set([]);
+// 참조 판정 = git tracked 전체 md(트리거 `**/*.md` 와 동일 집합)의 실제 markdown 링크를
+// resolve 한 타겟에 포함되나. 링크만 인정(정확 매칭) — basename substring 오탐(`design.md`
+// ⊂ `conveyor-design.md`)·changelog full-path name-drop·자기참조·untracked 로컬 md 는 제외.
 
 // ─── 옛 명칭 deny-list ────────────────────────────────────────
 // historical annotation (navigation hint) 은 통과:
@@ -142,6 +161,54 @@ function getContent(filePath) {
     fileCache.set(filePath, readFileSync(filePath, 'utf8'));
   }
   return fileCache.get(filePath);
+}
+
+// ─── 고아 탐지 헬퍼 ───────────────────────────────────────────
+// 참조 corpus = git 이 tracked 하는 전체 .md (워크플로 트리거 `**/*.md` 와 동일 집합).
+// git ls-files 라 CI 의 clean checkout 과 정확히 일치 — untracked/생성물(.claude/
+// harness-state·resume-prompts·worktree 등) 로컬 md 가 dev↔CI 결과를 가르지 못한다.
+function allMdFiles() {
+  const out = execSync('git ls-files -z -- "*.md"', {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return out.split('\0').filter(Boolean);
+}
+
+// 모든 md 의 markdown 링크를 실제 resolve 한 repo-상대 타겟 경로 집합.
+// 상대 링크(`[x](deliverables-map.md)`)도 source dir 기준으로 정확히 풀린다.
+// 참조 = 실제 markdown 링크만 — full-path prose 인용(changelog name-drop 등)은 발견
+// 경로가 아니므로 제외한다 (#805 codex P2).
+function collectLinkTargets() {
+  const targets = new Set();
+  for (const f of allMdFiles()) {
+    const sourceDir = dirname(f);
+    for (const { url } of extractLinks(f)) {
+      if (isExternalUrl(url)) continue;
+      const hashIdx = url.indexOf('#');
+      const pathPart = hashIdx === -1 ? url : url.slice(0, hashIdx);
+      if (!pathPart) continue; // same-doc anchor
+      const resolved = relative(REPO_ROOT, resolve(sourceDir, pathPart));
+      if (resolved === f) continue; // 자기 자신 링크는 참조로 치지 않음 (#805 codex P2)
+      targets.add(resolved);
+    }
+  }
+  return targets;
+}
+
+function findOrphans() {
+  const targets = [];
+  for (const d of ORPHAN_TARGET_DIRS) {
+    if (existsSync(d)) targets.push(...walkMd(d));
+  }
+  const linkTargets = collectLinkTargets();
+  const orphans = [];
+  for (const t of targets) {
+    if (ORPHAN_ALLOWLIST.has(t)) continue;
+    if (linkTargets.has(t)) continue; // 레포 어느 md 든 실제 링크로 가리키면 OK
+    orphans.push(t);
+  }
+  return orphans;
 }
 
 // GitHub-flavored anchor slug (단순 모사)
@@ -333,11 +400,21 @@ function main() {
     denyViolations.push(...validateDenyList(f));
   }
 
+  const orphans = findOrphans();
+
   console.log(`[cross-ref] 검사 대상: ${files.length} 파일`);
 
-  if (linkViolations.length === 0 && denyViolations.length === 0) {
-    console.log('[cross-ref] PASS — dead link / dead anchor / 옛 명칭 0건');
+  if (linkViolations.length === 0 && denyViolations.length === 0 && orphans.length === 0) {
+    console.log('[cross-ref] PASS — dead link / dead anchor / 옛 명칭 / 고아 0건');
     process.exit(0);
+  }
+
+  if (orphans.length > 0) {
+    console.error(`\n[cross-ref] FAIL — 고아 문서 ${orphans.length} 건 (어디서도 참조 안 됨):`);
+    for (const o of orphans) {
+      console.error(`  ${o}`);
+    }
+    console.error('    → 참조를 추가하거나, 폐기면 docs/archive/ 로 옮기거나 제거. 진입점이면 ORPHAN_ALLOWLIST 에 사유와 함께 등록.');
   }
 
   if (linkViolations.length > 0) {
@@ -362,6 +439,7 @@ function main() {
   console.error('                       prose `<file>.md §N.M` heuristic 인용은 별 PR 후보.');
   console.error('    - 검증 B (deny)   : 외부 배포 영역 (docs/plugin/, commands/, agents/, hooks/, .claude-plugin/) 한정.');
   console.error('                       예외: commands/smart-compact.md (sample 코드블록 안 historical).');
+  console.error('    - 검증 C (orphan) : docs/plugin/ · docs/internal/ .md 가 어디서도 참조 안 되면 FAIL.');
   console.error('  SSOT: 본 스크립트 헤더 주석 + .github/workflows/cross-ref-validation.yml 헤더.');
 
   process.exit(1);

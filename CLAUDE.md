@@ -91,7 +91,7 @@
 - **plugin-manifest**: `scripts/check_plugin_manifest.mjs` (CI `plugin-manifest.yml`) — `.claude-plugin/plugin.json` version / manifest 정합 검증
 - **pr-body**: `scripts/check_pr_body.mjs` (CI `pr-body-validation.yml`) — PR 본문 템플릿 충족 검증
 - **public-surface**: `scripts/check_public_surface.mjs` (CI `public-surface-validation.yml`) — 공개 workflow/command/agent 진입점 계약 검증
-- **cross-ref**: `scripts/check_cross_refs.mjs` (CI `cross-ref-validation.yml`) — markdown link 파일/anchor 실존 + 옛 명칭 deny-list (외부 배포 영역 한정) 회귀 차단
+- **cross-ref**: `scripts/check_cross_refs.mjs` (CI `cross-ref-validation.yml`) — markdown link 파일/anchor 실존 + 옛 명칭 deny-list (외부 배포 영역 한정) + 고아 문서 탐지 (docs/plugin·docs/internal 미참조 .md) 회귀 차단
 - **static-quality**: `pyproject.toml` + `requirements-quality.txt` + `scripts/check_static_quality.sh` (CI `static-quality.yml`) — Python 3.11 기준 ruff lint/complexity, mypy, Bandit baseline 회귀 차단
 - **결정적 guard-efficacy eval (권고 — CI 차단 아님)**: `python3 evals/guard_efficacy.py` — guard/hook 변경 PR 머지 전 1회. LLM 없이 file boundary / Bash·MCP mutation / order gate / TDD allow·block fixture 를 범주별 count 로 재현.
 - **행동 eval (권고 — CI 차단 아님)**: `bash evals/run.sh` — `agents/**`/`skills/**` 지침 변경 PR 머지 전 + 플러그인 릴리즈 전 1회. agent 가 기준대로 실제 판정하는지 사고 기반 fixture 로 확인. 상세 [`evals/README.md`](evals/README.md)
@@ -123,6 +123,7 @@
 | [`scripts/check_python_tests.sh`](scripts/check_python_tests.sh) | pytest 게이트 구현 참조 시 |
 | [`scripts/hooks/pre-commit`](scripts/hooks/pre-commit) | git pre-commit hook 수정 시 |
 | [`scripts/hooks/cc-pre-commit.sh`](scripts/hooks/cc-pre-commit.sh) | Claude Code PreToolUse hook 수정 시 |
+| [`docs/internal/doc-conventions.md`](docs/internal/doc-conventions.md) | 문서 섹션 참조·anchor 링크 표기 수정/리뷰 시 (cross-ref 게이트가 강제하는 규약 SSOT) |
 | [`docs/internal/plugin-release.md`](docs/internal/plugin-release.md) | 플러그인 릴리즈·버전 배포 요청 시 — 순서·태그·주의사항 |
 | [`docs/internal/release-notes.md`](docs/internal/release-notes.md) | 릴리즈 노트 기록 — 버전별 커밋 범위·변경 요약 |
 
