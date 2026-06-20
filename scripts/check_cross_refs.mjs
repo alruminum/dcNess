@@ -18,8 +18,8 @@
  *
  * 검증 C — 고아 문서 탐지 (#805 — link 검증의 역방향)
  *   - docs/plugin/ · docs/internal/ 의 .md 가 레포 어느 md 에서도 링크 안 되면 FAIL
- *   - 참조 = 레포 전체 md (트리거와 동일 집합) 의 실제 markdown 링크를 resolve 한 타겟.
- *     링크만 인정 — substring 오탐 / changelog full-path name-drop / 자기참조 제외.
+ *   - 참조 = git tracked 전체 md 의 실제 markdown 링크를 resolve 한 타겟 (CI checkout 과
+ *     parity). 링크만 인정 — substring 오탐 / changelog name-drop / 자기참조 / untracked 제외.
  *   - 진입점 예외는 ORPHAN_ALLOWLIST (현재 비어 있음 — 추가 시 사유 주석)
  *
  * 사용:
@@ -30,6 +30,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, resolve, join, relative } from 'node:path';
+import { execSync } from 'node:child_process';
 
 const REPO_ROOT = process.cwd();
 
@@ -45,9 +46,9 @@ const SCAN_ROOTS = ['README.md', 'AGENTS.md', 'PROGRESS.md', 'CLAUDE.md', '.gith
 const ORPHAN_TARGET_DIRS = ['docs/plugin', 'docs/internal'];
 // 참조 없이도 정당한 docs (진입점/인덱스). 추가 시 반드시 사유 주석.
 const ORPHAN_ALLOWLIST = new Set([]);
-// 참조 판정 = 레포 전체 md(트리거 `**/*.md` 와 동일 집합)의 실제 markdown 링크를 resolve 한
-// 타겟에 포함되나. 링크만 인정(정확 매칭) — basename substring 오탐(`design.md` ⊂
-// `conveyor-design.md`)·changelog full-path name-drop·자기참조는 모두 제외한다.
+// 참조 판정 = git tracked 전체 md(트리거 `**/*.md` 와 동일 집합)의 실제 markdown 링크를
+// resolve 한 타겟에 포함되나. 링크만 인정(정확 매칭) — basename substring 오탐(`design.md`
+// ⊂ `conveyor-design.md`)·changelog full-path name-drop·자기참조·untracked 로컬 md 는 제외.
 
 // ─── 옛 명칭 deny-list ────────────────────────────────────────
 // historical annotation (navigation hint) 은 통과:
@@ -163,21 +164,15 @@ function getContent(filePath) {
 }
 
 // ─── 고아 탐지 헬퍼 ───────────────────────────────────────────
-// 참조 corpus = 레포 전체의 tracked .md (워크플로 트리거 `**/*.md` 와 동일 집합).
-// codex/·evals/ 등 collectFiles 밖 md 의 링크도 포함해야 오탐(valid PR 차단)이 없다.
-const MD_SKIP_DIRS = new Set(['.git', 'node_modules', '.mypy_cache', '.pytest_cache']);
-function allMdFiles(dir = '.') {
-  const out = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (MD_SKIP_DIRS.has(entry.name)) continue;
-    const p = dir === '.' ? entry.name : join(dir, entry.name);
-    if (entry.isDirectory()) {
-      out.push(...allMdFiles(p));
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
-      out.push(p);
-    }
-  }
-  return out;
+// 참조 corpus = git 이 tracked 하는 전체 .md (워크플로 트리거 `**/*.md` 와 동일 집합).
+// git ls-files 라 CI 의 clean checkout 과 정확히 일치 — untracked/생성물(.claude/
+// harness-state·resume-prompts·worktree 등) 로컬 md 가 dev↔CI 결과를 가르지 못한다.
+function allMdFiles() {
+  const out = execSync('git ls-files -z -- "*.md"', {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return out.split('\0').filter(Boolean);
 }
 
 // 모든 md 의 markdown 링크를 실제 resolve 한 repo-상대 타겟 경로 집합.
