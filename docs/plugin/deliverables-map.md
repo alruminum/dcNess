@@ -65,7 +65,7 @@ docs/
 
 - **기술 검토** 는 본문 1파일이 아니라 `docs/tech-review/` 서브트리(증거·HTML 리포트)를 동반한다. 운영 메커니즘은 [`tech-review` skill](../../skills/tech-review/SKILL.md).
 - **루트 아키텍처/ADR** 은 epic 단위 산출물과 **공존**한다 (root = cross-epic 시스템 뷰, epic = 국소 detail). 아래 [공존 vs legacy](#공존-vs-legacy) 참조. 1회 작성 후 고정이 아니라, system-architect 가 매 `/design` epic 진입 시 기존 root 산출물을 읽고 **갱신 여부를 판정**한다. PRD 도 `/spec` 재진입으로 갱신된다.
-- **`docs/db-schema.md` 는 본 지도에 없다** — dcNess 가 생성하지 않는 선택 입력(module-architect 가 있으면 읽기만)이라 산출물이 아니다.
+- **`docs/db-schema.md` 는 본 지도에 없다** — dcNess workflow 가 생성하지도(생성 주체·양식·write 권한 없음) 표준 입력으로 소비하지도 않는다. 산출물이 아니다.
 
 ## epic 단위 산출물 (epic 늘수록 증식)
 

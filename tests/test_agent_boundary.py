@@ -320,6 +320,19 @@ class WriteAllowedAllowMatrixTests(unittest.TestCase):
                 )
             )
 
+    def test_ux_architect_non_canonical_milestones_ux_flow_blocked(self):
+        # #807 codex P2 — epic 폴더 shape 밖 milestones ux-flow 는 차단(오타로 unconsumed
+        # UX doc 생성 방지). canonical = docs/milestones/<v>/epics/<epic>/ux-flow.md 뿐.
+        with tempfile.TemporaryDirectory() as td:
+            cwd = Path(td)
+            for bad in (
+                "docs/milestones/v01/ux-flow.md",                       # epics/<epic> 누락
+                "docs/milestones/v01/epics/epic-01-foo/impl/ux-flow.md",  # 한 단계 더 깊음
+            ):
+                reason = check_write_allowed("ux-architect", bad, cwd=cwd)
+                self.assertIsNotNone(reason, f"{bad} 는 차단돼야 함")
+                self.assertIn("ALLOW_MATRIX", reason)
+
     def test_ux_architect_design_md_allowed(self):
         # design system token (system-level 영역) — agents/ux-architect 권한 경계가 문서화한 책무.
         with tempfile.TemporaryDirectory() as td:
