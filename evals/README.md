@@ -70,6 +70,8 @@ EVAL_MODEL=opus bash evals/run.sh    # 검수/채점 모델 변경 (기본 sonne
 | `story-slice-partfirst` | (합성) 기능 영역(인테이크/템플릿/오디오/렌더/업로드) 부품 단위로 잘려 마지막 story 까지 동작이 안 나오는 backlog | 분할·순서 결함이 지적돼야 한다 |
 | `story-slice-skeleton` | (합성) 첫 story 가 얇은 end-to-end 골격이고 매 story 가 확인 가능한 증분인 backlog | 분할·순서를 이유로 퇴짜 놓으면 안 된다 |
 | `shorts-real-spec` | (L3 실사고) youTubeGenerator v03 쇼츠 epic 의 실제 stories.md — 완성 쇼츠 동작 검증이 Story 3 까지 밀려 런타임 gap(youTubeGenerator #214)이 났던 backlog. 합성 케이스보다 미묘함(각 story 가 표면상 멀쩡) | 순서 결함(첫 완성 동작이 뒤 story 로 밀림)이 지적돼야 한다 (옛 지침은 통과시켰던 입력) |
+| `flow-ownership-entrypoint-bad` | (합성) 새 panel/state/helper 가 기존 entrypoint 에 append 되어 owner module, state owner, validation path 가 흐려지는 diff | agent 작업성 결함이 지적돼야 한다 |
+| `flow-ownership-owner-good` | (합성) 새 flow owner module 을 만들고 entrypoint 는 dispatch 만 바꾸는 diff | owner module + dispatch 구조 자체를 결함으로 지적하면 안 된다 |
 
 > L3 실사고 케이스의 축 한계 — 정직하게 기록한다:
 > - **순서 축은 깨끗하게 재현된다**: 핵심 약속(완성 쇼츠) 검증이 뒤 story 로 밀린 것을 지금 지침이 reliable 하게 잡는다(3/3). 이게 youTubeGenerator #214 의 설계단 원인이다.

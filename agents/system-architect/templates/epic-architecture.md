@@ -59,6 +59,14 @@ flowchart LR
 |---|---|---|
 |  |  |  |
 
+## Flow Ownership Map
+
+> 새 mode/screen/panel/API/CLI/pipeline flow 의 owner 를 명시한다. entrypoint 는 dispatch 또는 composition wiring 역할로 제한하고, 흐름별 state/event/render/usecase 호출은 owner module 로 모은다.
+
+| flow | owner module | entrypoint touch | state owner | UI/API/CLI surface | forbidden append | validation path | future scenario |
+|---|---|---|---|---|---|---|---|
+|  |  |  |  |  |  |  |  |
+
 ## 구현 순서
 
 - 순서와 근거:
