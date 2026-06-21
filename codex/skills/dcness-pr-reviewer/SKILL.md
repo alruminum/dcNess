@@ -36,6 +36,7 @@ dcNess가 `pr-reviewer`를 Codex 교차 검토로 보낼 때 사용한다. merge
 - Injection, unsafe HTML/code execution, secret leakage, weak token generation, sensitive logging, unchecked origin handling, unsafe storage 같은 security-sensitive pattern을 새로 만들지 않았는가.
 - 테스트가 credible하고 merely superficial하지 않은가.
 - Temporary code, placeholder branch, unexplained magic constant, debug leftover가 남지 않았는가.
+- 이미 여러 제품 흐름(mode/screen/pipeline)을 떠안은 파일에 이번 diff가 또 다른 흐름을 append하거나, 새 능력이 별도 모듈이 아니라 기존 대형 파일에 흡수되지 않는가. footprint 밖 기존 누적은 MUST FIX가 아니라 후속 권고로 둔다.
 
 ## 작업 흐름
 
