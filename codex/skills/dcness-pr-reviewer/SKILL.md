@@ -37,6 +37,7 @@ dcNess가 `pr-reviewer`를 Codex 교차 검토로 보낼 때 사용한다. merge
 - 테스트가 credible하고 merely superficial하지 않은가.
 - Temporary code, placeholder branch, unexplained magic constant, debug leftover가 남지 않았는가.
 - 이미 여러 제품 흐름(mode/screen/pipeline)을 떠안은 파일에 이번 diff가 또 다른 흐름을 append하거나, 새 능력이 별도 모듈이 아니라 기존 대형 파일에 흡수되지 않는가. footprint 밖 기존 누적은 MUST FIX가 아니라 후속 권고로 둔다.
+- Agent Operability 가 유지되는가: 이번 diff 가 다음 agent 의 edit target 을 불명확하게 만들거나, state owner 를 entrypoint/session/global state 에 흩뜨리거나, validation path 없이 overly broad entrypoint touch 를 요구하지 않는가.
 
 ## 작업 흐름
 
@@ -44,7 +45,8 @@ dcNess가 `pr-reviewer`를 Codex 교차 검토로 보낼 때 사용한다. merge
 2. prior validator가 있으면 스펙 일치 검증을 반복하지 않고 merge risk 관점으로 이어 본다.
 3. finding은 `MUST FIX`와 `NICE TO HAVE`로 나눈다.
 4. `MUST FIX`는 merge blocker일 때만 쓴다. PR 범위 밖 legacy 문제는 이번 PR이 악화시킨 경우에만 blocker가 된다.
-5. finding마다 파일 경로, 라인, 구체적 사실, 영향, 권장 방향을 쓴다.
+5. UI/API/CLI entrypoint 를 만지는 diff 는 새 flow append 인지, owner module 이 있는지, entrypoint 가 dispatch/composition wiring 을 넘어서 render/helper/session state 를 떠안는지 확인한다. 이번 diff 가 edit target, state owner, validation path 를 흐리면 Agent Operability finding 으로 남긴다. footprint 밖 기존 누적은 후속 권고로 둔다.
+6. finding마다 파일 경로, 라인, 구체적 사실, 영향, 권장 방향을 쓴다.
 
 ## FAIL / ESCALATE 판단 노트와 재검증 delta-first 보고
 

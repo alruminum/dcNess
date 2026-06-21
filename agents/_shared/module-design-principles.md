@@ -2,7 +2,7 @@
 
 > 모듈 설계 시 system-architect / module-architect / engineer / test-engineer / build-worker / architecture-validator 가 공유하는 agent 내부 기준. 호출 시 본 문서 read 의무.
 
-본 문서는 네 가지 영역의 원칙을 한 곳에 모은 SSOT 다. 각 agent 본문에서 같은 룰을 반복해 박지 않고, 본 문서를 참조한다.
+본 문서는 모듈 설계 원칙을 한 곳에 모은 SSOT 다. 각 agent 본문에서 같은 룰을 반복해 박지 않고, 본 문서를 참조한다.
 
 ## Deep Modules — 깊은 모듈
 
@@ -79,6 +79,34 @@
 
 - module-architect — 기존 대형 파일을 건드리는 task 에서 append 대신 흐름 / 섹션 모듈 신설을 선호한다. 이번 task 가 손대는 seam 까지만 분해하고 무관한 흐름은 후속으로 남긴다.
 - pr-reviewer — 이번 diff 가 이미 여러 흐름을 떠안은 파일에 또 다른 흐름을 더하는지 본다. footprint 밖 기존 누적은 MUST FIX 가 아니라 후속 권고로 둔다.
+
+## Agent Operability
+
+Agent Operability 는 다음 agent 가 cold-start 상태에서 올바른 edit target 을 찾고, 무관한 흐름을 깨지 않으며, 검증 경로까지 닫을 수 있는지를 보는 기준이다. 목적은 파일 크기 축소가 아니라 작업 가능한 소유권과 검증 위치를 남기는 것이다.
+
+### 기준
+
+- edit target determinism — 새 요청을 받았을 때 어느 owner module 을 고치면 되는지 짧은 탐색으로 결정되는가.
+- context locality — 한 흐름을 이해하는 데 필요한 state, event, render, usecase 호출이 같은 owner flow/module 주변에 모여 있는가.
+- searchability — flow 이름, 화면/모드 이름, public entrypoint, 테스트 이름으로 owner 를 찾을 수 있는가.
+- state ownership — session/global/local state key 의 owner 가 모듈 또는 flow 단위로 드러나는가.
+- extension point — 다음 mode/screen/panel/flow 를 어디에 추가해야 하는지 기존 구조가 알려 주는가.
+- validation locality — 해당 흐름을 바꾼 뒤 어떤 test/smoke/UI/API/CLI 경로로 확인할지 owner 근처에 남는가.
+- compaction survivability — 긴 세션이 compact 되어도 산출물의 Flow Ownership Map 또는 Agent Workability 만으로 edit target, state owner, validation path 를 복구할 수 있는가.
+
+### Flow ownership
+
+새 mode, screen, panel, API route, CLI command, pipeline flow 가 자체 state, event, render, usecase 호출을 가지면 별도 owner flow/module 을 갖는다. entrypoint 는 mode dispatch 또는 composition wiring 역할로 제한한다. 기존 owner 가 없으면 첫 task 는 기능 append 가 아니라 seam extraction task 로 잡는다. 단일 파일 유지가 프로젝트 관례상 불가피하면, 그 파일 안에서도 owner section, state owner, validation path, future extension point 를 산출물에 명시한다.
+
+### 임계 — 작업성 신호, 하드 숫자 아님
+
+Agent Operability 는 하드 임계나 라인 수 게이트가 아니다. UI 라서 분해하거나 파일이 크다는 이유만으로 FAIL 시키지 않는다. diff 가 새 append 를 만들며 edit target, state owner, validation path 를 흐리게 할 때 이번 변경 범위의 finding 으로 드러낸다.
+
+### 적용 영역
+
+- system-architect — epic architecture 에 Flow Ownership Map 을 남겨 flow 별 owner module, entrypoint touch, state owner, surface, forbidden append, validation path, future scenario 를 연결한다.
+- module-architect — impl task 에 Agent Workability 를 남기고, entrypoint 를 건드리기 전에 flow owner 를 확정한다. owner 가 없으면 seam extraction task 를 앞세운다.
+- pr-reviewer — 이번 diff 가 edit target 을 불명확하게 만들거나 state owner 를 entrypoint/session 에 흩뜨리거나 overly broad entrypoint touch 를 요구하는지 본다. footprint 밖 기존 누적은 후속 권고로 둔다.
 
 ## Interface Design for Testability — 테스트 가능성 위한 인터페이스 설계
 
@@ -215,13 +243,14 @@ system-architect 가 architecture.md 의 *기술 스택* 영역에 DI 패턴 명
 
 | Agent | evidence |
 |---|---|
-| [`system-architect`](../system-architect.md) | architecture 템플릿의 `Module Design Check`, 의존성 차단 도구, DI 패턴, Contract Ledger |
-| [`module-architect`](../module-architect.md) | impl 템플릿의 `Module Design Check`, 작은 공개 노출 범위, contract/interface, Story 동작 수직 슬라이스, 검증 가능한 수용 기준 |
+| [`system-architect`](../system-architect.md) | architecture 템플릿의 `Module Design Check`, Flow Ownership Map, 의존성 차단 도구, DI 패턴, Contract Ledger |
+| [`module-architect`](../module-architect.md) | impl 템플릿의 `Module Design Check`, Agent Workability, 작은 공개 노출 범위, contract/interface, Story 동작 수직 슬라이스, 검증 가능한 수용 기준 |
 | [`engineer`](../engineer.md) | 구현 보고의 계약 준수, 의존 주입 또는 wrapper 사용, 검증 결과 |
 | [`test-engineer`](../test-engineer.md) | 테스트 보고의 REQ 연결, 의존 mock 경계, 구현 독립성 |
 | [`build-worker`](../build-worker.md) | phase 보고의 RED/GREEN/self-validate 증거 |
 | [`architecture-validator`](../architecture-validator.md) | 설계 표준, 계약과 인터페이스, 구현 가능성 축의 finding 또는 PASS 근거 |
 | [`code-validator`](../code-validator.md) | 의존 계약, 도메인/디자인 정합, 구현 위험 축의 finding 또는 PASS 근거 |
+| [`pr-reviewer`](../pr-reviewer.md) | diff 가 Agent Operability 를 악화시키는지에 대한 finding 또는 후속 권고 |
 
 ## validator 의 검증 연결
 
@@ -231,6 +260,7 @@ system-architect 가 architecture.md 의 *기술 스택* 영역에 DI 패턴 명
 - **계약과 인터페이스**: Contract Ledger 가 signature 뿐 아니라 invariant, ordering, error mode, config, consumer, forbidden alternative 를 담는가.
 - **구현 가능성**: engineer 와 test-engineer 가 의존을 주입하고 결과를 관찰할 수 있는가.
 - **제품 동작 슬라이스**: Story 완료 시 실제로 검증되는 동작과 첫 제품 경계 증거가 산출물에 남았는가.
+- **Agent Operability**: Flow Ownership Map 과 Agent Workability 로 edit target, state owner, validation path 를 복구할 수 있는가.
 - **drift 통제**: 같은 계약의 사본이 서로 다른 의미로 남지 않았는가.
 
 자동으로 확인 가능한 신호는 적극 활용하되, grep 으로 잡히는 패턴만 검증 범위로 축소하지 않는다. 질적 판단이 필요한 영역은 finding 이 아니라 수동 review 권고로 분리해 사용자에게 보여준다.

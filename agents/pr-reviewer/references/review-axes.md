@@ -34,3 +34,12 @@
 - 이번 diff가 이미 여러 제품 흐름을 떠안은 파일에 또 다른 흐름을 append하는가
 - 새 능력이 별도 모듈이 아니라 기존 대형 파일에 흡수되는가
 - 기준은 [`module-design-principles.md` 단일 파일 다중 흐름 누적](../../_shared/module-design-principles.md#단일-파일-다중-흐름-누적) 절이다. footprint 밖 기존 누적은 MUST FIX가 아니라 후속 권고로 둔다
+
+## Agent Operability
+
+- 이번 diff가 다음 agent 의 edit target 을 안정적으로 찾기 어렵게 만드는가
+- entrypoint 에 render/helper/session state key 를 append 해 state owner 를 흐리게 만드는가
+- owner module 없이 새 mode/screen/panel/flow 를 기존 entrypoint 에 흡수하는가
+- validation path 가 owner flow/module 근처에 남지 않고 수동 탐색에 의존하는가
+- 수정 허용 범위가 overly broad entrypoint touch 로 열려 있어 무관한 흐름까지 편집하게 만드는가
+- 기준은 [`module-design-principles.md` Agent Operability](../../_shared/module-design-principles.md#agent-operability) 절이다. 파일 크기나 UI 변경 자체가 아니라 edit target, state owner, validation path 악화를 본다

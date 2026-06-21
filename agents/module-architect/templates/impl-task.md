@@ -47,6 +47,18 @@ contract:
 - 첫 동작 증거 지점:
 - 병렬성보다 동작 슬라이스를 우선한 결정:
 
+## Agent Workability
+
+> Flow Ownership Map 의 task-local 증거다. 다음 agent 가 cold-start 로 들어와도 edit target, state owner, validation path 를 복구할 수 있어야 한다.
+
+- owner flow/module:
+- entrypoint role:
+- state owner:
+- allowed touch:
+- forbidden touch:
+- validation path:
+- future change scenario:
+
 ## Scope
 
 ### 수정 허용
