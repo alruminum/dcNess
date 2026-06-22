@@ -137,12 +137,21 @@ class AgentOperabilityContractTests(unittest.TestCase):
             for needle in (
                 "MUST FIX 로 승격",
                 "dispatch-only entrypoint",
+                "owner module 없이",
+                "render/helper/session/global state",
+                "owner 근처 validation path",
+                "footprint 밖 기존 누적",
             ):
                 with self.subTest(text=text_name, needle=needle):
                     self.assertIn(needle, text)
 
     def test_shared_principles_scope_must_fix_promotion_to_pr_reviewer(self) -> None:
         self.assertIn("MUST FIX 로 승격", self.shared_principles)
+        self.assertIn(
+            "entrypoint append + render/helper/session/global state 흡수 + owner 근처 validation path 부재",
+            self.shared_principles,
+        )
+        self.assertIn("크기가 아니라 작업성 악화 조합", self.shared_principles)
 
     def test_architecture_validators_check_agent_operability_evidence(self) -> None:
         for text_name, text in (
