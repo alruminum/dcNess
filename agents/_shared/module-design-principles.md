@@ -106,7 +106,7 @@ Agent Operability 는 하드 임계나 라인 수 게이트가 아니다. UI 라
 
 - system-architect — epic architecture 에 Flow Ownership Map 을 남겨 flow 별 owner module, entrypoint touch, state owner, surface, forbidden append, validation path, future scenario 를 연결한다.
 - module-architect — impl task 에 Agent Workability 를 남기고, entrypoint 를 건드리기 전에 flow owner 를 확정한다. owner 가 없으면 seam extraction task 를 앞세운다.
-- pr-reviewer — 이번 diff 가 edit target 을 불명확하게 만들거나 state owner 를 entrypoint/session 에 흩뜨리거나 overly broad entrypoint touch 를 요구하는지 본다. footprint 밖 기존 누적은 후속 권고로 둔다.
+- pr-reviewer — 이번 diff 가 edit target 을 불명확하게 만들거나 state owner 를 entrypoint/session 에 흩뜨리거나 overly broad entrypoint touch 를 요구하는지 본다. owner module 없이 entrypoint append + render/helper/session/global state 흡수 + owner 근처 validation path 부재가 한 diff 에 겹치면 소프트 신호가 아니라 MUST FIX 로 승격한다 — 크기가 아니라 작업성 악화 조합이 기준이다. footprint 밖 기존 누적은 후속 권고로 둔다.
 
 ## Interface Design for Testability — 테스트 가능성 위한 인터페이스 설계
 
