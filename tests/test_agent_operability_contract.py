@@ -128,6 +128,22 @@ class AgentOperabilityContractTests(unittest.TestCase):
                 with self.subTest(text=text_name, needle=needle):
                     self.assertIn(needle, text)
 
+    def test_pr_reviewers_promote_owner_less_append_to_must_fix(self) -> None:
+        for text_name, text in (
+            ("claude", self.pr_reviewer),
+            ("axes", self.pr_review_axes),
+            ("codex", self.codex_pr_reviewer),
+        ):
+            for needle in (
+                "MUST FIX 로 승격",
+                "dispatch-only entrypoint",
+            ):
+                with self.subTest(text=text_name, needle=needle):
+                    self.assertIn(needle, text)
+
+    def test_shared_principles_scope_must_fix_promotion_to_pr_reviewer(self) -> None:
+        self.assertIn("MUST FIX 로 승격", self.shared_principles)
+
     def test_architecture_validators_check_agent_operability_evidence(self) -> None:
         for text_name, text in (
             ("claude", self.architecture_validator),
