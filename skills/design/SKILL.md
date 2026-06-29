@@ -138,7 +138,7 @@ else
 fi
 ```
 
-Codex 분기는 read-only validation 전용이다. wrapper 가 Codex 마지막 응답을 저장하고 `end-step architecture-validator --prose-file ...` 까지 수행하므로 별도 end-step 중복 호출 금지.
+이 절의 Codex 분기는 `architecture-validator` read-only validation 전용이다. wrapper 가 Codex 마지막 응답을 저장하고 `end-step architecture-validator --prose-file ...` 까지 수행하므로 별도 end-step 중복 호출 금지.
 
 ## 참조
 

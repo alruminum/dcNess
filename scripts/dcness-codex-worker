@@ -1,0 +1,322 @@
+#!/usr/bin/env bash
+# Run a dcNess implementation worker through Codex and store prose via
+# dcness-helper end-step. The caller still owns begin-step and fallback policy.
+
+set -uo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  dcness-codex-worker <agent> [MODE] --prompt-file <file> [--project-root <dir>]
+
+Agents:
+  test-engineer
+  engineer
+  build-worker
+
+Options:
+  --prompt-file, -p   File containing the Codex prompt.
+  --project-root, -C  Repository root. Default: git rev-parse --show-toplevel.
+  --helper            dcness-helper path. Default: sibling script.
+  --help, -h          Show this help.
+
+Environment:
+  DCNESS_CODEX_TIMEOUT  Seconds per Codex attempt. Default: 1200.
+
+The wrapper runs Codex in workspace-write mode:
+  codex exec -C "$PROJECT_ROOT" -s workspace-write --output-last-message "$TMP_PROSE"
+
+On success it validates changed paths against dcNess agent_boundary and stores:
+  dcness-helper end-step <agent> [MODE] --prose-file "$TMP_PROSE"
+
+On Codex infrastructure failure with no workspace mutation, callers may fall
+back to the existing Claude Agent path. If Codex changed files and then failed,
+this wrapper exits non-zero and does not auto-revert.
+USAGE
+}
+
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+  usage
+  exit 0
+fi
+
+if [ $# -lt 1 ]; then
+  usage >&2
+  exit 2
+fi
+
+AGENT="$1"
+shift
+
+case "$AGENT" in
+  test-engineer|engineer|build-worker) ;;
+  *)
+    echo "[dcness-codex-worker] unsupported agent: $AGENT" >&2
+    exit 2
+    ;;
+esac
+
+MODE=""
+if [ $# -gt 0 ] && [[ "${1:-}" != -* ]]; then
+  MODE="$1"
+  shift
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT=""
+PROMPT_FILE=""
+HELPER="$SCRIPT_DIR/dcness-helper"
+CODEX_TIMEOUT="${DCNESS_CODEX_TIMEOUT:-1200}"
+
+abs_path() {
+  case "$1" in
+    /*) printf '%s\n' "$1" ;;
+    *) printf '%s/%s\n' "$(pwd)" "$1" ;;
+  esac
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --prompt-file|-p)
+      PROMPT_FILE="${2:-}"
+      shift 2
+      ;;
+    --project-root|-C)
+      PROJECT_ROOT="${2:-}"
+      shift 2
+      ;;
+    --helper)
+      HELPER="${2:-}"
+      shift 2
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "[dcness-codex-worker] unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [ -z "$PROMPT_FILE" ] || [ ! -f "$PROMPT_FILE" ]; then
+  echo "[dcness-codex-worker] --prompt-file is required and must exist" >&2
+  exit 2
+fi
+PROMPT_FILE="$(abs_path "$PROMPT_FILE")"
+
+if [ -z "$PROJECT_ROOT" ]; then
+  PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+fi
+if [ ! -d "$PROJECT_ROOT" ]; then
+  echo "[dcness-codex-worker] project root not found: $PROJECT_ROOT" >&2
+  exit 2
+fi
+PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
+HELPER="$(abs_path "$HELPER")"
+
+if [ ! -x "$HELPER" ]; then
+  echo "[dcness-codex-worker] helper not executable: $HELPER" >&2
+  exit 2
+fi
+
+case "$CODEX_TIMEOUT" in
+  ''|*[!0-9]*)
+    echo "[dcness-codex-worker] DCNESS_CODEX_TIMEOUT must be a positive integer: $CODEX_TIMEOUT" >&2
+    exit 2
+    ;;
+esac
+if [ "$CODEX_TIMEOUT" -lt 1 ]; then
+  echo "[dcness-codex-worker] DCNESS_CODEX_TIMEOUT must be >= 1" >&2
+  exit 2
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "[dcness-codex-worker] python3 not found; required for timeout and context resolution" >&2
+  exit 127
+fi
+
+if ! command -v codex >/dev/null 2>&1; then
+  echo "[dcness-codex-worker] codex CLI not found" >&2
+  exit 127
+fi
+
+cd "$PROJECT_ROOT"
+
+CONTEXT="$(
+  PYTHONPATH="$SCRIPT_DIR/.." python3 -c '
+import sys
+from harness.session_state import (
+    auto_detect_run_id,
+    auto_detect_session_id,
+    diagnose_sid_rid_resolution,
+)
+
+sid = auto_detect_session_id()
+rid = auto_detect_run_id()
+if not sid or not rid:
+    print(diagnose_sid_rid_resolution(mode="both"), file=sys.stderr)
+    sys.exit(1)
+print(f"{sid}\t{rid}")
+'
+)"
+if [ $? -ne 0 ]; then
+  echo "[dcness-codex-worker] sid/rid resolve failed before Codex launch" >&2
+  exit 1
+fi
+IFS="$(printf '\t')" read -r RESOLVED_SID RESOLVED_RID <<EOF
+$CONTEXT
+EOF
+export DCNESS_SESSION_ID="$RESOLVED_SID"
+export DCNESS_RUN_ID="$RESOLVED_RID"
+
+BEFORE_STATUS="$(git -C "$PROJECT_ROOT" status --porcelain=v1 2>/dev/null || true)"
+
+TMP_PROSE="$(mktemp "${TMPDIR:-/tmp}/dcness-codex-worker-${AGENT}.XXXXXX")"
+TMP_PROMPT="$(mktemp "${TMPDIR:-/tmp}/dcness-codex-worker-prompt-${AGENT}.XXXXXX")"
+trap 'rm -f "$TMP_PROSE" "$TMP_PROMPT"' EXIT
+
+AGENT_DOC="$SCRIPT_DIR/../agents/$AGENT.md"
+AGENT_DETAIL="$SCRIPT_DIR/../agents/$AGENT/$AGENT-agent.md"
+
+{
+  echo "dcNess implementation agent: $AGENT"
+  if [ -n "$MODE" ]; then
+    echo "dcNess implementation mode: $MODE"
+  else
+    echo "dcNess implementation mode: default"
+  fi
+  echo "project/worktree root: $PROJECT_ROOT"
+  echo "session id: $DCNESS_SESSION_ID"
+  echo "run id: $DCNESS_RUN_ID"
+  echo
+  echo "You are executing this dcNess implementation worker step through Codex headless."
+  echo "You may edit files in the project/worktree only within the embedded agent boundary."
+  echo "Do not run git commit, git push, gh pr create, gh pr merge, gh issue mutation, or call other agents."
+  echo "Return prose only. Use the conclusion enum required by the embedded agent instructions."
+  echo
+  if [ -f "$AGENT_DOC" ]; then
+    echo "----- BEGIN agents/$AGENT.md -----"
+    cat "$AGENT_DOC"
+    echo "----- END agents/$AGENT.md -----"
+    echo
+  fi
+  if [ -f "$AGENT_DETAIL" ]; then
+    echo "----- BEGIN agents/$AGENT/$AGENT-agent.md -----"
+    cat "$AGENT_DETAIL"
+    echo "----- END agents/$AGENT/$AGENT-agent.md -----"
+    echo
+  fi
+  echo "----- BEGIN CALLER PROMPT -----"
+  cat "$PROMPT_FILE"
+  echo "----- END CALLER PROMPT -----"
+} > "$TMP_PROMPT"
+
+CODEX_CMD=(codex)
+if codex --help 2>/dev/null | grep -Eq -- '(^|[[:space:]])-a,|--ask-for-approval|--approval-policy'; then
+  CODEX_CMD+=( -a never )
+fi
+CODEX_ARGS=(exec -C "$PROJECT_ROOT" -s workspace-write --output-last-message "$TMP_PROSE" -)
+
+run_codex_once() {
+  python3 -c '
+import os
+import signal
+import subprocess
+import sys
+
+timeout = int(sys.argv[1])
+cmd = sys.argv[2:]
+proc = subprocess.Popen(cmd, stdin=sys.stdin.buffer, start_new_session=True)
+try:
+    proc.wait(timeout=timeout)
+except subprocess.TimeoutExpired:
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.wait()
+    sys.exit(124)
+sys.exit(proc.returncode)
+' "$CODEX_TIMEOUT" "${CODEX_CMD[@]}" "${CODEX_ARGS[@]}" < "$TMP_PROMPT"
+}
+
+workspace_changed() {
+  AFTER_STATUS="$(git -C "$PROJECT_ROOT" status --porcelain=v1 2>/dev/null || true)"
+  [ "$BEFORE_STATUS" != "$AFTER_STATUS" ]
+}
+
+CODEX_RC=0
+run_codex_once
+CODEX_RC=$?
+
+if [ "$CODEX_RC" -ne 0 ]; then
+  if workspace_changed; then
+    echo "[dcness-codex-worker] BLOCKED: Codex failed after changing workspace. Automatic Claude fallback/revert is forbidden." >&2
+    git -C "$PROJECT_ROOT" status --short >&2 || true
+    exit 1
+  fi
+  echo "[dcness-codex-worker] codex exec failed before workspace mutation (exit $CODEX_RC)" >&2
+  exit "$CODEX_RC"
+fi
+
+if [ ! -s "$TMP_PROSE" ]; then
+  if workspace_changed; then
+    echo "[dcness-codex-worker] BLOCKED: Codex changed workspace but produced empty prose." >&2
+    git -C "$PROJECT_ROOT" status --short >&2 || true
+    exit 1
+  fi
+  echo "[dcness-codex-worker] Codex produced empty prose" >&2
+  exit 1
+fi
+
+BOUNDARY_PROBLEMS="$(
+  PYTHONPATH="$SCRIPT_DIR/.." python3 - "$AGENT" "$PROJECT_ROOT" <<'PY'
+import subprocess
+import sys
+from pathlib import Path
+
+from harness.agent_boundary import check_write_allowed
+
+agent = sys.argv[1]
+root = Path(sys.argv[2])
+
+paths = set()
+commands = [
+    ["git", "-C", str(root), "diff", "--name-only", "--diff-filter=ACMRTD"],
+    ["git", "-C", str(root), "diff", "--cached", "--name-only", "--diff-filter=ACMRTD"],
+    ["git", "-C", str(root), "ls-files", "--others", "--exclude-standard"],
+]
+for cmd in commands:
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    if proc.returncode == 0:
+        for line in proc.stdout.splitlines():
+            if line:
+                paths.add(line)
+
+for path in sorted(paths):
+    reason = check_write_allowed(agent, path, cwd=root)
+    if reason:
+        print(f"{path}: {reason}")
+PY
+)"
+if [ -n "$BOUNDARY_PROBLEMS" ]; then
+  echo "[dcness-codex-worker] BLOCKED: Codex changed files outside ${AGENT} boundary." >&2
+  printf '%s\n' "$BOUNDARY_PROBLEMS" >&2
+  exit 1
+fi
+
+if [ -n "$MODE" ]; then
+  "$HELPER" end-step "$AGENT" "$MODE" --prose-file "$TMP_PROSE"
+else
+  "$HELPER" end-step "$AGENT" --prose-file "$TMP_PROSE"
+fi

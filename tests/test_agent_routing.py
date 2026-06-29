@@ -1,4 +1,4 @@
-"""Tests for local validation-agent provider routing."""
+"""Tests for local agent provider routing."""
 from __future__ import annotations
 
 import json
@@ -29,14 +29,15 @@ class AgentRoutingTests(unittest.TestCase):
 
     def test_missing_config_defaults_to_claude(self) -> None:
         self.assertEqual(agent_routing.resolve_provider("code-validator"), "claude")
-        self.assertEqual(agent_routing.resolve_provider("engineer"), "claude")
+        self.assertEqual(agent_routing.resolve_provider("engineer"), "codex-first")
+        self.assertEqual(agent_routing.resolve_provider("unknown-agent"), "claude")
         self.assertFalse(self.path.exists())
 
     def test_enable_codex_validation_routes_only_validators(self) -> None:
         agent_routing.enable_codex_validation()
         for agent in agent_routing.ROUTABLE_VALIDATION_AGENTS:
             self.assertEqual(agent_routing.resolve_provider(agent), "codex")
-        self.assertEqual(agent_routing.resolve_provider("engineer"), "claude")
+        self.assertEqual(agent_routing.resolve_provider("engineer"), "codex-first")
 
     def test_disable_codex_validation_returns_validators_to_claude(self) -> None:
         agent_routing.enable_codex_validation()
@@ -52,6 +53,23 @@ class AgentRoutingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             agent_routing.set_provider("pr-reviewer", "openai")
 
+    def test_implementation_routes_can_disable_and_enable_codex_first(self) -> None:
+        agent_routing.disable_codex_implementation()
+        for agent in agent_routing.ROUTABLE_IMPLEMENTATION_AGENTS:
+            self.assertEqual(agent_routing.resolve_provider(agent), "claude")
+
+        agent_routing.enable_codex_implementation()
+        for agent in agent_routing.ROUTABLE_IMPLEMENTATION_AGENTS:
+            self.assertEqual(agent_routing.resolve_provider(agent), "codex-first")
+
+    def test_set_implementation_provider_validates_agent_and_provider(self) -> None:
+        agent_routing.set_implementation_provider("build-worker", "claude")
+        self.assertEqual(agent_routing.resolve_provider("build-worker"), "claude")
+        with self.assertRaises(ValueError):
+            agent_routing.set_implementation_provider("pr-reviewer", "claude")
+        with self.assertRaises(ValueError):
+            agent_routing.set_implementation_provider("build-worker", "codex")
+
     def test_doctor_reports_invalid_config(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(
@@ -63,21 +81,55 @@ class AgentRoutingTests(unittest.TestCase):
                         "engineer": "codex",
                         "pr-reviewer": "other",
                     },
+                    "implementation_routes": {
+                        "build-worker": "codex",
+                        "designer": "codex-first",
+                    },
                 }
             ),
             encoding="utf-8",
         )
         problems = agent_routing.doctor()
         self.assertTrue(any("unsupported version" in p for p in problems))
-        self.assertTrue(any("unknown agent route: engineer" in p for p in problems))
+        self.assertTrue(
+            any("unknown validation agent route: engineer" in p for p in problems)
+        )
         self.assertTrue(any("invalid provider for pr-reviewer" in p for p in problems))
+        self.assertTrue(
+            any("invalid implementation provider for build-worker" in p for p in problems)
+        )
+        self.assertTrue(
+            any("unknown implementation agent route: designer" in p for p in problems)
+        )
 
     def test_status_includes_effective_routes(self) -> None:
         agent_routing.set_provider("architecture-validator", "codex")
+        agent_routing.set_implementation_provider("build-worker", "claude")
         text = agent_routing.format_status()
         self.assertIn("[dcness routing] status: OK", text)
+        self.assertIn("[dcness routing] validation:", text)
+        self.assertIn("[dcness routing] implementation:", text)
         self.assertIn("architecture-validator: codex", text)
         self.assertIn("code-validator: claude", text)
+        self.assertIn("build-worker: claude", text)
+        self.assertIn("engineer: codex-first", text)
+
+    def test_v1_config_is_supported_and_defaults_implementation_to_codex_first(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "routes": {
+                        "code-validator": "codex",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.assertEqual(agent_routing.doctor(), [])
+        self.assertEqual(agent_routing.resolve_provider("code-validator"), "codex")
+        self.assertEqual(agent_routing.resolve_provider("build-worker"), "codex-first")
 
 
 class AgentRoutingCliTests(unittest.TestCase):
@@ -103,6 +155,13 @@ class AgentRoutingCliTests(unittest.TestCase):
         self.assertEqual(ns.routing_cmd, "resolve")
         self.assertEqual(ns.agent, "code-validator")
 
+        ns = parser.parse_args(
+            ["routing", "set-implementation", "build-worker", "claude"]
+        )
+        self.assertEqual(ns.routing_cmd, "set-implementation")
+        self.assertEqual(ns.agent, "build-worker")
+        self.assertEqual(ns.provider, "claude")
+
     def test_cli_enable_and_resolve(self) -> None:
         from harness.session_state import _cli_routing
 
@@ -119,6 +178,35 @@ class AgentRoutingCliTests(unittest.TestCase):
             )
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "codex")
+
+    def test_cli_disable_implementation_and_resolve(self) -> None:
+        from harness.session_state import _cli_routing
+
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_routing(SimpleNamespace(routing_cmd="disable-codex-implementation"))
+        self.assertEqual(rc, 0)
+        self.assertIn("disabled Codex implementation", out.getvalue())
+
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_routing(
+                SimpleNamespace(routing_cmd="resolve", agent="build-worker")
+            )
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue().strip(), "claude")
+
+        out = StringIO()
+        with redirect_stdout(out):
+            rc = _cli_routing(
+                SimpleNamespace(
+                    routing_cmd="set-implementation",
+                    agent="build-worker",
+                    provider="codex-first",
+                )
+            )
+        self.assertEqual(rc, 0)
+        self.assertIn("set implementation build-worker=codex-first", out.getvalue())
 
     def test_cli_doctor_fails_on_bad_file(self) -> None:
         from harness.session_state import _cli_routing

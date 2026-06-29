@@ -24,8 +24,8 @@ Environment:
   DCNESS_CODEX_TIMEOUT  Seconds per Codex attempt. Default: 600.
 
 The wrapper runs Codex in read-only mode. On Codex CLI versions that expose
-approval flags, it also passes -a never:
-  codex exec -C "$PROJECT_ROOT" -s read-only [-a never] --output-last-message "$TMP_PROSE"
+approval flags, it also passes global -a never:
+  codex [-a never] exec -C "$PROJECT_ROOT" -s read-only --output-last-message "$TMP_PROSE"
 
 Before running Codex, it embeds the installed dcness Codex skill from
 $CODEX_HOME/skills or the plugin bundle when available.
@@ -225,9 +225,10 @@ done
   cat "$PROMPT_FILE"
 } > "$TMP_PROMPT"
 
+CODEX_CMD=(codex)
 CODEX_ARGS=(exec -C "$PROJECT_ROOT" -s read-only --output-last-message "$TMP_PROSE")
-if codex exec --help 2>/dev/null | grep -Eq -- '(^|[[:space:]])-a,|--ask-for-approval|--approval-policy'; then
-  CODEX_ARGS+=( -a never )
+if codex --help 2>/dev/null | grep -Eq -- '(^|[[:space:]])-a,|--ask-for-approval|--approval-policy'; then
+  CODEX_CMD+=( -a never )
 fi
 CODEX_ARGS+=( - )
 
@@ -258,7 +259,7 @@ except subprocess.TimeoutExpired:
         proc.wait()
     sys.exit(124)
 sys.exit(proc.returncode)
-' "$CODEX_TIMEOUT" codex "${CODEX_ARGS[@]}" < "$TMP_PROMPT"
+' "$CODEX_TIMEOUT" "${CODEX_CMD[@]}" "${CODEX_ARGS[@]}" < "$TMP_PROMPT"
 }
 
 write_timeout_prose() {

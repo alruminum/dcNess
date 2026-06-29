@@ -1,11 +1,12 @@
-"""Local provider routing for dcNess validation agents.
+"""Local provider routing for dcNess agent providers.
 
 Provider routing is deliberately local state, not repository config. Existing
 projects opt in via /init-dcness, which writes:
 
     ~/.claude/plugins/data/dcness-dcness/routing.json
 
-Only read-only validation agents are routable. All other agents stay on Claude.
+Validation agents can be sent to Codex read-only. Implementation agents can be
+run Codex-first with Claude fallback.
 """
 from __future__ import annotations
 
@@ -17,27 +18,44 @@ from typing import Any, Dict, Optional
 
 __all__ = [
     "CONFIG_VERSION",
+    "ROUTABLE_IMPLEMENTATION_AGENTS",
     "ROUTABLE_VALIDATION_AGENTS",
+    "VALID_IMPLEMENTATION_PROVIDERS",
     "VALID_PROVIDERS",
+    "VALID_VALIDATION_PROVIDERS",
     "routing_path",
     "load_routing",
     "save_routing",
     "resolve_provider",
     "set_provider",
+    "set_implementation_provider",
     "enable_codex_validation",
     "disable_codex_validation",
+    "enable_codex_implementation",
+    "disable_codex_implementation",
     "doctor",
     "format_status",
 ]
 
-CONFIG_VERSION = 1
+CONFIG_VERSION = 2
+SUPPORTED_CONFIG_VERSIONS = (1, 2)
 ROUTABLE_VALIDATION_AGENTS = (
     "code-validator",
     "architecture-validator",
     "pr-reviewer",
 )
-VALID_PROVIDERS = ("claude", "codex")
-DEFAULT_PROVIDER = "claude"
+ROUTABLE_IMPLEMENTATION_AGENTS = (
+    "test-engineer",
+    "engineer",
+    "build-worker",
+)
+VALID_VALIDATION_PROVIDERS = ("claude", "codex")
+VALID_IMPLEMENTATION_PROVIDERS = ("claude", "codex-first")
+# Backward-compatible export for callers that only know validation routing.
+VALID_PROVIDERS = VALID_VALIDATION_PROVIDERS
+DEFAULT_VALIDATION_PROVIDER = "claude"
+DEFAULT_IMPLEMENTATION_PROVIDER = "codex-first"
+SAFE_FALLBACK_PROVIDER = "claude"
 
 _DEFAULT_ROUTING_PATH = (
     Path.home() / ".claude" / "plugins" / "data" / "dcness-dcness" / "routing.json"
@@ -64,6 +82,7 @@ def _default_config() -> Dict[str, Any]:
     return {
         "version": CONFIG_VERSION,
         "routes": {},
+        "implementation_routes": {},
         "updated_at": _now_iso(),
     }
 
@@ -99,9 +118,15 @@ def load_routing(*, path: Optional[Path] = None) -> Dict[str, Any]:
     routes = data.get("routes", {})
     if not isinstance(routes, dict):
         raise ValueError(f"routing config routes must be object: {target}")
+    implementation_routes = data.get("implementation_routes", {})
+    if not isinstance(implementation_routes, dict):
+        raise ValueError(
+            f"routing config implementation_routes must be object: {target}"
+        )
     cfg = _default_config()
     cfg.update(data)
     cfg["routes"] = routes
+    cfg["implementation_routes"] = implementation_routes
     return cfg
 
 
@@ -113,13 +138,26 @@ def save_routing(config: Dict[str, Any], *, path: Optional[Path] = None) -> Path
     clean_routes: Dict[str, str] = {}
     for agent, provider in routes.items():
         if agent not in ROUTABLE_VALIDATION_AGENTS:
-            raise ValueError(f"unsupported routable agent: {agent}")
-        if provider not in VALID_PROVIDERS:
+            raise ValueError(f"unsupported validation agent: {agent}")
+        if provider not in VALID_VALIDATION_PROVIDERS:
             raise ValueError(f"unsupported provider for {agent}: {provider}")
         clean_routes[agent] = provider
+    implementation_routes = config.get("implementation_routes", {})
+    if not isinstance(implementation_routes, dict):
+        raise ValueError("implementation_routes must be dict")
+    clean_implementation_routes: Dict[str, str] = {}
+    for agent, provider in implementation_routes.items():
+        if agent not in ROUTABLE_IMPLEMENTATION_AGENTS:
+            raise ValueError(f"unsupported implementation agent: {agent}")
+        if provider not in VALID_IMPLEMENTATION_PROVIDERS:
+            raise ValueError(
+                f"unsupported implementation provider for {agent}: {provider}"
+            )
+        clean_implementation_routes[agent] = provider
     payload = {
         "version": CONFIG_VERSION,
         "routes": clean_routes,
+        "implementation_routes": clean_implementation_routes,
         "updated_at": _now_iso(),
     }
     _atomic_write_json(target, payload)
@@ -129,21 +167,35 @@ def save_routing(config: Dict[str, Any], *, path: Optional[Path] = None) -> Path
 def resolve_provider(agent: str, *, path: Optional[Path] = None) -> str:
     """Resolve provider for an agent.
 
-    Non-routable agents always resolve to Claude. This keeps routing opt-in
-    limited to read-only validators and avoids accidental build-agent migration.
+    Validation agents default to Claude for backward compatibility.
+    Implementation agents default to Codex-first, with explicit Claude opt-out.
+    Unknown agents always resolve to Claude.
     """
-    if agent not in ROUTABLE_VALIDATION_AGENTS:
-        return DEFAULT_PROVIDER
+    if agent not in ROUTABLE_VALIDATION_AGENTS + ROUTABLE_IMPLEMENTATION_AGENTS:
+        return SAFE_FALLBACK_PROVIDER
     cfg = load_routing(path=path)
-    provider = cfg.get("routes", {}).get(agent, DEFAULT_PROVIDER)
-    return provider if provider in VALID_PROVIDERS else DEFAULT_PROVIDER
+    if agent in ROUTABLE_VALIDATION_AGENTS:
+        provider = cfg.get("routes", {}).get(agent, DEFAULT_VALIDATION_PROVIDER)
+        return (
+            provider
+            if provider in VALID_VALIDATION_PROVIDERS
+            else SAFE_FALLBACK_PROVIDER
+        )
+    provider = cfg.get("implementation_routes", {}).get(
+        agent, DEFAULT_IMPLEMENTATION_PROVIDER
+    )
+    return (
+        provider
+        if provider in VALID_IMPLEMENTATION_PROVIDERS
+        else SAFE_FALLBACK_PROVIDER
+    )
 
 
 def set_provider(agent: str, provider: str, *, path: Optional[Path] = None) -> Path:
     if agent not in ROUTABLE_VALIDATION_AGENTS:
         allowed = ", ".join(ROUTABLE_VALIDATION_AGENTS)
         raise ValueError(f"unsupported agent: {agent} (allowed: {allowed})")
-    if provider not in VALID_PROVIDERS:
+    if provider not in VALID_VALIDATION_PROVIDERS:
         raise ValueError(f"unsupported provider: {provider} (allowed: claude|codex)")
     cfg = load_routing(path=path)
     routes = dict(cfg.get("routes", {}))
@@ -152,14 +204,53 @@ def set_provider(agent: str, provider: str, *, path: Optional[Path] = None) -> P
     return save_routing(cfg, path=path)
 
 
+def set_implementation_provider(
+    agent: str, provider: str, *, path: Optional[Path] = None
+) -> Path:
+    if agent not in ROUTABLE_IMPLEMENTATION_AGENTS:
+        allowed = ", ".join(ROUTABLE_IMPLEMENTATION_AGENTS)
+        raise ValueError(f"unsupported implementation agent: {agent} (allowed: {allowed})")
+    if provider not in VALID_IMPLEMENTATION_PROVIDERS:
+        raise ValueError(
+            f"unsupported implementation provider: {provider} "
+            "(allowed: claude|codex-first)"
+        )
+    cfg = load_routing(path=path)
+    routes = dict(cfg.get("implementation_routes", {}))
+    routes[agent] = provider
+    cfg["implementation_routes"] = routes
+    return save_routing(cfg, path=path)
+
+
 def enable_codex_validation(*, path: Optional[Path] = None) -> Path:
+    cfg = load_routing(path=path)
     routes = {agent: "codex" for agent in ROUTABLE_VALIDATION_AGENTS}
-    return save_routing({"routes": routes}, path=path)
+    cfg["routes"] = routes
+    return save_routing(cfg, path=path)
 
 
 def disable_codex_validation(*, path: Optional[Path] = None) -> Path:
+    cfg = load_routing(path=path)
     routes = {agent: "claude" for agent in ROUTABLE_VALIDATION_AGENTS}
-    return save_routing({"routes": routes}, path=path)
+    cfg["routes"] = routes
+    return save_routing(cfg, path=path)
+
+
+def enable_codex_implementation(*, path: Optional[Path] = None) -> Path:
+    cfg = load_routing(path=path)
+    routes = {
+        agent: DEFAULT_IMPLEMENTATION_PROVIDER
+        for agent in ROUTABLE_IMPLEMENTATION_AGENTS
+    }
+    cfg["implementation_routes"] = routes
+    return save_routing(cfg, path=path)
+
+
+def disable_codex_implementation(*, path: Optional[Path] = None) -> Path:
+    cfg = load_routing(path=path)
+    routes = {agent: "claude" for agent in ROUTABLE_IMPLEMENTATION_AGENTS}
+    cfg["implementation_routes"] = routes
+    return save_routing(cfg, path=path)
 
 
 def doctor(*, path: Optional[Path] = None) -> list[str]:
@@ -172,8 +263,9 @@ def doctor(*, path: Optional[Path] = None) -> list[str]:
         return [str(exc)]
 
     version = cfg.get("version")
-    if version != CONFIG_VERSION:
-        problems.append(f"unsupported version: {version!r} (expected {CONFIG_VERSION})")
+    if version not in SUPPORTED_CONFIG_VERSIONS:
+        supported = "|".join(str(v) for v in SUPPORTED_CONFIG_VERSIONS)
+        problems.append(f"unsupported version: {version!r} (expected {supported})")
 
     routes = cfg.get("routes", {})
     if not isinstance(routes, dict):
@@ -181,9 +273,20 @@ def doctor(*, path: Optional[Path] = None) -> list[str]:
         return problems
     for agent, provider in routes.items():
         if agent not in ROUTABLE_VALIDATION_AGENTS:
-            problems.append(f"unknown agent route: {agent}")
-        if provider not in VALID_PROVIDERS:
+            problems.append(f"unknown validation agent route: {agent}")
+        if provider not in VALID_VALIDATION_PROVIDERS:
             problems.append(f"invalid provider for {agent}: {provider}")
+    implementation_routes = cfg.get("implementation_routes", {})
+    if not isinstance(implementation_routes, dict):
+        problems.append("implementation_routes must be object")
+        return problems
+    for agent, provider in implementation_routes.items():
+        if agent not in ROUTABLE_IMPLEMENTATION_AGENTS:
+            problems.append(f"unknown implementation agent route: {agent}")
+        if provider not in VALID_IMPLEMENTATION_PROVIDERS:
+            problems.append(
+                f"invalid implementation provider for {agent}: {provider}"
+            )
 
     return problems
 
@@ -207,10 +310,22 @@ def format_status(*, path: Optional[Path] = None) -> str:
         f"[dcness routing] status: {'OK' if not problems else 'INVALID'}",
     ]
     if not target.exists():
-        lines.append("[dcness routing] file: missing (default all Claude)")
+        lines.append(
+            "[dcness routing] file: missing "
+            "(default validation Claude, implementation Codex-first)"
+        )
+    lines.append("[dcness routing] validation:")
     for agent in ROUTABLE_VALIDATION_AGENTS:
-        provider = cfg.get("routes", {}).get(agent, DEFAULT_PROVIDER)
-        if provider not in VALID_PROVIDERS:
+        provider = cfg.get("routes", {}).get(agent, DEFAULT_VALIDATION_PROVIDER)
+        if provider not in VALID_VALIDATION_PROVIDERS:
+            provider = f"{provider} (invalid, resolves claude)"
+        lines.append(f"  {agent}: {provider}")
+    lines.append("[dcness routing] implementation:")
+    for agent in ROUTABLE_IMPLEMENTATION_AGENTS:
+        provider = cfg.get("implementation_routes", {}).get(
+            agent, DEFAULT_IMPLEMENTATION_PROVIDER
+        )
+        if provider not in VALID_IMPLEMENTATION_PROVIDERS:
             provider = f"{provider} (invalid, resolves claude)"
         lines.append(f"  {agent}: {provider}")
     if problems:

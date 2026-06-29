@@ -14,6 +14,7 @@ from harness.session_state import start_run
 
 ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "scripts" / "dcness-codex-validator"
+WORKER = ROOT / "scripts" / "dcness-codex-worker"
 
 
 class CodexValidatorWrapperTests(unittest.TestCase):
@@ -47,6 +48,10 @@ class CodexValidatorWrapperTests(unittest.TestCase):
                 textwrap.dedent(
                     """\
                     #!/bin/sh
+                    if [ "$1" = "--help" ]; then
+                      echo "Usage: codex [OPTIONS]"
+                      exit 0
+                    fi
                     if [ "$1" = "exec" ] && [ "${2:-}" = "--help" ]; then
                       echo "Usage: codex exec"
                       exit 0
@@ -168,6 +173,10 @@ class CodexValidatorWrapperTests(unittest.TestCase):
                 textwrap.dedent(
                     """\
                     #!/bin/sh
+                    if [ "$1" = "--help" ]; then
+                      echo "Usage: codex [OPTIONS]"
+                      exit 0
+                    fi
                     if [ "$1" = "exec" ] && [ "${2:-}" = "--help" ]; then
                       echo "Usage: codex exec"
                       exit 0
@@ -270,6 +279,10 @@ class CodexValidatorWrapperTests(unittest.TestCase):
                 textwrap.dedent(
                     """\
                     #!/bin/sh
+                    if [ "$1" = "--help" ]; then
+                      echo "Usage: codex [OPTIONS]"
+                      exit 0
+                    fi
                     if [ "$1" = "exec" ] && [ "${2:-}" = "--help" ]; then
                       echo "Usage: codex exec"
                       exit 0
@@ -360,6 +373,290 @@ class CodexValidatorWrapperTests(unittest.TestCase):
             )
 
 
+class CodexWorkerWrapperTests(unittest.TestCase):
+    def test_worker_embeds_agent_docs_writes_workspace_and_stores_prose(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            project = tmp / "project"
+            project.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=project, check=True)
+
+            prompt_file = tmp / "prompt.md"
+            prompt_file.write_text("Implement the task from docs/impl.md.\n", encoding="utf-8")
+
+            prompt_capture = tmp / "captured-prompt.md"
+            args_capture = tmp / "codex-args.txt"
+            prose_capture = tmp / "captured-prose.md"
+            helper_args = tmp / "helper-args.txt"
+
+            bin_dir = tmp / "bin"
+            bin_dir.mkdir()
+            codex = bin_dir / "codex"
+            codex.write_text(
+                textwrap.dedent(
+                    """\
+                    #!/bin/sh
+                    if [ "$1" = "--help" ]; then
+                      echo "Usage: codex [OPTIONS]"
+                      echo "  -a, --ask-for-approval <APPROVAL_POLICY>"
+                      exit 0
+                    fi
+                    printf '%s\\n' "$@" > "$ARGS_CAPTURE"
+                    out=""
+                    while [ "$#" -gt 0 ]; do
+                      case "$1" in
+                        --output-last-message)
+                          out="$2"
+                          shift 2
+                          ;;
+                        *)
+                          shift
+                          ;;
+                      esac
+                    done
+                    cat > "$PROMPT_CAPTURE"
+                    mkdir -p src
+                    printf 'print("ok")\\n' > src/generated.py
+                    printf 'Worker prose\\n\\nPASS\\n' > "$out"
+                    """
+                ),
+                encoding="utf-8",
+            )
+            codex.chmod(0o755)
+
+            helper = tmp / "dcness-helper"
+            helper.write_text(
+                textwrap.dedent(
+                    """\
+                    #!/bin/sh
+                    printf '%s\\n' "$*" > "$HELPER_ARGS"
+                    while [ "$#" -gt 0 ]; do
+                      case "$1" in
+                        --prose-file)
+                          cp "$2" "$PROSE_CAPTURE"
+                          exit 0
+                          ;;
+                      esac
+                      shift
+                    done
+                    exit 1
+                    """
+                ),
+                encoding="utf-8",
+            )
+            helper.chmod(0o755)
+
+            env = os.environ.copy()
+            env.update(
+                {
+                    "ARGS_CAPTURE": str(args_capture),
+                    "DCNESS_RUN_ID": "run-feedface",
+                    "DCNESS_SESSION_ID": "sid-worker",
+                    "HELPER_ARGS": str(helper_args),
+                    "PATH": f"{bin_dir}{os.pathsep}{env.get('PATH', '')}",
+                    "PROMPT_CAPTURE": str(prompt_capture),
+                    "PROSE_CAPTURE": str(prose_capture),
+                }
+            )
+
+            result = subprocess.run(
+                [
+                    str(WORKER),
+                    "build-worker",
+                    "--prompt-file",
+                    str(prompt_file),
+                    "--project-root",
+                    str(project),
+                    "--helper",
+                    str(helper),
+                ],
+                capture_output=True,
+                env=env,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            prompt = prompt_capture.read_text(encoding="utf-8")
+            self.assertIn("dcNess implementation agent: build-worker", prompt)
+            self.assertIn("build-worker 지침", prompt)
+            self.assertIn("Implement the task from docs/impl.md.", prompt)
+            self.assertIn("-a\nnever\nexec", args_capture.read_text(encoding="utf-8"))
+            self.assertIn("workspace-write", args_capture.read_text(encoding="utf-8"))
+            self.assertTrue((project / "src" / "generated.py").exists())
+            self.assertTrue(
+                helper_args.read_text(encoding="utf-8")
+                .strip()
+                .startswith("end-step build-worker --prose-file "),
+            )
+            self.assertEqual(
+                prose_capture.read_text(encoding="utf-8"),
+                "Worker prose\n\nPASS\n",
+            )
+
+    def test_worker_success_blocks_boundary_violation_without_end_step(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            project = tmp / "project"
+            project.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=project, check=True)
+
+            prompt_file = tmp / "prompt.md"
+            prompt_file.write_text("Implement the task.\n", encoding="utf-8")
+            helper_args = tmp / "helper-args.txt"
+
+            bin_dir = tmp / "bin"
+            bin_dir.mkdir()
+            codex = bin_dir / "codex"
+            codex.write_text(
+                textwrap.dedent(
+                    """\
+                    #!/bin/sh
+                    if [ "$1" = "--help" ]; then
+                      echo "Usage: codex"
+                      exit 0
+                    fi
+                    out=""
+                    while [ "$#" -gt 0 ]; do
+                      case "$1" in
+                        --output-last-message)
+                          out="$2"
+                          shift 2
+                          ;;
+                        *)
+                          shift
+                          ;;
+                      esac
+                    done
+                    cat >/dev/null
+                    mkdir -p docs
+                    printf 'bad\\n' > docs/bad.md
+                    printf 'Worker prose\\n\\nPASS\\n' > "$out"
+                    """
+                ),
+                encoding="utf-8",
+            )
+            codex.chmod(0o755)
+
+            helper = tmp / "dcness-helper"
+            helper.write_text(
+                textwrap.dedent(
+                    """\
+                    #!/bin/sh
+                    printf '%s\\n' "$*" > "$HELPER_ARGS"
+                    exit 0
+                    """
+                ),
+                encoding="utf-8",
+            )
+            helper.chmod(0o755)
+
+            env = os.environ.copy()
+            env.update(
+                {
+                    "DCNESS_RUN_ID": "run-badbad00",
+                    "DCNESS_SESSION_ID": "sid-worker",
+                    "HELPER_ARGS": str(helper_args),
+                    "PATH": f"{bin_dir}{os.pathsep}{env.get('PATH', '')}",
+                }
+            )
+
+            result = subprocess.run(
+                [
+                    str(WORKER),
+                    "build-worker",
+                    "--prompt-file",
+                    str(prompt_file),
+                    "--project-root",
+                    str(project),
+                    "--helper",
+                    str(helper),
+                ],
+                capture_output=True,
+                env=env,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("outside build-worker boundary", result.stderr)
+            self.assertFalse(helper_args.exists())
+
+    def test_worker_failure_after_mutation_does_not_fallback_or_end_step(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            project = tmp / "project"
+            project.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=project, check=True)
+
+            prompt_file = tmp / "prompt.md"
+            prompt_file.write_text("Implement the task.\n", encoding="utf-8")
+            helper_args = tmp / "helper-args.txt"
+
+            bin_dir = tmp / "bin"
+            bin_dir.mkdir()
+            codex = bin_dir / "codex"
+            codex.write_text(
+                textwrap.dedent(
+                    """\
+                    #!/bin/sh
+                    if [ "$1" = "--help" ]; then
+                      echo "Usage: codex"
+                      exit 0
+                    fi
+                    cat >/dev/null
+                    mkdir -p src
+                    printf 'partial\\n' > src/partial.py
+                    exit 42
+                    """
+                ),
+                encoding="utf-8",
+            )
+            codex.chmod(0o755)
+
+            helper = tmp / "dcness-helper"
+            helper.write_text(
+                textwrap.dedent(
+                    """\
+                    #!/bin/sh
+                    printf '%s\\n' "$*" > "$HELPER_ARGS"
+                    exit 0
+                    """
+                ),
+                encoding="utf-8",
+            )
+            helper.chmod(0o755)
+
+            env = os.environ.copy()
+            env.update(
+                {
+                    "DCNESS_RUN_ID": "run-partial1",
+                    "DCNESS_SESSION_ID": "sid-worker",
+                    "HELPER_ARGS": str(helper_args),
+                    "PATH": f"{bin_dir}{os.pathsep}{env.get('PATH', '')}",
+                }
+            )
+
+            result = subprocess.run(
+                [
+                    str(WORKER),
+                    "engineer",
+                    "--prompt-file",
+                    str(prompt_file),
+                    "--project-root",
+                    str(project),
+                    "--helper",
+                    str(helper),
+                ],
+                capture_output=True,
+                env=env,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("failed after changing workspace", result.stderr)
+            self.assertFalse(helper_args.exists())
+
+
+class CodexValidatorWrapperMktempTests(unittest.TestCase):
     def test_mktemp_templates_use_trailing_random_field(self) -> None:
         """issue #723 — BSD(macOS) mktemp only randomizes a trailing run of X's;
         a suffix after the X-field (e.g. '.md') makes literal, colliding temp

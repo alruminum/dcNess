@@ -3437,7 +3437,7 @@ def collect_status_diagnostics(
             f"설치됨: {', '.join(installed)}" if installed else "없음 (선택 사항)",
         )
 
-    # Codex validation routing (self / 외부 공통 — INFO)
+    # Codex routing (self / 외부 공통 — INFO)
     if check_routing:
         try:
             from harness import agent_routing
@@ -3445,7 +3445,7 @@ def collect_status_diagnostics(
             routing_detail = agent_routing.format_status().strip().replace("\n", " | ")
         except Exception:
             routing_detail = "조회 실패"
-        add("routing", "Codex validation routing", "INFO", routing_detail)
+        add("routing", "Codex routing", "INFO", routing_detail)
 
     # gh CLI 인증 (self / 외부 공통 — WARN)
     if check_gh:
@@ -3553,6 +3553,16 @@ def _cli_routing(args: Any) -> int:
         print(f"[dcness routing] disabled Codex validation: {path}")
         print(agent_routing.format_status())
         return 0
+    if action == "enable-codex-implementation":
+        path = agent_routing.enable_codex_implementation()
+        print(f"[dcness routing] enabled Codex implementation: {path}")
+        print(agent_routing.format_status())
+        return 0
+    if action == "disable-codex-implementation":
+        path = agent_routing.disable_codex_implementation()
+        print(f"[dcness routing] disabled Codex implementation: {path}")
+        print(agent_routing.format_status())
+        return 0
     if action == "set":
         try:
             path = agent_routing.set_provider(args.agent, args.provider)
@@ -3560,6 +3570,16 @@ def _cli_routing(args: Any) -> int:
             print(f"[dcness routing] {exc}", file=sys.stderr)
             return 1
         print(f"[dcness routing] set {args.agent}={args.provider}: {path}")
+        return 0
+    if action == "set-implementation":
+        try:
+            path = agent_routing.set_implementation_provider(args.agent, args.provider)
+        except ValueError as exc:
+            print(f"[dcness routing] {exc}", file=sys.stderr)
+            return 1
+        print(
+            f"[dcness routing] set implementation {args.agent}={args.provider}: {path}"
+        )
         return 0
     if action == "resolve":
         try:
@@ -3893,6 +3913,26 @@ def _build_arg_parser() -> Any:
     rt_set.add_argument("agent")
     rt_set.add_argument("provider", choices=("claude", "codex"))
     rt_set.set_defaults(func=_cli_routing)
+
+    rt_enable_impl = rt_sub.add_parser(
+        "enable-codex-implementation",
+        help="test-engineer / engineer / build-worker 를 Codex-first 로 보냄",
+    )
+    rt_enable_impl.set_defaults(func=_cli_routing)
+
+    rt_disable_impl = rt_sub.add_parser(
+        "disable-codex-implementation",
+        help="implementation agent 분기를 Claude 로 되돌림",
+    )
+    rt_disable_impl.set_defaults(func=_cli_routing)
+
+    rt_set_impl = rt_sub.add_parser(
+        "set-implementation",
+        help="특정 implementation agent provider 설정",
+    )
+    rt_set_impl.add_argument("agent")
+    rt_set_impl.add_argument("provider", choices=("claude", "codex-first"))
+    rt_set_impl.set_defaults(func=_cli_routing)
 
     rt_resolve = rt_sub.add_parser("resolve", help="agent provider resolve")
     rt_resolve.add_argument("agent")

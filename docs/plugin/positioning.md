@@ -63,7 +63,7 @@ dcNess 의 기본 공개 workflow 는 제품 생명주기 기준으로 계획 / 
 
 agent 는 사용자가 외워야 하는 command 가 아니다. `architecture-validator`, `build-worker`, `code-validator`, `designer`, `engineer`, `module-architect`, `pr-reviewer`, `product-acceptance`, `system-architect`, `tech-reviewer`, `test-engineer`, `ux-architect` 는 workflow 내부에서 호출되는 gate/worker/reviewer 로 분류한다.
 
-특히 `code-validator`, `architecture-validator`, `pr-reviewer` 는 read-only validation provider 분기 대상이다. provider 가 Claude 든 Codex 든 사용자-facing 단계 이름은 `pr-reviewer` 같은 agent 이름으로 유지한다.
+특히 `code-validator`, `architecture-validator`, `pr-reviewer` 는 read-only validation provider 분기 대상이고, `test-engineer`, `engineer`, `build-worker` 는 implementation provider 분기 대상이다. provider 가 Claude 든 Codex 든 사용자-facing 단계 이름은 `pr-reviewer` / `build-worker` 같은 agent 이름으로 유지한다.
 
 ## Contract Gate
 
