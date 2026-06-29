@@ -20,6 +20,12 @@
 |---|---|---|---|---|---|---|
 |  |  |  |  |  |  |  |
 
+## 진행 상태 · 다음 작업
+
+- 진행 상태 진본: GitHub Project 보드의 Status(Todo / In progress / Done)
+- 작업 단위: GitHub epic/story issue 와 PR
+- 콜드스타트 다음 작업 확인: `/next`
+
 ## 작업 영역
 
 - 휘발 evidence / handoff: `.dcness-work/`

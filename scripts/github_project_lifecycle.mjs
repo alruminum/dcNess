@@ -2,6 +2,8 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
+export const GH_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
+
 export const PROJECT_FIELDS = Object.freeze({
   Status: Object.freeze(['Todo', 'In progress', 'Done']),
   IssueType: Object.freeze(['epic', 'feature', 'story', 'task', 'subTask', 'bug']),
@@ -289,6 +291,7 @@ function gh(args, { json = false, allowFailure = false } = {}) {
   try {
     const output = execFileSync('gh', args, {
       encoding: 'utf8',
+      maxBuffer: GH_MAX_BUFFER_BYTES,
       stdio: ['ignore', 'pipe', 'pipe'],
     }).trim();
     if (!json) return output;
@@ -313,6 +316,67 @@ function detectRepo(repoArg) {
 
 function repoOwner(repo, ownerArg) {
   return ownerArg || repo.split('/')[0];
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (value !== null && value !== undefined && String(value).trim() !== '') {
+      return String(value).trim();
+    }
+  }
+  return null;
+}
+
+function readRepoVariable(name, repo) {
+  const args = ['variable', 'get', name];
+  if (repo) args.push('--repo', repo);
+  return gh(args, { allowFailure: true });
+}
+
+export function resolveProjectCoordinatesFromSources({
+  repo,
+  ownerArg = null,
+  projectArg = null,
+  env = process.env,
+  variables = {},
+}) {
+  const project = firstNonEmpty(
+    projectArg,
+    env?.DCNESS_PROJECT_NUMBER,
+    variables?.DCNESS_PROJECT_NUMBER,
+  );
+  const owner = firstNonEmpty(
+    ownerArg,
+    env?.DCNESS_PROJECT_OWNER,
+    variables?.DCNESS_PROJECT_OWNER,
+    repoOwner(repo),
+  );
+  return { repo, owner, project };
+}
+
+export function resolveProjectCoordinates(args, { requireProject = false } = {}) {
+  const repo = detectRepo(args.repo);
+  const variables = {};
+  if (!firstNonEmpty(args.project, process.env.DCNESS_PROJECT_NUMBER)) {
+    variables.DCNESS_PROJECT_NUMBER = readRepoVariable('DCNESS_PROJECT_NUMBER', repo);
+  }
+  if (!firstNonEmpty(args.owner, process.env.DCNESS_PROJECT_OWNER)) {
+    variables.DCNESS_PROJECT_OWNER = readRepoVariable('DCNESS_PROJECT_OWNER', repo);
+  }
+  const resolved = resolveProjectCoordinatesFromSources({
+    repo,
+    ownerArg: args.owner,
+    projectArg: args.project,
+    env: process.env,
+    variables,
+  });
+  if (requireProject && !resolved.project) {
+    throw new Error(
+      '--project <number> is required. Set --project, DCNESS_PROJECT_NUMBER, '
+        + 'or repo variable DCNESS_PROJECT_NUMBER.',
+    );
+  }
+  return resolved;
 }
 
 function normalizeRepoName(value) {
@@ -394,6 +458,35 @@ export function projectItemFieldValue(item, fieldName) {
   const fieldValues = asArray(item?.fieldValues ?? item?.field_values);
   const value = fieldValues.find((entry) => entry?.field?.name === fieldName || entry?.name === fieldName);
   return value?.name ?? value?.value ?? value?.text ?? value?.optionName ?? null;
+}
+
+export function projectItemSummary(item) {
+  const content = item?.content ?? item;
+  const rawNumber = content?.number ?? item?.number;
+  const parsedNumber = rawNumber === null || rawNumber === undefined || rawNumber === ''
+    ? null
+    : Number(rawNumber);
+  return {
+    repo: itemRepositoryName(item),
+    number: Number.isInteger(parsedNumber) ? parsedNumber : null,
+    title: String(content?.title ?? item?.title ?? '<untitled>'),
+    url: content?.url ?? item?.url ?? null,
+    status: projectItemFieldValue(item, 'Status'),
+    issueType: projectItemFieldValue(item, 'IssueType'),
+    priority: projectItemFieldValue(item, 'Priority'),
+  };
+}
+
+export function summarizeBoard(itemsInput) {
+  const summary = { inProgress: [], todo: [], done: [] };
+  for (const item of asArray(itemsInput)) {
+    const status = projectItemFieldValue(item, 'Status');
+    const entry = projectItemSummary(item);
+    if (status === 'In progress') summary.inProgress.push(entry);
+    if (status === 'Todo') summary.todo.push(entry);
+    if (status === 'Done') summary.done.push(entry);
+  }
+  return summary;
 }
 
 function projectItemIssueType(item) {
@@ -498,8 +591,7 @@ function printBootstrapRecovery({ repo, owner, project }) {
 }
 
 function commandBootstrap(args) {
-  const repo = detectRepo(args.repo);
-  const owner = repoOwner(repo, args.owner);
+  const { repo, owner, project: projectNumber } = resolveProjectCoordinates(args);
   const apply = Boolean(args.apply);
 
   const labels = gh(['label', 'list', '--repo', repo, '--limit', '200', '--json', 'name'], { json: true });
@@ -512,14 +604,14 @@ function commandBootstrap(args) {
     }
   }
 
-  if (!args.project) {
+  if (!projectNumber) {
     console.error('[dcness-project] Project number is required for field validation.');
     printBootstrapRecovery({ repo, owner, project: null });
     return 1;
   }
 
   const fields = gh(
-    ['project', 'field-list', args.project, '--owner', owner, '--format', 'json'],
+    ['project', 'field-list', projectNumber, '--owner', owner, '--format', 'json'],
     { json: true },
   );
   const fieldValidation = validateProjectFields(fields);
@@ -533,7 +625,7 @@ function commandBootstrap(args) {
         gh([
           'project',
           'field-create',
-          args.project,
+          projectNumber,
           '--owner',
           owner,
           '--name',
@@ -549,7 +641,7 @@ function commandBootstrap(args) {
         console.error('[dcness-project] existing Project fields with missing options need manual repair.');
       }
     } else {
-      printBootstrapRecovery({ repo, owner, project: args.project });
+      printBootstrapRecovery({ repo, owner, project: projectNumber });
     }
   }
 
@@ -557,7 +649,7 @@ function commandBootstrap(args) {
     ? gh(['label', 'list', '--repo', repo, '--limit', '200', '--json', 'name'], { json: true })
     : labels;
   const finalFields = apply && fieldValidation.missingFields.length
-    ? gh(['project', 'field-list', args.project, '--owner', owner, '--format', 'json'], { json: true })
+    ? gh(['project', 'field-list', projectNumber, '--owner', owner, '--format', 'json'], { json: true })
     : fields;
   const ok = validateIssueTypeLabels(finalLabels).ok && validateProjectFields(finalFields).ok;
   console.log(ok ? '[dcness-project] bootstrap PASS' : '[dcness-project] bootstrap FAIL');
@@ -565,34 +657,91 @@ function commandBootstrap(args) {
 }
 
 function projectContext(args) {
-  const repo = detectRepo(args.repo);
-  const owner = repoOwner(repo, args.owner);
-  if (!args.project) throw new Error('--project <number> is required.');
-  const project = gh(['project', 'view', args.project, '--owner', owner, '--format', 'json'], { json: true });
-  const fields = gh(['project', 'field-list', args.project, '--owner', owner, '--format', 'json'], { json: true });
-  return { repo, owner, project, fields };
+  const { repo, owner, project: projectNumber } = resolveProjectCoordinates(args, { requireProject: true });
+  const project = gh(['project', 'view', projectNumber, '--owner', owner, '--format', 'json'], { json: true });
+  const fields = gh(['project', 'field-list', projectNumber, '--owner', owner, '--format', 'json'], { json: true });
+  return { repo, owner, projectNumber, project, fields };
 }
 
 function getIssue(repo, issueNumber) {
   return gh(['issue', 'view', String(issueNumber), '--repo', repo, '--json', 'number,labels,url'], { json: true });
 }
 
-function getProjectItem({ owner, projectNumber, repo, issueNumber }) {
-  const items = gh(
+function getProjectItems({ owner, projectNumber }) {
+  return gh(
     ['project', 'item-list', String(projectNumber), '--owner', owner, '--format', 'json', '--limit', '1000'],
     { json: true },
   );
+}
+
+function getProjectItem({ owner, projectNumber, repo, issueNumber }) {
+  const items = getProjectItems({ owner, projectNumber });
   return findProjectItem(items, { repo, number: issueNumber });
+}
+
+function formatBoardEntry(entry) {
+  const ref = entry.number ? `#${entry.number}` : '<no-issue-number>';
+  const meta = [entry.issueType, entry.priority].filter(Boolean).join(', ');
+  const metaText = meta ? ` (${meta})` : '';
+  const repoText = entry.repo ? ` [${entry.repo}]` : '';
+  const urlText = entry.url ? ` ${entry.url}` : '';
+  return `- ${ref}${repoText} ${entry.title}${metaText}${urlText}`;
+}
+
+function formatBoardSection(title, entries, { limit = null, emptyText = '없음' } = {}) {
+  const visible = limit ? entries.slice(0, limit) : entries;
+  const lines = [`## ${title}`];
+  if (visible.length === 0) {
+    lines.push(`- ${emptyText}`);
+  } else {
+    lines.push(...visible.map(formatBoardEntry));
+  }
+  if (limit && entries.length > limit) {
+    lines.push(`- 외 ${entries.length - limit}건`);
+  }
+  return lines.join('\n');
+}
+
+function formatNextReport({ repo, owner, projectNumber, summary, todoLimit }) {
+  return [
+    `[dcness-next] Project #${projectNumber} (owner=${owner}, repo=${repo})`,
+    '[dcness-next] read-only: Project/issue 상태를 변경하지 않았습니다.',
+    '',
+    formatBoardSection('In progress', summary.inProgress),
+    '',
+    formatBoardSection('Next Todo', summary.todo, {
+      limit: todoLimit,
+      emptyText: 'Todo 후보 없음',
+    }),
+    '',
+    `[dcness-next] Done: ${summary.done.length}건`,
+  ].join('\n');
+}
+
+function commandNext(args) {
+  const { repo, owner, project: projectNumber } = resolveProjectCoordinates(args);
+  if (!projectNumber) {
+    console.log('[dcness-next] 보드 미설정 — /init-dcness bootstrap 으로 GitHub Project 좌표를 저장한 뒤 다시 실행하세요.');
+    console.log('[dcness-next] read-only: 외부 상태 변경 없음.');
+    return 0;
+  }
+  const todoLimit = Number.isInteger(Number(args.limit)) && Number(args.limit) > 0
+    ? Number(args.limit)
+    : 5;
+  const items = getProjectItems({ owner, projectNumber });
+  const summary = summarizeBoard(items);
+  console.log(formatNextReport({ repo, owner, projectNumber, summary, todoLimit }));
+  return 0;
 }
 
 function commandValidateIssue(args) {
   if (!args.issue) throw new Error('--issue <number> is required.');
-  const { repo, owner } = projectContext(args);
+  const { repo, owner, projectNumber } = projectContext(args);
   const issue = getIssue(repo, args.issue);
-  const item = getProjectItem({ owner, projectNumber: args.project, repo, issueNumber: args.issue });
+  const item = getProjectItem({ owner, projectNumber, repo, issueNumber: args.issue });
 
   if (!item) {
-    console.error(`issue #${args.issue}: Project item missing in Project ${args.project}.`);
+    console.error(`issue #${args.issue}: Project item missing in Project ${projectNumber}.`);
     return 1;
   }
 
@@ -613,10 +762,10 @@ function commandValidateIssue(args) {
 
 function commandStartWork(args) {
   if (!args.issue) throw new Error('--issue <number> is required.');
-  const { repo, owner, project, fields } = projectContext(args);
-  const item = getProjectItem({ owner, projectNumber: args.project, repo, issueNumber: args.issue });
+  const { repo, owner, projectNumber, project, fields } = projectContext(args);
+  const item = getProjectItem({ owner, projectNumber, repo, issueNumber: args.issue });
   if (!item?.id) {
-    console.error(`issue #${args.issue}: Project item missing in Project ${args.project}.`);
+    console.error(`issue #${args.issue}: Project item missing in Project ${projectNumber}.`);
     return 1;
   }
   if (!args.apply) {
@@ -643,7 +792,7 @@ function commandStartWork(args) {
 function commandRegisterIssue(args) {
   if (!args.issue) throw new Error('--issue <number> is required.');
   if (!args['issue-type']) throw new Error('--issue-type <epic|story|...> is required.');
-  const { repo, owner, project, fields } = projectContext(args);
+  const { repo, owner, projectNumber, project, fields } = projectContext(args);
   const issueType = args['issue-type'];
   const expectedStatus = args.status ?? 'Todo';
   const expectedPriority = args.priority ?? 'major';
@@ -651,7 +800,7 @@ function commandRegisterIssue(args) {
   const preserveExisting = Boolean(args['preserve-existing']);
   const issue = getIssue(repo, args.issue);
 
-  let item = getProjectItem({ owner, projectNumber: args.project, repo, issueNumber: issue.number });
+  let item = getProjectItem({ owner, projectNumber, repo, issueNumber: issue.number });
   // 검증 완화는 *필드 단위* + *apply 전 원본 item* 기준 — 원래 값이 있던 필드만 보존('any'),
   // 원래 비어있던 필드는 strict 로 두어 채우기 실패/부분 백필을 잡는다. IssueType 은 항상 strict.
   const { validateStatus, validatePriority } = resolveValidationExpectations({
@@ -662,7 +811,7 @@ function commandRegisterIssue(args) {
 
   if (!args.apply) {
     if (!item) {
-      console.log(`issue #${issue.number}: missing in Project ${args.project} (needs item-add).`);
+      console.log(`issue #${issue.number}: missing in Project ${projectNumber} (needs item-add).`);
     }
     const validation = validateIssueProjectRegistration({
       repo,
@@ -681,7 +830,7 @@ function commandRegisterIssue(args) {
 
   if (plan.needsAdd) {
     item = gh(
-      ['project', 'item-add', String(args.project), '--owner', owner, '--url', issue.url, '--format', 'json'],
+      ['project', 'item-add', String(projectNumber), '--owner', owner, '--url', issue.url, '--format', 'json'],
       { json: true },
     );
   }
@@ -698,7 +847,7 @@ function commandRegisterIssue(args) {
     });
   }
 
-  const verifyItem = getProjectItem({ owner, projectNumber: args.project, repo, issueNumber: issue.number }) ?? item;
+  const verifyItem = getProjectItem({ owner, projectNumber, repo, issueNumber: issue.number }) ?? item;
   const validation = validateIssueProjectRegistration({
     repo,
     issueNumber: issue.number,
@@ -747,20 +896,20 @@ function commandPrMerged(args) {
     console.log('[dcness-project] no completion issue candidates. Part of #N is not a Done signal.');
     return 0;
   }
-  const { repo, owner, project, fields } = projectContext(args);
+  const { repo, owner, projectNumber, project, fields } = projectContext(args);
   const resolvedRefs = resolveCompletionRefsForProject(body, args.repo, repo);
 
   let failures = 0;
   for (const ref of resolvedRefs) {
     const item = getProjectItem({
       owner,
-      projectNumber: args.project,
+      projectNumber,
       repo: ref.repo,
       issueNumber: ref.number,
     });
     if (!item?.id) {
       failures += 1;
-      console.error(`issue ${ref.repo ?? '<unknown-repo>'}#${ref.number}: Project item missing in Project ${args.project}.`);
+      console.error(`issue ${ref.repo ?? '<unknown-repo>'}#${ref.number}: Project item missing in Project ${projectNumber}.`);
       continue;
     }
     const actual = projectItemFieldValue(item, 'Status');
@@ -793,6 +942,7 @@ function commandPrMerged(args) {
 function help() {
   console.log(`Usage:
   node scripts/github_project_lifecycle.mjs bootstrap --repo OWNER/REPO --owner OWNER --project N [--apply]
+  node scripts/github_project_lifecycle.mjs next [--repo OWNER/REPO] [--owner OWNER] [--project N] [--limit N]
   node scripts/github_project_lifecycle.mjs validate-issue --repo OWNER/REPO --owner OWNER --project N --issue N [--expected-status Todo|In progress|Done|any] [--expected-issue-type TYPE] [--expected-priority PRIORITY]
   node scripts/github_project_lifecycle.mjs start-work --repo OWNER/REPO --owner OWNER --project N --issue N [--apply]
   node scripts/github_project_lifecycle.mjs register-issue --repo OWNER/REPO --owner OWNER --project N --issue N --issue-type epic|story|... [--status Todo] [--priority major] [--preserve-existing] [--apply]
@@ -810,6 +960,8 @@ function main() {
   switch (command) {
     case 'bootstrap':
       return commandBootstrap(args);
+    case 'next':
+      return commandNext(args);
     case 'validate-issue':
       return commandValidateIssue(args);
     case 'start-work':

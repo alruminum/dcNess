@@ -85,6 +85,8 @@ msg = header + '''## [dcness 활성 환경]
 - 테스트 선행 (구현 전 테스트 먼저): tdd-guard
 - run 종료 자동화: stop-end-run
 
+프로젝트 상태나 다음 작업을 물으면 \`docs/index.md\` 의 \`## 진행 상태 · 다음 작업\` 포인터를 확인하고, live 보드 상태는 \`/next\` 로 조회한다.
+
 hook 이 차단할 때만 그 메시지가 가리키는 doc/path 를 읽어 복구한다. SessionStart 에서 dcness 문서를 미리 통독하지 말 것 — 절차·분기는 skill 진입 시 해당 skill 이 안내한다.
 '''
 print(json.dumps({

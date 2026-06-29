@@ -359,6 +359,106 @@ class GithubProjectLifecycleScriptTests(unittest.TestCase):
             result,
         )
 
+    def test_project_coordinate_resolution_uses_flag_env_variable_default_order(self) -> None:
+        result = run_node(
+            "lifecycle.resolveProjectCoordinatesFromSources({"
+            "repo: 'Daeguk-Sun/dcNess',"
+            "ownerArg: 'flag-owner',"
+            "projectArg: '9',"
+            "env: {DCNESS_PROJECT_NUMBER: '8', DCNESS_PROJECT_OWNER: 'env-owner'},"
+            "variables: {DCNESS_PROJECT_NUMBER: '7', DCNESS_PROJECT_OWNER: 'var-owner'}"
+            "})"
+        )
+
+        self.assertEqual(
+            {"repo": "Daeguk-Sun/dcNess", "owner": "flag-owner", "project": "9"},
+            result,
+        )
+
+    def test_project_coordinate_resolution_falls_back_to_env_variable_repo_owner(self) -> None:
+        result = run_node(
+            "lifecycle.resolveProjectCoordinatesFromSources({"
+            "repo: 'Daeguk-Sun/dcNess',"
+            "env: {DCNESS_PROJECT_NUMBER: '8'},"
+            "variables: {DCNESS_PROJECT_NUMBER: '7'}"
+            "})"
+        )
+
+        self.assertEqual(
+            {"repo": "Daeguk-Sun/dcNess", "owner": "Daeguk-Sun", "project": "8"},
+            result,
+        )
+
+    def test_project_coordinate_resolution_uses_repo_variable_when_env_missing(self) -> None:
+        result = run_node(
+            "lifecycle.resolveProjectCoordinatesFromSources({"
+            "repo: 'Daeguk-Sun/dcNess',"
+            "env: {},"
+            "variables: {DCNESS_PROJECT_NUMBER: '7', DCNESS_PROJECT_OWNER: 'var-owner'}"
+            "})"
+        )
+
+        self.assertEqual(
+            {"repo": "Daeguk-Sun/dcNess", "owner": "var-owner", "project": "7"},
+            result,
+        )
+
+    def test_project_coordinate_resolution_allows_missing_project_for_readonly_next(self) -> None:
+        result = run_node(
+            "lifecycle.resolveProjectCoordinatesFromSources({"
+            "repo: 'Daeguk-Sun/dcNess',"
+            "env: {},"
+            "variables: {}"
+            "})"
+        )
+
+        self.assertEqual(
+            {"repo": "Daeguk-Sun/dcNess", "owner": "Daeguk-Sun", "project": None},
+            result,
+        )
+
+    def test_summarize_board_groups_in_progress_todo_done_items(self) -> None:
+        items = {
+            "items": [
+                {
+                    "content": {
+                        "number": 824,
+                        "title": "Next entrypoint",
+                        "repository": "Daeguk-Sun/dcNess",
+                        "url": "https://github.com/Daeguk-Sun/dcNess/issues/824",
+                    },
+                    "status": "In progress",
+                    "issueType": "feature",
+                    "priority": "major",
+                },
+                {
+                    "content": {"number": 825, "title": "Todo candidate"},
+                    "fieldValues": [
+                        {"field": {"name": "Status"}, "name": "Todo"},
+                        {"field": {"name": "IssueType"}, "name": "story"},
+                    ],
+                },
+                {
+                    "content": {"number": 700, "title": "Done item"},
+                    "status": "Done",
+                },
+            ]
+        }
+
+        result = run_node(f"lifecycle.summarizeBoard({json.dumps(items)})")
+
+        self.assertEqual([824], [item["number"] for item in result["inProgress"]])
+        self.assertEqual([825], [item["number"] for item in result["todo"]])
+        self.assertEqual([700], [item["number"] for item in result["done"]])
+        self.assertEqual("feature", result["inProgress"][0]["issueType"])
+
+    def test_gh_calls_use_large_output_buffer_for_big_project_boards(self) -> None:
+        self.assertGreaterEqual(
+            run_node("({maxBuffer: lifecycle.GH_MAX_BUFFER_BYTES})")["maxBuffer"],
+            64 * 1024 * 1024,
+        )
+        self.assertIn("maxBuffer: GH_MAX_BUFFER_BYTES", SCRIPT.read_text())
+
     def test_registration_validation_requires_todo_status(self) -> None:
         item = {
             "status": "In progress",

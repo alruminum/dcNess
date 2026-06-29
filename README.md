@@ -143,6 +143,7 @@ high-risk trigger 나 새 epic/product feature 는 impl *내부 구현 경로가
 support/advanced 진입점은 기본 생명주기 공개 진입점 밖의 보조 흐름이다.
 
 - `/to-issue` — 메인 주도 Issue Brief 초안 + 승인 후 GitHub issue/Project 등록
+- `/next` — GitHub Project 보드의 In progress 와 다음 Todo 후보를 read-only 조회
 - `/tech-review` — high-risk 설계 선행에서 `/spec` 내부 preflight 로 쓰는 선행 기술 검증
 - `/impl-loop` — deep impl task 파일용 legacy/advanced runner
 - `/ux` — 화면 UX / 디자인 핸드오프 전문 흐름
@@ -184,6 +185,7 @@ escalate) 가 진본이다 — 예: [`skills/impl/impl-routing.md`](skills/impl/
 | 고급 workflow | `/impl-loop` | deep impl task 파일용 legacy/advanced runner |
 | 고급 workflow | `/ux` | 화면 UX 플로우 + 디자인 시안 핸드오프 |
 | 유틸리티 | `/init-dcness` | 현 프로젝트를 plugin 활성 whitelist 에 등록 |
+| 유틸리티 | `/next` | GitHub Project 보드에서 In progress 와 다음 Todo 후보를 read-only 조회 |
 | 유틸리티 | `/run-review` | run 사후 분석 — step별 비용·차단 검출 |
 | 유틸리티 | `/smart-compact` | 컨텍스트 압축 + 다음 세션 resume prompt 자동 생성 |
 | 유틸리티 | `/efficiency` | 세션 토큰/캐시/비용 분석 + HTML 대시보드 |
