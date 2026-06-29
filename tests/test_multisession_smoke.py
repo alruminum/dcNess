@@ -147,8 +147,8 @@ class BashPipelineSmokeTests(unittest.TestCase):
 
     def test_session_start_inject_is_slim(self) -> None:
         """#596 — additionalContext 는 최소 활성 안내 (활성 토큰 + 코드 강제 gate
-        + hook-first recovery) 만 담고, 문서 진입 매트릭스 / docs preload 지시는
-        담지 않는다.
+        + hook-first recovery + next-work pointer) 만 담고, 문서 진입 매트릭스 /
+        docs preload 지시는 담지 않는다.
 
         하네스 모델 = "문서 선독 기반 compliance" 가 아니라 "hook 차단 → 그 자리 복구".
         따라서 SessionStart 가 docs 통독을 지시하면 회귀 (본 테스트가 차단)."""
@@ -173,6 +173,8 @@ class BashPipelineSmokeTests(unittest.TestCase):
         self.assertIn("file-guard", ctx)
         self.assertIn("tdd-guard", ctx)
         self.assertIn("stop-end-run", ctx)
+        self.assertIn("docs/index.md", ctx)
+        self.assertIn("/next", ctx)
 
         # 제거: 문서 진입 매트릭스 / docs preload 지시 / soft 필수·안티패턴 본문
         for forbidden in (

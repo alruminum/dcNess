@@ -45,6 +45,7 @@ dcNess 의 기본 공개 workflow 는 제품 생명주기 기준으로 계획 / 
 | 유틸리티 | 역할 |
 |---|---|
 | `/init-dcness` | 프로젝트 활성화 |
+| `/next` | GitHub Project 보드에서 In progress 와 다음 Todo 후보를 read-only 조회 |
 | `/run-review` | 끝난 run 사후 분석 |
 | `/smart-compact` | resume prompt 포함 context compact 보조 |
 | `/efficiency` | 세션 토큰/비용 분석 |

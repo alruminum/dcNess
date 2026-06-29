@@ -69,6 +69,19 @@ node scripts/github_project_lifecycle.mjs register-issue \
 
 보드 좌표 (owner/number) 는 repo 변수 `DCNESS_PROJECT_NUMBER` / `DCNESS_PROJECT_OWNER` 에 저장한다 — GitHub Actions `vars.*` 와 동일 저장소라 CI lifecycle workflow 와 단일 SSOT 다. `/init-dcness` bootstrap 이 `gh variable set` 으로 저장하고, 등록 경로는 `gh variable get` 으로 읽는다. 조회 우선순위: `--project`/`--owner` 플래그 → `DCNESS_PROJECT_*` env → `gh variable get` → owner 는 repo owner fallback.
 
+### 다음 작업 조회 — read-only
+
+`/next` 는 같은 Project 좌표 해석 경로를 사용해 현재 보드의 `In progress` 항목과 다음 `Todo` 후보를 요약한다. 이 명령은 read-only 유틸리티라 `--apply` 를 받지 않고 Project item, issue, PR 상태를 변경하지 않는다.
+
+```bash
+node scripts/github_project_lifecycle.mjs next \
+  --repo OWNER/REPO \
+  --owner OWNER \
+  --project PROJECT_NUMBER
+```
+
+Project 좌표가 저장되지 않은 환경에서는 크래시하지 않고 `/init-dcness` bootstrap 으로 보드 좌표를 저장하라는 안내를 출력한 뒤 정상 종료한다. `docs/index.md` 는 live 상태를 복제하지 않고 GitHub Project 보드, epic/story issue, `/next` 를 가리키는 정적 포인터만 둔다.
+
 ### 작업 시작 — Status=In progress
 
 특정 GitHub issue 를 대상으로 `/spec`, `/design`, `/impl`, `/ux` 같은 설계나 구현 흐름을 실제 시작하면 메인은 시작 직전에 Project item 을 `Status=In progress` 로 이동한다. Project 번호와 owner 를 알 수 없으면 추측하지 말고 `/init-dcness` bootstrap 을 먼저 수행한다.

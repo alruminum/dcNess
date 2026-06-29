@@ -193,6 +193,7 @@ support:
 - /ux — 화면 UX / 디자인 핸드오프
 
 유틸리티:
+- /next — GitHub Project 보드에서 In progress 와 다음 Todo 후보 조회
 - /smart-compact — 컨텍스트 압축 + resume prompt
 - /run-review — run 사후 분석
 - /efficiency — 세션 토큰/비용 분석
