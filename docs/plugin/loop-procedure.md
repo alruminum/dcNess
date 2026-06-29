@@ -74,7 +74,7 @@ TaskCreate("<agent>: <mode 또는 짧은 설명>")
 ```
 TaskUpdate("<task>", in_progress)
 "$HELPER" begin-step <agent> [<MODE>]
-Agent(subagent_type="<agent>", mode="<MODE>", description="...")  # 또는 validation provider 분기
+Agent(subagent_type="<agent>", mode="<MODE>", description="...")  # 또는 provider 분기
 "$HELPER" end-step <agent> [<MODE>]   # 자유서술 방식(stdout=PROSE_LOGGED). Codex wrapper 경로는 wrapper 가 호출
 # 의무 echo (5~12 줄) — 아래 "결과 echo + 평가" 섹션
 TaskUpdate("<task>", completed)
@@ -101,7 +101,21 @@ else
 fi
 ```
 
-Codex wrapper 는 설치된 `dcness-<agent>/SKILL.md` 내용을 prompt 에 직접 포함한 뒤 `codex exec -C "$PROJECT_ROOT" -s read-only` 로 실행한다. 마지막 응답은 `/tmp` prose 파일에 받은 뒤 `dcness-helper end-step <agent> --prose-file ...` 로 저장한다. 따라서 Codex 분기 경로에서는 메인이 별도 `end-step` 을 한 번 더 부르지 않는다. 분기 config 파일명은 `routing.json` 이고 repo 파일이 아니라 `~/.claude/plugins/data/dcness-dcness/routing.json` 에 있으며, 비활성/미설정 기본값은 Claude 다.
+Codex wrapper 는 설치된 `dcness-<agent>/SKILL.md` 내용을 prompt 에 직접 포함한 뒤 `codex exec -C "$PROJECT_ROOT" -s read-only` 로 실행한다. 마지막 응답은 `/tmp` prose 파일에 받은 뒤 `dcness-helper end-step <agent> --prose-file ...` 로 저장한다. 따라서 Codex 분기 경로에서는 메인이 별도 `end-step` 을 한 번 더 부르지 않는다. 분기 config 파일명은 `routing.json` 이고 repo 파일이 아니라 `~/.claude/plugins/data/dcness-dcness/routing.json` 에 있으며, validation 비활성/미설정 기본값은 Claude 다.
+
+**implementation provider 분기 (Codex-first 기본)**: `test-engineer` / `engineer` / `build-worker` 는 호출 직전 provider 를 resolve 한다.
+
+```bash
+PROVIDER=$("$HELPER" routing resolve <agent>)
+if [ "$PROVIDER" = "codex-first" ]; then
+  "$PLUGIN_ROOT/scripts/dcness-codex-worker" <agent> [MODE] --prompt-file "$PROMPT_FILE"
+else
+  Agent(subagent_type="<agent>", ...)
+  "$HELPER" end-step <agent> [MODE]
+fi
+```
+
+`dcness-codex-worker` 는 agent 지침을 prompt 에 직접 포함한 뒤 `codex exec -C "$PROJECT_ROOT" -s workspace-write` 로 실행한다. 성공하면 마지막 응답을 저장하고 `end-step` 까지 수행한다. Codex CLI/auth/timeout/empty-output 처럼 workspace 변경 전 실패한 경우에만 메인이 기존 Claude Agent 경로로 폴백할 수 있다. Codex 가 파일을 변경한 뒤 실패하거나 boundary 밖 파일을 변경하면 자동 폴백하지 않는다. implementation 기본값은 `codex-first` 이며 `dcness-helper routing disable-codex-implementation` 으로 Claude-only 모드로 바꾼다.
 
 #### 호출 prompt 슬림 포인터 규약
 

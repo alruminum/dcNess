@@ -33,8 +33,8 @@ risk 가 높을 때만 조건부로 부른다([`docs/plugin/workflow-router.md`]
 순서와 agent 파일 경계를 반복적으로 지키고 싶은 사람.
 
 **안 맞다** — 범용 model/provider 분기나 MCP 런타임 확장이 목적인 경우(그건 dcNess 의
-scope 가 아니다). Codex 분기는 read-only validator 3종 opt-in 에만 한정된다. 가벼운
-단발 스크립팅만 원하는 경우엔 과할 수 있다.
+scope 가 아니다). Codex 분기는 dcNess loop 내부의 validation/implementation provider
+선택에 한정된다. 가벼운 단발 스크립팅만 원하는 경우엔 과할 수 있다.
 
 ## 언제 유리하고 언제 과한가
 
@@ -89,10 +89,12 @@ claude plugin install dcness@dcness
 > (문제 시 `claude plugin uninstall dcness@dcness && claude plugin install dcness@dcness`)
 
 기존 프로젝트에서 terms.md 같은 plug-in 본체 문서/skill/hook 갱신만 받으려면 `claude plugin update dcness@dcness` 만 실행한다. `/init-dcness` 재실행은 필요 없다.
-Codex read-only validator 분기를 새로 opt-in 하거나 project-local bootstrap 파일을 새로 설치·갱신할 때만 `/init-dcness` 를 다시 실행한다. 설치/갱신되는 Codex skills 는 `$CODEX_HOME/skills/dcness-*` 3개이며, wrapper 가 해당 `SKILL.md` 를 prompt 에 직접 포함한다. provider 분기 config 는 `~/.claude/plugins/data/dcness-dcness/routing.json` 에만 저장된다. 끄기:
+Codex validation 분기를 새로 opt-in 하거나 implementation provider 를 Claude-only/Codex-first 로 바꾸거나 project-local bootstrap 파일을 새로 설치·갱신할 때만 `/init-dcness` 를 다시 실행한다. 설치/갱신되는 Codex validation skills 는 `$CODEX_HOME/skills/dcness-*` 3개이며, implementation wrapper 는 plug-in 의 agent 지침을 prompt 에 직접 포함한다. provider 분기 config 는 `~/.claude/plugins/data/dcness-dcness/routing.json` 에만 저장된다. 중간 변경:
 
 ```sh
 dcness-helper routing disable-codex-validation
+dcness-helper routing disable-codex-implementation  # Claude-only 구현
+dcness-helper routing enable-codex-implementation   # Codex-first 구현
 ```
 
 ## 작업 흐름
@@ -146,8 +148,9 @@ support/advanced 진입점은 기본 생명주기 공개 진입점 밖의 보조
 - `/ux` — 화면 UX / 디자인 핸드오프 전문 흐름
 
 검증·리뷰를 건너뛴 채 PR 머지로 못 가는 것이 dcNess 의 핵심이다. `pr-reviewer` 는 read-only
-provider 분기 대상이라 Codex 로 보낼 수 있지만, 사용자-facing 단계 이름은 `pr-reviewer`
-하나로 유지한다.
+provider 분기 대상이라 Codex 로 보낼 수 있고, `build-worker` / `engineer` 같은 구현 agent 는
+Codex-first implementation provider 대상이다. provider 가 바뀌어도 사용자-facing 단계 이름은
+`pr-reviewer` / `build-worker` 처럼 agent 이름으로 유지한다.
 
 agent 의 결론(`PASS` / `IMPL_DONE` / `SPEC_GAP_FOUND` 등) → 다음 호출 매핑은
 각 loop skill 의 `<skill>-routing.md` (**mermaid 분기 그래프** + enum 표 + retry +
@@ -166,7 +169,7 @@ escalate) 가 진본이다 — 예: [`skills/impl/impl-routing.md`](skills/impl/
 | 형식 강제 | **0** — 형식/flag/schema 모두 agent 자율. harness 강제 = 작업 순서 + 접근 영역만 |
 | 컨텍스트 layer | 2 layer (CLAUDE.md + agents) |
 | 게이트 | 거버넌스 + 8 CI workflow (cross-ref / git-naming / plugin-manifest / pr-body / public-surface / python-tests / static-quality / release-sync) |
-| Codex 분기 | opt-in local provider 분기 — `code-validator` / `architecture-validator` / `pr-reviewer` 만 Codex read-only wrapper 로 실행 가능 |
+| Codex 분기 | local provider 분기 — validation 3종은 Codex read-only opt-in, implementation 3종은 Codex-first 기본 + Claude-only 변경 가능 |
 
 ## 공개 진입점
 
@@ -214,6 +217,7 @@ node scripts/check_cross_refs.mjs          # link/anchor + 옛 명칭 게이트
 python3.11 -m pip install -r requirements-quality.txt
 bash scripts/check_static_quality.sh       # ruff + mypy + bandit static quality
 bash scripts/dcness-codex-validator --help # Codex validator wrapper smoke
+bash scripts/dcness-codex-worker --help    # Codex implementation wrapper smoke
 ```
 
 - 런타임 의존성: Python 3.11+, Node.js 20+, **외부 패키지 0** (표준 라이브러리만)
