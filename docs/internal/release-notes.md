@@ -4,6 +4,46 @@
 
 ---
 
+## v0.10.0 (2026-06-30)
+
+**커밋 범위**: `v0.9.0..v0.10.0` (머지 PR 16개)
+**핵심 변경**: 외부 활성 프로젝트의 **docs 산출물 구조를 단일 SSOT 로 재설계**한 게 중심인 minor 릴리즈. `docs/plugin/deliverables-map.md` 신설로 prd/architecture/conventions/decisions/epic 산출물의 위치·양식·계층을 못박고, cross-ref 게이트에 **고아 문서 탐지**를 더해 구조 회귀를 차단하며, epic architecture 표를 전역 지도로 **자동 집계**한다. 부수 — `next` 진입점, Codex implementation routing(codex-first), doc-path·doc-sync 무결성 CI, Agent Operability 계약 가드, 단일 파일 다중 흐름 누적 분해 소프트 신호가 추가됐다.
+
+### 무엇이 바뀌나
+
+1. **docs 산출물 구조 SSOT 재설계** ([#806](https://github.com/alruminum/dcNess/pull/806) [#804](https://github.com/alruminum/dcNess/issues/804), [#812](https://github.com/alruminum/dcNess/pull/812) [#810](https://github.com/alruminum/dcNess/issues/810)) — `docs/plugin/deliverables-map.md` 를 신설해 외부 활성 프로젝트의 docs 산출물(전역 prd/architecture/conventions/decisions + epic 폴더 `stories.md`/`architecture.md`/`domain-model.md`/`ux-flow.md`/`impl/`) 위치·양식·계층을 단일 진본으로 정립. ux-flow 경계를 epic 폴더로 한정하고 ADR 파일을 `docs/decisions/` 로 통일하는 등 산출물 경로를 정합화. "한눈에 보기" 트리뷰 포함.
+
+2. **cross-ref 고아 문서 탐지 게이트** ([#809](https://github.com/alruminum/dcNess/pull/809) [#805](https://github.com/alruminum/dcNess/issues/805)) — `scripts/check_cross_refs.mjs` 가 `docs/plugin`·`docs/internal` 의 어디서도 markdown 링크되지 않는 고아 `.md` 를 FAIL 로 잡는다. 참조 corpus 를 git tracked md 전체의 실제 링크로 한정(dev/CI parity), self-link 우회 차단, 정밀 매칭으로 오탐 제거.
+
+3. **architecture map 자동 집계** ([#813](https://github.com/alruminum/dcNess/pull/813)) — `scripts/aggregate_architecture_map.mjs` 가 각 epic `architecture.md` 의 모듈 목록·Contract Ledger 표를 수집해 전역 `docs/architecture.md` 의 에픽 간 지도·전역 모듈 토폴로지·공유 계약 인덱스를 자동 생성/갱신한다(파생물, 수동 편집 금지).
+
+4. **`next` 진입점** ([#825](https://github.com/alruminum/dcNess/pull/825) [#824](https://github.com/alruminum/dcNess/issues/824), [#826](https://github.com/alruminum/dcNess/pull/826) [#825](https://github.com/alruminum/dcNess/issues/825)) — 다음 작업 진입을 안내하는 `next` 포인터/진입점 추가 및 보강.
+
+5. **Codex implementation routing** ([#822](https://github.com/alruminum/dcNess/pull/822)) — 구현 라우팅에 codex-first 경로를 추가. `/init-dcness` 가 `routing.json` 으로 validation/implementation routing 을 설정한다.
+
+6. **doc-path·doc-sync 무결성 CI** ([#821](https://github.com/alruminum/dcNess/pull/821), [#827](https://github.com/alruminum/dcNess/pull/827) [#823](https://github.com/alruminum/dcNess/issues/823)) — 문서 경로 무결성 workflow + doc-sync 게이트 추가. `/init-dcness` 가 사용자 repo 로 배포하는 선택형 `.github/workflows` 템플릿 경로.
+
+7. **Agent Operability 계약 가드** ([#818](https://github.com/alruminum/dcNess/pull/818), [#820](https://github.com/alruminum/dcNess/pull/820) [#819](https://github.com/alruminum/dcNess/issues/819)) — agent operability 계약 추가 + severity 승격·가드 보강.
+
+8. **단일 파일 다중 흐름 누적 분해 신호** ([#816](https://github.com/alruminum/dcNess/pull/816) [#814](https://github.com/alruminum/dcNess/issues/814)) — 한 파일에 여러 흐름이 누적될 때의 분해 소프트 신호 추가 + Codex pr-reviewer provider 미러에 같은 축 반영(두 provider 정합).
+
+9. **버그픽스·정리** ([#808](https://github.com/alruminum/dcNess/pull/808) [#807](https://github.com/alruminum/dcNess/issues/807), [#803](https://github.com/alruminum/dcNess/pull/803) [#797](https://github.com/alruminum/dcNess/issues/797), [#802](https://github.com/alruminum/dcNess/pull/802) [#800](https://github.com/alruminum/dcNess/issues/800), [#801](https://github.com/alruminum/dcNess/pull/801) [#799](https://github.com/alruminum/dcNess/issues/799)) — deprecated `docs/bugfix` 설계 산출물 완전 제거(Codex validator 미러 포함), architecture-validator occurrence off-by-one 수정(첫 재호출 누락 차단), init workflow/선택형 확장 템플릿 분리.
+
+### 사용자 영향
+
+- **`claude plugin update dcness@dcness` 로 자동 반영** — docs 산출물 SSOT·집계 도구(`docs/plugin/**`·`scripts/**`·`agents/**`·`skills/**`), `next` 진입점, Agent Operability 가드, architecture map 자동집계.
+- **신규 docs 산출물 구조** — `/spec`·`/design` 이 만드는 산출물 위치·양식이 `deliverables-map.md` 기준으로 정렬된다. 기존 활성 프로젝트의 이미 만든 문서는 강제 이동되지 않으며, 앞으로의 산출물이 새 구조를 따른다.
+- **doc-path·doc-sync CI** 를 쓰려면 기존 활성 프로젝트는 `/init-dcness` 재실행(또는 `.github/workflows` 재배포)이 필요하다.
+- **Codex opt-in 프로젝트**는 implementation routing(codex-first)·pr-reviewer 미러 갱신을 받으려면 plugin update 후 `/init-dcness` 재실행이 필요하다.
+
+### 업데이트
+
+```sh
+claude plugin update dcness@dcness
+```
+
+---
+
 ## v0.9.0 (2026-06-18)
 
 **커밋 범위**: `v0.8.0..v0.9.0` (머지 PR 10개)
